@@ -370,6 +370,24 @@ try {
     ")->fetchColumn(); 
 } catch (PDOException $e) {}
 
+$ultimo_mes_rendimiento = 0;
+$ultimo_mes_rendimiento_nombre = '';
+try {
+    $stmt = $pdo->query("
+        SELECT periodo_desde, COALESCE(SUM(total_salario_devengado), 0) as total
+        FROM nominas 
+        WHERE (tipo_nomina = 'bono' OR tipo_nomina = 'rendimiento') AND estado != 'borrador'
+        GROUP BY periodo_desde
+        ORDER BY periodo_desde DESC
+        LIMIT 1
+    ");
+    $ultimo_mes_rend = $stmt->fetch();
+    if ($ultimo_mes_rend && $ultimo_mes_rend['periodo_desde']) {
+        $ultimo_mes_rendimiento = floatval($ultimo_mes_rend['total']);
+        $ultimo_mes_rendimiento_nombre = nombreMesEspanol(date('n', strtotime($ultimo_mes_rend['periodo_desde'])));
+    }
+} catch (PDOException $e) {}
+
 try { 
     $total_pagado_salario = $pdo->query("
         SELECT COALESCE(SUM(importe_neto), 0) 
@@ -619,6 +637,34 @@ try {
 }
 
 // ============================================
+// DISTRIBUCIÓN POR ÁREA DE TRABAJO (EMPLEADOS ACTIVOS)
+// ============================================
+$areas_labels = [];
+$areas_datos = [];
+$areas_colores = [];
+$areas_palette = ['#3b82f6', '#fbbf24', '#4ade80', '#a78bfa', '#f87171', '#38bdf8', '#f472b6', '#a3e635'];
+try {
+    $stmt = $pdo->query("
+        SELECT a.nombre_area, COUNT(t.id) AS total
+        FROM areas a
+        LEFT JOIN trabajadores t ON t.area_id = a.id AND t.activo = 1
+        GROUP BY a.id, a.nombre_area
+        ORDER BY total DESC, a.nombre_area ASC
+    ");
+    $i = 0;
+    foreach ($stmt->fetchAll() as $r) {
+        $areas_labels[] = $r['nombre_area'];
+        $areas_datos[]  = intval($r['total']);
+        $areas_colores[] = $areas_palette[$i % count($areas_palette)];
+        $i++;
+    }
+} catch (PDOException $e) {
+    $areas_labels = [];
+    $areas_datos = [];
+    $areas_colores = [];
+}
+
+// ============================================
 // 1. SECUENCIAS DE NÓMINAS
 // ============================================
 $secuencias = [];
@@ -638,49 +684,50 @@ try {
 }
 
 // ============================================
-// 2. TOTALES POR TIPO DE NÓMINA DESDE CIERRES
+// 2. TOTALES POR TIPO DE NÓMINA (desde nominas)
 // ============================================
-$totales_cierres = [];
+$totales_por_tipo = [];
 $totales_generales = [
     'devengado' => 0,
     'deducciones' => 0,
     'neto' => 0,
     'contribucion' => 0,
     'vacaciones' => 0,
-    'cierres' => 0
+    'registros' => 0
 ];
 try {
-    $totales_cierres = $pdo->query("
+    $totales_por_tipo = $pdo->query("
         SELECT 
             tipo_nomina,
-            COUNT(*) as cantidad_cierres,
-            SUM(total_devengado) as sum_devengado,
+            COUNT(*) as cantidad_registros,
+            SUM(total_salario_devengado) as sum_devengado,
             SUM(total_deducciones) as sum_deducciones,
-            SUM(total_neto) as sum_neto,
-            SUM(total_contribucion) as sum_contribucion,
-            SUM(total_vacaciones_pagadas) as sum_vacaciones
-        FROM cierres_nomina
+            SUM(importe_neto) as sum_neto,
+            SUM(contribucion_especial) as sum_contribucion,
+            SUM(importe_vacaciones) as sum_vacaciones
+        FROM nominas
+        WHERE estado != 'borrador'
         GROUP BY tipo_nomina
         ORDER BY tipo_nomina ASC
     ")->fetchAll();
 
-    foreach ($totales_cierres as $t) {
+    foreach ($totales_por_tipo as $t) {
         $totales_generales['devengado'] += floatval($t['sum_devengado']);
         $totales_generales['deducciones'] += floatval($t['sum_deducciones']);
         $totales_generales['neto'] += floatval($t['sum_neto']);
         $totales_generales['contribucion'] += floatval($t['sum_contribucion']);
         $totales_generales['vacaciones'] += floatval($t['sum_vacaciones']);
-        $totales_generales['cierres'] += intval($t['cantidad_cierres']);
+        $totales_generales['registros'] += intval($t['cantidad_registros']);
     }
 } catch (PDOException $e) {
-    $totales_cierres = [];
+    $totales_por_tipo = [];
     $totales_generales = [
         'devengado' => 0,
         'deducciones' => 0,
         'neto' => 0,
         'contribucion' => 0,
         'vacaciones' => 0,
-        'cierres' => 0
+        'registros' => 0
     ];
 }
 
@@ -855,7 +902,7 @@ try {
                 <h6 class="mb-0 fw-semibold">
                     <i class="fas fa-clipboard-list me-2"></i>Resumen de Nóminas
                 </h6>
-                <span class="badge-win"><i class="fas fa-database me-1"></i> secuencias + cierres</span>
+                <span class="badge-win"><i class="fas fa-database me-1"></i> secuencias + nóminas</span>
             </div>
             <div class="p-3">
 
@@ -883,12 +930,18 @@ try {
                         'rendimiento'  => 'fa-trophy',
                         'ajuste'       => 'fa-sliders-h'
                     ];
+                    // Totales de cierres por tipo (para mostrarlos en las tarjetas)
+                    $cierres_por_tipo = [];
+                    foreach ($totales_por_tipo as $tc) {
+                        $cierres_por_tipo[strtolower(trim($tc['tipo_nomina']))] = $tc;
+                    }
                     // Tarjetas de secuencias
                     foreach ($secuencias as $item):
                         $tipo = strtolower(trim($item['tipo_nomina']));
                         $color = $colores_tipo[$tipo] ?? 'secondary';
                         $icono = $iconos_tipo[$tipo] ?? 'fa-tag';
                         $numero = intval($item['ultimo_numero']);
+                        $ci = $cierres_por_tipo[$tipo] ?? null;
                     ?>
                         <div class="col-md-3 col-6">
                             <div class="p-3 rounded text-center" style="background: rgba(<?php echo ($color == 'primary') ? '59,130,246' : (($color == 'success') ? '74,222,128' : (($color == 'warning') ? '245,158,11' : (($color == 'danger') ? '248,113,113' : (($color == 'info') ? '96,165,250' : '148,163,184')))); ?>, 0.1);">
@@ -898,6 +951,22 @@ try {
                                     <h4 class="mb-0"><?php echo number_format($numero); ?></h4>
                                     <small style="color: rgba(255,255,255,0.4);">último número</small>
                                 </div>
+                                <?php if ($ci): ?>
+                                <div class="mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.08); text-align: left; font-size: 0.78rem;">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span style="color: rgba(255,255,255,0.5);">Devengado</span>
+                                        <span class="text-success fw-semibold"><?php echo formatearMoneda($ci['sum_devengado']); ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span style="color: rgba(255,255,255,0.5);">Deducciones</span>
+                                        <span class="text-danger fw-semibold"><?php echo formatearMoneda($ci['sum_deducciones']); ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span style="color: rgba(255,255,255,0.5);">Neto</span>
+                                        <span style="color: #4ade80; font-weight: 700;"><?php echo formatearMoneda($ci['sum_neto']); ?></span>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -911,6 +980,12 @@ try {
                                 <h4 class="mb-0"><?php echo formatearMoneda($total_pago_rendimiento ?? 0); ?></h4>
                                 <small style="color: rgba(255,255,255,0.4);">total pagado</small>
                             </div>
+                            <div class="mt-2 pt-2" style="border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.78rem;">
+                                <div class="d-flex justify-content-center align-items-center gap-1">
+                                    <span style="color: rgba(255,255,255,0.5);">último mes<?php if ($ultimo_mes_rendimiento_nombre): ?> (<?php echo $ultimo_mes_rendimiento_nombre; ?>)<?php endif; ?>:</span>
+                                    <span style="color: #a78bfa; font-weight: 700;"><?php echo formatearMoneda($ultimo_mes_rendimiento); ?></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -921,19 +996,19 @@ try {
                 <?php endif; ?>
 
                 <!-- ========================================== -->
-                <!-- 2. TABLA DE TOTALES POR TIPO (cierres)     -->
+                <!-- 2. TABLA DE TOTALES POR TIPO (desde nóminas) -->
                 <!-- ========================================== -->
-                <?php if (!empty($totales_cierres)): ?>
+                <?php if (!empty($totales_por_tipo)): ?>
                 <div class="mt-3">
                     <h6 class="fw-semibold mb-2" style="color: #94a3b8;">
-                        <i class="fas fa-calculator me-2"></i>Totales Acumulados por Tipo (desde cierres)
+                        <i class="fas fa-calculator me-2"></i>Totales Acumulados por Tipo (desde nóminas)
                     </h6>
                     <div class="table-responsive">
                         <table class="table table-dark table-sm" style="color: #e2e8f0;">
                             <thead>
                                 <tr>
                                     <th style="color: #94a3b8;">Tipo</th>
-                                    <th class="text-end" style="color: #94a3b8;">Cierres</th>
+                                    <th class="text-end" style="color: #94a3b8;">Registros</th>
                                     <th class="text-end" style="color: #94a3b8;">Devengado</th>
                                     <th class="text-end" style="color: #94a3b8;">Deducciones</th>
                                     <th class="text-end" style="color: #94a3b8;">Neto</th>
@@ -942,13 +1017,13 @@ try {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($totales_cierres as $item):
+                                <?php foreach ($totales_por_tipo as $item):
                                     $tipo = ucfirst($item['tipo_nomina']);
                                     $color = $colores_tipo[strtolower($item['tipo_nomina'])] ?? 'secondary';
                                 ?>
                                 <tr>
                                     <td><span class="badge bg-<?php echo $color; ?>"><?php echo htmlspecialchars($tipo); ?></span></td>
-                                    <td class="text-end"><?php echo number_format($item['cantidad_cierres']); ?></td>
+                                    <td class="text-end"><?php echo number_format($item['cantidad_registros']); ?></td>
                                     <td class="text-end text-success"><?php echo formatearMoneda($item['sum_devengado']); ?></td>
                                     <td class="text-end text-danger"><?php echo formatearMoneda($item['sum_deducciones']); ?></td>
                                     <td class="text-end fw-bold" style="color: #4ade80;"><?php echo formatearMoneda($item['sum_neto']); ?></td>
@@ -960,7 +1035,7 @@ try {
                             <tfoot>
                                 <tr style="border-top: 2px solid rgba(255,255,255,0.1);">
                                     <td style="font-weight: bold; color: #e2e8f0;">TOTAL GENERAL</td>
-                                    <td class="text-end fw-bold"><?php echo number_format($totales_generales['cierres']); ?></td>
+                                    <td class="text-end fw-bold"><?php echo number_format($totales_generales['registros']); ?></td>
                                     <td class="text-end fw-bold text-success"><?php echo formatearMoneda($totales_generales['devengado']); ?></td>
                                     <td class="text-end fw-bold text-danger"><?php echo formatearMoneda($totales_generales['deducciones']); ?></td>
                                     <td class="text-end fw-bold" style="color: #4ade80;"><?php echo formatearMoneda($totales_generales['neto']); ?></td>
@@ -976,7 +1051,7 @@ try {
                 </div>
                 <?php else: ?>
                     <div class="alert alert-warning mt-3" style="background: rgba(245,158,11,0.1); border: 1px solid #fbbf24; border-radius: 8px; color: #fff;">
-                        <i class="fas fa-exclamation-triangle me-2"></i> No hay registros en <strong>cierres_nomina</strong>.
+                        <i class="fas fa-exclamation-triangle me-2"></i> No hay registros de nóminas contabilizadas.
                     </div>
                 <?php endif; ?>
 
@@ -1023,6 +1098,31 @@ try {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="glass-card" style="height: 100%;">
+            <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fas fa-users me-2"></i>Distribución por Área de Trabajo
+                </h6>
+                <div>
+                    <button class="btn-win btn-win-sm" onclick="exportarAreaChart()" title="Exportar gráfico a PNG">
+                        <i class="fas fa-download me-1"></i> Exportar PNG
+                    </button>
+                    <span class="badge-win ms-2"><i class="fas fa-user me-1"></i> <?php echo (int)$total_empleados; ?> empleados</span>
+                </div>
+            </div>
+            <div class="p-3" style="height: 400px; display: flex; align-items: center; justify-content: center;">
+                <?php if (!empty($areas_datos)): ?>
+                    <canvas id="areaChart"></canvas>
+                <?php else: ?>
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x mb-2" style="color: rgba(255,255,255,0.2);"></i>
+                        <p class="mb-0" style="color: rgba(255,255,255,0.5);">No hay empleados activos por área</p>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -1658,6 +1758,73 @@ document.querySelectorAll('.fade-in-up').forEach(function(el, index) {
 });
 
 // ============================================
+// PLUGIN CHART.JS: VALORES EN LOS GRÁFICOS AL EXPORTAR PNG
+// Dibuja las etiquetas de valor encima de las barras / sobre los
+// sectores de la torta, pero SOLO cuando la exportación lo activa.
+// El estado se guarda fuera de chart.options (que en Chart.js v4 es
+// un Proxy del tipo resolver y NO debe mutarse, provoca recursión).
+// ============================================
+var mostrarValoresExportacion = {};
+var formattersValoresExportacion = {};
+
+Chart.register({
+    id: 'valoresEnGrafico',
+    afterDatasetsDraw: function(chart) {
+        if (mostrarValoresExportacion[chart.id] !== true) return;
+        var cfg = (chart.options && chart.options.plugins && chart.options.plugins.valoresEnGrafico) || {};
+        var ctx = chart.ctx;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = cfg.font || 'bold 11px Inter, Segoe UI, sans-serif';
+        ctx.fillStyle = cfg.color || '#ffffff';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1;
+        var skipZero = cfg.skipZero !== false;
+        for (var d = 0; d < chart.data.datasets.length; d++) {
+            var meta = chart.getDatasetMeta(d);
+            if (!meta || meta.hidden) continue;
+            var ds = chart.data.datasets[d];
+            if (!ds || !ds.data) continue;
+            for (var i = 0; i < meta.data.length; i++) {
+                var el = meta.data[i];
+                if (!el || el.hidden) continue;
+                var valor = ds.data[i];
+                if (valor === null || valor === undefined) continue;
+                if (skipZero && Number(valor) === 0) continue;
+                var fmt = formattersValoresExportacion[chart.id];
+                var texto = (typeof fmt === 'function') ? fmt(d, i, valor) : String(valor);
+                if (texto === '') continue;
+                if (typeof el.startAngle === 'number') {
+                    // Dona / pastel
+                    var medio = (el.startAngle + el.endAngle) / 2;
+                    var radio = (el.innerRadius + el.outerRadius) / 2;
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(texto, el.x + Math.cos(medio) * radio, el.y + Math.sin(medio) * radio);
+                } else if (chart.options && chart.options.indexAxis === 'y') {
+                    // Barras horizontales: etiqueta a la derecha del extremo de la barra
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(texto, el.x + 4, el.y);
+                } else {
+                    // Barras
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(texto, el.x, el.y - 4);
+                }
+            }
+        }
+        ctx.restore();
+    }
+});
+
+function activarValoresExportacion(chart, mostrar) {
+    if (!chart || typeof chart.draw !== 'function') return;
+    mostrarValoresExportacion[chart.id] = mostrar === true;
+    chart.draw();
+}
+
+// ============================================
 // GRÁFICO DE BARRAS AGRUPADAS CON CHART.JS
 // ============================================
 <?php if (!empty($meses_array)): ?>
@@ -1717,6 +1884,9 @@ document.addEventListener('DOMContentLoaded', function() {
             maintainAspectRatio: true,
             animation: { duration: 1500, easing: 'easeOutQuart' },
             plugins: {
+                valoresEnGrafico: {
+                    display: false
+                },
                 legend: {
                     position: 'top',
                     labels: {
@@ -1775,6 +1945,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    formattersValoresExportacion[chartInstance.id] = function(d, i, v) {
+        if (d === 0) return '$' + new Intl.NumberFormat('es-ES').format(v);
+        return new Intl.NumberFormat('es-ES').format(v);
+    };
+    
     var resizeTimeout;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimeout);
@@ -1786,7 +1961,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 250);
     });
 });
-
 function exportarGrafico() {
     var canvas = document.getElementById('nominasChart');
     if (!canvas) {
@@ -1819,6 +1993,9 @@ function exportarGrafico() {
     ctx.fillStyle = gradiente;
     ctx.fillRect(0, 0, ancho, altoTotal);
     
+    // Mostrar temporalmente los valores sobre el gráfico para capturarlos
+    activarValoresExportacion(chartInstance, true);
+    
     ctx.drawImage(canvas, 0, alturaTitulo, ancho, altoOriginal);
     
     ctx.textAlign = 'center';
@@ -1849,6 +2026,9 @@ function exportarGrafico() {
     link.download = 'grafico_nominas_' + añoActual + '-' + String(ahora.getMonth()+1).padStart(2,'0') + '-' + String(ahora.getDate()).padStart(2,'0') + '.png';
     link.href = tempCanvas.toDataURL('image/png', 1.0);
     link.click();
+    
+    // Restaurar el gráfico original (sin valores)
+    activarValoresExportacion(chartInstance, false);
 }
 <?php else: ?>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1863,6 +2043,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // GRÁFICO DE TORTA
 // ============================================
 <?php if (!empty($distribucion_tipos)): ?>
+var tipoChartInstance = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     var canvas = document.getElementById('tipoChart');
     if (!canvas) return;
@@ -1873,7 +2055,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var colors = ['#3b82f6', '#fbbf24', '#4ade80', '#a78bfa', '#f87171'];
     var total = data.reduce(function(a, b) { return a + b; }, 0);
     
-    new Chart(ctx, {
+    tipoChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: labels.map(function(label, i) {
@@ -1893,6 +2075,9 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
+                valoresEnGrafico: {
+                    display: false
+                },
                 legend: {
                     position: 'bottom',
                     labels: {
@@ -1918,6 +2103,11 @@ document.addEventListener('DOMContentLoaded', function() {
             cutout: '60%'
         }
     });
+    
+    formattersValoresExportacion[tipoChartInstance.id] = function(d, i, v) {
+        var pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0';
+        return '$' + new Intl.NumberFormat('es-ES').format(v) + ' (' + pct + '%)';
+    };
 });
 <?php endif; ?>
 
@@ -1959,6 +2149,9 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
+                valoresEnGrafico: {
+                    display: false
+                },
                 legend: { display: false },
                 tooltip: {
                     backgroundColor: 'rgba(0, 0, 0, 0.85)',
@@ -1993,6 +2186,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    formattersValoresExportacion[distribucionChartInstance.id] = function(d, i, v) {
+        return '$' + new Intl.NumberFormat('es-ES').format(v);
+    };
 });
 <?php endif; ?>
 
@@ -2070,6 +2267,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 easing: 'easeOutQuart'
             },
             plugins: {
+                valoresEnGrafico: {
+                    display: false
+                },
                 legend: {
                     position: 'top',
                     labels: {
@@ -2187,10 +2387,30 @@ function exportarCentrosCosto() {
     var subtitulo = '<?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?>';
     var periodo = 'Período: <?php echo htmlspecialchars($periodo_referencia); ?>';
     
+    // Datos desde el gráfico para dibujar la tabla debajo
+    var labelsCentros = [];
+    var salariosCentros = [];
+    var empleadosCentros = [];
+    var coloresCentros = [];
+    if (centrosChartInstance && centrosChartInstance.data) {
+        labelsCentros = centrosChartInstance.data.labels || [];
+        var dsCentros = centrosChartInstance.data.datasets || [];
+        if (dsCentros[0]) salariosCentros = dsCentros[0].data || [];
+        if (dsCentros[0]) coloresCentros = dsCentros[0].backgroundColor || [];
+        if (dsCentros[1]) empleadosCentros = dsCentros[1].data || [];
+    }
+    
     var ancho = canvas.width;
     var altoOriginal = canvas.height;
     var alturaTitulo = 100;
-    var altoTotal = altoOriginal + alturaTitulo;
+    
+    // Tabla de datos (los valores van en la tabla, no sobre el gráfico)
+    var filaAlto = 34;
+    var encabezadoAlto = 36;
+    var espacioEncabezado = 18;
+    var filasTabla = labelsCentros.length;
+    var altoTabla = espacioEncabezado + encabezadoAlto + filasTabla * filaAlto + filaAlto + 16;
+    var altoTotal = altoOriginal + alturaTitulo + altoTabla;
     
     var tempCanvas = document.createElement('canvas');
     tempCanvas.width = ancho;
@@ -2204,7 +2424,7 @@ function exportarCentrosCosto() {
     ctx.fillStyle = gradiente;
     ctx.fillRect(0, 0, ancho, altoTotal);
     
-    // Dibujar gráfico
+    // Dibujar gráfico (sin valores encima; van en la tabla de abajo)
     ctx.drawImage(canvas, 0, alturaTitulo, ancho, altoOriginal);
     
     // Título
@@ -2242,6 +2462,91 @@ function exportarCentrosCosto() {
     ctx.moveTo(ancho / 2 - 180, 98);
     ctx.lineTo(ancho / 2 + 180, 98);
     ctx.stroke();
+    
+    // === TABLA DE DATOS (los valores van aquí, no sobre el gráfico) ===
+    var yTabla = alturaTitulo + altoOriginal + espacioEncabezado;
+    var xTabla = 24;
+    var anchoTabla = ancho - 48;
+    var indexW = 45;
+    var salarioW = 200;
+    var empleadoW = 120;
+    var nombreW = anchoTabla - indexW - salarioW - empleadoW;
+    
+    function fMonedaCentros(v) {
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(Number(v) || 0);
+    }
+    var sumSalarios = salariosCentros.reduce(function(a, b) { return a + (Number(b) || 0); }, 0);
+    var sumEmpleados = empleadosCentros.reduce(function(a, b) { return a + (Number(b) || 0); }, 0);
+    
+    // Encabezado
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+    ctx.fillRect(xTabla, yTabla, anchoTabla, encabezadoAlto);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(xTabla, yTabla, anchoTabla, encabezadoAlto);
+    ctx.font = 'bold 13px Inter, Segoe UI, sans-serif';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillText('#', xTabla + 14, yTabla + 10);
+    ctx.fillText('Centro de Costo', xTabla + indexW, yTabla + 10);
+    ctx.fillText('Total Salario', xTabla + indexW + nombreW, yTabla + 10);
+    ctx.fillText('Empleados', xTabla + indexW + nombreW + salarioW, yTabla + 10);
+    
+    // Filas
+    ctx.font = '12px Inter, Segoe UI, sans-serif';
+    for (var i = 0; i < filasTabla; i++) {
+        var yFila = yTabla + encabezadoAlto + i * filaAlto;
+        if (i % 2 === 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.fillRect(xTabla, yFila, anchoTabla, filaAlto);
+        }
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.beginPath();
+        ctx.moveTo(xTabla, yFila + filaAlto);
+        ctx.lineTo(xTabla + anchoTabla, yFila + filaAlto);
+        ctx.stroke();
+        
+        // Número
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(String(i + 1), xTabla + 14, yFila + 10);
+        
+        // Nombre con punto de color
+        var colorCelda = coloresCentros[i] || '#3b82f6';
+        ctx.fillStyle = colorCelda;
+        ctx.beginPath();
+        ctx.arc(xTabla + indexW + 10, yFila + 17, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText(String(labelsCentros[i] || ''), xTabla + indexW + 24, yFila + 10);
+        
+        // Salario
+        ctx.fillStyle = '#60a5fa';
+        ctx.font = 'bold 12px Inter, Segoe UI, sans-serif';
+        ctx.fillText(fMonedaCentros(salariosCentros[i]), xTabla + indexW + nombreW, yFila + 10);
+        
+        // Empleados
+        ctx.fillStyle = '#4ade80';
+        ctx.font = '12px Inter, Segoe UI, sans-serif';
+        ctx.fillText(String(empleadosCentros[i]) + ' 👥', xTabla + indexW + nombreW + salarioW, yFila + 10);
+    }
+    
+    // Fila de totales
+    var yTotal = yTabla + encabezadoAlto + filasTabla * filaAlto;
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
+    ctx.fillRect(xTabla, yTotal, anchoTabla, filaAlto);
+    ctx.strokeStyle = 'rgba(96, 165, 250, 0.3)';
+    ctx.beginPath();
+    ctx.moveTo(xTabla, yTotal);
+    ctx.lineTo(xTabla + anchoTabla, yTotal);
+    ctx.stroke();
+    ctx.font = 'bold 12px Inter, Segoe UI, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('TOTAL', xTabla + indexW, yTotal + 10);
+    ctx.fillStyle = '#60a5fa';
+    ctx.fillText(fMonedaCentros(sumSalarios), xTabla + indexW + nombreW, yTotal + 10);
+    ctx.fillStyle = '#4ade80';
+    ctx.fillText(String(sumEmpleados) + ' 👥', xTabla + indexW + nombreW + salarioW, yTotal + 10);
     
     // Descargar
     var link = document.createElement('a');
@@ -2942,6 +3247,8 @@ function exportarGraficoTorta() {
     ctx.fillRect(0, 0, anchoReal, altoFinal / escala);
     
     // === DIBUJAR EL GRÁFICO ORIGINAL ===
+    // Mostrar temporalmente los valores sobre el gráfico para capturarlos
+    activarValoresExportacion(tipoChartInstance, true);
     ctx.drawImage(canvas, 0, alturaTitulo / escala, anchoReal, altoOriginal / escala);
     
     // === TÍTULO PRINCIPAL ===
@@ -2977,6 +3284,9 @@ function exportarGraficoTorta() {
     link.download = `grafico_distribucion_${añoActual}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}.png`;
     link.href = tempCanvas.toDataURL('image/png', 1.0);
     link.click();
+    
+    // Restaurar el gráfico original (sin valores)
+    activarValoresExportacion(tipoChartInstance, false);
 }
 // ============================================
 // ACTUALIZAR DASHBOARD (RECARGAR DATOS)
@@ -3546,6 +3856,8 @@ function exportarDistribucionPNG() {
     ctx.fillRect(0, 0, ancho, altoTotal);
     
     // === DIBUJAR EL GRÁFICO ORIGINAL ===
+    // Mostrar temporalmente los valores sobre el gráfico para capturarlos
+    activarValoresExportacion(distribucionChartInstance, true);
     ctx.drawImage(canvas, 0, alturaTitulo, ancho, altoOriginal);
     
     // === TÍTULO PRINCIPAL ===
@@ -3580,6 +3892,9 @@ function exportarDistribucionPNG() {
     link.download = `distribucion_montos_<?php echo $anio_seleccionado; ?>_${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}.png`;
     link.href = tempCanvas.toDataURL('image/png', 1.0);
     link.click();
+    
+    // Restaurar el gráfico original (sin valores)
+    activarValoresExportacion(distribucionChartInstance, false);
 }
 // ============================================
 // EXPORTAR CENTROS DE COSTO A EXCEL
@@ -3903,6 +4218,162 @@ function irACumpleanero(index) {
 document.addEventListener('DOMContentLoaded', function() {
     renderCumpleanero(0);
 });
+
+// ============================================
+// GRÁFICO: DISTRIBUCIÓN POR ÁREA DE TRABAJO
+// ============================================
+<?php if (!empty($areas_datos)): ?>
+var areaChartInstance = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    var canvas = document.getElementById('areaChart');
+    if (!canvas) return;
+    
+    var ctx = canvas.getContext('2d');
+    var labels = <?php echo json_encode($areas_labels); ?>;
+    var datos = <?php echo json_encode($areas_datos); ?>;
+    var colores = <?php echo json_encode($areas_colores); ?>;
+    
+    areaChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Empleados',
+                data: datos,
+                backgroundColor: colores.map(function(c) { return c + 'CC'; }),
+                borderColor: colores,
+                borderWidth: 2,
+                borderRadius: 6,
+                barPercentage: 0.6,
+                categoryPercentage: 0.75
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: { right: 44 }
+            },
+            animation: { duration: 1200, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#e2e8f0',
+                    titleFont: { family: 'Inter', size: 13, weight: 'bold' },
+                    bodyFont: { family: 'Inter', size: 12 },
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            var v = context.raw;
+                            return '👥 ' + v + ' empleado' + (v !== 1 ? 's' : '');
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.08)' },
+                    ticks: {
+                        color: '#94a3b8',
+                        stepSize: 1,
+                        precision: 0
+                    }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: {
+                        color: 'rgba(255,255,255,0.7)',
+                        font: { size: 11 }
+                    }
+                }
+            }
+        }
+    });
+    
+    formattersValoresExportacion[areaChartInstance.id] = function(d, i, v) {
+        return String(v);
+    };
+});
+<?php endif; ?>
+
+// ============================================
+// EXPORTAR GRÁFICO DE ÁREAS DE TRABAJO A PNG
+// ============================================
+function exportarAreaChart() {
+    var canvas = document.getElementById('areaChart');
+    if (!canvas || !areaChartInstance) {
+        Swal.fire('Error', 'No hay datos por área para exportar', 'error');
+        return;
+    }
+    
+    var ahora = new Date();
+    var añoActual = ahora.getFullYear();
+    var mesActual = ahora.toLocaleString('es-ES', { month: 'long' });
+    var diaActual = ahora.getDate();
+    var fechaCompleta = diaActual + ' de ' + mesActual + ' de ' + añoActual;
+    
+    var titulo = 'Distribución por Área de Trabajo';
+    
+    var ancho = canvas.width;
+    var altoOriginal = canvas.height;
+    var alturaTitulo = 85;
+    var altoTotal = altoOriginal + alturaTitulo;
+    
+    var tempCanvas = document.createElement('canvas');
+    tempCanvas.width = ancho;
+    tempCanvas.height = altoTotal;
+    var ctx = tempCanvas.getContext('2d');
+    
+    var gradiente = ctx.createLinearGradient(0, 0, 0, altoTotal);
+    gradiente.addColorStop(0, '#1a1a2e');
+    gradiente.addColorStop(1, '#0f0f1a');
+    ctx.fillStyle = gradiente;
+    ctx.fillRect(0, 0, ancho, altoTotal);
+    
+    // Mostrar temporalmente los valores sobre el gráfico para capturarlos
+    activarValoresExportacion(areaChartInstance, true);
+    
+    ctx.drawImage(canvas, 0, alturaTitulo, ancho, altoOriginal);
+    
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px Inter, Segoe UI, sans-serif';
+    ctx.fillText(titulo, ancho / 2, 14);
+    
+    ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '14px Inter, Segoe UI, sans-serif';
+    ctx.fillText('📅 Generado el ' + fechaCompleta, ancho / 2, 48);
+    
+    ctx.strokeStyle = 'rgba(96, 165, 250, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(ancho / 2 - 180, 72);
+    ctx.lineTo(ancho / 2 + 180, 72);
+    ctx.stroke();
+    
+    var link = document.createElement('a');
+    link.download = 'distribucion_areas_' + añoActual + '-' + String(ahora.getMonth()+1).padStart(2,'0') + '-' + String(ahora.getDate()).padStart(2,'0') + '.png';
+    link.href = tempCanvas.toDataURL('image/png', 1.0);
+    link.click();
+    
+    // Restaurar el gráfico original (sin valores)
+    activarValoresExportacion(areaChartInstance, false);
+}
+
 function abrirEmpleado(id) {
     // Redirigir a empleados.php con el parámetro editar
     window.location.href = 'modules/empleados.php?editar=' + id;

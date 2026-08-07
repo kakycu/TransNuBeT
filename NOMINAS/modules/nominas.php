@@ -3194,7 +3194,6 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
                 </div>
                 <div class="stat-icon" style="color: #4ade80;"><i class="fas fa-arrow-up"></i></div>
             </div>
-            <?php if ($tipo_nomina_activa == 'automatica' || $tipo_nomina_activa == 'extraordinaria'): ?>
             <div class="glass-card stat-card">
                 <div>
                     <h6><i class="fas fa-minus-circle me-1"></i> Deducciones Totales</h6>
@@ -3202,7 +3201,6 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
                 </div>
                 <div class="stat-icon" style="color: #f87171;"><i class="fas fa-arrow-down"></i></div>
             </div>
-            <?php endif; ?>
             <div class="glass-card stat-card" style="border-color: rgba(96, 165, 250, 0.4);">
                 <div>
                     <h6 style="color: #60a5fa;"><i class="fas fa-wallet me-1"></i> Total a Pagar (Neto)</h6>
@@ -9239,7 +9237,7 @@ if ($tabla.length && $tabla.find('tbody tr').length > 0) {
                     ]
                 }
             },
-            pageLength: 5,
+            pageLength: -1,
             autoWidth: false,
             scrollX: true,
             scrollY: "400px",
@@ -10301,7 +10299,7 @@ function actualizarEstadisticas() {
     
     var $tabla = $('#tablaNominas');
     
-    if (!$tabla.length || $tabla.find('tbody tr:visible').length === 0) {
+    if (!$tabla.length || $tabla.find('tbody tr').length === 0) {
         $('#totalDevengado').text('$0.00');
         $('#totalNeto').text('$0.00');
         $('#totalDescuentos').text('$0.00');
@@ -10309,7 +10307,9 @@ function actualizarEstadisticas() {
         return;
     }
     
-    var filasVisibles = $tabla.find('tbody tr:visible');
+    // Siempre se totalizan TODOS los registros (equivale a "Mostrar Todo"),
+    // sin importar la paginación, búsqueda o filtros aplicados en la tabla.
+    var filasVisibles = $tabla.find('tbody tr');
     var totalTrabajadores = filasVisibles.length;
     
     var impuestosAcumulados = [];

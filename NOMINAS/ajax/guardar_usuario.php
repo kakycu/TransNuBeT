@@ -16,6 +16,8 @@ $segundo_apellido = trim($_POST['segundo_apellido'] ?? '');
 $apellidos = $primer_apellido . ' ' . $segundo_apellido;
 $no_ci = preg_replace('/\D/', '', $_POST['no_ci'] ?? '');
 $email = trim($_POST['email'] ?? '');
+$telefono_contacto = trim($_POST['telefono_contacto'] ?? '');
+$direccion_particular = trim($_POST['direccion_particular'] ?? '');
 $rol_id = intval($_POST['rol_id'] ?? 0);
 $activo = isset($_POST['activo']) ? 1 : 0;
 $password = $_POST['password'] ?? '';
@@ -68,8 +70,8 @@ try {
         
         // Insertar usuario
         $hashed = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("INSERT INTO clasif_usuarios (usuario, password, nombre, apellidos, no_ci, email, rol_id, activo, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->execute([$usuario, $hashed, $nombre, $apellidos, $no_ci, $email ?: null, $rol_id, $activo]);
+        $stmt = $pdo->prepare("INSERT INTO clasif_usuarios (usuario, password, nombre, apellidos, no_ci, email, telefono_contacto, direccion_particular, rol_id, activo, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$usuario, $hashed, $nombre, $apellidos, $no_ci, $email ?: null, $telefono_contacto ?: null, $direccion_particular ?: null, $rol_id, $activo]);
         
         $nuevo_id = $pdo->lastInsertId();
         
@@ -128,11 +130,11 @@ try {
         // Actualizar usuario
         if (!empty($password)) {
             $hashed = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("UPDATE clasif_usuarios SET usuario=?, password=?, nombre=?, apellidos=?, no_ci=?, email=?, rol_id=?, foto=?, activo=? WHERE id=?");
-            $stmt->execute([$usuario, $hashed, $nombre, $apellidos, $no_ci, $email ?: null, $rol_id, $foto_ruta, $activo, $id]);
+            $stmt = $pdo->prepare("UPDATE clasif_usuarios SET usuario=?, password=?, nombre=?, apellidos=?, no_ci=?, email=?, telefono_contacto=?, direccion_particular=?, rol_id=?, foto=?, activo=?, fecha_actualizacion=NOW() WHERE id=?");
+            $stmt->execute([$usuario, $hashed, $nombre, $apellidos, $no_ci, $email ?: null, $telefono_contacto ?: null, $direccion_particular ?: null, $rol_id, $foto_ruta, $activo, $id]);
         } else {
-            $stmt = $pdo->prepare("UPDATE clasif_usuarios SET usuario=?, nombre=?, apellidos=?, no_ci=?, email=?, rol_id=?, foto=?, activo=? WHERE id=?");
-            $stmt->execute([$usuario, $nombre, $apellidos, $no_ci, $email ?: null, $rol_id, $foto_ruta, $activo, $id]);
+            $stmt = $pdo->prepare("UPDATE clasif_usuarios SET usuario=?, nombre=?, apellidos=?, no_ci=?, email=?, telefono_contacto=?, direccion_particular=?, rol_id=?, foto=?, activo=?, fecha_actualizacion=NOW() WHERE id=?");
+            $stmt->execute([$usuario, $nombre, $apellidos, $no_ci, $email ?: null, $telefono_contacto ?: null, $direccion_particular ?: null, $rol_id, $foto_ruta, $activo, $id]);
         }
         
         echo json_encode(['success' => true, 'message' => 'Usuario actualizado correctamente']);

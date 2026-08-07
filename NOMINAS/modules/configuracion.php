@@ -587,6 +587,70 @@ $usuarios_lista = $stmt_usuarios->fetchAll();
     color: rgba(255, 255, 255, 0.35) !important;
     font-size: 0.75rem !important;
 }
+
+        /* ========================================== */
+        /* MODAL USUARIO MEJORADO - DISEÑO Y UX       */
+        /* ========================================== */
+
+        .modal-avatar-header {
+            width: 56px; height: 56px; border-radius: 50%;
+            border: 2px solid #60a5fa; overflow: hidden;
+            background: rgba(20, 20, 25, 0.8); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        .modal-avatar-header img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .modal-avatar-header .avatar-iniciales-lg {
+            width: 100%; height: 100%; font-size: 1.15rem; font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex; align-items: center; justify-content: center; color: #fff;
+        }
+
+        .mode-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 3px 10px; border-radius: 20px; font-size: 0.66rem;
+            font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .mode-badge.create { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .mode-badge.edit { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+
+        .modal-subtitle { font-size: 0.75rem; color: rgba(255, 255, 255, 0.5); }
+
+        .section-title {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.78rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.8px; color: rgba(255, 255, 255, 0.75);
+            padding-bottom: 8px; margin-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .section-title i { color: #60a5fa; font-size: 0.85rem; }
+
+        .usuario-modal-body {
+            max-height: calc(100vh - 260px);
+            overflow-y: auto;
+        }
+        .usuario-modal-body::-webkit-scrollbar { width: 6px; }
+        .usuario-modal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+
+        .password-wrapper { position: relative; }
+        .password-wrapper .form-control { padding-right: 42px !important; }
+        .password-toggle {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            background: transparent; border: none; color: rgba(255, 255, 255, 0.5);
+            padding: 6px 8px; cursor: pointer; z-index: 5;
+        }
+        .password-toggle:hover { color: #60a5fa; }
+
+        .form-usuario-status {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px; border-radius: 10px; font-size: 0.78rem;
+            margin-bottom: 18px;
+        }
+        .form-usuario-status.edit { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); color: #93c5fd; }
+        .form-usuario-status.create { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); color: #6ee7b7; }
+
+        .btn-guardar-loading { pointer-events: none; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -949,6 +1013,7 @@ $usuarios_lista = $stmt_usuarios->fetchAll();
     </td>
     <td>
         <div class="btn-group btn-group-sm">
+            <a class="btn-win btn-win-sm" href="users.php?id=<?php echo $usr['id']; ?>" title="Ver perfil"><i class="fas fa-user"></i></a>
             <button class="btn-win btn-win-sm" onclick="editarUsuario(<?php echo $usr['id']; ?>)" title="Editar"><i class="fas fa-edit"></i></button>
             <button class="btn-win btn-win-sm <?php echo $usr['activo'] ? 'btn-win-warning' : 'btn-win-success'; ?>" onclick="toggleEstadoUsuario(<?php echo $usr['id']; ?>, <?php echo $usr['activo']; ?>, '<?php echo addslashes($nombre_completo); ?>')" title="<?php echo $usr['activo'] ? 'Desactivar' : 'Activar'; ?>"><i class="fas <?php echo $usr['activo'] ? 'fa-user-slash' : 'fa-user-check'; ?>"></i></button>
             <button class="btn-win btn-win-danger btn-win-sm" onclick="eliminarUsuario(<?php echo $usr['id']; ?>, '<?php echo addslashes($nombre_completo); ?>')" title="Eliminar"><i class="fas fa-trash"></i></button>
@@ -1124,48 +1189,97 @@ $usuarios_lista = $stmt_usuarios->fetchAll();
 <div class="modal fade" id="modalUsuario" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content modal-content-win">
-            <div class="modal-header modal-header-win">
-                <h5 class="modal-title" id="modalUsuarioTitle"><i class="fas fa-user-plus me-2"></i> Nuevo Usuario</h5>
+            <div class="modal-header modal-header-win d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="modal-avatar-header" id="headerAvatarModal">
+                        <div class="avatar-iniciales-lg" id="headerAvatarIniciales">+</div>
+                        <img id="headerAvatarImg" src="" alt="" style="display:none;">
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <h5 class="modal-title mb-0" id="modalUsuarioTitle"><i class="fas fa-user-plus me-2"></i> Nuevo Usuario</h5>
+                            <span class="mode-badge create" id="modalModeBadge"><i class="fas fa-plus-circle"></i> Crear</span>
+                        </div>
+                        <span class="modal-subtitle" id="modalUsuarioSubtitle">Registre un nuevo usuario del sistema</span>
+                    </div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formUsuario" method="POST">
+            <form id="formUsuario" method="POST" autocomplete="off">
                 <input type="hidden" name="action" id="usuarioAction" value="crear">
                 <input type="hidden" name="usuario_id" id="usuarioId" value="">
                 <input type="hidden" name="imagen_recortada" id="imagen_recortada_usuario" value="">
                 <input type="hidden" name="eliminar_foto" id="eliminarFotoUsuario" value="0">
-                <div class="modal-body p-4">
-                    <div class="row">
+                <div class="modal-body p-4 usuario-modal-body">
+                    <div class="form-usuario-status create" id="formUsuarioStatus">
+                        <i class="fas fa-user-plus"></i>
+                        <span id="formUsuarioStatusText">Creando un nuevo usuario para el sistema</span>
+                    </div>
+                    <div class="row g-4">
                         <div class="col-md-3">
-                            <div class="text-center mb-3">
-                                <div class="avatar-preview mb-2" id="avatarPreviewUsuario" onclick="abrirEditorFotoUsuario()">
-                                    <div id="fotoPlaceholderUsuario" class="avatar-placeholder"><i class="fas fa-camera"></i></div>
+                            <div class="text-center">
+                                <div class="avatar-preview mb-2" id="avatarPreviewUsuario" onclick="abrirEditorFotoUsuario()" style="width: 120px; height: 120px;">
+                                    <div id="fotoPlaceholderUsuario" class="avatar-placeholder"><i class="fas fa-camera"></i><small style="font-size: 0.6rem; margin-top: 4px;">Foto</small></div>
                                     <img id="imagePreviewUsuario" src="" style="display: none; width: 100%; height: 100%; object-fit: cover;">
                                     <div class="edit-overlay py-1"><i class="fas fa-crop-alt me-1"></i> Editar</div>
                                 </div>
-                                <div class="d-flex gap-1 justify-content-center mt-2">
+                                <div class="d-grid gap-1">
                                     <label class="btn-win btn-win-sm py-1" style="font-size: 0.7rem;"><i class="fas fa-upload me-1"></i> Subir Foto<input type="file" id="imageUploadUsuario" accept="image/jpeg,image/png" hidden onchange="cargarImagenUsuario(this)"></label>
                                     <button type="button" class="btn-win btn-win-danger btn-win-sm py-1" id="btnEliminarFotoUsuario" style="display: none;" onclick="eliminarFotoUsuario()"><i class="fas fa-trash-alt me-1"></i> Eliminar</button>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-9">
-                            <div class="row g-3">
-                                <div class="col-md-6"><label class="form-label">Usuario <span class="text-danger">*</span></label><input type="text" class="form-control" name="usuario" id="usuario" required></div>
-                                <div class="col-md-6"><label class="form-label">Contraseña <span class="text-danger" id="passRequired">*</span></label><input type="password" class="form-control" name="password" id="password"><small class="text-muted" id="passHelp">Dejar en blanco para mantener la actual</small></div>
+                            <div class="section-title"><i class="fas fa-key"></i> Datos de Acceso</div>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Usuario <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="usuario" id="usuario" required>
+                                    <small class="text-muted" id="usuarioFeedback"></small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Contraseña <span class="text-danger" id="passRequired">*</span></label>
+                                    <div class="password-wrapper">
+                                        <input type="password" class="form-control" name="password" id="password" autocomplete="new-password">
+                                        <button type="button" class="password-toggle" id="togglePasswordBtn" onclick="togglePassword()" tabindex="-1"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                    <small class="text-muted" id="passHelp">Dejar en blanco para mantener la actual</small>
+                                </div>
+                            </div>
+                            <div class="section-title"><i class="fas fa-id-card"></i> Datos Personales</div>
+                            <div class="row g-3 mb-4">
                                 <div class="col-md-4"><label class="form-label">Nombre <span class="text-danger">*</span></label><input type="text" class="form-control" name="nombre" id="nombre" required><small class="text-muted" id="nombreFeedback"></small></div>
                                 <div class="col-md-4"><label class="form-label">Primer Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="primer_apellido" id="primer_apellido" required><small class="text-muted" id="apellido1Feedback"></small></div>
                                 <div class="col-md-4"><label class="form-label">Segundo Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="segundo_apellido" id="segundo_apellido" required><small class="text-muted" id="apellido2Feedback"></small></div>
                                 <div class="col-md-6"><label class="form-label">Carnet de Identidad <span class="text-danger">*</span></label><input type="text" class="form-control" name="no_ci" id="no_ci" maxlength="11" required><small class="text-muted" id="ciFeedbackUsuario"></small></div>
-                                <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" id="email"></div>
-                                <div class="col-md-6"><label class="form-label">Rol <span class="text-danger">*</span></label><select class="form-select" name="rol_id" id="rol_id" required><option value="">-- Seleccione un rol --</option><?php $stmt_roles2 = $pdo->query("SELECT id, descripcion FROM clasif_rol ORDER BY id"); while ($rol2 = $stmt_roles2->fetch()): ?><option value="<?php echo $rol2['id']; ?>"><?php echo htmlspecialchars($rol2['descripcion']); ?></option><?php endwhile; ?></select></div>
-                                <div class="col-md-12"><div class="form-check form-switch"><input type="checkbox" class="form-check-input" name="activo" id="activo_usuario" checked><label class="form-check-label" for="activo_usuario">Usuario Activo</label></div></div>
+                                <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" id="email"><small class="text-muted" id="emailFeedback"></small></div>
+                                <div class="col-md-6"><label class="form-label">Teléfono de Contacto</label><input type="text" class="form-control" name="telefono_contacto" id="telefono_contacto" maxlength="15"><small class="text-muted" id="telefonoFeedback"></small></div>
+                                <div class="col-md-12"><label class="form-label">Dirección Particular</label><textarea class="form-control" name="direccion_particular" id="direccion_particular" rows="2"></textarea></div>
+                            </div>
+                            <div class="section-title"><i class="fas fa-user-tag"></i> Rol y Estado</div>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-7">
+                                    <label class="form-label">Rol <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="rol_id" id="rol_id" required>
+                                        <option value="">-- Seleccione un rol --</option>
+                                        <?php $stmt_roles2 = $pdo->query("SELECT id, descripcion FROM clasif_rol ORDER BY id"); while ($rol2 = $stmt_roles2->fetch()): ?>
+                                        <option value="<?php echo $rol2['id']; ?>"><?php echo htmlspecialchars($rol2['descripcion']); ?></option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="form-check form-switch mb-1">
+                                        <input type="checkbox" class="form-check-input" name="activo" id="activo_usuario" checked>
+                                        <label class="form-check-label" for="activo_usuario" id="estadoUsuarioLabel">Usuario Activo</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer modal-footer-win">
                     <button type="button" class="btn-win btn-win-danger btn-win-sm" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> Cancelar</button>
-                    <button type="submit" class="btn-win btn-win-primary btn-win-sm"><i class="fas fa-save me-1"></i> Guardar Usuario</button>
+                    <button type="submit" class="btn-win btn-win-primary btn-win-sm" id="btnGuardarUsuario"><i class="fas fa-save me-1"></i> <span id="btnGuardarUsuarioText">Guardar Usuario</span></button>
                 </div>
             </form>
         </div>
@@ -1589,6 +1703,50 @@ function validarNombreCampo(valor, feedbackId, minLength = 3) {
     $(feedbackId).html('<i class="fas fa-check-circle text-success me-1"></i> Válido').show(); return true;
 }
 
+function togglePassword() {
+    const pass = document.getElementById('password');
+    const btn = document.getElementById('togglePasswordBtn');
+    if (pass.type === 'password') {
+        pass.type = 'text';
+        if (btn) btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+    } else {
+        pass.type = 'password';
+        if (btn) btn.innerHTML = '<i class="fas fa-eye"></i>';
+    }
+}
+
+function validarUsuarioCampo(valor) {
+    const v = valor.trim();
+    if (v.length === 0) return { valido: false, mensaje: '<i class="fas fa-exclamation-circle text-danger me-1"></i> Obligatorio' };
+    if (v.length < 3) return { valido: false, mensaje: '<i class="fas fa-exclamation-circle text-danger me-1"></i> Mínimo 3 caracteres' };
+    if (!/^[a-zA-Z0-9._-]+$/.test(v)) return { valido: false, mensaje: '<i class="fas fa-exclamation-circle text-danger me-1"></i> Solo letras, números, . _ -' };
+    return { valido: true, mensaje: '<i class="fas fa-check-circle text-success me-1"></i> Válido' };
+}
+
+function validarEmailCampo(valor) {
+    const v = valor.trim();
+    if (v === '') return { valido: true, mensaje: '' };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return { valido: false, mensaje: '<i class="fas fa-exclamation-circle text-danger me-1"></i> Formato de email inválido' };
+    return { valido: true, mensaje: '<i class="fas fa-check-circle text-success me-1"></i> Válido' };
+}
+
+function validarTelefonoCampo(valor) {
+    const v = valor.trim();
+    if (v === '') return { valido: true, mensaje: '' };
+    if (!/^[0-9+\s()-]{6,15}$/.test(v)) return { valido: false, mensaje: '<i class="fas fa-exclamation-circle text-danger me-1"></i> Solo números, +, - ( ) y espacio' };
+    return { valido: true, mensaje: '<i class="fas fa-check-circle text-success me-1"></i> Válido' };
+}
+
+function pintarFeedback(inputId, feedbackId, resultado) {
+    const input = document.getElementById(inputId);
+    $(feedbackId).html(resultado.mensaje).css('color', resultado.valido ? '#28a745' : '#dc3545');
+    if (input) {
+        if (resultado.valido) input.style.borderColor = '#28a745';
+        else if (input.value.trim().length > 0) input.style.borderColor = '#dc3545';
+        else input.style.borderColor = '';
+    }
+}
+
 function validarCICubano(ci) {
     ci = ci.replace(/[\s-]/g, '');
     if (!/^\d{11}$/.test(ci)) return { valido: false, mensaje: '⚠️ Debe tener 11 dígitos' };
@@ -1608,6 +1766,7 @@ function validarCICubano(ci) {
 }
 
 $(document).ready(function() {
+    $('#usuario').on('input', function() { pintarFeedback('usuario', '#usuarioFeedback', validarUsuarioCampo($(this).val())); });
     $('#nombre').on('input', function() { validarNombreCampo($(this).val(), '#nombreFeedback', 3); });
     $('#primer_apellido').on('input', function() { validarNombreCampo($(this).val(), '#apellido1Feedback', 3); });
     $('#segundo_apellido').on('input', function() { validarNombreCampo($(this).val(), '#apellido2Feedback', 3); });
@@ -1616,6 +1775,9 @@ $(document).ready(function() {
         $('#ciFeedbackUsuario').html(resultado.mensaje).css('color', resultado.valido ? '#28a745' : '#dc3545');
         $(this).css('border-color', resultado.valido ? '#28a745' : ($(this).val().length > 0 ? '#dc3545' : '')).css('background-color', resultado.valido ? 'rgba(40,167,69,0.1)' : ($(this).val().length > 0 ? 'rgba(220,53,69,0.1)' : ''));
     });
+    $('#email').on('input', function() { pintarFeedback('email', '#emailFeedback', validarEmailCampo($(this).val())); });
+    $('#telefono_contacto').on('input', function() { pintarFeedback('telefono_contacto', '#telefonoFeedback', validarTelefonoCampo($(this).val())); });
+    $('#activo_usuario').on('change', function() { document.getElementById('estadoUsuarioLabel').textContent = this.checked ? 'Usuario Activo' : 'Usuario Inactivo'; });
 });
 
 function cargarImagenUsuario(input) {
@@ -1699,10 +1861,24 @@ function limpiarFormularioUsuario() {
     document.getElementById('usuarioAction').value = 'crear';
     document.getElementById('usuarioId').value = '';
     document.getElementById('modalUsuarioTitle').innerHTML = '<i class="fas fa-user-plus me-2"></i> Nuevo Usuario';
+    document.getElementById('modalUsuarioSubtitle').textContent = 'Registre un nuevo usuario del sistema';
+    document.getElementById('modalModeBadge').className = 'mode-badge create';
+    document.getElementById('modalModeBadge').innerHTML = '<i class="fas fa-plus-circle"></i> Crear';
+    document.getElementById('formUsuarioStatus').className = 'form-usuario-status create';
+    document.getElementById('formUsuarioStatus').innerHTML = '<i class="fas fa-user-plus"></i><span>Creando un nuevo usuario para el sistema</span>';
     document.getElementById('formUsuario').reset();
     document.getElementById('activo_usuario').checked = true;
+    document.getElementById('estadoUsuarioLabel').textContent = 'Usuario Activo';
     document.getElementById('passRequired').innerHTML = '*';
     document.getElementById('passHelp').style.display = 'block';
+    document.getElementById('btnGuardarUsuario').classList.remove('btn-guardar-loading');
+    document.getElementById('btnGuardarUsuario').disabled = false;
+    document.getElementById('btnGuardarUsuarioText').textContent = 'Guardar Usuario';
+    
+    const headerAvatarImg = document.getElementById('headerAvatarImg');
+    const headerAvatarIniciales = document.getElementById('headerAvatarIniciales');
+    if (headerAvatarImg) headerAvatarImg.style.display = 'none';
+    if (headerAvatarIniciales) { headerAvatarIniciales.style.display = 'flex'; headerAvatarIniciales.textContent = '+'; }
     
     const imagePreview = document.getElementById('imagePreviewUsuario');
     const fotoPlaceholder = document.getElementById('fotoPlaceholderUsuario');
@@ -1721,8 +1897,15 @@ function limpiarFormularioUsuario() {
     document.getElementById('eliminarFotoUsuario').value = '0';
     document.getElementById('imagen_recortada_usuario').value = '';
     
-    $('#nombreFeedback, #apellido1Feedback, #apellido2Feedback, #ciFeedbackUsuario').html('');
+    $('#nombreFeedback, #apellido1Feedback, #apellido2Feedback, #ciFeedbackUsuario, #usuarioFeedback, #emailFeedback, #telefonoFeedback').html('');
     $('#no_ci').css('border-color', '').css('background-color', '');
+    $('#usuario').css('border-color', '').css('background-color', '');
+    $('#email').css('border-color', '').css('background-color', '');
+    $('#telefono_contacto').css('border-color', '').css('background-color', '');
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    if (toggleBtn) toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+    const passwordField = document.getElementById('password');
+    if (passwordField) passwordField.type = 'password';
     setTimeout(() => $('#usuario').focus(), 100);
 }
 
@@ -1735,18 +1918,43 @@ function editarUsuario(id) {
         if (data.success) {
             document.getElementById('usuarioAction').value = 'editar';
             document.getElementById('usuarioId').value = data.usuario.id;
-            document.getElementById('modalUsuarioTitle').innerHTML = '<i class="fas fa-user-edit me-2"></i> Editar Usuario: ' + data.usuario.usuario;
+            document.getElementById('modalUsuarioTitle').innerHTML = '<i class="fas fa-user-edit me-2"></i> Editar Usuario';
+            const nombreCompletoEdit = (data.usuario.nombre + ' ' + (data.usuario.apellidos || '')).trim();
+            document.getElementById('modalUsuarioSubtitle').textContent = nombreCompletoEdit;
+            document.getElementById('modalModeBadge').className = 'mode-badge edit';
+            document.getElementById('modalModeBadge').innerHTML = '<i class="fas fa-user-edit"></i> Editando';
+            document.getElementById('formUsuarioStatus').className = 'form-usuario-status edit';
+            document.getElementById('formUsuarioStatus').innerHTML = '<i class="fas fa-user-edit"></i><span><strong>' + nombreCompletoEdit + '</strong> — CI: ' + (data.usuario.no_ci || '-') + '</span>';
+            
+            const headerAvatarImg = document.getElementById('headerAvatarImg');
+            const headerAvatarIniciales = document.getElementById('headerAvatarIniciales');
+            if (headerAvatarIniciales) {
+                const inicialesEdit = (data.usuario.nombre.charAt(0) + ' ' + (data.usuario.apellidos || ' ').charAt(0)).toUpperCase();
+                headerAvatarIniciales.textContent = inicialesEdit;
+                headerAvatarIniciales.style.display = 'flex';
+            }
+            if (headerAvatarImg) {
+                headerAvatarImg.style.display = 'none';
+                headerAvatarImg.src = '';
+            }
+            
             document.getElementById('usuario').value = data.usuario.usuario;
             document.getElementById('nombre').value = data.usuario.nombre;
             document.getElementById('primer_apellido').value = data.usuario.apellidos?.split(' ')[0] || '';
             document.getElementById('segundo_apellido').value = data.usuario.apellidos?.split(' ')[1] || '';
             document.getElementById('no_ci').value = data.usuario.no_ci;
             document.getElementById('email').value = data.usuario.email || '';
+            document.getElementById('telefono_contacto').value = data.usuario.telefono_contacto || '';
+            document.getElementById('direccion_particular').value = data.usuario.direccion_particular || '';
             document.getElementById('rol_id').value = data.usuario.rol_id;
             document.getElementById('activo_usuario').checked = data.usuario.activo == 1;
+            document.getElementById('estadoUsuarioLabel').textContent = data.usuario.activo == 1 ? 'Usuario Activo' : 'Usuario Inactivo';
             document.getElementById('password').value = '';
             document.getElementById('passRequired').innerHTML = '';
             document.getElementById('passHelp').style.display = 'none';
+            document.getElementById('btnGuardarUsuario').classList.remove('btn-guardar-loading');
+            document.getElementById('btnGuardarUsuario').disabled = false;
+            document.getElementById('btnGuardarUsuarioText').textContent = 'Guardar Cambios';
             
             if (data.usuario.foto && data.usuario.foto !== '') {
                 let fotoUrl = data.usuario.foto;
@@ -1928,8 +2136,10 @@ document.getElementById('formUsuario').addEventListener('submit', function(e) {
     const rolId = document.getElementById('rol_id').value;
     const action = document.getElementById('usuarioAction').value;
     const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value.trim();
     
-    if (!usuario) { Swal.fire({ icon: 'warning', title: 'Campo requerido', text: 'El nombre de usuario es obligatorio', background: '#1a1a2e', color: '#fff' }); $('#usuario').focus(); return; }
+    const valUsuario = validarUsuarioCampo(usuario);
+    if (!valUsuario.valido) { pintarFeedback('usuario', '#usuarioFeedback', valUsuario); Swal.fire({ icon: 'warning', title: 'Usuario inválido', text: valUsuario.mensaje.replace(/<[^>]+>/g, ''), background: '#1a1a2e', color: '#fff' }); $('#usuario').focus(); return; }
     if (!nombre || nombre.length < 3) { Swal.fire({ icon: 'warning', title: 'Nombre inválido', text: 'Mínimo 3 caracteres', background: '#1a1a2e', color: '#fff' }); $('#nombre').focus(); return; }
     if (!primerApellido || primerApellido.length < 3) { Swal.fire({ icon: 'warning', title: 'Primer apellido inválido', text: 'Mínimo 3 caracteres', background: '#1a1a2e', color: '#fff' }); $('#primer_apellido').focus(); return; }
     if (!segundoApellido || segundoApellido.length < 3) { Swal.fire({ icon: 'warning', title: 'Segundo apellido inválido', text: 'Mínimo 3 caracteres', background: '#1a1a2e', color: '#fff' }); $('#segundo_apellido').focus(); return; }
@@ -1937,17 +2147,39 @@ document.getElementById('formUsuario').addEventListener('submit', function(e) {
     if (!rolId) { Swal.fire({ icon: 'warning', title: 'Selección requerida', text: 'Debe seleccionar un rol', background: '#1a1a2e', color: '#fff' }); $('#rol_id').focus(); return; }
     if (action === 'crear' && !password) { Swal.fire({ icon: 'warning', title: 'Contraseña requerida', text: 'La contraseña es obligatoria', background: '#1a1a2e', color: '#fff' }); $('#password').focus(); return; }
     
+    const valEmail = validarEmailCampo(email);
+    if (!valEmail.valido) { pintarFeedback('email', '#emailFeedback', valEmail); Swal.fire({ icon: 'warning', title: 'Email inválido', text: valEmail.mensaje.replace(/<[^>]+>/g, ''), background: '#1a1a2e', color: '#fff' }); $('#email').focus(); return; }
+    
     const ciValidacion = validarCICubano(ci);
     if (!ciValidacion.valido) { Swal.fire({ icon: 'warning', title: 'CI inválido', text: ciValidacion.mensaje, background: '#1a1a2e', color: '#fff' }); $('#no_ci').focus(); return; }
+    
+    const btnGuardar = document.getElementById('btnGuardarUsuario');
+    const btnTexto = document.getElementById('btnGuardarUsuarioText');
+    btnGuardar.classList.add('btn-guardar-loading');
+    btnGuardar.disabled = true;
+    if (btnTexto) btnTexto.textContent = 'Guardando...';
+    $('#btnGuardarUsuario i').attr('class', 'fas fa-spinner fa-spin me-1');
     
     Swal.fire({ title: '<i class="fas fa-spinner fa-spin me-2"></i> Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1a1a2e', color: '#fff' });
     fetch('../ajax/guardar_usuario.php', { method: 'POST', body: new FormData(this) })
     .then(response => response.json())
     .then(data => {
         if (data.success) { Swal.fire({ icon: 'success', title: '<i class="fas fa-check-circle me-2"></i> Completado', text: data.message, timer: 1500, showConfirmButton: false, background: '#1a1a2e', color: '#fff' }); setTimeout(() => location.reload(), 1500); }
-        else { Swal.fire({ icon: 'error', title: '<i class="fas fa-exclamation-circle me-2"></i> Error', text: data.message, background: '#1a1a2e', color: '#fff' }); }
+        else {
+            Swal.fire({ icon: 'error', title: '<i class="fas fa-exclamation-circle me-2"></i> Error', text: data.message, background: '#1a1a2e', color: '#fff' });
+            btnGuardar.classList.remove('btn-guardar-loading');
+            btnGuardar.disabled = false;
+            if (btnTexto) btnTexto.textContent = action === 'crear' ? 'Guardar Usuario' : 'Guardar Cambios';
+            $('#btnGuardarUsuario i').attr('class', 'fas fa-save me-1');
+        }
     })
-    .catch(() => { Swal.fire({ icon: 'error', title: '<i class="fas fa-wifi me-2"></i> Error', text: 'Error de conexión', background: '#1a1a2e', color: '#fff' }); });
+    .catch(() => {
+        Swal.fire({ icon: 'error', title: '<i class="fas fa-wifi me-2"></i> Error', text: 'Error de conexión', background: '#1a1a2e', color: '#fff' });
+        btnGuardar.classList.remove('btn-guardar-loading');
+        btnGuardar.disabled = false;
+        if (btnTexto) btnTexto.textContent = action === 'crear' ? 'Guardar Usuario' : 'Guardar Cambios';
+        $('#btnGuardarUsuario i').attr('class', 'fas fa-save me-1');
+    });
 });
 
 document.getElementById('searchUsuarioInput')?.addEventListener('input', filtrarUsuarios);
