@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador de Portafolio Profesional</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+	<link href="css/font-awesome6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/animate.min.css">
+	<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAOwwAADsMBx2+oZAAAAq5JREFUWEe9l1uITVEYxzEIkVvkwS2SXMaDIkkUDy41jIaSoYYHPMyD4gl5QJTyIjOJCM00ETUpRYrcEmaalHJpkjDy4JZS5DJ+/9Nep9W256xv7U5W/Tp7rfX/vvWtvdflOxW98pcFmL6C+fAROvO7yme5GLPv0J3Qxu/GfK7irCYhPw7vvMFdEPq9BOPjXNrVC5G+6WFgP4inaGbY3dqU45C9NgzuAmlHO8Tm2qbaFzG4C6LW5tqmup0jgHM212FVHySPvAC+8vzFENC1sGubogJZBzTDEpgOU2Ee1MFpeAzfUkFdtrm3qbSo1pWQDqBvJiyFajgFrTbXYVVfJC/hYFhaVFzg6UaEvqR0RzIbvX5L0Zo5DFo3yywGIc1JBHNCooz+XbRtz2H3j8kGWg5FOhqE/jpMi7TLlA+j9RZo9VvL7uQzWPVBXR0K7WttyVDRFr0DI0LCmP7eiFthp8HoPJr1Bl20RNfsQ5hdwnIrfS3RniMMlIjoXqjMsKmh7S6MjfCXS1qN1U3YD1WwBpSkaI2UPQ/wIxxKZWTSMCFZDzojGmEzuPt/cq5plTCaQt8WeAJNAefD6X8OV0H5gM6BwbEBaQa6eI7BPfgMLsn4zXN9Dw770X7W08qmC6xHeOF61RZSmu3neFnPZ9AsAn0KJapaCzr5fO0n6qtAW9iVtTw0ZL2VTTSm7/NQEOp/Dx8yAv5B2/LUmxpDXZ9SeuUXxWN6LpVfhllbAnKa9NU9EP8PQFf0argP21yAynRinIe0b/E3KjX7I94Y+k+hdaGgCmf7izIHcCI1uGb8xxtD6f1Ep9He1mIJzSqmX9e3K/o/4fv/SV2nabHoDVwpcwD+4luJ76PwLBljb+rtFKo6PGQkcTkY7Q2i3TUL9sBFUH75X8sBRtOdsQL6p0f+Cwu+KxTDlSVmAAAAAElFTkSuQmCC" type="image/x-icon">
+    <style>
+
+	body { 
+		font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; 
+		background-color: transparent; 
+		color: white;
+    margin: 0;
+    height: 100%;
+		overflow: hidden; 
+		height: 100vh; 
+		background: url('images/fondoautor.jpg') no-repeat center center fixed; 
+		background-size: cover;
+	}
+ 
+
+        .content-header {
+            border-bottom: 1px solid white;
+        }
+
+        .content-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+		
+        /* Barra de desplazamiento */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+		
+        :root {
+            --accent-color: #0078d7;
+            --bg-dark: #1e1e1e;
+            --bg-darker: #686868;
+            --border-color: #333;
+            --mica-bg: rgba(30, 30, 30, 0.7);
+            --mica-border: rgba(255, 255, 255, 0.1);
+        }
+
+
+        /* Barra de Título */
+        .title-bar {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            border-bottom: 1px solid var(--mica-border);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Ventana principal */
+        .explorer-window {
+            position: absolute;
+            width: 80vw;
+            height: 80vh;
+            top: 10vh;
+            left: 10vw;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px); /* Efecto Mica */
+            background-color: var(--mica-bg); /* Fondo con transparencia */
+        }
+		
+		    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+
+        /* Barra de título */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            user-select: none;
+            -webkit-user-select: none;
+    backdrop-filter: blur(15px); /* Aumenta el desenfoque */
+    background-color: rgba(30, 30, 30, 0.6); /* Color semitransparente más claro */
+    transition: backdrop-filter 0.3s ease, background-color 0.3s ease; /* Transición suave */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Borde sutil */
+        }
+		
+/* Efecto de hover en la barra de título */
+#top-bar:hover {
+    
+    background-color: rgba(30, 30, 30, 0.7); /* Color más claro al pasar el mouse */
+	cursor: move;
+}
+
+        .top-bar:active {
+            //background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .top-bar.double-click-active {
+            animation: doubleClickEffect 0.4s ease;
+        }
+
+        @keyframes doubleClickEffect {
+            0% { background-color: rgba(255, 255, 255, 0); }
+            50% { background-color: rgba(255, 255, 255, 0.1); }
+            100% { background-color: rgba(255, 255, 255, 0); }
+        }
+
+        .window-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+        }
+
+        .window-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .window-controls button {
+            background: none;
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .window-controls button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .window-controls button.close:hover {
+            background-color: #e81123;
+        }
+
+        /* Iconos */
+        .fa-solid, .fas, .window-controls i, .menu-button i {
+            font-family: 'Font Awesome 6 Free' !important;
+            font-weight: 900 !important;
+            display: inline-block !important;
+            font-style: normal !important;
+            font-size: 12px;
+        }
+
+        /* Pestañas */
+        .tabs {
+            display: flex;
+            background-color: var(--mica-bg);
+            border-bottom: 1px solid var(--mica-border);
+            backdrop-filter: blur(10px); /* Efecto Mica */
+        }
+
+        .tab {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-right: 1px solid var(--mica-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ccc;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background-color: var(--bg-darker);
+            color: white;
+            font-weight: 500;
+        }
+
+        .tab:hover {
+            background-color: #333;
+        }
+
+        /* Contenido */
+        .content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 220px;
+            background-color: var(--mica-bg);
+            border-right: 1px solid var(--mica-border);
+            padding: 12px 0;
+            overflow-y: auto;
+            backdrop-filter: blur(10px); /* Efecto Mica */
+        }
+
+        .sidebar-section {
+            margin-bottom: 16px;
+        }
+
+        .sidebar-title {
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+        }
+
+        .sidebar-item {
+            padding: 8px 16px 8px 24px;
+            cursor: pointer;
+            color: #ccc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-item:hover {
+            background-color: #333;
+            color: white;
+        }
+
+        .sidebar-item.active {
+            background-color: rgba(0, 120, 215, 0.3);
+            border-left-color: var(--accent-color);
+            color: var(--accent-color);
+            padding-left: 21px;
+        }
+
+        .main-area {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background-color: var(--bg-darker);
+        }
+
+        /* Contenido de las secciones */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .project-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            border: 1px solid var(--mica-border);
+            backdrop-filter: var(--fluent-blur);
+            -webkit-backdrop-filter: var(--fluent-blur);
+		}
+		
+
+        .project-card:hover {
+            transform: translateY(-2px);
+            background-color: rgba(255, 255, 255, 0.08);
+            border-left-color: var(--accent-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .project-card h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+
+        .project-card .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .project-card .tag {
+            background-color: rgba(0, 120, 215, 0.2);
+            color: var(--accent-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Estilos específicos para categorías */
+        #web .tag {
+            background-color: rgba(66, 135, 245, 0.2);
+            color: #4287f5;
+        }
+
+        #design .tag {
+            background-color: rgba(220, 20, 140, 0.2);
+            color: #dc148c;
+        }
+
+        #apps .tag {
+            background-color: rgba(30, 215, 96, 0.2);
+            color: #1ed760;
+        }
+
+        /* Menú contextual */
+        .context-menu {
+            position: absolute;
+            background-color: var(--mica-bg);
+            backdrop-filter: blur(20px);
+            color: white;
+            border-radius: 6px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 1000;
+            padding: 6px 0;
+            min-width: 180px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: fadeIn 0.15s ease-out;
+        }
+
+        .context-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .context-menu li {
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .context-menu li:hover {
+            background-color: rgba(0, 120, 215, 0.3);
+        }
+
+        .context-menu li.separator {
+            height: 1px;
+            background-color: rgba(255, 255, 255, 0.1);
+            margin: 6px 0;
+            padding: 0;
+            cursor: default;
+        }
+
+        /* Barra de estado */
+        .status-bar {
+            background-color: var(--mica-bg);
+            padding: 6px 16px;
+            font-size: 12px;
+            color: #ccc;
+            border-top: 1px solid var(--mica-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px); /* Efecto Mica */
+        }
+
+        .status-icon {
+            color: var(--accent-color);
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        #status-text {
+            flex-grow: 1;
+        }
+
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Estilos para ventana minimizada */
+        .explorer-window.minimized .content,
+        .explorer-window.minimized .tabs,
+        .explorer-window.minimized .status-bar {
+            display: none;
+        }
+/* Controladores de redimensionamiento */
+.explorer-window::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    background-color: transparent;
+    cursor: nwse-resize; /* Cursor para redimensionar en diagonal */
+    z-index: 100;
+}
+
+.explorer-window::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    background-color: transparent;
+    cursor: nesw-resize; /* Cursor para redimensionar en diagonal */
+    z-index: 100;
+}
+
+.explorer-window .resize-handle-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 12px;
+    right: 12px;
+    height: 12px;
+    background-color: transparent;
+    cursor: ns-resize; /* Cursor para redimensionar verticalmente */
+    z-index: 100;
+}
+
+.explorer-window .resize-handle-right {
+    position: absolute;
+    right: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 12px;
+    background-color: transparent;
+    cursor: ew-resize; /* Cursor para redimensionar horizontalmente */
+    z-index: 100;
+}
+
+
+
+  /* Ajusta el contenedor principal para que ocupe todo el espacio */
+  .explorer-window {
+    
+    /* Fondo semitransparente */
+    background-color: rgba(30, 30, 30, 0.85);
+    
+    /* Efecto Mica mejorado */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background-image: 
+      linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0) 100%
+      );
+  }
+
+  /* Ajusta los elementos internos para mejor legibilidad */
+  .main-area, .sidebar {
+    background-color: transparent;
+  }
+
+  .project-card {
+    background-color: rgba(30, 30, 30, 0.6);
+  }
+  .icon-container {
+            text-align: center;
+        }
+
+        .icon-container {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* Espacio entre los enlaces */
+        }
+
+        .icon-container a {
+            text-decoration: none;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            transition: color 0.2s ease-in-out;
+        }
+
+        .icon-container a:hover {
+            color: #6e5494; /* Color oficial de GitHub */
+        }
+
+        .icon-container a:hover .fa-github {
+            color: #6e5494; /* Color oficial de GitHub */
+        }
+
+        .icon-container a:hover .fa-linkedin {
+            color: #0077B5; /* Color oficial de LinkedIn */
+        }
+
+        .icon-container a:hover .fa-facebook {
+            color: #1877F2; /* Color oficial de Facebook */
+        }
+
+        .icon-container i {
+            font-size: 14px;
+        }    
+
+
+</style>
+</head>
+<body>
+	<div class="explorer-window" id="explorer-window">
+    <!-- Controladores de redimensionamiento -->
+    <div class="resize-handle-bottom"></div>
+    <div class="resize-handle-right"></div>
+        <!-- Barra superior -->
+        <div class="title-bar mica" id="top-bar">
+            <div class="window-title">
+                <button class="menu-button" id="menu-button" style="background: none; border: none; color: inherit; cursor: pointer;">
+                    <i class="fas fa-folder-open"></i>
+                </button>
+                <span>Explorador de Portafolio Personal:</span><span style="font-weight:bold;color: "> Franklin Ramos Lamadrid (Kaky°)</span>
+            </div>
+			
+            <div class="window-controls">
+                <button id="minimize-button">
+                    <i class="fa-solid fa-window-minimize"></i>
+                </button>
+                <button id="maximize-button">
+                    <i class="fa-solid fa-window-maximize"></i>
+                </button>
+                <button class="close" id="close-button" onclick="closeWindows();">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Pestañas -->
+        <div class="tabs">
+            <div class="tab active" data-content="home">
+                <i class="fa-solid fa-house"></i>
+                Inicio
+            </div>
+            <div class="tab" data-content="projects">
+                <i class="fa-solid fa-folder-open"></i>
+                Proyectos
+            </div>
+            <div class="tab" data-content="skills">
+                <i class="fa-solid fa-code"></i>
+                Habilidades
+            </div>
+            <div class="tab" data-content="contact">
+                <i class="fa-solid fa-envelope"></i>
+                Contacto
+            </div>
+        </div>
+
+        <!-- Contenido -->
+        <div class="content">
+            <!-- Barra lateral -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Navegación</div>
+                    <div class="sidebar-item active" data-content="home">
+                        <i class="fa-solid fa-house"></i>
+                        Inicio
+                    </div>
+                    <div class="sidebar-item" data-content="projects">
+                        <i class="fa-solid fa-folder-open"></i>
+                        Proyectos
+                    </div>
+                    <div class="sidebar-item" data-content="skills">
+                        <i class="fa-solid fa-code"></i>
+                        Habilidades
+                    </div>
+					<div class="sidebar-item" data-content="contact">
+						<i class="fa-solid fa-envelope"></i>
+						Contacto
+					</div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Categorías</div>
+                    <div class="sidebar-item" data-content="web">
+				<i class="fa-solid fa-globe"></i>
+                    Desarrollo Web
+                </div>
+                <div class="sidebar-item" data-content="design">
+                    <i class="fa-solid fa-paint-brush"></i>
+                    Diseño UI/UX
+                </div>
+                <div class="sidebar-item" data-content="apps">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                    Aplicaciones
+                </div>
+            </div>
+        </div>
+
+        <!-- Área principal -->
+        <div class="main-area" id="main-area">
+            <!-- Sección Inicio -->
+<div id="home" class="content-section active">
+    <div class="content-header">
+        <h1>Bienvenido a mi Portafolio</h1>
+    </div>
+    <div class="content-body" style="display: flex; align-items: flex-start; gap: 20px;">
+        <!-- Foto de perfil -->
+        <div class="profile-photo" style="width: 150px; height: 150px; border-radius: 50%; overflow: hidden; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); background: linear-gradient(135deg, #0078D7, #00C6FF); display: flex; justify-content: center; align-items: center;">
+            <img src="images/autor.png" alt="Foto de Perfil" style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; border: 3px solid #fff;">
+        </div>
+        
+        <!-- Texto descriptivo -->
+        <div class="content-text" style="flex: 1;">
+            <p>Soy un desarrollador full-stack con amplia experiencia en el diseño y desarrollo de interfaces de usuario, así como en la implementación de arquitecturas escalables y eficientes para sistemas empresariales. Mi enfoque principal es crear soluciones tecnológicas que no solo sean funcionales, sino también intuitivas y atractivas para los usuarios finales.</p>
+            
+            <p>Entre mis proyectos destacados se encuentra el <strong>Sistema de Gestión Empresarial</strong>, una plataforma integral diseñada para optimizar la gestión de clientes, inventarios y facturación. Este sistema combina tecnologías modernas como <strong>React</strong> para el frontend, <strong>Node.js</strong> para el backend y <strong>MongoDB</strong> como base de datos, lo que permite una experiencia de usuario fluida y un rendimiento óptimo en entornos empresariales.</p>
+					
+					<h2>Proyectos Destacados</h2>
+					<div class="project-card">
+						<h3>Calculadora de Consumo Energético</h3>
+						<p>Aplicación web para calcular el consumo eléctrico en el hogar, con gráficos y recomendaciones de ahorro.</p>
+						<div class="tags">
+							<span class="tag">React</span>
+							<span class="tag">Node.js</span>
+							<span class="tag">Chart.js</span>
+						</div>
+					</div>
+
+					<div class="project-card">
+						<h3>Plataforma de E-learning</h3>
+						<p>Sistema para crear y tomar cursos en línea con videos, cuestionarios y certificados.</p>
+						<div class="tags">
+							<span class="tag">Django</span>
+							<span class="tag">Python</span>
+							<span class="tag">PostgreSQL</span>
+						</div>
+					</div>
+
+					<div class="project-card">
+						<h3>App de Gestión de Inventarios</h3>
+						<p>Aplicación móvil para gestionar inventarios de productos, entradas y salidas.</p>
+						<div class="tags">
+							<span class="tag">React Native</span>
+							<span class="tag">Firebase</span>
+							<span class="tag">Redux</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+            <!-- Sección Proyectos -->
+            <div id="projects" class="content-section">
+                <div class="content-header">
+					<h1>Proyectos Destacados</h1>
+				</div>
+                <br>
+				<div class="project-card">
+					<h3>Sistema de Control de Epidemias</h3>
+					<p>Aplicación para monitorear y controlar brotes epidémicos, con seguimiento de casos y generación de informes.</p>
+					<div class="tags">
+						<span class="tag">Visual Basic</span>
+						<span class="tag">MySQL</span>
+						<span class="tag">Salud Pública</span>
+						<span class="tag">Epidemiología</span>
+					</div>
+				</div>
+				<div class="project-card">
+					<h3>Sistema de Gestión de Registros Médicos en Nuevitas</h3>
+					<p>Aplicación para gestionar registros médicos, historias clínicas y seguimiento de pacientes en el área de Salud Pública de Nuevitas.</p>
+					<div class="tags">
+						<span class="tag">Visual Basic</span>
+						<span class="tag">MySQL</span>
+						<span class="tag">Salud Pública</span>
+						<span class="tag">Nuevitas</span>
+					</div>
+				</div>
+				<div class="project-card">
+					<h3>Sistema de Gestión de Vacunación</h3>
+					<p>Aplicación para gestionar el registro de vacunación, seguimiento de dosis y generación de certificados de vacunación.</p>
+					<div class="tags">
+						<span class="tag">Visual Basic</span>
+						<span class="tag">MySQL</span>
+						<span class="tag">Salud Pública</span>
+						<span class="tag">Vacunación</span>
+					</div>
+				</div>
+                <div class="project-card">
+                    <h3>E-commerce Moderno</h3>
+                    <p>Tienda online con carrito de compras, pasarela de pagos y panel administrativo.</p>
+                    <div class="tags">
+                        <span class="tag">Vue.js</span>
+                        <span class="tag">Laravel</span>
+                        <span class="tag">MySQL</span>
+                    </div>
+                </div>
+                <div class="project-card">
+                    <h3>Aplicación de Monitoreo</h3>
+                    <p>Sistema en tiempo real para monitoreo de servidores y aplicaciones.</p>
+                    <div class="tags">
+                        <span class="tag">Python</span>
+                        <span class="tag">WebSockets</span>
+                        <span class="tag">Docker</span>
+                    </div>
+                </div>
+				<div class="project-card">
+					<h3>Aplicación de Gestión de Tareas</h3>
+					<p>Aplicación web para gestionar tareas diarias con recordatorios y seguimiento.</p>
+					<div class="tags">
+						<span class="tag">React</span>
+						<span class="tag">Node.js</span>
+						<span class="tag">MongoDB</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Plataforma de Blogging</h3>
+					<p>Plataforma de blogs con editor WYSIWYG, autenticación y comentarios.</p>
+					<div class="tags">
+						<span class="tag">Next.js</span>
+						<span class="tag">Firebase</span>
+						<span class="tag">Tailwind CSS</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Sistema de Reservas de Hotel</h3>
+					<p>Sistema para reservar habitaciones de hotel con calendario y pagos en línea.</p>
+					<div class="tags">
+						<span class="tag">Angular</span>
+						<span class="tag">Express.js</span>
+						<span class="tag">PostgreSQL</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Aplicación de Clima en Tiempo Real</h3>
+					<p>Aplicación móvil para mostrar el clima actual y pronósticos semanales.</p>
+					<div class="tags">
+						<span class="tag">React Native</span>
+						<span class="tag">Expo</span>
+						<span class="tag">OpenWeather API</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Plataforma de Cursos en Línea</h3>
+					<p>Plataforma para crear y tomar cursos con videos, cuestionarios y certificados.</p>
+					<div class="tags">
+						<span class="tag">Django</span>
+						<span class="tag">Python</span>
+						<span class="tag">SQLite</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Sistema de Facturación</h3>
+					<p>Sistema para generar facturas, gestionar clientes y productos, y exportar a PDF.</p>
+					<div class="tags">
+						<span class="tag">Java</span>
+						<span class="tag">Spring Boot</span>
+						<span class="tag">MySQL</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Aplicación de Red Social</h3>
+					<p>Red social con perfiles de usuario, publicaciones, likes y comentarios.</p>
+					<div class="tags">
+						<span class="tag">Flutter</span>
+						<span class="tag">Firebase</span>
+						<span class="tag">Dart</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Plataforma de Streaming de Video</h3>
+					<p>Plataforma para subir y ver videos con categorías y reproducción en tiempo real.</p>
+					<div class="tags">
+						<span class="tag">Vue.js</span>
+						<span class="tag">AWS S3</span>
+						<span class="tag">Redis</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Sistema de Gestión de Inventarios</h3>
+					<p>Aplicación para gestionar inventarios de productos, entradas y salidas.</p>
+					<div class="tags">
+						<span class="tag">PHP</span>
+						<span class="tag">Laravel</span>
+						<span class="tag">PostgreSQL</span>
+					</div>
+				</div>
+            </div>
+
+            <!-- Sección Habilidades -->
+            <div id="skills" class="content-section">
+				<div class="content-header">
+					<h1>Habilidades Técnicas</h1>
+				</div>
+				<br>
+                
+                <div class="project-card">
+                    <h3>Frontend</h3>
+                    <p>React, Vue.js, Angular, HTML5, CSS3, JavaScript, TypeScript</p>
+                </div>
+                
+                <div class="project-card">
+                    <h3>Backend</h3>
+                    <p>Node.js, Python, PHP, Java, REST APIs, GraphQL</p>
+                </div>
+                
+                <div class="project-card">
+                    <h3>Diseño</h3>
+                    <p>UI/UX, Figma, Adobe XD, Photoshop, Illustrator</p>
+                </div>
+				<div class="project-card">
+					<h3>Desarrollo Móvil</h3>
+					<p>React Native, Flutter, Swift, Kotlin, Android Studio, Xcode</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Bases de Datos</h3>
+					<p>MySQL, PostgreSQL, MongoDB, Redis, Oracle, SQL Server</p>
+				</div>
+
+				<div class="project-card">
+					<h3>DevOps</h3>
+					<p>Docker, Kubernetes, Jenkins, Terraform, AWS, Azure</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Seguridad Informática</h3>
+					<p>OWASP, Kali Linux, Metasploit, Nmap, Wireshark, Burp Suite</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Machine Learning</h3>
+					<p>Python, TensorFlow, PyTorch, Scikit-learn, Keras, Pandas</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Blockchain</h3>
+					<p>Solidity, Ethereum, Hyperledger, Truffle, Ganache, Web3.js</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Automatización</h3>
+					<p>Selenium, Puppeteer, UiPath, Power Automate, Python</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Cloud Computing</h3>
+					<p>AWS, Google Cloud, Azure, Firebase, Heroku, DigitalOcean</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Realidad Virtual y Aumentada</h3>
+					<p>Unity, Unreal Engine, ARKit, ARCore, WebXR, Blender</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Inteligencia Artificial</h3>
+					<p>Python, OpenAI, GPT, NLP, Computer Vision, Deep Learning</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Desarrollo de Videojuegos</h3>
+					<p>Unity, Unreal Engine, C#, C++, Blender, Maya</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Big Data</h3>
+					<p>Hadoop, Spark, Kafka, Hive, Pig, Scala</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Ciberseguridad</h3>
+					<p>Kali Linux, Metasploit, Nmap, Wireshark, Burp Suite, OWASP</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Desarrollo de APIs</h3>
+					<p>REST, GraphQL, Swagger, Postman, Node.js, Python</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Diseño Gráfico</h3>
+					<p>Photoshop, Illustrator, InDesign, CorelDRAW, Canva</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Desarrollo de Aplicaciones Empresariales</h3>
+					<p>Java, Spring Boot, .NET, C#, Oracle, SQL Server</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Desarrollo de Aplicaciones Web</h3>
+					<p>React, Angular, Vue.js, Node.js, Django, Flask</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Desarrollo de Aplicaciones Móviles</h3>
+					<p>React Native, Flutter, Swift, Kotlin, Android Studio, Xcode</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Desarrollo de Aplicaciones de Escritorio</h3>
+					<p>C#, Java, Python, Electron, WPF, WinForms</p>
+				</div>
+
+				<div class="project-card">
+					<h3>Desarrollo de Aplicaciones IoT</h3>
+					<p>Arduino, Raspberry Pi, Python, Node.js, MQTT, Firebase</p>
+				</div>
+            </div>
+
+            <!-- Sección Contacto -->
+            <div id="contact" class="content-section">
+				    <div class="content-header">
+                        <h1>Información de Contacto</h1>
+                    </div>
+                <h2>Contáctame</h2>
+                <p>¡No dudes en contactarme para oportunidades de colaboración o simplemente para saludar!</p>
+                <div class="project-card">
+                    <h3>Información de Contacto</h3>
+                    <p><i class="fa-solid fa-envelope"></i> kakycu@gmail.com</p>
+					<p><i class="fa-solid fa-envelope"></i> frlamadrid.cmw@infomed.sld.cu</p>
+					<p><i class="fa-solid fa-envelope"></i> kakycu@nauta.cu</p>
+                    <p><i class="fa-solid fa-phone"></i> +53 32 415418</p>
+					<p><i class="fa-solid fa-mobile-screen"></i> +53 52 712861</p>
+                    <p><i class="fa-solid fa-map-marker-alt"></i> Nuevitas, Camagüey. Cuba</p>
+                </div>
+                
+                <div class="project-card">
+                    <h3>Redes Sociales</h3>
+						<div class="icon-container">
+							<!-- GitHub -->
+							<a href="https://github.com/kakycu" target="_blank">
+								<i class="fa-brands fa-github"></i> github.com/kakycu
+							</a>
+
+							<!-- LinkedIn -->
+							<a href="https://linkedin.com/in/kakycu" target="_blank">
+								<i class="fa-brands fa-linkedin"></i> linkedin.com/in/kakycu
+							</a>
+
+							<!-- Facebook -->
+							<a href="https://facebook.com/kakycu" target="_blank">
+								<i class="fa-brands fa-facebook"></i> facebook.com/kakycu
+							</a>
+						</div>
+                </div>
+            </div>
+
+            <!-- Sección Desarrollo Web -->
+            <div id="web" class="content-section">
+                <div class="content-header">
+					<h1>Desarrollo Web</h1>
+				</div>
+                <br>
+                <div class="project-card">
+                    <h3>Portafolio Interactivo</h3>
+                    <p>Sitio web personal con galería interactiva de proyectos y blog integrado.</p>
+                    <div class="tags">
+                        <span class="tag">HTML5</span>
+                        <span class="tag">CSS3</span>
+                        <span class="tag">JavaScript</span>
+                    </div>
+                </div>
+                
+                <div class="project-card">
+                    <h3>Plataforma de Cursos Online</h3>
+                    <p>Sistema completo para gestión de cursos con panel de administración y perfil de estudiante.</p>
+                    <div class="tags">
+                        <span class="tag">React</span>
+                        <span class="tag">Node.js</span>
+                        <span class="tag">MongoDB</span>
+                    </div>
+                </div>
+				<div class="project-card">
+					<h3>Calculadora de Consumo Energético Web</h3>
+					<p>Aplicación web para calcular el consumo eléctrico en el hogar, con gráficos y recomendaciones de ahorro.</p>
+					<div class="tags">
+						<span class="tag">React</span>
+						<span class="tag">Node.js</span>
+						<span class="tag">Chart.js</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Calculadora de Consumo Eléctrico (Visual Basic)</h3>
+					<p>Aplicación de escritorio para calcular el consumo eléctrico en el hogar, con interfaz gráfica y exportación de informes.</p>
+					<div class="tags">
+						<span class="tag">Visual Basic</span>
+						<span class="tag">MySQL</span>
+						<span class="tag">Excel</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Sistema de Gestión de Inventarios</h3>
+					<p>Aplicación para gestionar inventarios de productos, entradas y salidas, con panel de administración.</p>
+					<div class="tags">
+						<span class="tag">PHP</span>
+						<span class="tag">Laravel</span>
+						<span class="tag">MySQL</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Plataforma de Blogging</h3>
+					<p>Plataforma de blogs con editor WYSIWYG, autenticación y comentarios.</p>
+					<div class="tags">
+						<span class="tag">Next.js</span>
+						<span class="tag">Firebase</span>
+						<span class="tag">Tailwind CSS</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Sistema de Reservas de Hotel</h3>
+					<p>Sistema para reservar habitaciones de hotel con calendario y pagos en línea.</p>
+					<div class="tags">
+						<span class="tag">Angular</span>
+						<span class="tag">Express.js</span>
+						<span class="tag">PostgreSQL</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Aplicación de Clima en Tiempo Real</h3>
+					<p>Aplicación móvil para mostrar el clima actual y pronósticos semanales.</p>
+					<div class="tags">
+						<span class="tag">React Native</span>
+						<span class="tag">Expo</span>
+						<span class="tag">OpenWeather API</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Plataforma de Streaming de Video</h3>
+					<p>Plataforma para subir y ver videos con categorías y reproducción en tiempo real.</p>
+					<div class="tags">
+						<span class="tag">Vue.js</span>
+						<span class="tag">AWS S3</span>
+						<span class="tag">Redis</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Sistema de Gestión de Facturas</h3>
+					<p>Aplicación para generar facturas, gestionar clientes y productos, y exportar a PDF.</p>
+					<div class="tags">
+						<span class="tag">Java</span>
+						<span class="tag">Spring Boot</span>
+						<span class="tag">MySQL</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Aplicación de Red Social</h3>
+					<p>Red social con perfiles de usuario, publicaciones, likes y comentarios.</p>
+					<div class="tags">
+						<span class="tag">Flutter</span>
+						<span class="tag">Firebase</span>
+						<span class="tag">Dart</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Sistema de Gestión de Tareas</h3>
+					<p>Aplicación web para gestionar tareas diarias con recordatorios y seguimiento.</p>
+					<div class="tags">
+						<span class="tag">React</span>
+						<span class="tag">Node.js</span>
+						<span class="tag">MongoDB</span>
+					</div>
+				</div>
+            </div>
+
+            <!-- Sección Diseño UI/UX -->
+            <div id="design" class="content-section">
+                <div class="content-header">
+					<h1>Diseño UI/UX</h1>
+				</div>
+                <br>
+                <div class="project-card">
+                    <h3>Sistema de Diseño Modular</h3>
+                    <p>Creación de sistema de diseño completo con componentes reutilizables y documentación.</p>
+                    <div class="tags">
+                        <span class="tag">Figma</span>
+                        <span class="tag">Storybook</span>
+                        <span class="tag">Design Tokens</span>
+                    </div>
+                </div>
+                
+                <div class="project-card">
+                    <h3>Rediseño de Aplicación Bancaria</h3>
+                    <p>Mejora de experiencia de usuario para aplicación móvil de banco internacional.</p>
+                    <div class="tags">
+                        <span class="tag">UX Research</span>
+                        <span class="tag">Prototipado</span>
+                        <span class="tag">User Testing</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección Aplicaciones -->
+            <div id="apps" class="content-section">
+                <div class="content-header">
+					<h1>Aplicaciones</h1>
+				</div>
+                <br>
+                <div class="project-card">
+                    <h3>App de Gestión de Tareas</h3>
+                    <p>Aplicación móvil multiplataforma para gestión de proyectos personales y profesionales.</p>
+                    <div class="tags">
+                        <span class="tag">Flutter</span>
+                        <span class="tag">Firebase</span>
+                        <span class="tag">BLoC</span>
+                    </div>
+                </div>
+                
+                <div class="project-card">
+                    <h3>Cliente de Mensajería Segura</h3>
+                    <p>Aplicación de escritorio con cifrado end-to-end para comunicación empresarial.</p>
+                    <div class="tags">
+                        <span class="tag">Electron</span>
+                        <span class="tag">TypeScript</span>
+                        <span class="tag">WebSockets</span>
+                    </div>
+                </div>
+				<div class="project-card">
+					<h3>Plataforma de E-learning</h3>
+					<p>Sistema para crear y tomar cursos en línea con videos, cuestionarios y certificados.</p>
+					<div class="tags">
+						<span class="tag">Django</span>
+						<span class="tag">Python</span>
+						<span class="tag">PostgreSQL</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>App de Gestión de Inventarios</h3>
+					<p>Aplicación móvil para gestionar inventarios de productos, entradas y salidas.</p>
+					<div class="tags">
+						<span class="tag">React Native</span>
+						<span class="tag">Firebase</span>
+						<span class="tag">Redux</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>Sistema de Reservas de Vuelos</h3>
+					<p>Plataforma para reservar vuelos con calendario, pagos en línea y notificaciones.</p>
+					<div class="tags">
+						<span class="tag">Angular</span>
+						<span class="tag">Node.js</span>
+						<span class="tag">MongoDB</span>
+					</div>
+				</div>
+
+				<div class="project-card">
+					<h3>App de Seguimiento de Ejercicio</h3>
+					<p>Aplicación móvil para registrar y analizar entrenamientos físicos.</p>
+					<div class="tags">
+						<span class="tag">Flutter</span>
+						<span class="tag">Firebase</span>
+						<span class="tag">Google Fit API</span>
+					</div>
+				</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menú contextual -->
+    <div class="context-menu" id="context-menu">
+        <ul>
+            <li id="maximize-option">
+                <i class="fa-solid fa-window-maximize"></i>
+                Maximizar
+            </li>
+            <li id="restore-option">
+                <i class="fa-solid fa-window-restore"></i>
+                Restaurar
+            </li>
+            <li class="separator"></li>
+            <li id="refresh-option">
+                <i class="fa-solid fa-rotate-right"></i>
+                Actualizar
+            </li>
+            <li class="separator"></li>
+            <li id="close-option" onclick="closeWindows();">
+                <i class="fa-solid fa-xmark"></i>
+                Cerrar
+            </li>
+        </ul>
+    </div>
+
+    <!-- Barra de estado -->
+    <div class="status-bar" id="status-bar">
+        <span class="status-icon"><i class="fa-solid fa-circle-info"></i></span>
+        <span id="status-text">Listo</span>
+        <span id="status-position">Inicio</span>
+    </div>
+</div>
+<script>
+    // Variables globales
+    let isDragging = false;
+    let offsetX = 0, offsetY = 0;
+    let isMaximized = false;
+    let lastClickTime = 0;
+    const doubleClickDelay = 300;
+    let originalDimensions = {};
+
+    // Variables para redimensionamiento
+    let isResizing = false;
+    let resizeDirection = null;
+    let initialX, initialY, initialWidth, initialHeight;
+
+    // Elementos principales
+    const explorerWindow = document.getElementById('explorer-window');
+    const topBar = document.getElementById('top-bar');
+    const menuButton = document.getElementById('menu-button');
+    const minimizeButton = document.getElementById('minimize-button');
+    const maximizeButton = document.getElementById('maximize-button');
+    const closeButton = document.getElementById('close-button');
+    const contextMenu = document.getElementById('context-menu');
+    const statusText = document.getElementById('status-text');
+    const statusPosition = document.getElementById('status-position');
+
+    // Guardar dimensiones originales
+    originalDimensions = {
+        width: explorerWindow.style.width,
+        height: explorerWindow.style.height,
+        left: explorerWindow.style.left,
+        top: explorerWindow.style.top
+    };
+
+    // Hacer la ventana arrastrable
+    topBar.addEventListener('mousedown', (e) => {
+        // Verifica si es un doble click rápido
+        const currentTime = new Date().getTime();
+        if (currentTime - lastClickTime < doubleClickDelay) {
+            e.preventDefault();
+            return;
+        }
+        lastClickTime = currentTime;
+
+        if (e.target === menuButton || e.target.closest('.window-controls')) return;
+        
+        isDragging = true;
+        offsetX = e.clientX - explorerWindow.offsetLeft;
+        offsetY = e.clientY - explorerWindow.offsetTop;
+        updateStatus("Arrastrando ventana...");
+    });
+
+    // Doble click para maximizar/restaurar
+    topBar.addEventListener('dblclick', (e) => {
+        // Agrega clase para efecto visual
+        topBar.classList.add('double-click-active');
+        setTimeout(() => {
+            topBar.classList.remove('double-click-active');
+        }, 400);
+        
+        toggleMaximize();
+    });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || isMaximized || explorerWindow.classList.contains('minimized')) return;
+            
+            explorerWindow.style.left = `${e.clientX - offsetX}px`;
+            explorerWindow.style.top = `${e.clientY - offsetY}px`;
+			
+            // Calcular nueva posición
+            let newLeft = e.clientX - offsetX;
+            let newTop = e.clientY - offsetY;
+            
+            // Mantener la ventana dentro de los límites del viewport
+            newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - explorerWindow.offsetWidth));
+            newTop = Math.max(0, Math.min(newTop, window.innerHeight - explorerWindow.offsetHeight));
+            
+            explorerWindow.style.left = `${newLeft}px`;
+            explorerWindow.style.top = `${newTop}px`;
+            explorerWindow.style.transform = 'none';
+        });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        updateStatus("Listo");
+    });
+
+    // Control de ventana
+    minimizeButton.addEventListener('click', () => {
+        if (explorerWindow.classList.contains('minimized')) {
+            // Restaurar
+            explorerWindow.classList.remove('minimized');
+            explorerWindow.style.height = originalDimensions.height;
+            updateStatus("Ventana restaurada");
+            minimizeButton.innerHTML = '<i class="fa-solid fa-window-minimize"></i>';
+        } else {
+            // Minimizar (guardar estado actual si no está maximizado)
+            if (!isMaximized) {
+                originalDimensions = {
+                    width: explorerWindow.style.width,
+                    height: explorerWindow.style.height,
+                    left: explorerWindow.style.left,
+                    top: explorerWindow.style.top
+                };
+            }
+            
+            explorerWindow.classList.add('minimized');
+            explorerWindow.style.height = '40px';
+            updateStatus("Ventana minimizada");
+            minimizeButton.innerHTML = '<i class="fa-solid fa-window-restore"></i>';
+        }
+    });
+
+    maximizeButton.addEventListener('click', toggleMaximize);
+
+    closeButton.addEventListener('click', () => {
+        explorerWindow.style.display = 'none';
+        updateStatus("Ventana cerrada");
+    });
+
+    function toggleMaximize() {
+        // Si está minimizada (solo muestra barra de título), primero restaura
+        if (explorerWindow.classList.contains('minimized')) {
+            explorerWindow.classList.remove('minimized');
+            explorerWindow.style.height = originalDimensions.height;
+            minimizeButton.innerHTML = '<i class="fa-solid fa-window-minimize"></i>';
+        }
+        
+        if (isMaximized) {
+            // Restaurar
+            explorerWindow.style.width = originalDimensions.width;
+            explorerWindow.style.height = originalDimensions.height;
+            explorerWindow.style.left = originalDimensions.left;
+            explorerWindow.style.top = originalDimensions.top;
+            updateStatus("Ventana restaurada");
+            maximizeButton.innerHTML = '<i class="fa-solid fa-window-maximize"></i>';
+        } else {
+            // Maximizar
+            originalDimensions = {
+                width: explorerWindow.style.width,
+                height: explorerWindow.style.height,
+                left: explorerWindow.style.left,
+                top: explorerWindow.style.top
+            };
+            
+            explorerWindow.style.width = '100vw';
+            explorerWindow.style.height = '100vh';
+            explorerWindow.style.left = '0';
+            explorerWindow.style.top = '0';
+            updateStatus("Ventana maximizada");
+            maximizeButton.innerHTML = '<i class="fa-solid fa-window-restore"></i>';
+        }
+        
+        isMaximized = !isMaximized;
+    }
+
+    // Menú contextual
+    menuButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        // Alternar visibilidad en lugar de solo mostrar
+        if (contextMenu.style.display === 'block') {
+            cerrarMenuContextual();
+            return;
+        }
+        
+        const buttonRect = menuButton.getBoundingClientRect();
+        const windowRect = explorerWindow.getBoundingClientRect();
+        
+        const viewportX = buttonRect.left;
+        const viewportY = buttonRect.bottom;
+        
+        const windowX = viewportX - windowRect.left;
+        const windowY = viewportY - windowRect.top;
+        
+        contextMenu.style.left = `${windowX}px`;
+        contextMenu.style.top = `${windowY}px`;
+        contextMenu.style.display = 'block';
+        
+        updateStatus("Menú abierto");
+    });
+
+    function cerrarMenuContextual() {
+        contextMenu.style.display = 'none';
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!contextMenu.contains(e.target) && e.target !== menuButton) {
+            cerrarMenuContextual();
+        }
+    });
+
+    // Opciones del menú contextual
+    document.getElementById('maximize-option').addEventListener('click', () => {
+        toggleMaximize();
+        cerrarMenuContextual();
+    });
+    
+    document.getElementById('restore-option').addEventListener('click', () => {
+        if (isMaximized) {
+            toggleMaximize();
+        }
+        cerrarMenuContextual();
+    });
+    
+    document.getElementById('refresh-option').addEventListener('click', () => {
+        cerrarMenuContextual();
+        location.reload();
+    });
+    
+    document.getElementById('close-option').addEventListener('click', () => {
+        cerrarMenuContextual();
+        explorerWindow.style.display = 'none';
+        updateStatus("Ventana cerrada");
+    });
+
+    // Navegación por pestañas
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Actualizar pestañas activas
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Mostrar contenido correspondiente
+            const contentId = tab.getAttribute('data-content');
+            showContent(contentId);
+            
+            // Sincronizar con el menú de navegación
+            syncNavigation(contentId);
+            
+            // Actualizar barra de estado
+            updateStatus(`Sección ${tab.textContent.trim()} abierta`);
+            updatePosition(tab.textContent.trim());
+        });
+        
+        // Tooltip en hover
+        tab.addEventListener('mouseover', () => {
+            updateStatus(`Abrir ${tab.textContent.trim()}`);
+        });
+    });
+
+    // Navegación por sidebar
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const contentId = item.getAttribute('data-content');
+            showContent(contentId);
+            syncNavigation(contentId); // Sincronizar con pestañas
+            updateStatus(`Sección ${item.textContent.trim()} abierta`);
+     if (item.getAttribute('data-content') === contentId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+        });
+        
+        item.addEventListener('mouseover', () => {
+            updateStatus(`Abrir ${item.textContent.trim()}`);
+        });
+    });
+
+    // Mostrar contenido
+    function showContent(contentId) {
+        // Oculta todas las secciones
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        // Muestra la sección correspondiente
+        const section = document.getElementById(contentId);
+        if (section) {
+            section.classList.add('active');
+        }
+
+        // Actualiza la posición en la barra de estado
+        updatePosition(contentId);
+    }
+
+    // Sincronizar navegación
+    function syncNavigation(contentId) {
+        // Resalta el elemento correspondiente en el menú de navegación
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+            if (item.getAttribute('data-content') === contentId) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    // Actualizar posición en la barra de estado
+    function updatePosition(contentId) {
+        const positionText = contentId.charAt(0).toUpperCase() + contentId.slice(1);
+        statusPosition.textContent = positionText;
+    }
+
+    // Actualizar texto de la barra de estado
+    function updateStatus(message) {
+        statusText.textContent = message;
+    }
+
+    // Inicializar contenido
+    showContent('home');
+    syncNavigation('home'); // Sincronizar menú de navegación inicial
+
+    // Controladores de redimensionamiento
+    const resizeHandles = document.querySelectorAll('.explorer-window::after, .explorer-window::before, .resize-handle-bottom, .resize-handle-right');
+
+    // Evento para iniciar el redimensionamiento
+    resizeHandles.forEach(handle => {
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            resizeDirection = getResizeDirection(e.target);
+            initialX = e.clientX;
+            initialY = e.clientY;
+            initialWidth = explorerWindow.offsetWidth;
+            initialHeight = explorerWindow.offsetHeight;
+            updateStatus("Redimensionando ventana...");
+        });
+    });
+
+    // Evento para redimensionar mientras se mueve el mouse
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const deltaX = e.clientX - initialX;
+        const deltaY = e.clientY - initialY;
+
+        switch (resizeDirection) {
+            case 'bottom':
+                explorerWindow.style.height = `${initialHeight + deltaY}px`;
+                break;
+            case 'right':
+                explorerWindow.style.width = `${initialWidth + deltaX}px`;
+                break;
+            case 'bottom-right':
+                explorerWindow.style.height = `${initialHeight + deltaY}px`;
+                explorerWindow.style.width = `${initialWidth + deltaX}px`;
+                break;
+            case 'bottom-left':
+                explorerWindow.style.height = `${initialHeight + deltaY}px`;
+                explorerWindow.style.left = `${explorerWindow.offsetLeft - deltaX}px`;
+                explorerWindow.style.width = `${initialWidth - deltaX}px`;
+                break;
+        }
+    });
+
+    // Evento para detener el redimensionamiento
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            resizeDirection = null;
+            updateStatus("Listo");
+        }
+    });
+
+    // Función para determinar la dirección de redimensionamiento
+    function getResizeDirection(target) {
+        if (target.classList.contains('resize-handle-bottom')) return 'bottom';
+        if (target.classList.contains('resize-handle-right')) return 'right';
+        if (target.matches('.explorer-window::after')) return 'bottom-right';
+        if (target.matches('.explorer-window::before')) return 'bottom-left';
+        return null;
+    }
+
+// Función para sincronizar tabs y navegación
+function syncTabsAndNavigation(contentId) {
+    // Actualizar tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+        if (tab.getAttribute('data-content') === contentId) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+
+    // Actualizar navegación
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+        if (item.getAttribute('data-content') === contentId) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+// Navegación por pestañas
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const contentId = tab.getAttribute('data-content');
+        showContent(contentId);
+        syncTabsAndNavigation(contentId); // Sincronizar tabs y navegación
+        updateStatus(`Sección ${tab.textContent.trim()} abierta`);
+        updatePosition(tab.textContent.trim());
+    });
+});
+
+// Navegación por sidebar
+document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const contentId = item.getAttribute('data-content');
+        showContent(contentId);
+        syncTabsAndNavigation(contentId); // Sincronizar tabs y navegación
+        updateStatus(`Sección ${item.textContent.trim()} abierta`);
+    });
+});
+
+// Inicializar contenido
+showContent('home');
+syncTabsAndNavigation('home'); // Sincronizar tabs y navegación inicialmente
+
+  // Función para cerrar la ventana/iframe
+  function closeWindows() {
+	window.location.href = 'nominas/dashboard.php';
+  }
+  // Función para maximizar la ventana al cargar
+//window.onload = function() {
+//    toggleMaximize();
+//};
+</script>
+</body>
+<html>

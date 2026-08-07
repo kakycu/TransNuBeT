@@ -1,0 +1,1417 @@
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: #0c0c0c; overflow-x: hidden; color: #ffffff; }
+
+        /* Windows 11 Acrylic Background */
+        .win11-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f1a 100%);
+        }
+        .win11-bg::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(circle at 20% 80%, rgba(0, 120, 212, 0.15) 0%, transparent 50%),
+                              radial-gradient(circle at 80% 20%, rgba(16, 124, 16, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* Glassmorphism Effect */
+.glass-card {
+    background: rgba(28, 28, 35, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    padding: 20px 24px;  /* ← Añade esta línea */
+}
+        .glass-card:hover { transform: translateY(-2px); background: rgba(35, 35, 45, 0.7); border-color: rgba(0, 120, 212, 0.3); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }
+
+        /* Sidebar Windows 11 Style */
+        .win-sidebar {
+            position: fixed; left: 0; top: 0; height: 100vh; width: 260px;
+            background: rgba(20, 20, 25, 0.85); backdrop-filter: blur(30px);
+            border-right: 1px solid rgba(255, 255, 255, 0.08); z-index: 1000;
+            transition: all 0.3s ease; display: flex; flex-direction: column;
+        }
+        .win-sidebar.collapsed { width: 80px; }
+        .win-sidebar.collapsed .sidebar-text, .win-sidebar.collapsed .sidebar-expand-only { display: none; }
+        .win-sidebar.collapsed .nav-item { justify-content: center; padding: 12px; }
+        .win-sidebar.collapsed .nav-item i { margin: 0; font-size: 1.5rem; }
+
+        .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 20px; text-align: center; }
+        .sidebar-logo h3 { font-size: 1.2rem; font-weight: 600; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 0; }
+        .sidebar-logo small { font-size: 0.7rem; color: rgba(255, 255, 255, 0.5); }
+
+        .sidebar-nav { flex: 1; padding: 0 12px; }
+		.nav-item {
+			display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+			margin-bottom: 6px; border-radius: 12px;
+			color: rgba(255, 255, 255, 0.7); transition: all 0.2s;
+			cursor: pointer; text-decoration: none;
+		}
+
+        .nav-item:hover { background: rgba(255, 255, 255, 0.08); color: white; }
+        .nav-item.active { background: rgba(0, 120, 212, 0.2); color: #60a5fa; border-left: 3px solid #60a5fa; }
+        .nav-item i { width: 24px; font-size: 1.2rem; text-align: center; }
+        .nav-item span { font-size: 0.9rem; font-weight: 500; }
+
+        /* Main Content */
+        .main-container { margin-left: 260px; transition: all 0.3s ease; min-height: 100vh; padding: 20px; }
+        .main-container.expanded { margin-left: 80px; }
+
+        /* Top Bar Windows 11 */
+        .win-topbar {
+            background: rgba(20, 20, 25, 0.7); backdrop-filter: blur(20px); border-radius: 16px;
+            padding: 12px 24px; margin-bottom: 24px; border: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100 !important; position: relative !important;
+        }
+        .sidebar-toggle { background: rgba(255, 255, 255, 0.05); border: none; color: white; width: 40px; height: 40px; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+        .sidebar-toggle:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.02); }
+        .page-title h1 { font-size: 1.5rem; font-weight: 600; margin: 0; }
+        .page-title p { font-size: 0.8rem; color: rgba(255, 255, 255, 0.5); margin: 4px 0 0; }
+
+        /* User Menu & Dropdowns */
+        .user-menu { display: flex; align-items: center; gap: 16px; }
+
+        .user-avatar { width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; position: relative; z-index: 1050 !important; }
+        .user-avatar:hover { transform: scale(1.05); }
+
+        .dropdown-menu { z-index: 1050 !important; position: absolute !important; }
+        .user-menu .dropdown { position: relative !important; z-index: 1050 !important; }
+        .dropdown-menu-win {
+            background: rgba(32, 32, 40, 0.98) !important; backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important; border-radius: 12px !important;
+            padding: 8px !important; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+        }
+        .dropdown-menu-win .dropdown-item { color: #ffffff !important; border-radius: 8px !important; padding: 10px 16px !important; font-size: 0.9rem !important; }
+        .dropdown-menu-win .dropdown-item:hover { background: rgba(96, 165, 250, 0.2) !important; color: #ffffff !important; }
+        .dropdown-menu-win .dropdown-item.text-danger:hover { background: rgba(239, 68, 68, 0.2) !important; }
+        .dropdown-menu-win .dropdown-divider { border-color: rgba(255, 255, 255, 0.1) !important; }
+        .dropdown-menu-win .dropdown-item-text { color: rgba(255, 255, 255, 0.8) !important; }
+        .dropdown-menu-win .dropdown-item small { font-size: 0.65rem; color: rgba(255,255,255,0.6) !important; }
+        .dropdown-menu-win .dropdown-item:hover small { color: #ffffff !important; }
+
+        .nav-tabs-modern { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; list-style: none; padding: 0; }
+        .nav-tabs-modern .nav-link { padding: 12px 24px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; color: rgba(255, 255, 255, 0.7); text-decoration: none; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .nav-tabs-modern .nav-link.active { background: rgba(0, 120, 212, 0.2); color: #60a5fa; border-color: #60a5fa; }
+        
+        .btn-win { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); padding: 8px 16px; border-radius: 10px; color: white; font-size: 0.85rem; transition: all 0.2s; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-win:hover { background: rgba(0, 120, 212, 0.6); border-color: #0078d4; color: white; }
+        .btn-win-primary { background: linear-gradient(135deg, #0078d4, #00a8e8); border: none; padding: 10px 20px; border-radius: 10px; color: white; transition: all 0.3s; }
+        .btn-win-primary:hover { background: linear-gradient(135deg, #0086e8, #00b8ff); transform: translateY(-2px); color: white; }
+        .btn-win-danger { background: linear-gradient(135deg, #dc3545, #c82333); border: none; padding: 10px 20px; border-radius: 10px; color: white; }
+        .btn-win-warning { background: linear-gradient(135deg, #ffc107, #e0a800); border: none; padding: 10px 20px; border-radius: 10px; color: #000; font-weight: 600; }
+        .btn-win-success { background: linear-gradient(135deg, #10b981, #059669); border: none; padding: 10px 20px; border-radius: 10px; color: white; }
+        .btn-win-info { background: linear-gradient(135deg, #0ea5e9, #0284c7); border: none; padding: 10px 20px; border-radius: 10px; color: white; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .stat-card { padding: 20px; display: flex; align-items: center; justify-content: space-between; z-index: 1 !important; }
+        .stat-card .stat-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; background: rgba(255,255,255,0.05); }
+        .stat-card h6 { font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); text-transform: uppercase; margin-bottom: 5px; }
+        .stat-card h3 { font-size: 1.8rem; font-weight: 700; margin: 0; color: white; }
+
+        .form-control-custom, .form-select { background: rgba(20, 20, 25, 0.8) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: white !important; border-radius: 10px !important; padding: 10px 14px !important; }
+        .form-control-custom:focus, .form-select:focus { border-color: #60a5fa !important; box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important; }
+        .form-label { color: rgba(255,255,255, 0.9) !important; font-weight: 500; font-size: 0.9rem; margin-bottom: 6px; }
+        option { background: #1a1a2e; color: white; }
+		
+        .form-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 12px center !important;
+            background-size: 14px 12px !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            padding-right: 32px !important;
+        }
+        .form-select:hover { border-color: #60a5fa; }
+        .form-select:focus { border-color: #60a5fa !important; box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important; }
+
+        /* Textos y etiquetas */
+        label, .form-label, .text-muted, .small {
+            color: rgba(255, 255, 255, 0.85) !important;
+        }
+        
+        small, .small {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        
+        .text-muted i {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .dataTables_wrapper { color: #ffffff !important; }
+        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_processing { color: rgba(255, 255, 255, 0.7) !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { color: #ffffff !important; background: rgba(20, 20, 25, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.15) !important; border-radius: 8px !important; padding: 6px 12px !important; margin: 0 3px !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: rgba(96, 165, 250, 0.3) !important; border-color: #60a5fa !important; color: #ffffff !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important; border-color: #60a5fa !important; color: #ffffff !important; }
+        .dataTables_wrapper .dataTables_length select { background: rgba(20, 20, 25, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.15) !important; border-radius: 8px !important; color: #ffffff !important; }
+        .dataTables_wrapper .dataTables_filter input { background: rgba(20, 20, 25, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.15) !important; border-radius: 8px !important; color: #ffffff !important; }
+        .dataTables_wrapper .dataTables_filter input:focus { border-color: #60a5fa !important; outline: none !important; }
+        
+/* Filas alternas con dos tonos sutiles de fondo */
+table.dataTable tbody tr.odd td {
+    background-color: rgba(255, 255, 255, 0.01) !important; /* Tono 1: Prácticamente transparente */
+    color: #ffffff !important;
+}
+
+table.dataTable tbody tr.even td {
+    background-color: rgba(255, 255, 255, 0.04) !important; /* Tono 2: Grisáceo translúcido sutil */
+    color: #ffffff !important;
+}
+
+/* El efecto hover se mantiene por encima de ambos tonos al tener mayor prioridad */
+#tablaNominas tbody tr:hover td {
+    background-color: rgba(96, 165, 250, 0.12) !important; /* Resalte azul al pasar el cursor */
+}
+        
+/* Contenedor con tamaño fijo y ambas barras de desplazamiento activas */
+.data-table-wrapper {
+    width: 100%;         
+    overflow-x: auto !important; 
+    overflow-y: auto !important; 
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(15, 15, 20, 0.4);
+    position: relative;
+}
+
+/* NO STICKY HEADERS Y FOOTERS */
+.table-custom thead tr th {
+    position: static !important;
+    background: rgba(20, 20, 30, 0.95) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.table-custom tfoot td {
+    position: static !important;
+    background: rgba(20, 20, 30, 0.95) !important;
+    border-top: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+        .table-custom { width: 100%; border-collapse: collapse; color: white; font-size: 0.85rem; }
+        .table-custom th, .table-custom td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: left; vertical-align: middle; }
+        .table-custom th { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; color: rgba(255,255,255,0.8); text-align: center; }
+        .table-custom tr:hover td { background: rgba(255,255,255,0.03) !important; }
+        
+        .edit-input { background: rgba(0,0,0,0.5); border: 1px solid rgba(96,165,250,0.5); color: white; border-radius: 6px; padding: 6px 10px; width: 80px; text-align: center; font-size: 0.85rem; }
+        .edit-input:focus { border-color: #60a5fa; outline: none; }
+        
+        .badge-borrador { background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fcd34d; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; }
+        .badge-contabilizado { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; }
+        
+        .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; padding: 6px 10px; border-radius: 8px; transition: all 0.2s; color: white; }
+        .btn-icon-success:hover { background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981; }
+        .btn-icon-danger:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; }
+
+        .footer-card { margin-top: 24px; padding: 20px; font-size: 0.8rem; color: rgba(255, 255, 255, 0.6); }
+        .footer-card hr { border-color: rgba(255, 255, 255, 0.1); }
+        .footer-card small { color: rgba(255, 255, 255, 0.5); }
+
+        .modal-content-modern { background: rgba(32, 32, 40, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; color: white; }
+        .modal-header { border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .modal-footer { border-top: 1px solid rgba(255,255,255,0.08); }
+        .btn-close-white { filter: invert(1); opacity: 0.8; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        
+        .worker-list-container, .bono-list-container { max-height: 350px; overflow-y: auto; border-radius: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); }
+        .worker-item, .bono-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s; }
+        .worker-item:hover { background: rgba(96, 165, 250, 0.1); }
+        .worker-item.selected { background: rgba(96, 165, 250, 0.2); border-left: 3px solid #60a5fa; }
+        .worker-item.disabled { opacity: 0.5; cursor: not-allowed; background: rgba(239, 68, 68, 0.1); }
+        .worker-checkbox { margin-right: 12px; width: 18px; height: 18px; cursor: pointer; accent-color: #3b82f6; }
+		.worker-avatar { width: 35px; height: 35px; border-radius: 50%; background: rgba(96, 165, 250, 0.2); display: flex; align-items: center; justify-content: center; margin-right: 12px; color: #60a5fa; overflow: hidden; }
+        .worker-info { flex: 1; }
+        .worker-name { font-weight: 600; font-size: 0.9rem; color: white; }
+        .worker-detail { font-size: 0.75rem; color: rgba(255,255,255,0.6); }
+        .worker-dias { text-align: right; min-width: 100px; }
+        
+        .search-box { position: relative; margin-bottom: 15px; }
+        .search-box input { width: 100%; padding: 10px 12px 10px 35px; background: rgba(20,20,25,0.8); border: 1px solid rgba(255,255,255,0.15) !important; border-radius: 10px; color: white; }
+        .search-box input::placeholder { color: rgba(255,255,255,0.5); }
+        .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.5); }
+        
+        .selected-workers-container { max-height: 350px; overflow-y: auto; }
+        .selected-worker-card {
+            background: rgba(96, 165, 250, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+        .selected-worker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .selected-worker-header .worker-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        .remove-worker, .bono-item-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.1rem; }
+        
+        .preview-card { background: rgba(16, 185, 129, 0.1); border-radius: 12px; padding: 16px; margin-top: 15px; border: 1px solid rgba(16, 185, 129, 0.2); border-left: 4px solid #10b981; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; color: rgba(255,255,255,0.8); }
+        .info-value-success { color: #10b981; font-weight: 600; }
+        
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+        .alert {
+            position: relative;
+            border-radius: 12px;
+            padding: 15px 45px 15px 20px !important;
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1) !important;
+        }
+        .alert-success { background: rgba(16, 185, 129, 0.2) !important; border: 1px solid #10b981 !important; color: #a7f3d0 !important; }
+        .alert-info { background: rgba(59, 130, 246, 0.2) !important; border: 1px solid #3b82f6 !important; color: #bfdbfe !important; }
+        .alert-warning { background: rgba(245, 158, 11, 0.2) !important; border: 1px solid #f59e0b !important; color: #fde68a !important; }
+        .alert-danger { background: rgba(239, 68, 68, 0.2) !important; border: 1px solid #ef4444 !important; color: #fecaca !important; }
+        
+        .rango-dias-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+        .rango-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+        }
+        .rango-btn:hover {
+            background: rgba(0, 120, 212, 0.3);
+            border-color: #60a5fa;
+            color: white;
+        }
+        .rango-btn.active {
+            background: rgba(0, 120, 212, 0.5);
+            border-color: #60a5fa;
+            color: white;
+        }
+        .btn-agregar-mas {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            color: #6ee7b7;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-agregar-mas:hover {
+            background: rgba(16, 185, 129, 0.4);
+            transform: translateY(-1px);
+        }
+        .dias-num {
+            font-weight: bold;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+        .worker-dias {
+            text-align: right;
+            min-width: 140px;
+        }
+        .worker-detail.text-danger { color: #fca5a5 !important; }
+        .worker-detail.text-warning { color: #fcd34d !important; }
+        .worker-detail.text-success { color: #6ee7b7 !important; }
+        @keyframes pulse-red {
+            0% { border-left-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { border-left-color: #ef4444; box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+            100% { border-left-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .dias-restantes {
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .dias-restantes.text-success { color: #10b981 !important; }
+        .dias-restantes.text-warning { color: #f59e0b !important; }
+        .dias-restantes.text-danger { color: #ef4444 !important; animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; text-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+            100% { opacity: 0.7; }
+        }
+        #totalDiasVacaciones {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+            color: #a78bfa;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .edit-input:invalid { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .edit-input[type="text"] { -moz-appearance: textfield; appearance: textfield; }
+        .dias-input {
+            width: 220px !important;
+            font-size: 1rem !important;
+            padding: 10px 16px !important;
+            background: rgba(20, 20, 25, 0.9) !important;
+            border: 1px solid rgba(96, 165, 250, 0.5) !important;
+            border-radius: 10px !important;
+            color: white !important;
+            text-align: center !important;
+            font-weight: 500 !important;
+            transition: all 0.2s ease !important;
+        }
+        .dias-input:focus {
+            outline: none !important;
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3) !important;
+            background: rgba(30, 30, 40, 0.95) !important;
+        }
+        .selected-worker-card .dias-input-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .dias-input-group span {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .selected-worker-card .dias-input {
+            width: 200px !important;
+            font-size: 0.95rem !important;
+            padding: 8px 14px !important;
+            background: rgba(20, 20, 25, 0.9) !important;
+            border: 1px solid rgba(96, 165, 250, 0.5) !important;
+            border-radius: 8px !important;
+            color: white !important;
+            text-align: center !important;
+        }
+        .date-badge {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            color: white;
+        }
+        #liveClock {
+            display: inline-block;
+            min-width: 85px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.5px;
+        }
+        .selected-worker-card .text-muted { color: rgba(255, 255, 255, 0.7) !important; }
+        .selected-worker-card .worker-name { color: #60a5fa !important; }
+        .importe-preview {
+            font-weight: bold;
+            font-size: 1rem;
+            color: #4ade80 !important;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 4px 10px;
+            border-radius: 8px;
+            min-width: 90px;
+            display: inline-block;
+            text-align: right;
+        }
+        .text-info { color: #60a5fa !important; }
+        .text-white-50 { color: rgba(255, 255, 255, 0.6) !important; }
+        .selected-worker-card .form-control {
+            background: rgba(20, 20, 25, 0.9) !important;
+            border: 1px solid rgba(96, 165, 250, 0.5) !important;
+            color: white !important;
+            font-weight: 500;
+        }
+        .selected-worker-card .form-control:focus {
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important;
+        }
+        .selected-worker-card span:not(.badge):not(.importe-preview) {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+.btn-close-custom {
+    background: transparent;
+    border: 2px solid white;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    color: white;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.btn-close-custom:hover {
+    background-color: #ef4444;
+    border-color: #ef4444;
+}
+/* Estilos para DataTables buttons */
+.dt-buttons {
+    display: flex !important;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-right: 10px;
+}
+
+.btn-win-sm {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 5px 10px;
+    border-radius: 6px;
+    color: white;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-win-sm:hover {
+    background: rgba(0, 120, 212, 0.6);
+    border-color: #0078d4;
+    color: white;
+}
+
+/* Asegurar que el selector de cantidad sea visible */
+.dataTables_length {
+    display: block !important;
+    margin-right: 15px;
+}
+
+.dataTables_length label {
+    color: rgba(255, 255, 255, 0.7) !important;
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.dataTables_length select {
+    background: rgba(20, 20, 25, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 6px;
+    color: #ffffff !important;
+    padding: 4px 8px;
+    width: auto;
+}
+
+/* Forzar visibilidad de los controles */
+.dt-length, .dt-buttons, .dt-search {
+    margin-bottom: 10px;
+}
+
+.dataTables_info, .dataTables_paginate {
+    margin-top: 15px;
+}
+/* Estilos para el dropdown de Columnas (ColVis) en modo oscuro */
+.dt-button-collection {
+    background: rgba(32, 32, 40, 0.98) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 12px !important;
+    padding: 8px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dt-button-collection .dt-button {
+    color: #ffffff !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 10px 16px !important;
+    font-size: 0.85rem !important;
+    text-align: left !important;
+    margin-bottom: 2px !important;
+    box-shadow: none !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+.dt-button-collection .dt-button:hover {
+    background: rgba(96, 165, 250, 0.2) !important;
+    color: #ffffff !important;
+}
+
+.dt-button-collection .dt-button.active {
+    background: rgba(96, 165, 250, 0.3) !important;
+    color: #60a5fa !important;
+}
+
+.dt-button-collection .dt-button-collection-title {
+    padding: 8px 16px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 8px;
+}
+
+/* Para el botón de Columnas en sí */
+.buttons-colvis {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+.buttons-colvis:hover {
+    background: rgba(0, 120, 212, 0.6) !important;
+    border-color: #0078d4 !important;
+    color: white !important;
+}
+
+/* Asegurar que el dropdown de DataTables en general tenga fondo oscuro */
+div.dataTables_wrapper .dt-button-collection {
+    background: rgba(32, 32, 40, 0.98) !important;
+}
+
+/* Para el botón de columnas cuando está abierto */
+.dt-button-background {
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+/* Estilos para la impresión - Texto negro y fondo blanco */
+@media print {
+    /* Ocultar elementos no deseados */
+    .win-sidebar, .win-topbar, .nav-tabs-modern, .glass-card:not(:has(table)), 
+    .btn-win, .btn-win-primary, .btn-win-danger, .btn-win-warning, .btn-win-success, 
+    .btn-win-info, .dropdown, .user-menu, .sidebar-toggle, .footer-card,
+    .stats-grid, .filters-container, .alert, .date-badge, .user-avatar,
+    .dt-buttons, .dt-length, .dt-search, .dt-colvis {
+        display: none !important;
+    }
+    
+    /* Resetear márgenes y fondos */
+    .main-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+    
+    /* Forzar fondo blanco en todos los contenedores */
+    .glass-card, .data-table-wrapper, .table-custom, .modal-content, 
+    body, .main-container, .win11-bg, .table-container {
+        background: white !important;
+        background-color: white !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    
+    /* Eliminar el fondo de los elementos glass */
+    .glass-card {
+        background: white !important;
+        border: 1px solid #ddd !important;
+        padding: 0 !important;
+    }
+    
+    /* Tabla - colores normales (negro sobre blanco) */
+    table, .table-custom, #tablaNominas,
+    table.dataTable, #tablaNominas.dataTable {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        background: white !important;
+        color: black !important;
+    }
+    
+    /* Cabeceras de tabla */
+    th, .table-custom th, #tablaNominas th,
+    table.dataTable thead th, #tablaNominas thead th {
+        background: #e0e0e0 !important;
+        background-color: #e0e0e0 !important;
+        color: black !important;
+        font-weight: bold !important;
+        border: 1px solid #aaa !important;
+        padding: 8px !important;
+    }
+    
+    /* Celdas de tabla - TEXTO NEGRO (con !important) */
+    td, .table-custom td, #tablaNominas td,
+    table.dataTable tbody td, #tablaNominas tbody td,
+    table.dataTable tbody tr td, #tablaNominas tbody tr td {
+        background: white !important;
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+        padding: 6px !important;
+    }
+    
+    /* Forzar filas pares e impares a blanco */
+    table.dataTable tbody tr.even td,
+    table.dataTable tbody tr.odd td,
+    #tablaNominas tbody tr.even td,
+    #tablaNominas tbody tr.odd td {
+        background: white !important;
+        background-color: white !important;
+        color: black !important;
+    }
+    
+    /* Forzar todos los textos a negro */
+    body, .main-container, .glass-card, .table-custom, 
+    td, span, div, p, h1, h2, h3, h4, h5, h6, label, .text-muted,
+    .dataTables_wrapper, .dataTables_info, .dataTables_paginate {
+        color: black !important;
+    }
+    
+    /* Textos que antes eran blancos */
+    .text-white, .text-light, .fw-bold, .text-end, .text-center {
+        color: black !important;
+    }
+    
+    /* Valores de dinero y números */
+    .total-devengado, .neto, .salario-basico, .salario-laboral,
+    .contribucion, .total-deducciones, .total-deducciones.text-warning,
+    .text-success, .text-warning, .text-danger, .text-info {
+        color: black !important;
+    }
+    
+    /* Badges y estados */
+    .badge-borrador, .badge-contabilizado {
+        background: #f0f0f0 !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+    }
+    
+    /* Inputs - convertir a texto plano */
+    .edit-input, input[type="text"], input[type="number"] {
+        background: transparent !important;
+        border: none !important;
+        color: black !important;
+        text-align: right !important;
+        padding: 0 !important;
+        font-weight: normal !important;
+        -webkit-appearance: none !important;
+    }
+    
+    /* Eliminar bordes de inputs en impresión */
+    .edit-input {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        width: auto !important;
+    }
+    
+    /* Fondo de las filas */
+    #tablaNominas tbody tr, 
+    #tablaNominas tbody tr.even, 
+    #tablaNominas tbody tr.odd,
+    table.dataTable tbody tr,
+    table.dataTable tbody tr.even,
+    table.dataTable tbody tr.odd {
+        background: white !important;
+        background-color: white !important;
+    }
+    
+    /* Hover en impresión no aplica */
+    #tablaNominas tbody tr:hover td,
+    table.dataTable tbody tr:hover td {
+        background: white !important;
+    }
+    
+    /* Pie de tabla */
+    tfoot td, tfoot .text-end, .footer-card,
+    table.dataTable tfoot td {
+        background: white !important;
+        color: black !important;
+        border-top: 1px solid #ccc !important;
+    }
+    
+    /* Header de impresión personalizado */
+    .print-header {
+        text-align: center;
+        margin-bottom: 15px;
+        padding: 10px;
+        border-bottom: 2px solid #333;
+    }
+    
+    .print-header h1 {
+        font-size: 18px;
+        margin: 5px 0;
+        color: black !important;
+    }
+    
+    .print-header h2 {
+        font-size: 14px;
+        margin: 5px 0;
+        color: #333 !important;
+    }
+    
+    .print-header p {
+        font-size: 11px;
+        margin: 3px 0;
+        color: #555 !important;
+    }
+    
+    /* Footer de impresión */
+    .print-footer {
+        text-align: center;
+        margin-top: 15px;
+        padding-top: 10px;
+        font-size: 10px;
+        color: #555 !important;
+        border-top: 1px solid #ccc;
+    }
+    
+    /* Forzar máximo contraste */
+    #tablaNominas td, 
+    #tablaNominas th,
+    .table-custom td, 
+    .table-custom th,
+    table.dataTable td,
+    table.dataTable th,
+    table.dataTable tbody td,
+    table.dataTable thead th {
+        color: black !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Eliminar cualquier fondo oscuro */
+    * {
+        background-color: white !important;
+        background-image: none !important;
+    }
+    
+    /* Forzar que DataTables no aplique sus estilos de fondo */
+    .dataTables_wrapper {
+        background: white !important;
+    }
+    
+    /* Eliminar cualquier sombra o efecto */
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        background: white !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+    }
+}
+/* Ocultar el botón de cierre del modal de contabilización */
+#modalDescripcionContabilizar .btn-close-custom {
+    display: none !important;
+}
+/* Estilos para el placeholder del textarea en modo oscuro */
+#observacionesCierre::placeholder {
+    color: #6B7280 !important;
+    opacity: 1 !important;
+    font-style: italic;
+}
+
+#observacionesCierre::-webkit-input-placeholder {
+    color: #6B7280 !important;
+    font-style: italic;
+}
+
+#observacionesCierre::-moz-placeholder {
+    color: #6B7280 !important;
+    font-style: italic;
+}
+
+#observacionesCierre:-ms-input-placeholder {
+    color: #6B7280 !important;
+    font-style: italic;
+}
+/* Botón Exportar al Banco */
+.btn-exportar-banco {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-exportar-banco:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-exportar-banco:active {
+    transform: translateY(0px);
+}
+
+/* Tooltip de exportar */
+.btn-exportar-banco::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 1000;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.3px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-exportar-banco:after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(0px);
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.2s ease;
+}
+
+.btn-exportar-banco:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-12px);
+}
+
+.btn-exportar-banco:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+@media (max-width: 768px) {
+    .btn-exportar-banco::before {
+        font-size: 0.6rem;
+        padding: 4px 8px;
+        white-space: nowrap;
+    }
+}
+/* Tarjetas de descuento */
+.card-option-descuento {
+    transition: all 0.3s ease;
+}
+
+.card-option-descuento:hover {
+    transform: translateY(-2px);
+    border-color: #60a5fa !important;
+    background: rgba(96, 165, 250, 0.1) !important;
+}
+
+.card-option-descuento.selected {
+    border-color: #60a5fa !important;
+    background: rgba(96, 165, 250, 0.2) !important;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+}
+
+.alert-dark {
+    background: rgba(28, 28, 35, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+}
+/* Indicador visual de que toda la fila es interactiva */
+#tablaNominas tbody tr {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+/* Restaurar el cursor por defecto para los elementos con los que sí se debe interactuar directamente */
+#tablaNominas tbody tr input,
+#tablaNominas tbody tr select,
+#tablaNominas tbody tr button,
+#tablaNominas tbody tr .btn-icon,
+#tablaNominas tbody tr td:last-child {
+    cursor: default;
+}
+
+/* Resaltado sutil de la fila completa al pasar el cursor */
+#tablaNominas tbody tr:hover td {
+    background: rgba(96, 165, 250, 0.08) !important; /* Tono azul sutil acorde a la interfaz */
+}
+/* Asegura que los placeholders sean legibles en campos oscuros */
+input::placeholder, 
+textarea::placeholder,
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important; /* Blanco semitransparente con suficiente contraste */
+    opacity: 1 !important;                       /* Evita que los navegadores reduzcan la opacidad */
+    font-style: italic;                          /* Toque elegante para indicar que es un texto sugerido */
+}
+
+/* Forzar íconos de ordenamiento de DataTables - VERSION LOCAL COMPLETA */
+table.dataTable thead .sorting {
+    background-image: url("../../../images/sort_both.png") !important;
+    background-repeat: no-repeat !important;
+    background-position: center right !important;
+}
+
+table.dataTable thead .sorting_asc {
+    background-image: url("../../../images/sort_asc.png") !important;
+    background-repeat: no-repeat !important;
+    background-position: center right !important;
+}
+
+table.dataTable thead .sorting_desc {
+    background-image: url("../../../images/sort_desc.png") !important;
+    background-repeat: no-repeat !important;
+    background-position: center right !important;
+}
+
+table.dataTable thead .sorting_asc_disabled {
+    background-image: url("../../../images/sort_asc_disabled.png") !important;
+    background-repeat: no-repeat !important;
+    background-position: center right !important;
+}
+
+table.dataTable thead .sorting_desc_disabled {
+    background-image: url("../../../images/sort_desc_disabled.png") !important;
+    background-repeat: no-repeat !important;
+    background-position: center right !important;
+}
+
+/* Ajustar padding para que el ícono no se superponga */
+table.dataTable thead th {
+    padding-right: 20px !important;
+    position: relative;
+}
+
+/* Ajustar padding para que el ícono no se superponga */
+table.dataTable thead th {
+    padding-right: 20px !important;
+    position: relative;
+}
+/* Estilo para selects deshabilitados (más oscuros y con cursor not-allowed) */
+select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: rgba(30, 30, 40, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Tooltip para el select deshabilitado */
+select:disabled:hover::after {
+    content: attr(title);
+    position: absolute;
+    background: #333;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    top: -25px;
+    left: 0;
+    white-space: nowrap;
+    z-index: 1000;
+}
+/* Personalización de TODAS las columnas fijadas (Izquierda y Derecha) */
+th.dtfc-fixed-left, td.dtfc-fixed-left,
+th.dtfc-fixed-right, td.dtfc-fixed-right {
+    background-color: #1e1e24 !important; /* Fondo oscuro sólido idéntico al panel glass */
+    opacity: 1 !important;
+    z-index: 5;
+}
+
+/* Divisor visual en la última columna fija de la izquierda (Código y CI) */
+th.dtfc-fixed-left:nth-child(2), 
+td.dtfc-fixed-left:nth-child(2) {
+    border-right: 2px solid rgba(96, 165, 250, 0.4) !important; /* Línea azul de Windows 11 */
+}
+
+/* Compatibilidad con el efecto hover en filas completas para las celdas fijas */
+#tablaNominas tbody tr:hover td.dtfc-fixed-left {
+    background-color: rgba(96, 165, 250, 0.15) !important; /* Resalte coordinado con el resto de la fila */
+}
+/* Anchos compactos y alineaciones según tipo de dato */
+.col-codigo { 
+    min-width: 55px !important; width: 55px !important; 
+    text-align: center !important; 
+}
+.col-ci { 
+    min-width: 95px !important; width: 95px !important; 
+    text-align: center !important; 
+}
+.col-nombre { 
+    min-width: 180px !important; width: 180px !important; 
+    text-align: left !important; 
+}
+.col-area { 
+    min-width: 100px !important; width: 100px !important; 
+    text-align: left !important; 
+}
+.col-cargo { 
+    min-width: 130px !important; width: 130px !important; 
+    text-align: left !important; 
+}
+.col-centro { 
+    min-width: 80px !important; width: 80px !important; 
+    text-align: center !important; 
+}
+.col-escala { 
+    min-width: 55px !important; width: 55px !important; 
+    text-align: center !important; 
+}
+.col-salario-basico { 
+    min-width: 90px !important; width: 90px !important; 
+    text-align: right !important; 
+}
+.col-horas { 
+    min-width: 65px !important; width: 65px !important; 
+    text-align: right !important; 
+}
+.col-nocturnas { 
+    min-width: 75px !important; width: 75px !important; 
+    text-align: right !important; 
+}
+.col-nocturnas-val { 
+    min-width: 80px !important; width: 80px !important; 
+    text-align: right !important; 
+}
+.col-nocturnas-imp { 
+    min-width: 85px !important; width: 85px !important; 
+    text-align: right !important; 
+}
+.col-salario-dev { 
+    min-width: 90px !important; width: 90px !important; 
+    text-align: right !important; 
+}
+.col-valor-hora { 
+    min-width: 75px !important; width: 75px !important; 
+    text-align: right !important; 
+}
+.col-feriados-dias { 
+    min-width: 65px !important; width: 65px !important; 
+    text-align: right !important; 
+}
+.col-feriados-imp { 
+    min-width: 80px !important; width: 80px !important; 
+    text-align: right !important; 
+}
+.col-vacaciones-dias { 
+    min-width: 70px !important; width: 70px !important; 
+    text-align: right !important; 
+}
+.col-vacaciones-imp { 
+    min-width: 90px !important; width: 90px !important; 
+    text-align: right !important; 
+}
+.col-otros-pagos { 
+    min-width: 80px !important; width: 80px !important; 
+    text-align: right !important; 
+}
+.col-total-devengado { 
+    min-width: 95px !important; width: 95px !important; 
+    text-align: right !important; 
+    font-weight: bold;
+}
+.col-otros-descuentos { 
+    min-width: 80px !important; width: 80px !important; 
+    text-align: right !important; 
+}
+.col-total-deducciones { 
+    min-width: 90px !important; width: 90px !important; 
+    text-align: right !important; 
+}
+.col-cess-header { 
+    min-width: 85px !important; width: 85px !important; 
+    text-align: right !important; 
+}
+.col-impuestos-det { 
+    min-width: 80px !important; width: 80px !important; 
+    text-align: right !important; 
+}
+.col-neto { 
+    min-width: 95px !important; width: 95px !important; 
+    text-align: right !important; 
+    font-weight: bold;
+}
+.col-estado { 
+    min-width: 80px !important; width: 80px !important; 
+    text-align: center !important; 
+}
+.col-numero-nomina { 
+    min-width: 85px !important; width: 85px !important; 
+    text-align: center !important; 
+}
+.badge-numero-nomina {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+.col-acciones { 
+    min-width: 85px !important; width: 85px !important; 
+    text-align: center !important; 
+}
+/* Botón Fluent - Estilo Windows 11 */
+.btn-fluent {
+    background: linear-gradient(135deg, rgba(0, 120, 212, 0.9), rgba(0, 100, 180, 0.9));
+    border: none;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
+}
+
+.btn-fluent:hover {
+    background: linear-gradient(135deg, rgba(0, 140, 230, 0.95), rgba(0, 120, 212, 0.95));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.4);
+    color: white;
+}
+
+.btn-fluent:active {
+    transform: translateY(0px);
+}
+
+.btn-fluent i {
+    font-size: 0.9rem;
+}
+/* Forzar que el modal siempre se dibuje por encima del fondo opaco */
+.modal {
+    z-index: 1060 !important;
+}
+.modal-backdrop {
+    z-index: 1050 !important;
+}
+.worker-item[style*="background: rgba(245, 158, 11"] {
+    transition: background-color 0.2s ease;
+}
+.worker-item[style*="background: rgba(245, 158, 11"]:hover {
+    background: rgba(245, 158, 11, 0.15) !important;
+}
+/* Tarjetas Interactivas de Alcance de Impresión */
+.print-option-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 100%;
+}
+
+.print-option-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(96, 165, 250, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.print-option-card.selected {
+    background: rgba(0, 120, 212, 0.12) !important;
+    border-color: #0078d4 !important;
+    box-shadow: 0 0 0 1px #0078d4, 0 4px 12px rgba(0, 120, 212, 0.15);
+}
+
+.print-option-card .card-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.print-option-card:hover .card-icon {
+    transform: scale(1.08);
+}
+
+.print-option-card .card-text {
+    flex-grow: 1;
+}
+
+.print-option-card .card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 2px;
+}
+
+.print-option-card .card-desc {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.2;
+}
+
+/* Animación sutil de entrada para el contenedor dinámico */
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeInSlide 0.25s ease-out forwards;
+}
+/* Panel Scrollbar del Select */
+.select-scroll-panel {
+    background: rgba(15, 15, 20, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    border-radius: 8px !important;
+    padding: 4px !important;
+    font-size: 0.85rem !important;
+    outline: none !important;
+}
+
+.select-scroll-panel option {
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    margin-bottom: 2px !important;
+    transition: background 0.15s ease;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Resaltado del item al pasar el cursor o ser seleccionado */
+.select-scroll-panel option:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #ffffff !important;
+}
+
+.select-scroll-panel option:checked {
+    background: linear-gradient(135deg, rgba(0, 120, 212, 0.3), rgba(0, 120, 212, 0.15)) !important;
+    color: #60a5fa !important;
+    font-weight: 500;
+}
+/* Animación blink para mensaje de contabilizada */
+.blink-text {
+    animation: blink-animation 1s step-end infinite;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    display: inline-block;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes blink-animation {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; background: linear-gradient(135deg, #dc2626, #b91c1c); }
+}
+/* --- Estilos para las Tarjetas de Opciones del Reporte --- */
+.print-option-card {
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+}
+
+.print-option-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+.print-option-card.selected {
+    background: rgba(59, 130, 246, 0.08) !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+}
+
+.print-option-card .card-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+}
+
+.print-option-card.selected .card-icon {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+}
+
+.print-option-card .card-text .card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 2px;
+}
+
+.print-option-card .card-text .card-desc {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.print-option-card .card-check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 1.1rem;
+    color: #3b82f6;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: all 0.2s ease-in-out;
+}
+
+.print-option-card.selected .card-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.btn-nomina-impresa {
+    background: linear-gradient(135deg, #1e40af, #2563eb) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 8px !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.btn-nomina-impresa:hover {
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+    transform: translateY(-1px);
+}

@@ -1,0 +1,22 @@
+# ===== Sistema Operativo / Editor =====
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== Copias de seguridad generadas por el sistema =====
+NOMINAS/backups/
+
+# ===== Logs y temporales =====
+NOMINAS/logs/
+NOMINAS/temp/
+NOMINAS/solapines/
+*.log
+
+# ===== Archivos de entorno / secretos =====
+.env
+.env.*
+*.local
