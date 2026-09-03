@@ -21,7 +21,7 @@ jobs:
           port: 21
           server-dir: /htdocs/
           protocol: ftps
-          dangerous-clean-slate: true
+          dangerous-clean-slate: false
           exclude: |
             **/.git*
             **/.git*/**
