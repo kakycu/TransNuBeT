@@ -159,7 +159,7 @@ function getBadge($codigo, $server_ok, $estados) {
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title><?php echo htmlspecialchars($SITE_NAME); ?> · <?php echo htmlspecialchars($SITE_VERSION); ?></title>
-    <link rel="icon" type="image/png" href="images/favicons/logocorto.ico">
+    <link rel="icon" type="image/x-icon" href="images/favicons/LogoCorto.ico">
     
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
