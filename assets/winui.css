@@ -1,0 +1,130 @@
+/* ============================================================
+   Kit de interfaz "Windows Dark" compartido
+   contacto.php / soporte.php y futuras paginas publicas
+   ============================================================ */
+.win-page *, .win-page *::before, .win-page *::after { box-sizing: border-box; }
+
+/* ---------- Ventana ---------- */
+.win-page {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 700px at 20% -10%, #1b2a41 0%, transparent 55%),
+                radial-gradient(1000px 600px at 110% 110%, #16233a 0%, transparent 50%),
+                #171717;
+    color: #f3f3f3;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 32px 14px 48px;
+}
+.win-window {
+    width: 100%;
+    max-width: 34rem;
+    background: #202020;
+    border: 1px solid #2d2d2d;
+    border-radius: 8px;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, .55);
+    overflow: hidden;
+}
+.win-window.wide { max-width: 62rem; }
+
+.win-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0 9px 14px;
+    background: #191919;
+    border-bottom: 1px solid #2d2d2d;
+    user-select: none;
+}
+.win-titlebar .tb-icon { color: #4cc2ff; font-size: .95rem; }
+.win-titlebar .tb-text { font-size: .82rem; color: #d6d6d6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win-caption { margin-left: auto; display: flex; }
+.cap-btn {
+    width: 46px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #d6d6d6; font-size: .72rem; text-decoration: none;
+    transition: background .12s ease;
+}
+.cap-btn:hover { background: #ffffff1a; }
+.cap-btn.close:hover { background: #c42b1c; color: #fff; }
+
+.win-body { padding: 26px 26px 24px; }
+
+/* ---------- Tipografia ---------- */
+.win-h1 { font-size: 1.35rem; margin: 0 0 .3rem; font-weight: 600; }
+.win-h1 i { color: #4cc2ff; margin-right: .55rem; }
+.win-sub { margin: 0 0 1.5rem; color: #9a9a9a; font-size: .92rem; }
+
+/* ---------- Formularios estilo WinUI ---------- */
+.win-label { display: block; font-size: .85rem; margin: .95rem 0 .35rem; color: #cdcdcd; }
+.win-label i { width: 1.15rem; color: #4cc2ff; }
+.win-input, .win-select, .win-textarea {
+    width: 100%;
+    padding: .6rem .75rem;
+    border-radius: 5px;
+    border: 1px solid #3d3d3d;
+    border-bottom-color: #8a8a8a;
+    background: #2b2b2b;
+    color: #f3f3f3;
+    font: inherit;
+    font-size: .95rem;
+}
+.win-input:focus, .win-select:focus, .win-textarea:focus {
+    outline: none;
+    border-bottom: 2px solid #4cc2ff;
+    background: #1f1f1f;
+}
+.win-textarea { min-height: 7.5rem; resize: vertical; }
+
+/* ---------- Botones estilo Fluent ---------- */
+.wbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .58rem 1.15rem;
+    border-radius: 5px;
+    border: 1px solid #3d3d3d;
+    background: #333333;
+    color: #f3f3f3;
+    font: inherit;
+    font-weight: 600;
+    font-size: .92rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .12s ease, border-color .12s ease;
+}
+.wbtn:hover { background: #3a3a3a; border-color: #4d4d4d; }
+.wbtn:disabled { opacity: .55; cursor: wait; }
+.wbtn-accent {
+    background: #4cc2ff;
+    border-color: #4cc2ff;
+    color: #081722;
+}
+.wbtn-accent:hover { background: #63cbff; border-color: #63cbff; }
+.wbtn-danger { background: #c42b1c; border-color: #c42b1c; color: #fff; }
+.wbtn-danger:hover { background: #d13a2b; }
+.wbtn-warning { background: #d97706; border-color: #d97706; color: #fff7ed; }
+.wbtn-warning:hover { background: #f59e0b; border-color: #f59e0b; }
+.wbtn-whatsapp { background: #1f3d2e; border-color: #25D366; color: #4ade80; }
+.wbtn-whatsapp:hover { background: #27503a; }
+.wbtn-block { width: 100%; margin-top: 1.35rem; }
+
+.hp { position: absolute; left: -9999px; }
+
+.win-footnote { margin-top: 1.1rem; color: #8a8a8a; font-size: .82rem; text-align: center; }
+.win-footnote a { color: #4cc2ff; text-decoration: none; }
+.win-footnote a:hover { text-decoration: underline; }
+
+/* ---------- SweetAlert2 tema Windows Dark ---------- */
+.win-swal {
+    border: 1px solid #3d3d3d !important;
+    border-radius: 8px !important;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .6) !important;
+    font-family: "Segoe UI", system-ui, sans-serif !important;
+}
+.win-swal-title { font-size: 1.25rem !important; font-weight: 600 !important; }
+.win-swal-html { color: #d6d6d6 !important; }
+.win-swal-close { color: #d6d6d6 !important; }
+.win-swal .swal2-timer-progress-bar { background: #4cc2ff !important; }

@@ -1,0 +1,3 @@
+# InstalarBD - si existe index.php se sirve; si NO existe, se sirve no-index.php
+Options -Indexes
+DirectoryIndex index.php no-index.php

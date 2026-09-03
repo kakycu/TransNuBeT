@@ -1,0 +1,32 @@
+# ===== Sistema Operativo / Editor =====
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== Copias de seguridad generadas por el sistema =====
+nominas/backups/
+
+# ===== Logs y temporales =====
+nominas/logs/
+nominas/temp/
+nominas/solapines/
+*.log
+
+# ===== Archivos de entorno / secretos =====
+.env
+.env.*
+*.local
+nominas/config.php
+correo_privado.php
+
+# ===== Credenciales de Google OAuth (secretos) =====
+client_secret_*.json
+client_secret_*.apps.googleusercontent.com.json
+
+# ===== Dumps/exportaciones de la BD (contienen datos y credenciales) =====
+exportar_bd_infinity/*.sql
+exportar_bd_infinity/TransNuBeT_nomina-*.sql

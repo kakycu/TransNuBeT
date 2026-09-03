@@ -1,0 +1,12 @@
+{
+    "name": "transnubet/nomina",
+    "description": "Sistema de Gestión de Nóminas y Empleados",
+    "type": "project",
+    "require": {
+        "phpoffice/phpspreadsheet": "^5.7",
+        "phpmailer/phpmailer": "^7.1"
+    },
+    "config": {
+        "vendor-dir": "vendor"
+    }
+}

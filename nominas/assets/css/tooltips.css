@@ -1,0 +1,310 @@
+/* ============================================
+   TOOLTIP SYSTEM - TRANSNUBET v2
+   Todo con !important para forzar sobre Bootstrap
+   ============================================ */
+
+[data-tooltip] {
+    position: relative !important;
+    cursor: pointer !important;
+}
+
+/* ============================================
+   Cuerpo del tooltip
+   ============================================ */
+[data-tooltip]::after {
+    content: attr(data-tooltip) !important;
+    position: absolute !important;
+    bottom:calc(100% + 0.75rem) !important;
+    left:50% !important;
+    transform: translateX(-50%) translateY(4px) scale(0.95) !important;
+    padding:0.5rem 0.875rem !important;
+    background: #0f172a !important;
+    color: #f1f5f9 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-size:0.75rem !important;
+    font-weight: 500 !important;
+    line-height:1.5 !important;
+    letter-spacing:0.01em !important;
+    white-space: nowrap !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 99999 !important;
+    pointer-events: none !important;
+    border: none !important;
+    margin:0 !important;
+}
+
+/* ============================================
+   Flecha / piquito
+   ============================================ */
+[data-tooltip]::before {
+    content: '' !important;
+    position: absolute !important;
+    bottom:calc(100% + 0.375rem) !important;
+    left:50% !important;
+    transform: translateX(-50%) translateY(4px) !important;
+    border: 6px solid transparent !important;
+    border-top: 6px solid #0f172a !important;
+    border-bottom: none !important;
+    border-left: 6px solid transparent !important;
+    border-right: 6px solid transparent !important;
+    width:0 !important;
+    height:0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 99999 !important;
+    pointer-events: none !important;
+    background: transparent !important;
+}
+
+/* ============================================
+   Hover - Mostrar tooltip
+   ============================================ */
+[data-tooltip]:hover::after {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(-50%) translateY(0) scale(1) !important;
+}
+
+[data-tooltip]:hover::before {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(-50%) translateY(0) !important;
+}
+
+/* ============================================
+   POSICIONES
+   ============================================ */
+
+/* --- TOP (default) --- */
+[data-tooltip="top"]::after { bottom:calc(100% + 0.75rem) !important; top:auto !important; left:50% !important; transform: translateX(-50%) translateY(4px) scale(0.95) !important; }
+[data-tooltip="top"]::before { bottom:calc(100% + 0.375rem) !important; top:auto !important; left:50% !important; transform: translateX(-50%) translateY(4px) !important; border-top: 6px solid #0f172a !important; border-bottom: none !important; }
+[data-tooltip="top"]:hover::after { transform: translateX(-50%) translateY(0) scale(1) !important; }
+[data-tooltip="top"]:hover::before { transform: translateX(-50%) translateY(0) !important; }
+
+/* --- BOTTOM --- */
+[data-tooltip="bottom"]::after { top:calc(100% + 0.75rem) !important; bottom:auto !important; left:50% !important; transform: translateX(-50%) translateY(-4px) scale(0.95) !important; }
+[data-tooltip="bottom"]::before { top:calc(100% + 0.375rem) !important; bottom:auto !important; left:50% !important; transform: translateX(-50%) translateY(-4px) !important; border-top: none !important; border-bottom: 6px solid #0f172a !important; border-left: 6px solid transparent !important; border-right: 6px solid transparent !important; }
+[data-tooltip="bottom"]:hover::after { transform: translateX(-50%) translateY(0) scale(1) !important; }
+[data-tooltip="bottom"]:hover::before { transform: translateX(-50%) translateY(0) !important; }
+
+/* --- LEFT --- */
+[data-tooltip="left"]::after { top:50% !important; bottom:auto !important; right:calc(100% + 0.75rem) !important; left:auto !important; transform: translateY(-50%) translateX(4px) scale(0.95) !important; }
+[data-tooltip="left"]::before { top:50% !important; bottom:auto !important; right:calc(100% + 0.375rem) !important; left:auto !important; transform: translateY(-50%) translateX(4px) !important; border-top: 6px solid transparent !important; border-bottom: 6px solid transparent !important; border-left: 6px solid #0f172a !important; border-right: none !important; }
+[data-tooltip="left"]:hover::after { transform: translateY(-50%) translateX(0) scale(1) !important; }
+[data-tooltip="left"]:hover::before { transform: translateY(-50%) translateX(0) !important; }
+
+/* --- RIGHT --- */
+[data-tooltip="right"]::after { top:50% !important; bottom:auto !important; left:calc(100% + 0.75rem) !important; transform: translateY(-50%) translateX(-4px) scale(0.95) !important; }
+[data-tooltip="right"]::before { top:50% !important; bottom:auto !important; left:calc(100% + 0.375rem) !important; transform: translateY(-50%) translateX(-4px) !important; border-top: 6px solid transparent !important; border-bottom: 6px solid transparent !important; border-right: 6px solid #0f172a !important; border-left: none !important; }
+[data-tooltip="right"]:hover::after { transform: translateY(-50%) translateX(0) scale(1) !important; }
+[data-tooltip="right"]:hover::before { transform: translateY(-50%) translateX(0) !important; }
+
+/* ============================================
+   TEMAS DE COLOR - Cuerpo + Flecha
+   ============================================ */
+
+/* --- PRIMARY (Indigo) --- */
+[data-tooltip-theme="primary"]::after { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4) !important; }
+[data-tooltip-theme="primary"]::before { border-top-color: #6366f1 !important; }
+[data-tooltip-theme="primary"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #6366f1 !important; }
+[data-tooltip-theme="primary"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #6366f1 !important; }
+[data-tooltip-theme="primary"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #6366f1 !important; }
+
+/* --- SECONDARY (Gris) --- */
+[data-tooltip-theme="secondary"]::after { background: linear-gradient(135deg, #64748b, #94a3b8) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(100, 116, 139, 0.3) !important; }
+[data-tooltip-theme="secondary"]::before { border-top-color: #64748b !important; }
+[data-tooltip-theme="secondary"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #64748b !important; }
+[data-tooltip-theme="secondary"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #64748b !important; }
+[data-tooltip-theme="secondary"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #64748b !important; }
+
+/* --- SUCCESS (Verde) --- */
+[data-tooltip-theme="success"]::after { background: linear-gradient(135deg, #10b981, #059669) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4) !important; }
+[data-tooltip-theme="success"]::before { border-top-color: #10b981 !important; }
+[data-tooltip-theme="success"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #10b981 !important; }
+[data-tooltip-theme="success"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #10b981 !important; }
+[data-tooltip-theme="success"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #10b981 !important; }
+
+/* --- DANGER (Rojo) --- */
+[data-tooltip-theme="danger"]::after { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4) !important; }
+[data-tooltip-theme="danger"]::before { border-top-color: #ef4444 !important; }
+[data-tooltip-theme="danger"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #ef4444 !important; }
+[data-tooltip-theme="danger"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #ef4444 !important; }
+[data-tooltip-theme="danger"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #ef4444 !important; }
+
+/* --- WARNING (Amarillo) --- */
+[data-tooltip-theme="warning"]::after { background: linear-gradient(135deg, #f59e0b, #d97706) !important; color: #1e293b !important; box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4) !important; }
+[data-tooltip-theme="warning"]::before { border-top-color: #f59e0b !important; }
+[data-tooltip-theme="warning"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #f59e0b !important; }
+[data-tooltip-theme="warning"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #f59e0b !important; }
+[data-tooltip-theme="warning"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #f59e0b !important; }
+
+/* --- INFO (Azul) --- */
+[data-tooltip-theme="info"]::after { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4) !important; }
+[data-tooltip-theme="info"]::before { border-top-color: #3b82f6 !important; }
+[data-tooltip-theme="info"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #3b82f6 !important; }
+[data-tooltip-theme="info"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #3b82f6 !important; }
+[data-tooltip-theme="info"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #3b82f6 !important; }
+
+/* --- DARK --- */
+[data-tooltip-theme="dark"]::after { background: linear-gradient(135deg, #0f172a, #1e293b) !important; color: #f1f5f9 !important; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.5) !important; }
+[data-tooltip-theme="dark"]::before { border-top-color: #0f172a !important; }
+[data-tooltip-theme="dark"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #0f172a !important; }
+[data-tooltip-theme="dark"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #0f172a !important; }
+[data-tooltip-theme="dark"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #0f172a !important; }
+
+/* --- LIGHT --- */
+[data-tooltip-theme="light"]::after { background: linear-gradient(135deg, #ffffff, #f1f5f9) !important; color: #1e293b !important; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important; border: 1px solid #e2e8f0 !important; }
+[data-tooltip-theme="light"]::before { border-top-color: #ffffff !important; }
+[data-tooltip-theme="light"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #ffffff !important; }
+[data-tooltip-theme="light"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #ffffff !important; }
+[data-tooltip-theme="light"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #ffffff !important; }
+
+/* --- GRADIENT (Morado vibrante) --- */
+[data-tooltip-theme="gradient"]::after { background: linear-gradient(135deg, #667eea, #764ba2) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5) !important; }
+[data-tooltip-theme="gradient"]::before { border-top-color: #667eea !important; }
+[data-tooltip-theme="gradient"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #667eea !important; }
+[data-tooltip-theme="gradient"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #667eea !important; }
+[data-tooltip-theme="gradient"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #667eea !important; }
+
+/* --- GLASS (Vidrio esmerilado) --- */
+[data-tooltip-theme="glass"]::after { background: rgba(30, 30, 40, 0.85) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; }
+[data-tooltip-theme="glass"]::before { border-top-color: rgba(30, 30, 40, 0.85) !important; }
+[data-tooltip-theme="glass"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: rgba(30, 30, 40, 0.85) !important; }
+[data-tooltip-theme="glass"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: rgba(30, 30, 40, 0.85) !important; }
+[data-tooltip-theme="glass"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: rgba(30, 30, 40, 0.85) !important; }
+
+/* --- NEON (Brillo verde neón) --- */
+[data-tooltip-theme="neon"]::after { background: rgba(5, 10, 20, 0.95) !important; color: #00ff88 !important; box-shadow: 0 0 15px rgba(0, 255, 136, 0.3), 0 0 30px rgba(0, 255, 136, 0.1) !important; border: 1px solid rgba(0, 255, 136, 0.5) !important; text-shadow: 0 0 6px rgba(0, 255, 136, 0.5) !important; }
+[data-tooltip-theme="neon"]::before { border-top-color: rgba(5, 10, 20, 0.95) !important; }
+[data-tooltip-theme="neon"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: rgba(5, 10, 20, 0.95) !important; }
+[data-tooltip-theme="neon"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: rgba(5, 10, 20, 0.95) !important; }
+[data-tooltip-theme="neon"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: rgba(5, 10, 20, 0.95) !important; }
+
+/* --- CYAN (Eléctrico) --- */
+[data-tooltip-theme="cyan"]::after { background: linear-gradient(135deg, #06b6d4, #0891b2) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(6, 182, 212, 0.4) !important; }
+[data-tooltip-theme="cyan"]::before { border-top-color: #06b6d4 !important; }
+[data-tooltip-theme="cyan"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #06b6d4 !important; }
+[data-tooltip-theme="cyan"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #06b6d4 !important; }
+[data-tooltip-theme="cyan"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #06b6d4 !important; }
+
+/* --- PINK (Rosa neón) --- */
+[data-tooltip-theme="pink"]::after { background: linear-gradient(135deg, #ec4899, #db2777) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(236, 72, 153, 0.4) !important; }
+[data-tooltip-theme="pink"]::before { border-top-color: #ec4899 !important; }
+[data-tooltip-theme="pink"][data-tooltip="bottom"]::before { border-top-color: transparent !important; border-bottom-color: #ec4899 !important; }
+[data-tooltip-theme="pink"][data-tooltip="left"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-left-color: #ec4899 !important; }
+[data-tooltip-theme="pink"][data-tooltip="right"]::before { border-top-color: transparent !important; border-bottom-color: transparent !important; border-right-color: #ec4899 !important; }
+
+/* ============================================
+   TAMAÑOS
+   ============================================ */
+[data-tooltip-size="xs"]::after { font-size:0.625rem !important; padding:0.25rem 0.5rem !important; }
+[data-tooltip-size="sm"]::after { font-size:0.6875rem !important; padding:0.375rem 0.625rem !important; }
+[data-tooltip-size="md"]::after { font-size:0.75rem !important; padding:0.5rem 0.875rem !important; }
+[data-tooltip-size="lg"]::after { font-size:0.875rem !important; padding:0.625rem 1rem !important; }
+[data-tooltip-size="xl"]::after { font-size:1rem !important; padding:0.75rem 1.125rem !important; }
+
+/* ============================================
+   ANIMACIONES
+   ============================================ */
+[data-tooltip-animate="bounce"]:hover::after {
+    animation: ttBounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
+}
+@keyframes ttBounce {
+    0% { opacity: 0; transform: translateX(-50%) scale(0.3); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
+    70% { transform: translateX(-50%) scale(0.95); }
+    100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+[data-tooltip-animate="slide"]:hover::after {
+    animation: ttSlide 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+@keyframes ttSlide {
+    from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.9); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+[data-tooltip-animate="flip"]:hover::after {
+    animation: ttFlip 0.5s ease-out !important;
+}
+@keyframes ttFlip {
+    0% { opacity: 0; transform: translateX(-50%) perspective(400px) rotateX(90deg); }
+    40% { transform: translateX(-50%) perspective(400px) rotateX(-10deg); }
+    100% { opacity: 1; transform: translateX(-50%) perspective(400px) rotateX(0); }
+}
+
+[data-tooltip-animate="glow"]:hover::after {
+    animation: ttGlow 0.4s ease-out !important;
+}
+@keyframes ttGlow {
+    0% { opacity: 0; filter: brightness(2); transform: translateX(-50%) scale(0.8); }
+    100% { opacity: 1; filter: brightness(1); transform: translateX(-50%) scale(1); }
+}
+
+/* ============================================
+   FLECHA SIN PIQUITO
+   ============================================ */
+[data-tooltip-arrow="none"]::before { display: none !important; }
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 480px) {
+    [data-tooltip]::after {
+        font-size:0.6875rem !important;
+        padding:0.375rem 0.625rem !important;
+        max-width:11.25rem !important;
+        white-space: normal !important;
+        text-align: center !important;
+    }
+}
+
+/* ============================================
+   TOOLTIP JS (para input, select, textarea)
+   Caja flotante creada vía JavaScript
+   ============================================ */
+.data-tooltip-js {
+    position: absolute !important;
+    z-index: 999999 !important;
+    padding:0.5rem 0.875rem !important;
+    background: #0f172a !important;
+    color: #f1f5f9 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-size:0.75rem !important;
+    font-weight: 500 !important;
+    line-height:1.5 !important;
+    letter-spacing:0.01em !important;
+    white-space: nowrap !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: none !important;
+    margin:0 !important;
+}
+.data-tooltip-js.visible {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Temas del tooltip JS */
+.data-tooltip-js.tt-theme-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4) !important; }
+.data-tooltip-js.tt-theme-success { background: linear-gradient(135deg, #10b981, #059669) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4) !important; }
+.data-tooltip-js.tt-theme-danger { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4) !important; }
+.data-tooltip-js.tt-theme-warning { background: linear-gradient(135deg, #f59e0b, #d97706) !important; color: #1e293b !important; box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4) !important; }
+.data-tooltip-js.tt-theme-info { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4) !important; }
+.data-tooltip-js.tt-theme-secondary { background: linear-gradient(135deg, #64748b, #94a3b8) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(100, 116, 139, 0.3) !important; }
+.data-tooltip-js.tt-theme-dark { background: linear-gradient(135deg, #0f172a, #1e293b) !important; color: #f1f5f9 !important; }
+.data-tooltip-js.tt-theme-light { background: linear-gradient(135deg, #ffffff, #f1f5f9) !important; color: #1e293b !important; border: 1px solid #e2e8f0 !important; }
+.data-tooltip-js.tt-theme-gradient { background: linear-gradient(135deg, #667eea, #764ba2) !important; color: #fff !important; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5) !important; }
+.data-tooltip-js.tt-theme-glass { background: rgba(30, 30, 40, 0.85) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; backdrop-filter: blur(12px) !important; }
+.data-tooltip-js.tt-theme-neon { background: rgba(5, 10, 20, 0.95) !important; color: #00ff88 !important; border: 1px solid rgba(0, 255, 136, 0.5) !important; text-shadow: 0 0 6px rgba(0, 255, 136, 0.5) !important; }
+.data-tooltip-js.tt-theme-cyan { background: linear-gradient(135deg, #06b6d4, #0891b2) !important; color: #fff !important; }
+.data-tooltip-js.tt-theme-pink { background: linear-gradient(135deg, #ec4899, #db2777) !important; color: #fff !important; }

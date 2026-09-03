@@ -1,0 +1,11 @@
+# SOLUCIÓN FORZADA
+Options -Indexes
+
+# Si existe index.php se sirve; si NO existe, se sirve no-index.php
+DirectoryIndex index.php no-index.php
+
+# Error 404 → 404.php (recurso no encontrado)
+ErrorDocument 404 /404.php
+
+# Error 403 → 403.php (acceso denegado)
+ErrorDocument 403 /403.php
