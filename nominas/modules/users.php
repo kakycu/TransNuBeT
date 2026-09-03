@@ -197,7 +197,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title><?php echo defined('SITE_NAME') ? htmlspecialchars(SITE_NAME) : 'SisGesNom'; ?> | Perfil de Usuario</title>
-    <link rel="icon" type="image/png" href="../../images/favicons/nominas.ico">
+    <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
 
     <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
     <link href="../css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">

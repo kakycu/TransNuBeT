@@ -97,7 +97,7 @@ $extra_js = $extra_js ?? [];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?> | <?php echo htmlspecialchars($page_title); ?></title>
-    <link rel="icon" type="image/png" href="../../images/favicons/nominas.ico">
+    <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
     
     <!-- Fonts & Icons -->
     <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">

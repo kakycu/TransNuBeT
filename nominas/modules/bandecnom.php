@@ -102,7 +102,7 @@ if (file_exists($ruta_logo)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Exportador de Banco (BANDEC) - <?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></title>
-    <link rel="icon" type="image/png" href="../../images/favicons/nominas.ico">
+    <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
     
     <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
     

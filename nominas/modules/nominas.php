@@ -3116,7 +3116,7 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
     <link href="../css/datatables/1.13.6/jquery.dataTables.min.css" rel="stylesheet">
     <link href="../css/sweetalert2.min.css" rel="stylesheet">
     <link href="../css/select2.min.css" rel="stylesheet">
-	</title><link rel="icon" type="image/png" href="../../images/favicons/nominas.ico">
+	</title><link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
 	
     <!-- DataTables Buttons CSS -->
     <link rel="stylesheet" type="text/css" href="../css/bootstrap5.3.0/buttons.dataTables.min.css">  
