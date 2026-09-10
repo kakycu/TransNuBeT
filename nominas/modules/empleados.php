@@ -663,6 +663,7 @@ $areas = getAreas($pdo);
 $categorias = getCategoriasOcupacionales($pdo);
 $escalas = getEscalas($pdo);
 $centros_costo = getCentrosCosto($pdo);
+$cargos = $pdo->query("SELECT id, nombre_cargo FROM cargos_plantilla ORDER BY nombre_cargo")->fetchAll();
 
 // Obtener empleados
 $empleados = $pdo->query("
@@ -2111,6 +2112,16 @@ html[data-theme="light"] .badge.badge-estado-inactivo {
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-briefcase text-muted me-1"></i> Cargo</label>
+                    <select id="filtroCargo" class="form-select" title="Filtrar por cargo" data-tooltip="Filtrar por cargo" data-tooltip-theme="secondary">
+                        <option value="">-- Todos los cargos --</option>
+                        <?php foreach ($cargos as $car): ?>
+                            <option value="<?php echo htmlspecialchars($car['nombre_cargo'], ENT_QUOTES); ?>"><?php echo htmlspecialchars($car['nombre_cargo']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 
                 <div class="col-md-3">
                     <label class="form-label"><i class="fas fa-credit-card text-muted me-1"></i> Cuenta Bancaria</label>
@@ -2198,7 +2209,7 @@ html[data-theme="light"] .badge.badge-estado-inactivo {
                     $fila_roja = (($emp['vacaciones_acumuladas'] ?? 0) > 20);
                     if (($emp['no_acumular_vacaciones'] ?? 0) == 1) $valor_a_pagar = $emp['valor_vacaciones'];
                     ?>
-                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>">
+                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>">
                         <td class="text-center">
                             <?php if ($puede_eliminar_empleados): ?>
                             <button class="btn-win btn-win-danger btn-win-sm" onclick="eliminarTrabajador(<?php echo $emp['id']; ?>, '<?php echo addslashes($emp['nombre_completo'] ?? ''); ?>')" title="Eliminar Empleado" data-tooltip="Eliminar Empleado" data-tooltip-theme="danger">
@@ -4689,6 +4700,7 @@ function reporteEmp_alcanceFiltros() {
         ['#filtroPagoVacaciones', 'Pago Vacaciones'],
         ['#filtroArea', 'Área'],
         ['#filtroCentroCosto', 'Centro Costo'],
+        ['#filtroCargo', 'Cargo'],
         ['#filtroCuentaBancaria', 'Cuenta Bancaria'],
         ['#filtroFoto', 'Foto Perfil'],
         ['#filtroEstadoLaboral', 'Estado Laboral'],
@@ -5638,6 +5650,17 @@ $('#filtroTipoContrato').on('change', function() {
         let partes = texto.split(' - ');
         table.columns(6).search(partes.length > 1 ? partes[1] : texto).draw();
     });
+
+    $('#filtroCargo').on('change', function() {
+        let cargo = $(this).val() || '';
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+            let cargoFila = $(settings.aoData[dataIndex].nTr).data('cargo') || '';
+            if (cargo === '') return true;
+            return cargoFila === cargo;
+        });
+        table.draw();
+        $.fn.dataTable.ext.search.pop();
+    });
     
     $('#filtroCuentaBancaria').on('change', function() {
         if (this.value === 'con_cuenta') {
@@ -5749,7 +5772,7 @@ $('#filtroVacacionesExcedidas').on('change', function() {
 });
 $('#btnLimpiarFiltros').on('click', function() {
     // 1. Restablecer todos los selects a su valor por defecto
-    $('#filtroEmpleado, #filtroTipoContrato, #filtroPagoVacaciones, #filtroArea, #filtroCentroCosto, #filtroCuentaBancaria, #filtroFoto, #filtroEstadoLaboral, #filtroVacacionesExcedidas').val('');
+    $('#filtroEmpleado, #filtroTipoContrato, #filtroPagoVacaciones, #filtroArea, #filtroCentroCosto, #filtroCargo, #filtroCuentaBancaria, #filtroFoto, #filtroEstadoLaboral, #filtroVacacionesExcedidas').val('');
     $('#filtroEmpleado').trigger('change.select2');
     
     // 2. Eliminar TODOS los filtros personalizados de DataTables

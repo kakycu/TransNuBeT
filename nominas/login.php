@@ -619,6 +619,7 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             asegurarColumnasResetToken($pdo);
             asegurarParamsMail($pdo);
             asegurarTarifasNocturnidad($pdo);
+            asegurarRecargosExtra($pdo);
 
             $email = trim($_POST['email'] ?? '');
             $no_ci = trim($_POST['no_ci'] ?? '');
@@ -1089,6 +1090,7 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             require_once 'config/mail.php';
             asegurarColumnasResetToken($pdo);
             asegurarTarifasNocturnidad($pdo);
+            asegurarRecargosExtra($pdo);
 
             $token = trim($_POST['token'] ?? '');
             $password = trim($_POST['password'] ?? '');

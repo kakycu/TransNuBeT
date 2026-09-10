@@ -320,7 +320,7 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (2, 'dias_mensuales', '24', 'entero', 'Cantidad de días laborables por mes', NULL, NULL),
 (3, 'horas_jornada_diaria', '8', 'entero', 'Horas por jornada laboral diaria', NULL, NULL),
 (4, 'tasa_contribucion_especial', '5', 'decimal', 'Porcentaje de contribución especial a la seguridad social', NULL, NULL),
-(5, 'salario_minimo', '3100', 'decimal', 'Salario mínimo mensual según Gaceta Oficial', NULL, NULL),
+(5, 'salario_minimo', '3210', 'decimal', 'Salario mínimo mensual según Gaceta Oficial', NULL, NULL),
 (6, 'nombre_empresa', '', 'texto', 'Nombre de la entidad', NULL, NULL),
 (7, 'direccion_empresa', '', 'texto', 'Dirección de la entidad', NULL, NULL),
 (8, 'reeup_empresa', '', 'texto', 'Código REEUP de la empresa', NULL, NULL),
@@ -347,7 +347,10 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (29, 'telefono_soporte', '', 'texto', 'Telefono de soporte técnico', NULL, NULL),
 (30, 'email_soporte', '', 'texto', 'Correo de contacto de soporte técnico', NULL, NULL),
 (31, 'google_client_id', '', 'texto', 'Client ID de la app OAuth de Google para el login con Google', NULL, NULL),
-(32, 'google_client_secret', '', 'texto', 'Client Secret de la app OAuth de Google para el login con Google', NULL, NULL);
+(32, 'google_client_secret', '', 'texto', 'Client Secret de la app OAuth de Google para el login con Google', NULL, NULL),
+(33, 'recargo_extra_diurna', '1.50', 'decimal', 'Recargo hora extra diurna (multiplicador, 1.5 = 150%)', NULL, NULL),
+(34, 'recargo_extra_nocturna', '2.00', 'decimal', 'Recargo hora extra nocturna Nt 7-23h y Nt 23-7h (multiplicador, 2.0 = 200%)', NULL, NULL),
+(35, 'recargo_doble_turno', '2.00', 'decimal', 'Recargo doble turno (multiplicador, 2.0 = 200%)', NULL, NULL);
 
 -- --------------------------------------------------------
 

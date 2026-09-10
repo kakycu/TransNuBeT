@@ -4,6 +4,8 @@ require_once '../config/database.php';
 require_once '../config/mail.php';
 require_once '../includes/funciones.php';
 
+asegurarRecargosExtra($pdo);
+
 // Iniciar sesión
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -185,7 +187,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'tasa_contribucion_especial', 'nombre_empresa', 'direccion_empresa',
             'reeup_empresa', 'nit_empresa', 'jefe_proyecto', 'especialista_gestion', 
             'salario_minimo', 'intendente', 'recargo_nocturno', 'especialista_gestionRRHH',
-            'tarifa_nocturnidad_temprana', 'tarifa_nocturnidad_tardia'
+            'tarifa_nocturnidad_temprana', 'tarifa_nocturnidad_tardia',
+            'recargo_extra_diurna', 'recargo_extra_nocturna', 'recargo_doble_turno'
         ];
         
         try {
@@ -1039,6 +1042,23 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                                     <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_tardia" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_tardia'] ?? '1.15'); ?>" title="Tarifa fija por hora de nocturnidad tardía (11pm-7am)" data-tooltip="Tarifa fija por hora de nocturnidad tardía" data-tooltip-theme="info">
                                 </div>
                                 <small class="text-secondary">Res. 15/2026 MTSS</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Recargo Hora Extra Diurna (multiplicador)</label>
+                                <input type="number" step="0.01" class="form-control" name="recargo_extra_diurna" value="<?php echo htmlspecialchars($config['recargo_extra_diurna'] ?? '1.50'); ?>" title="Multiplicador de hora extra diurna (1.5 = 150%)" data-tooltip="Multiplicador de hora extra diurna (1.5 = 150%)" data-tooltip-theme="info">
+                                <small class="text-secondary">1.5 = 150% del salario hora</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Recargo Hora Extra Nocturna (multiplicador)</label>
+                                <input type="number" step="0.01" class="form-control" name="recargo_extra_nocturna" value="<?php echo htmlspecialchars($config['recargo_extra_nocturna'] ?? '2.00'); ?>" title="Multiplicador de hora extra nocturna Nt 7-23h y Nt 23-7h (2.0 = 200%)" data-tooltip="Multiplicador de hora extra nocturna (2.0 = 200%)" data-tooltip-theme="info">
+                                <small class="text-secondary">2.0 = 200% del salario hora</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Recargo Doble Turno (multiplicador)</label>
+                                <input type="number" step="0.01" class="form-control" name="recargo_doble_turno" value="<?php echo htmlspecialchars($config['recargo_doble_turno'] ?? '2.00'); ?>" title="Multiplicador de doble turno (2.0 = 200%)" data-tooltip="Multiplicador de doble turno (2.0 = 200%)" data-tooltip-theme="info">
+                                <small class="text-secondary">2.0 = 200% del salario hora</small>
                             </div>
                         </div>
                         <button type="submit" name="guardar_config_general" class="btn-win btn-win-primary w-100" title="Guardar configuración general" data-tooltip="Guardar configuración general" data-tooltip-theme="success">

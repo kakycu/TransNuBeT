@@ -17,10 +17,14 @@ Ejemplo práctico: Si ganas 20,000 CUP al mes:
     Total descuento mensual por CESS = 1,250 CUP
 -----------------------------------------------------------------------------------------
 Tipo de Hora				Fórmula	Ejemplo 						(base $100/hora)
-Hora Normal					salario_hora × horas_normales			100×1=100×1=100
-Hora Nocturna				salario_hora × 1.25 × horas_nocturnas	100×1.25×1=∗∗100×1.25×1=∗∗125**(7pm-7am)
-Día Feriado					salario_diario × 2 × días_feriados		800×2×1=800×2×1=1,600
+Hora Normal *				salario_hora × horas_normales	100×1=100
+Hora Extra Diurna *			salario_hora × recargo_extra_diurna × horas		100×1.5×1=150 (configurable, default 1.5 = 150%)
+Hora Nocturna (Nt 7-23h) *		salario_hora × recargo_extra_nocturna × horas_nocturnas	100×2.0×1=200 (configurable, default 2.0 = 200%)(7pm-11pm)
+Hora Nocturna (Nt 23-7h) *		salario_hora × recargo_extra_nocturna × horas_nocturnas	100×2.0×1=200 (configurable, default 2.0 = 200%)(11pm-7am)
+Doble Turno *				salario_hora × recargo_doble_turno × horas_doble_turno	100×2.0×1=200 (configurable, default 2.0 = 200%)
+Día Feriado					salario_diario × 2 × días_feriados		800×2×1=1,600
 Importe Nocturno (cálculo automático)
+* Multiplicadores configurables en Configuración > Configuración General (recargo_extra_diurna, recargo_extra_nocturna, recargo_doble_turno)
 */
 
 // Iniciar sesión
@@ -63,6 +67,29 @@ try {
     $recargo_nocturno = floatval($stmt_recargo->fetchColumn()) ?: 1.25;
 } catch (PDOException $e) {
     $recargo_nocturno = 1.25;
+}
+
+// Recargos de horas extraordinarias (PDL/MIPYME): HE diurnas 150%, HE nocturnas 200%, doble turno 200%
+try {
+    $stmt_re1 = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'recargo_extra_diurna'");
+    $stmt_re1->execute();
+    $recargo_extra_diurna = floatval($stmt_re1->fetchColumn()) ?: 1.50;
+} catch (PDOException $e) {
+    $recargo_extra_diurna = 1.50;
+}
+try {
+    $stmt_re2 = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'recargo_extra_nocturna'");
+    $stmt_re2->execute();
+    $recargo_extra_nocturna = floatval($stmt_re2->fetchColumn()) ?: 2.00;
+} catch (PDOException $e) {
+    $recargo_extra_nocturna = 2.00;
+}
+try {
+    $stmt_re3 = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'recargo_doble_turno'");
+    $stmt_re3->execute();
+    $recargo_doble_turno = floatval($stmt_re3->fetchColumn()) ?: 2.00;
+} catch (PDOException $e) {
+    $recargo_doble_turno = 2.00;
 }
 
 // Tarifas fijas de nocturnidad sector presupuestado (Resolución 15/2026 MTSS)
@@ -471,9 +498,9 @@ if (isset($_POST['actualizar_nomina'])) {
         } else {
             $dias_feriados = 0;
             $otros_pagos = 0;
-            $horas_nocturnas_tempranas = floatval($_POST['horas_nocturnas_tempranas'] ?? 0);
-            $horas_nocturnas_tardias = floatval($_POST['horas_nocturnas_tardias'] ?? 0);
-            $horas_doble_turno = floatval($_POST['horas_doble_turno'] ?? 0);
+            $horas_nocturnas_tempranas = floatval($_POST['nocturnidad_temprana'] ?? $_POST['horas_nocturnas_tempranas'] ?? 0);
+            $horas_nocturnas_tardias = floatval($_POST['nocturnidad_tardia'] ?? $_POST['horas_nocturnas_tardias'] ?? 0);
+            $horas_doble_turno = floatval($_POST['doble_turno'] ?? $_POST['horas_doble_turno'] ?? 0);
             $horas_nocturnas = $horas_nocturnas_tempranas + $horas_nocturnas_tardias;
         }
         
@@ -490,10 +517,10 @@ if (isset($_POST['actualizar_nomina'])) {
         $no_acumular_vacaciones = intval($worker_salario['no_acumular_vacaciones'] ?? 0);
         
         if ($tipo == 'extraordinaria') {
-            $importe_he_diurnas = roundExcel($salario_hora * $recargo_nocturno * $horas, 2);
-            $importe_noct_temprana = roundExcel($tarifa_nocturnidad_temprana * $horas_nocturnas_tempranas, 2);
-            $importe_noct_tardia = roundExcel($tarifa_nocturnidad_tardia * $horas_nocturnas_tardias, 2);
-            $importe_doble_turno = roundExcel($salario_hora * $recargo_nocturno * $horas_doble_turno, 2);
+            $importe_he_diurnas = roundExcel($salario_hora * $recargo_extra_diurna * $horas, 2);
+            $importe_noct_temprana = roundExcel($salario_hora * $recargo_extra_nocturna * $horas_nocturnas_tempranas, 2);
+            $importe_noct_tardia = roundExcel($salario_hora * $recargo_extra_nocturna * $horas_nocturnas_tardias, 2);
+            $importe_doble_turno = roundExcel($salario_hora * $recargo_doble_turno * $horas_doble_turno, 2);
             $importe_nocturnas = $importe_noct_temprana + $importe_noct_tardia;
             $total_devengado = roundExcel($importe_he_diurnas + $importe_nocturnas + $importe_doble_turno, 2);
             $importe_vacaciones_adicional = 0;
@@ -681,11 +708,19 @@ if (isset($_POST['actualizar_nomina'])) {
             $contribucion = roundExcel($importe * ($tasa_cess_general / 100), 2);
             $impuesto = calcularTotalImpuesto($importe, $rangos_impuesto);
         }
-        $neto = roundExcel($importe - ($contribucion + $impuesto), 2);
+        $neto_antes_descuentos = roundExcel($importe - ($contribucion + $impuesto), 2);
         
-        $update = $pdo->prepare("UPDATE nominas SET dias_vacaciones_tomados=?, importe_vacaciones=?, total_salario_devengado=?, contribucion_especial=?, ingresos_personales=?, importe_neto=?, total_deducciones=? WHERE id=?");
-        $result = $update->execute([$dias, $importe, $importe, $contribucion, $impuesto, $neto, roundExcel($contribucion + $impuesto, 2), $id]);
-        echo json_encode(['success' => $result]);
+        $descuentos_vac = abs(floatval($_POST['descuentos'] ?? 0));
+        if ($descuentos_vac > $neto_antes_descuentos) {
+            $descuentos_vac = $neto_antes_descuentos;
+        }
+        
+        $neto = roundExcel($neto_antes_descuentos - $descuentos_vac, 2);
+        $total_deducciones_vac = roundExcel($contribucion + $impuesto + $descuentos_vac, 2);
+        
+        $update = $pdo->prepare("UPDATE nominas SET dias_vacaciones_tomados=?, importe_vacaciones=?, total_salario_devengado=?, contribucion_especial=?, ingresos_personales=?, descuentos=?, importe_neto=?, total_deducciones=? WHERE id=?");
+        $result = $update->execute([$dias, $importe, $importe, $contribucion, $impuesto, $descuentos_vac, $neto, $total_deducciones_vac, $id]);
+        echo json_encode(['success' => $result, 'neto_maximo' => $neto_antes_descuentos]);
     }
     exit;
 }
@@ -1033,6 +1068,38 @@ if (isset($_GET['action']) && $_GET['action'] === 'chequear_cuadre_pendiente' &&
         'periodo_hasta' => $ph_c,
         'tipo' => $tip,
     ]), JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// AJAX: Verificar si ya existe una nómina automática en el período (botón Generar Nómina Automática)
+if (isset($_GET['action']) && $_GET['action'] === 'verificar_nomina_automatica' && isset($_GET['ajax'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $resp_va = ['exists' => false, 'numero_nomina' => '', 'periodo_label' => '', 'cantidad' => 0, 'devengado' => 0, 'neto' => 0];
+    $per_va = trim($_GET['periodo'] ?? '');
+    if (preg_match('/^\d{4}-\d{2}$/', $per_va)) {
+        $pd_va = $per_va . '-01';
+        $ph_va = date('Y-m-t', strtotime($pd_va));
+        $stmt_va = $pdo->prepare("SELECT COALESCE(MAX(numero_nomina), '') AS numero_nomina,
+                                         COUNT(DISTINCT trabajador_id) AS cantidad,
+                                         ROUND(SUM(total_salario_devengado), 2) AS devengado,
+                                         ROUND(SUM(importe_neto), 2) AS neto
+                                  FROM nominas
+                                  WHERE periodo_desde = ? AND periodo_hasta = ? AND tipo_nomina = 'automatica'");
+        $stmt_va->execute([$pd_va, $ph_va]);
+        $fila_va = $stmt_va->fetch(PDO::FETCH_ASSOC);
+        if ($fila_va && intval($fila_va['cantidad']) > 0) {
+            $meses_va = ['01'=>'Enero','02'=>'Febrero','03'=>'Marzo','04'=>'Abril','05'=>'Mayo','06'=>'Junio','07'=>'Julio','08'=>'Agosto','09'=>'Septiembre','10'=>'Octubre','11'=>'Noviembre','12'=>'Diciembre'];
+            $resp_va = [
+                'exists' => true,
+                'numero_nomina' => (string)($fila_va['numero_nomina'] ?: 'S/N'),
+                'periodo_label' => ($meses_va[substr($per_va, 5, 2)] ?? '') . ' ' . substr($per_va, 0, 4),
+                'cantidad' => intval($fila_va['cantidad']),
+                'devengado' => floatval($fila_va['devengado']),
+                'neto' => floatval($fila_va['neto']),
+            ];
+        }
+    }
+    echo json_encode($resp_va, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -1486,10 +1553,10 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
         $salario_hora = floatval($salario['salario_hora_ordinaria']);
 
         // Cálculo de importes — Sector Presupuestado
-        $importe_he_diurnas = roundExcel($salario_hora * $recargo_nocturno * $horas_normales, 2);
-        $importe_noct_temprana = roundExcel($tarifa_nocturnidad_temprana * $noct_temprana, 2);
-        $importe_noct_tardia = roundExcel($tarifa_nocturnidad_tardia * $noct_tardia, 2);
-        $importe_doble_turno = roundExcel($salario_hora * $recargo_nocturno * $doble_turno, 2);
+$importe_he_diurnas = roundExcel($salario_hora * $recargo_extra_diurna * $horas_normales, 2);
+            $importe_noct_temprana = roundExcel($salario_hora * $recargo_extra_nocturna * $noct_temprana, 2);
+            $importe_noct_tardia = roundExcel($salario_hora * $recargo_extra_nocturna * $noct_tardia, 2);
+            $importe_doble_turno = roundExcel($salario_hora * $recargo_doble_turno * $doble_turno, 2);
 
         $total_devengado_nuevo = roundExcel($importe_he_diurnas + $importe_noct_temprana + $importe_noct_tardia + $importe_doble_turno, 2);
 
@@ -1689,18 +1756,19 @@ if (isset($_POST['generar_nomina_ajuste']) && isset($_POST['confirmar_ajuste']))
             $monto_nuevo = roundExcel($importe_laboral + $importe_vac_adicional, 2);
         }
         if ($modo_ajuste == 'liquidacion') {
-            // Liquidación de fracciones del submayor de vacaciones del período.
-            // Si el trabajador no tiene acumulación en el período, se usa el total
-            // acumulado (vacaciones_acumuladas) como respaldo.
-            $stmt_frac = $pdo->prepare("SELECT COALESCE(SUM(dias), 0) 
-                                        FROM submayor_vacaciones 
-                                        WHERE trabajador_id = ? AND tipo_movimiento = 'acumulacion' 
-                                          AND periodo_desde = ? AND periodo_hasta = ?");
+            // Liquidación final de vacaciones: se liquida el saldo TOTAL acumulado del
+            // trabajador (queda en cero días en la tabla trabajadores). Si el borrador de
+            // este período ya fue generado antes, se suma lo ya liquidado en él para que
+            // la regeneración quede consistente con el submayor.
+            $stmt_frac = $pdo->prepare("SELECT COALESCE(SUM(sv.dias), 0) 
+                                        FROM submayor_vacaciones sv
+                                        JOIN nominas n ON n.id = sv.nomina_id
+                                        WHERE sv.trabajador_id = ? AND sv.tipo_movimiento = 'disfrute'
+                                          AND n.tipo_nomina = 'ajuste'
+                                          AND n.periodo_desde = ? AND n.periodo_hasta = ?
+                                          AND n.estado = 'borrador'");
             $stmt_frac->execute([$trabajador_id, $periodo_desde, $periodo_hasta]);
-            $dias_vac_calc = roundExcel(floatval($stmt_frac->fetchColumn()), 2);
-            if ($dias_vac_calc <= 0) {
-                $dias_vac_calc = roundExcel($vac_acumuladas_aj, 2);
-            }
+            $dias_vac_calc = roundExcel($vac_acumuladas_aj + floatval($stmt_frac->fetchColumn()), 2);
             $importe_vac_calc = roundExcel($dias_vac_calc * ($salario_mensual_aj / $dias_laborables), 2);
             $monto_nuevo = roundExcel($importe_vac_calc, 2);
         }
@@ -2630,10 +2698,10 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
     $stmt->execute([$trabajador_id]);
     $salario_hora = floatval($stmt->fetchColumn());
 
-    $importe_he_diurnas = roundExcel($salario_hora * $recargo_nocturno * $horas_extra, 2);
-    $importe_noct_temprana = roundExcel($tarifa_nocturnidad_temprana * $noct_temprana, 2);
-    $importe_noct_tardia = roundExcel($tarifa_nocturnidad_tardia * $noct_tardia, 2);
-    $importe_doble_turno = roundExcel($salario_hora * $recargo_nocturno * $doble_turno, 2);
+    $importe_he_diurnas = roundExcel($salario_hora * $recargo_extra_diurna * $horas_extra, 2);
+    $importe_noct_temprana = roundExcel($salario_hora * $recargo_extra_nocturna * $noct_temprana, 2);
+    $importe_noct_tardia = roundExcel($salario_hora * $recargo_extra_nocturna * $noct_tardia, 2);
+    $importe_doble_turno = roundExcel($salario_hora * $recargo_doble_turno * $doble_turno, 2);
     $total_devengado_nuevo = roundExcel($importe_he_diurnas + $importe_noct_temprana + $importe_noct_tardia + $importe_doble_turno, 2);
 
     $stmt_check = $pdo->prepare("SELECT id, total_salario_devengado FROM nominas
@@ -2871,22 +2939,10 @@ foreach ($trabajadores as &$t) {
     $t['valor_acumulado'] = $t['dias_acumulados'] * $t['valor_por_dia'];
 }
 
-// Días acumulados en el submayor de vacaciones del período (para liquidación de fracciones)
-$dias_submayor_por_trabajador = [];
-if ($tipo_nomina_activa == 'ajuste') {
-    $stmt_submayor_periodo = $pdo->prepare("SELECT trabajador_id, COALESCE(SUM(dias), 0) as total_dias
-                                            FROM submayor_vacaciones
-                                            WHERE tipo_movimiento = 'acumulacion'
-                                              AND periodo_desde = ? AND periodo_hasta = ?
-                                            GROUP BY trabajador_id");
-    $stmt_submayor_periodo->execute([$periodo_desde, $periodo_hasta]);
-    foreach ($stmt_submayor_periodo->fetchAll(PDO::FETCH_ASSOC) as $sv) {
-        $dias_submayor_por_trabajador[$sv['trabajador_id']] = floatval($sv['total_dias']);
-    }
-}
+// Días a liquidar por trabajador (liquidación final de vacaciones): es el saldo actual
+// acumulado (vacaciones_acumuladas). Al liquidarlo, el trabajador queda en cero días.
 foreach ($trabajadores as &$t) {
-    $dias_periodo = $dias_submayor_por_trabajador[$t['id']] ?? 0;
-    $t['dias_submayor_periodo'] = $dias_periodo > 0 ? $dias_periodo : floatval($t['vacaciones_acumuladas'] ?? 0);
+    $t['dias_submayor_periodo'] = roundExcel(floatval($t['vacaciones_acumuladas'] ?? 0), 2);
 }
 unset($t);
 
@@ -2911,8 +2967,7 @@ if ($tipo_nomina_activa == 'ajuste') {
         $t['dias_acumulados'] = $t['vacaciones_acumuladas'] ?? 0;
         $t['valor_por_dia'] = $t['salario_mensual'] / $dias_laborables;
         $t['valor_acumulado'] = $t['dias_acumulados'] * $t['valor_por_dia'];
-        $dias_periodo = $dias_submayor_por_trabajador[$t['id']] ?? 0;
-        $t['dias_submayor_periodo'] = $dias_periodo > 0 ? $dias_periodo : floatval($t['vacaciones_acumuladas'] ?? 0);
+        $t['dias_submayor_periodo'] = roundExcel(floatval($t['vacaciones_acumuladas'] ?? 0), 2);
     }
     unset($t);
 }
@@ -4804,16 +4859,6 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
                                             if (detalle) detalle.style.display = 'none';
                                             var periodo = (pd || '').substring(0, 7);
                                             location.href = location.pathname + '?periodo=' + encodeURIComponent(periodo) + '&tipo=' + encodeURIComponent(tp);
-            } else if (esExtraominaria) {
-                htmlBody += `
-                    <tr style="background-color:#fff3cd; font-weight:bold;">
-                        <td colspan="12" style="text-align:right; border:0.5pt solid #000;"><b>SUBTOTAL PÁGINA ${numPag}:</b></td>
-                        <td style="text-align:right; border:0.5pt solid #000;">$${pag.subtotal.devengado.toFixed(2)}</td>
-                        <td style="text-align:right; border:0.5pt solid #000;">$${pag.subtotal.impS.toFixed(2)}</td>
-                        <td style="text-align:right; border:0.5pt solid #000;">$${pag.subtotal.retenciones.toFixed(2)}</td>
-                        <td style="text-align:right; border:0.5pt solid #000; color:#b45309;"><b>$${pag.subtotal.pagado.toFixed(2)}</b></td>
-                        <td style="border:0.5pt solid #000;">-</td>
-                    </tr>`;
             } else {
                                             location.reload();
                                         }
@@ -5025,6 +5070,8 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
             <th class="col-salario-basico" rowspan="2">Monto Bono</th>
             
         <?php elseif ($tipo_nomina_activa == 'vacaciones'): ?>
+            <th class="col-salario-basico" rowspan="2">Salario<br>Básico</th>
+            <th class="col-valor-hora" rowspan="2">Tarf.</th>
             <th class="col-horas" rowspan="2">Días Tomados</th>
             <th class="col-horas" rowspan="2">Días Restantes</th>
 
@@ -5145,7 +5192,7 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
 		$num_escala = $n['escala_numero'] ?? '';
 		$salario = $n['salario_mensual'] ?? 0;
 		$romano = numeroRomano($num_escala);
-		echo htmlspecialchars($romano . ' - Escala Salarial Grupo ' . $romano . ' ($' . number_format($salario, 2) . ')');
+		echo htmlspecialchars($romano . ' - Escala Salarial Grupo ' . $num_escala . ' ($' . number_format($salario, 2) . ')');
 	?>"
 	data-tipo-contrato="<?php echo htmlspecialchars($n['tipo_contrato'] ?? ''); ?>"
     data-foto-ruta="<?php echo htmlspecialchars($n['foto_ruta'] ?? ''); ?>"
@@ -5182,6 +5229,8 @@ data-escala-descripcion="<?php
     data-salario-mensual="<?php echo $n['salario_mensual']; ?>"
     data-dias-acumulados="<?php echo $n['dias_acumulados'] ?? 0; ?>"
     data-dias-ya-tomados="<?php echo $n['dias_vacaciones_tomados'] ?? 0; ?>"
+    data-vacaciones-acumuladas-mes="<?php echo $n['vacaciones_acumuladas_mes'] ?? 0; ?>"
+    data-importe-vacaciones-mes="<?php echo $n['importe_vacaciones_acumulado_mes'] ?? 0; ?>"
     data-tiene-cuenta="<?php echo $tiene_cuenta ? 'si' : 'no'; ?>"
     data-tipo-descuento="<?php echo htmlspecialchars($tipo_descuento_n); ?>"
     data-no-acumular-vacaciones="<?php echo intval($n['no_acumular_vacaciones'] ?? 0); ?>"
@@ -5276,6 +5325,8 @@ data-escala-descripcion="<?php
         </td>
 
     <?php elseif ($tipo_nomina_activa == 'vacaciones'): ?>
+        <td class="text-end col-salario-basico salario-basico">$<?php echo number_format($n['salario_mensual'] ?? 0, 2); ?></td>
+        <td class="text-end col-valor-hora salario-hora-real">$<?php echo number_format($n['salario_hora_ordinaria'] ?? 0, 2); ?></td>
         <td class="text-center col-horas">
             <?php if (!$contabilizada): ?>
                 <input type="text" class="edit-input edit-dias" value="<?php echo number_format($n['dias_vacaciones_tomados'] ?? 0, 2); ?>">
@@ -5477,6 +5528,8 @@ if ($existe_nomina) {
             <td class="text-end"></td><td class="text-end"></td><td class="text-end"></td>
             
             <td class="text-end fw-bold">TOTALES:</td> 
+            <td class="text-end total-salario-basico-footer">$<?php echo number_format($total_salario_basico, 2); ?></td> <!-- S. Básico -->
+            <td class="text-end">-</td> <!-- Tarf. -->
             <td class="text-center total-vacaciones-dias-footer"><?php echo number_format($total_vacaciones_dias, 2); ?></td> <!-- Días Tomados -->
             <td class="text-center">-</td> <!-- Días Restantes -->
             
@@ -6234,6 +6287,9 @@ var periodoTexto = '<?php echo date("d/m/Y", strtotime($periodo_desde)) . " al "
 var periodo = '<?php echo addslashes($periodo); ?>'; 
 var usuarioNombre = '<?php echo addslashes($user_nombre_completo); ?>';
 var recargoNocturno = parseFloat('<?php echo $recargo_nocturno; ?>') || 1.25;
+var recargoExtraDiurna = parseFloat('<?php echo $recargo_extra_diurna; ?>') || 1.50;
+var recargoExtraNocturna = parseFloat('<?php echo $recargo_extra_nocturna; ?>') || 2.00;
+var recargoDobleturno = parseFloat('<?php echo $recargo_doble_turno; ?>') || 2.00;
 var PRINT_TOOLBAR_HTML = '<style>#auto-hide-toolbar{transition:transform 0.3s ease}#auto-hide-toolbar.hidden{transform:translateY(-100%)}</style><div id="auto-hide-toolbar" class="no-print" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:0.625rem 1.25rem;display:flex;justify-content:center;align-items:center;gap:0.875rem;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;border-bottom:0.1875rem solid #1e40af;transition:transform 0.3s ease;">'
         + '<span style="color:#e0e7ff;font-weight:bold;font-size:0.8125rem;letter-spacing:0.0312rem;">🖨️ VISTA PREVIA DE IMPRESIÓN</span>'
         + '<button onclick="window.print()" style="padding:0.5625rem 1.375rem;background:#22c55e;color:#fff;border:none;border-radius:0.375rem;font-size:0.8125rem;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;box-shadow:0 0.125rem 0.375rem rgba(0,0,0,0.2);transition:all 0.2s;" onmouseover="this.style.background=\'#16a34a\';this.style.transform=\'translateY(-0.0625rem)\';" onmouseout="this.style.background=\'#22c55e\';this.style.transform=\'translateY(0)\';">'
@@ -7203,9 +7259,11 @@ function mapRowToTrabajador($row) {
     var diasTomadosVal = 0;
     if (tipoNomina === 'vacaciones') {
         // Días de vacaciones pagados/rebajados en la nómina
-        diasTomadosVal = parseCell($row.find('.edit-dias')) || parseCell($row.find('.col-horas').first());
+        var diasParseados = parseCell($row.find('.edit-dias')) || parseCell($row.find('.col-horas').first());
         // Horas equivalentes = Días × jornada diaria (configurable)
-        horasVal = Math.roundExcel(diasTomadosVal * (horasJornadaDiaria || 8), 2);
+        horasVal = Math.roundExcel(diasParseados * (horasJornadaDiaria || 8), 2);
+        // Días = Horas / Jornada diaria
+        diasTomadosVal = Math.roundExcel(horasVal / (horasJornadaDiaria || 8), 2);
     } else {
         horasVal = parseCell($row.find('.edit-horas')) || parseCell($row.find('.col-horas'));
     }
@@ -7266,19 +7324,23 @@ function mapRowToTrabajador($row) {
     // 10. Vacaciones y Feriados
     var vacDias = 0;
     if (tipoNomina === 'vacaciones') {
-        // Saldo restante de vacaciones en la BD (tabla trabajadores.vacaciones_acumuladas)
-        vacDias = parseNumber($row.data('dias-acumulados')) || 0;
+        // Saldo restante del submayor de vacaciones (días que quedan tras descontar los ya tomados)
+        var diasAcumuladosRow = parseNumber($row.data('dias-acumulados')) || 0;
+        var diasYaTomadosRow = parseNumber($row.data('dias-ya-tomados')) || 0;
+        vacDias = parseCell($row.find('.dias-restantes')) || Math.max(0, diasAcumuladosRow - diasYaTomadosRow);
     } else {
         vacDias = parseCell($row.find('.vacaciones-dias'));
     }
-    var tiempoImp = parseCell($row.find('.vacations-importe'));
+    var tiempoImp = (tipoNomina === 'vacaciones')
+        ? Math.roundExcel(vacDias * (salarioMensual / diasLaborables) * 100) / 100
+        : parseCell($row.find('.vacations-importe'));
     var feriadoImp = parseCell($row.find('.feriados-importe'));
 
     var noctT = 0, noctD = 0, dt = 0, importeHE = 0, importeNtT = 0, importeNtD = 0, importeDT = 0;
     if (tipoNomina === 'extraordinaria') {
-        noctT = parseCell($row.find('.edit-noct-temprana')) || 0;
-        noctD = parseCell($row.find('.edit-noct-tardia')) || 0;
-        dt   = parseCell($row.find('.edit-doble-turno')) || 0;
+        noctT = parseCell($row.find('.edit-noct-temprana')) || parseCell($row.find('.col-noct-t')) || 0;
+        noctD = parseCell($row.find('.edit-noct-tardia')) || parseCell($row.find('.col-noct-d')) || 0;
+        dt   = parseCell($row.find('.edit-doble-turno')) || parseCell($row.find('.col-dt')) || 0;
         importeNtT = parseCell($row.find('.col-noct-t-imp')) || 0;
         importeNtD = parseCell($row.find('.col-noct-d-imp')) || 0;
         importeDT  = parseCell($row.find('.col-dt-imp')) || 0;
@@ -7303,6 +7365,7 @@ function mapRowToTrabajador($row) {
         tipoContrato: $row.data('tipo-contrato') || '',
         tarifaSal: tarifaSal,
         horas: horasVal,
+        diasTomados: diasTomadosVal,
         aCobrar: aCobrar,
         bono: bono,
         concepto: concepto,
@@ -7315,6 +7378,8 @@ function mapRowToTrabajador($row) {
         tiempoImp: tiempoImp,
         feriadoImp: feriadoImp,
         vacAcumDias: parseNumber($row.data('dias-acumulados')) || 0,
+        vacAcumMes: parseNumber($row.data('vacaciones-acumuladas-mes')) || 0,
+        importeVacMes: parseNumber($row.data('importe-vacaciones-mes')) || 0,
         salarioMensual: salarioMensual,
         noctT: noctT,
         noctD: noctD,
@@ -8113,7 +8178,8 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
     let paginasHtmlArray = [];
     let totalGeneralCompleto = {
         aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0,
-        pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0
+        pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0,
+        horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0
     };
     
     // Sumamos los totales generales
@@ -8128,11 +8194,20 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
         totalGeneralCompleto.vacDias += t.vacDias || 0;
         totalGeneralCompleto.tiempoImp += t.tiempoImp || 0;
         totalGeneralCompleto.salarioMensual += t.salarioMensual || 0;
+        totalGeneralCompleto.horas += t.horas || 0;
+        totalGeneralCompleto.importeHE += t.importeHE || 0;
+        totalGeneralCompleto.noctT += t.noctT || 0;
+        totalGeneralCompleto.importeNtT += t.importeNtT || 0;
+        totalGeneralCompleto.noctD += t.noctD || 0;
+        totalGeneralCompleto.importeNtD += t.importeNtD || 0;
+        totalGeneralCompleto.dt += t.dt || 0;
+        totalGeneralCompleto.importeDT += t.importeDT || 0;
     });
 
     const esBono = (tipoNomina === 'bono');
     const esAjuste = (tipoNomina === 'ajuste');
     const esExtraominaria = (tipoNomina === 'extraordinaria');
+    const esVacaciones = (tipoNomina === 'vacaciones');
     const mostrarConcepto = (esBono || esAjuste);
 
     if (alcance === 'general') {
@@ -8143,7 +8218,8 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
             const trabajadoresPagina = trabajadores.slice(i, i + FILAS_POR_PAGINA);
             let subtotalPagina = {
                 aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0,
-                pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0
+                pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0,
+                horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0
             };
             
             let cuerpoHtml = '';
@@ -8170,16 +8246,18 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                             <td class="text-left">${escapeHtml(t.nombre)}</td>
                             <td class="text-center">${escapeHtml(t.categoriaCodigo)}</td>
                             <td class="text-right">$${(t.tarifaSal || 0).toFixed(2)}</td>
+                            <td class="text-right">${(t.horas || 0).toFixed(0)}</td>
                             <td class="text-right">$${(t.importeHE || 0).toFixed(2)}</td>
-                            <td class="text-right">${(t.noctT || 0).toFixed(2)}</td>
+                            <td class="text-right">${(t.noctT || 0).toFixed(0)}</td>
                             <td class="text-right">$${(t.importeNtT || 0).toFixed(2)}</td>
-                            <td class="text-right">${(t.noctD || 0).toFixed(2)}</td>
+                            <td class="text-right">${(t.noctD || 0).toFixed(0)}</td>
                             <td class="text-right">$${(t.importeNtD || 0).toFixed(2)}</td>
-                            <td class="text-right">${(t.dt || 0).toFixed(2)}</td>
+                            <td class="text-right">${(t.dt || 0).toFixed(0)}</td>
                             <td class="text-right">$${(t.importeDT || 0).toFixed(2)}</td>
                             <td class="text-right">$${(t.devengado || 0).toFixed(2)}</td>
-                            <td class="text-right">$${(t.impS || 0).toFixed(2)}</td>
-                            <td class="text-right">$${(t.retenciones || 0).toFixed(2)}</td>
+                            <td class="text-right">${(t.impS || 0).toFixed(2)}</td>
+                            <td class="text-right">${(t.descuentos || 0).toFixed(2)}</td>
+                            <td class="text-right">${(t.retenciones || 0).toFixed(2)}</td>
                             <td class="text-right"><strong>$${(t.pagado || 0).toFixed(2)}</strong></td>
                             <td class="text-center"></td>
                         </tr>`;
@@ -8191,11 +8269,12 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                         <td class="text-center">${escapeHtml(t.categoriaCodigo)}</td>
                         <td class="text-right">$${(t.salarioMensual || 0).toFixed(2)}</td>
                         <td class="text-right">$${(t.tarifaSal || 0).toFixed(2)}</td>
-                        <td class="text-right">${t.horas || 0}</td>
+                        <td class="text-right">${esVacaciones ? (t.diasTomados || 0).toFixed(2) : (t.horas || 0)}</td>
                         <td class="text-right">$${(t.aCobrar || 0).toFixed(2)}</td>
-                        <td class="text-right">$${(t.bono || 0).toFixed(2)}</td>
-                        <td class="text-right">$${(t.devengado || 0).toFixed(2)}</td>
+                        ${esVacaciones ? '' : `<td class="text-right">$${(t.bono || 0).toFixed(2)}</td>`}
+                        ${esVacaciones ? '' : `<td class="text-right">$${(t.devengado || 0).toFixed(2)}</td>`}
                         <td class="text-right">$${(t.impS || 0).toFixed(2)}</td>
+                        <td class="text-right">$${(t.descuentos || 0).toFixed(2)}</td>
                         <td class="text-right">$${(t.retenciones || 0).toFixed(2)}</td>
                         <td class="text-right"><strong>$${(t.pagado || 0).toFixed(2)}</strong></td>
                         <td class="text-right">${(t.vacDias || 0).toFixed(2)}</td>
@@ -8203,7 +8282,7 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                         <td class="text-center"></td>
                     </tr>`;
                     if (mostrarConcepto) {
-                        cuerpoHtml += `<tr class="concepto-fila"><td colspan="16" class="text-left">Observación: ${escapeHtml(t.concepto)}</td></tr>`;
+                        cuerpoHtml += `<tr class="concepto-fila"><td colspan="17" class="text-left">Observación: ${escapeHtml(t.concepto)}</td></tr>`;
                     }
                 }
                 
@@ -8217,6 +8296,14 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                 subtotalPagina.vacDias += t.vacDias || 0;
                 subtotalPagina.tiempoImp += t.tiempoImp || 0;
                 subtotalPagina.salarioMensual += t.salarioMensual || 0;
+                subtotalPagina.horas += t.horas || 0;
+                subtotalPagina.importeHE += t.importeHE || 0;
+                subtotalPagina.noctT += t.noctT || 0;
+                subtotalPagina.importeNtT += t.importeNtT || 0;
+                subtotalPagina.noctD += t.noctD || 0;
+                subtotalPagina.importeNtD += t.importeNtD || 0;
+                subtotalPagina.dt += t.dt || 0;
+                subtotalPagina.importeDT += t.importeDT || 0;
             });
             
             if (esBono) {
@@ -8242,32 +8329,19 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                     </tr>`;
                 }
             } else if (esExtraominaria) {
-                cuerpoHtml += `<tr class="totales-pagina">
-                    <td colspan="12" class="text-right"><strong>SUBTOTAL PÁGINA ${numeroPagina}</strong></td>
-                    <td class="text-right"><strong>$${(subtotalPagina.devengado || 0).toFixed(2)}</strong></td>
-                    <td class="text-right"><strong>$${(subtotalPagina.impS || 0).toFixed(2)}</strong></td>
-                    <td class="text-right"><strong>$${(subtotalPagina.retenciones || 0).toFixed(2)}</strong></td>
-                    <td class="text-right"><strong>$${(subtotalPagina.pagado || 0).toFixed(2)}</strong></td>
-                    <td class="text-center">-</td>
-                </tr>`;
+                cuerpoHtml += filaTotalExtraordinaria('SUBTOTAL PÁGINA ' + numeroPagina, subtotalPagina, { trClass: 'totales-pagina', cellClass: 'text-right', strong: true });
                 
                 if (numeroPagina === totalPaginas) {
-                    cuerpoHtml += `<tr class="totales-nomina">
-                        <td colspan="12" class="text-right"><strong>TOTAL NOMINA</strong></td>
-                        <td class="text-right"><strong>$${(totalGeneralCompleto.devengado || 0).toFixed(2)}</strong></td>
-                        <td class="text-right"><strong>$${(totalGeneralCompleto.impS || 0).toFixed(2)}</strong></td>
-                        <td class="text-right"><strong>$${(totalGeneralCompleto.retenciones || 0).toFixed(2)}</strong></td>
-                        <td class="text-right"><strong>$${(totalGeneralCompleto.pagado || 0).toFixed(2)}</strong></td>
-                        <td class="text-center">-</td>
-                    </tr>`;
+                    cuerpoHtml += filaTotalExtraordinaria('TOTAL NOMINA', totalGeneralCompleto, { trClass: 'totales-nomina', cellClass: 'text-right', strong: true });
                 }
             } else {
                 cuerpoHtml += `<tr class="totales-pagina">
                     <td colspan="7" class="text-right"><strong>SUBTOTAL PÁGINA ${numeroPagina}</strong></td>
                     <td class="text-right"><strong>$${subtotalPagina.aCobrar.toFixed(2)}</strong></td>
-                    <td class="text-right"><strong>$${subtotalPagina.bono.toFixed(2)}</strong></td>
-                    <td class="text-right"><strong>$${subtotalPagina.devengado.toFixed(2)}</strong></td>
+                    ${esVacaciones ? '' : `<td class="text-right"><strong>$${subtotalPagina.bono.toFixed(2)}</strong></td>`}
+                    ${esVacaciones ? '' : `<td class="text-right"><strong>$${subtotalPagina.devengado.toFixed(2)}</strong></td>`}
                     <td class="text-right"><strong>$${subtotalPagina.impS.toFixed(2)}</strong></td>
+                    <td class="text-right"><strong>$${subtotalPagina.descuentos.toFixed(2)}</strong></td>
                     <td class="text-right"><strong>$${subtotalPagina.retenciones.toFixed(2)}</strong></td>
                     <td class="text-right"><strong>$${subtotalPagina.pagado.toFixed(2)}</strong></td>
                     <td class="text-right"><strong>${subtotalPagina.vacDias.toFixed(2)}</strong></td>
@@ -8279,9 +8353,10 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                     cuerpoHtml += `<tr class="totales-nomina">
                         <td colspan="7" class="text-right"><strong>TOTAL NOMINA</strong></td>
                         <td class="text-right"><strong>$${totalGeneralCompleto.aCobrar.toFixed(2)}</strong></td>
-                        <td class="text-right"><strong>$${totalGeneralCompleto.bono.toFixed(2)}</strong></td>
-                        <td class="text-right"><strong>$${totalGeneralCompleto.devengado.toFixed(2)}</strong></td>
+                        ${esVacaciones ? '' : `<td class="text-right"><strong>$${totalGeneralCompleto.bono.toFixed(2)}</strong></td>`}
+                        ${esVacaciones ? '' : `<td class="text-right"><strong>$${totalGeneralCompleto.devengado.toFixed(2)}</strong></td>`}
                         <td class="text-right"><strong>$${totalGeneralCompleto.impS.toFixed(2)}</strong></td>
+                        <td class="text-right"><strong>$${totalGeneralCompleto.descuentos.toFixed(2)}</strong></td>
                         <td class="text-right"><strong>$${totalGeneralCompleto.retenciones.toFixed(2)}</strong></td>
                         <td class="text-right"><strong>$${totalGeneralCompleto.pagado.toFixed(2)}</strong></td>
                         <td class="text-right"><strong>${totalGeneralCompleto.vacDias.toFixed(2)}</strong></td>
@@ -8308,18 +8383,18 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
         let paginas = [];
         let paginaActual = [];
         let contadorFilas = 0;
-        let subtotalPagina = { aCobrar:0, bono:0, devengado:0, impS:0, retenciones:0, pagado:0, vacDias:0, tiempoImp:0, descuentos:0, salarioMensual:0 };
+        let subtotalPagina = { aCobrar:0, bono:0, devengado:0, impS:0, retenciones:0, pagado:0, vacDias:0, tiempoImp:0, descuentos:0, salarioMensual:0, horas:0, importeHE:0, noctT:0, importeNtT:0, noctD:0, importeNtD:0, dt:0, importeDT:0 };
 
         function cerrarPagina() {
             if (paginaActual.length === 0) return;
             paginas.push({ rows: [...paginaActual], subtotal: { ...subtotalPagina } });
             paginaActual = [];
             contadorFilas = 0;
-            subtotalPagina = { aCobrar:0, bono:0, devengado:0, impS:0, retenciones:0, pagado:0, vacDias:0, tiempoImp:0, descuentos:0, salarioMensual:0 };
+            subtotalPagina = { aCobrar:0, bono:0, devengado:0, impS:0, retenciones:0, pagado:0, vacDias:0, tiempoImp:0, descuentos:0, salarioMensual:0, horas:0, importeHE:0, noctT:0, importeNtT:0, noctD:0, importeNtD:0, dt:0, importeDT:0 };
         }
 
         Object.entries(grupos).forEach(([clave, empleados]) => {
-            let subTotalGrupo = { aCobrar:0, bono:0, devengado:0, impS:0, retenciones:0, pagado:0, vacDias:0, tiempoImp:0, descuentos:0, salarioMensual:0 };
+            let subTotalGrupo = { aCobrar:0, bono:0, devengado:0, impS:0, retenciones:0, pagado:0, vacDias:0, tiempoImp:0, descuentos:0, salarioMensual:0, horas:0, importeHE:0, noctT:0, importeNtT:0, noctD:0, importeNtD:0, dt:0, importeDT:0 };
             if (paginaActual.length > 0 && (contadorFilas + empleados.length + 2 > FILAS_POR_PAGINA)) {
                 cerrarPagina();
             }
@@ -8349,7 +8424,7 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
             
             pag.rows.forEach(row => {
                 if (row.tipo === 'grupo_header') {
-                    let totalColsSpan = esBono ? 11 : (esExtraominaria ? 17 : 16);
+                    let totalColsSpan = esBono ? 11 : (esExtraominaria ? 19 : 17);
                     cuerpoHtml += `<tr><td colspan="${totalColsSpan}" style="background:#e0e0e0; font-weight:bold;">${escapeHtml(row.titulo)}</td></tr>`;
                 } else if (row.tipo === 'registro') {
                     if (esBono) {
@@ -8374,16 +8449,18 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                             <td style="border:0.5pt solid #000;">${escapeHtml(row.data.nombre)}</td>
                             <td style="text-align:center; border:0.5pt solid #000;">${escapeHtml(row.data.categoriaCodigo)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.tarifaSal || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.horas || 0).toFixed(0)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeHE || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctT || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctT || 0).toFixed(0)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeNtT || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctD || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctD || 0).toFixed(0)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeNtD || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.dt || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.dt || 0).toFixed(0)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeDT || 0).toFixed(2)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.devengado || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.impS || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.retenciones || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.impS || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.descuentos || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.retenciones || 0).toFixed(2)}</td>
                             <td style="text-align:right; border:0.5pt solid #000; font-weight:bold;">$${(row.data.pagado || 0).toFixed(2)}</td>
                             <td style="border:0.5pt solid #000;"></td>
                         </tr>`;
@@ -8396,19 +8473,20 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                             <td style="text-align:center; border:0.5pt solid #000;">${escapeHtml(row.data.categoriaCodigo)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.salarioMensual || 0).toFixed(2)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.tarifaSal || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">${row.data.horas}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${esVacaciones ? (row.data.diasTomados || 0).toFixed(2) : row.data.horas}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.aCobrar || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.bono || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.devengado || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.impS || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.retenciones || 0).toFixed(2)}</td>
+                            ${esVacaciones ? '' : `<td style="text-align:right; border:0.5pt solid #000;">$${(row.data.bono || 0).toFixed(2)}</td>`}
+                            ${esVacaciones ? '' : `<td style="text-align:right; border:0.5pt solid #000;">$${(row.data.devengado || 0).toFixed(2)}</td>`}
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.impS || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.descuentos || 0).toFixed(2)}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${(row.data.retenciones || 0).toFixed(2)}</td>
                             <td style="text-align:right; font-weight:bold; border:0.5pt solid #000;">$${(row.data.pagado || 0).toFixed(2)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">${row.data.vacDias.toFixed(2)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.tiempoImp || 0).toFixed(2)}</td>
                             <td style="border:0.5pt solid #000;"></td>
                         </tr>`;
                         if (mostrarConcepto) {
-                            cuerpoHtml += `<tr class="concepto-fila"><td colspan="16" class="text-left">Observación: ${escapeHtml(row.data.concepto)}</td></tr>`;
+                            cuerpoHtml += `<tr class="concepto-fila"><td colspan="17" class="text-left">Observación: ${escapeHtml(row.data.concepto)}</td></tr>`;
                         }
                     }
                 } else if (row.tipo === 'grupo_subtotal') {
@@ -8424,23 +8502,16 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                                 <td>-</td>
                             </tr>`;
                     } else if (esExtraominaria) {
-                        cuerpoHtml += `
-                            <tr class="totales-subgrupo" style="font-size:7.5pt;">
-                                <td colspan="12" class="text-right"><strong>${escapeHtml(row.titulo)}:</strong></td>
-                                <td class="text-right">$${(row.data.devengado || 0).toFixed(2)}</td>
-                                <td class="text-right">$${(row.data.impS || 0).toFixed(2)}</td>
-                                <td class="text-right">$${(row.data.retenciones || 0).toFixed(2)}</td>
-                                <td class="text-right"><strong>$${(row.data.pagado || 0).toFixed(2)}</strong></td>
-                                <td>-</td>
-                            </tr>`;
-                    } else {
+                    cuerpoHtml += filaTotalExtraordinaria(escapeHtml(row.titulo) + ':', row.data, { trClass: 'totales-subgrupo', trStyle: 'font-size:7.5pt;', cellClass: 'text-right' });
+                } else {
                         cuerpoHtml += `
                             <tr class="totales-subgrupo" style="font-size:7.5pt;">
                                 <td colspan="7" class="text-right"><strong>${escapeHtml(row.titulo)}:</strong></td>
                                 <td class="text-right">$${row.data.aCobrar.toFixed(2)}</td>
-                                <td class="text-right">$${row.data.bono.toFixed(2)}</td>
-                                <td class="text-right">$${row.data.devengado.toFixed(2)}</td>
+                                ${esVacaciones ? '' : `<td class="text-right">$${row.data.bono.toFixed(2)}</td>`}
+                                ${esVacaciones ? '' : `<td class="text-right">$${row.data.devengado.toFixed(2)}</td>`}
                                 <td class="text-right">$${row.data.impS.toFixed(2)}</td>
+                                <td class="text-right">$${row.data.descuentos.toFixed(2)}</td>
                                 <td class="text-right">$${row.data.retenciones.toFixed(2)}</td>
                                 <td class="text-right"><strong>$${row.data.pagado.toFixed(2)}</strong></td>
                                 <td class="text-right">${row.data.vacDias.toFixed(2)}</td>
@@ -8474,32 +8545,19 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                     </tr>`;
                 }
             } else if (esExtraominaria) {
-                cuerpoHtml += `<tr class="totales-pagina">
-                    <td colspan="12" class="text-right"><strong>SUBTOTAL PÁGINA ${numPag}</strong></td>
-                    <td class="text-right">$${(pag.subtotal.devengado || 0).toFixed(2)}</td>
-                    <td class="text-right">$${(pag.subtotal.impS || 0).toFixed(2)}</td>
-                    <td class="text-right">$${(pag.subtotal.retenciones || 0).toFixed(2)}</td>
-                    <td class="text-right"><strong>$${(pag.subtotal.pagado || 0).toFixed(2)}</strong></td>
-                    <td>-</td>
-                </tr>`;
+                cuerpoHtml += filaTotalExtraordinaria('SUBTOTAL PÁGINA ' + numPag, pag.subtotal, { trClass: 'totales-pagina', cellClass: 'text-right' });
 
                 if (numPag === paginas.length) {
-                    cuerpoHtml += `<tr class="totales-nomina">
-                        <td colspan="12" class="text-right"><strong>TOTAL NOMINA</strong></td>
-                        <td class="text-right">$${(totalGeneralCompleto.devengado || 0).toFixed(2)}</td>
-                        <td class="text-right">$${(totalGeneralCompleto.impS || 0).toFixed(2)}</td>
-                        <td class="text-right">$${(totalGeneralCompleto.retenciones || 0).toFixed(2)}</td>
-                        <td class="text-right"><strong>$${(totalGeneralCompleto.pagado || 0).toFixed(2)}</strong></td>
-                        <td>-</td>
-                    </tr>`;
+                    cuerpoHtml += filaTotalExtraordinaria('TOTAL NOMINA', totalGeneralCompleto, { trClass: 'totales-nomina', cellClass: 'text-right' });
                 }
             } else {
                 cuerpoHtml += `<tr class="totales-pagina">
                     <td colspan="7" class="text-right"><strong>SUBTOTAL PÁGINA ${numPag}</strong></td>
                     <td class="text-right">$${pag.subtotal.aCobrar.toFixed(2)}</td>
-                    <td class="text-right">$${pag.subtotal.bono.toFixed(2)}</td>
-                    <td class="text-right">$${pag.subtotal.devengado.toFixed(2)}</td>
+                    ${esVacaciones ? '' : `<td class="text-right">$${pag.subtotal.bono.toFixed(2)}</td>`}
+                    ${esVacaciones ? '' : `<td class="text-right">$${pag.subtotal.devengado.toFixed(2)}</td>`}
                     <td class="text-right">$${pag.subtotal.impS.toFixed(2)}</td>
+                    <td class="text-right">$${pag.subtotal.descuentos.toFixed(2)}</td>
                     <td class="text-right">$${pag.subtotal.retenciones.toFixed(2)}</td>
                     <td class="text-right"><strong>$${pag.subtotal.pagado.toFixed(2)}</strong></td>
                     <td class="text-right">${pag.subtotal.vacDias.toFixed(2)}</td>
@@ -8511,9 +8569,10 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                     cuerpoHtml += `<tr class="totales-nomina">
                         <td colspan="7" class="text-right"><strong>TOTAL NOMINA</strong></td>
                         <td class="text-right">$${totalGeneralCompleto.aCobrar.toFixed(2)}</td>
-                        <td class="text-right">$${totalGeneralCompleto.bono.toFixed(2)}</td>
-                        <td class="text-right">$${totalGeneralCompleto.devengado.toFixed(2)}</td>
+                        ${esVacaciones ? '' : `<td class="text-right">$${totalGeneralCompleto.bono.toFixed(2)}</td>`}
+                        ${esVacaciones ? '' : `<td class="text-right">$${totalGeneralCompleto.devengado.toFixed(2)}</td>`}
                         <td class="text-right">$${totalGeneralCompleto.impS.toFixed(2)}</td>
+                        <td class="text-right">$${totalGeneralCompleto.descuentos.toFixed(2)}</td>
                         <td class="text-right">$${totalGeneralCompleto.retenciones.toFixed(2)}</td>
                         <td class="text-right"><strong>$${totalGeneralCompleto.pagado.toFixed(2)}</strong></td>
                         <td class="text-right">${totalGeneralCompleto.vacDias.toFixed(2)}</td>
@@ -8682,7 +8741,8 @@ function generarHtmlCompletoConPaginacion(cuerpoHtml, alcance, filtroNombre, nom
     const esBono = (tipoNomina === 'bono');
     const esAjuste = (tipoNomina === 'ajuste');
     const esExtraominaria = (tipoNomina === 'extraordinaria');
-    const colsCount = esBono ? 11 : (esExtraominaria ? 17 : 16);
+    const esVacaciones = (tipoNomina === 'vacaciones');
+    const colsCount = esBono ? 11 : (esExtraominaria ? 19 : (esVacaciones ? 16 : 17));
 
     const cabecerasTabla = esBono ? `
         <tr>
@@ -8701,16 +8761,16 @@ function generarHtmlCompletoConPaginacion(cuerpoHtml, alcance, filtroNombre, nom
     ` : esExtraominaria ? `
         <tr>
             <th style="width:3%">Código</th><th style="width:6%">CI</th><th style="width:22%">Nombre y Apellidos</th><th style="width:3%">Cat.</th><th style="width:3%">Tarf.</th>
-            <th style="width:4%">HE/D</th><th style="width:3%">Nt 7-23h</th><th style="width:4%">$/Nt 7-23h</th>
+            <th style="width:4%">HE/D</th><th style="width:4%">$HE/D</th><th style="width:3%">Nt 7-23h</th><th style="width:4%">$/Nt 7-23h</th>
             <th style="width:3%">Nt 23-7h</th><th style="width:4%">$/Nt 23-7h</th>
             <th style="width:3%">D/T</th><th style="width:4%">$/DT</th>
-            <th style="width:6%">Deven.</th><th style="width:5%">Imp. CESS</th><th style="width:5%">Ret.</th><th style="width:6%">Pagado</th><th style="width:8%">Firma</th>
+            <th style="width:6%">Deven.</th><th style="width:5%">Imp. CESS</th><th style="width:5%">Dsctos.</th><th style="width:5%">Ret. Tot.</th><th style="width:6%">Pagado</th><th style="width:8%">Firma</th>
         </tr>
     ` : `
         <tr>
-            <th>Código</th><th>CI</th><th>Nombre y Apellidos</th><th>Cat.</th><th>S. Básico</th><th style="width:3%">Tarf.</th><th>Horas</th>
-            <th>A cobrar</th><th>Bon.</th><th>Deven.</th><th>Imp. CESS.</th>
-            <th>Ret.</th><th>Pagado</th><th>Vac.</th><th>Tiem. Imp.</th><th>Firma</th>
+            <th>Código</th><th>CI</th><th>Nombre y Apellidos</th><th>Cat.</th><th>S. Básico</th><th style="width:3%">Tarf.</th><th>${esVacaciones ? 'Días' : 'Horas'}</th>
+            <th>A cobrar</th>${esVacaciones ? '' : '<th>Bon.</th>'}${esVacaciones ? '' : '<th>Deven.</th>'}<th>Imp. CESS.</th>
+            <th>Dsctos.</th><th>Ret. Tot.</th><th>Pagado</th><th>Vac.</th><th>Tiem. Imp.</th><th>Firma</th>
         </tr>
     `;
 
@@ -9691,18 +9751,22 @@ function cargarModalEdicion($row) {
         var disabledAttr = (netoActual <= 0) ? 'disabled' : '';
         
         html += '<div class="row">';
-        html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-sun me-1 text-warning"></i>HE Diurnas (+25%)</label>';
+        if (tipo === 'extraordinaria') {
+            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-sun me-1 text-warning"></i>HE Diurnas (x' + recargoExtraDiurna + ')</label>';
+        } else {
+            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-clock me-1 text-info"></i>Horas Laboradas</label>';
+        }
         html += '<input type="number" step="0.5" class="form-control edit-field" id="editHoras" value="' + horas.toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
         
         if (tipo === 'extraordinaria') {
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-moon me-1 text-info"></i>Nt 7-23h ($' + tarifaNoctTemprana.toFixed(2) + '/h)</label>';
+            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-moon me-1 text-info"></i>Nt 7-23h (x' + recargoExtraNocturna + ')</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctT" value="' + (originalValues.noctT || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
             html += '</div>';
             
             html += '<div class="row">';
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nt 23-7h ($' + tarifaNoctTardia.toFixed(2) + '/h)</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nt 23-7h (x' + recargoExtraNocturna + ')</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctD" value="' + (originalValues.noctD || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (+25%)</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (x' + recargoDobleturno + ')</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editDT" value="' + (originalValues.dt || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
             html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Descuentos</label>';
             html += '<input type="number" step="0.01" class="form-control edit-field" id="editDescuentos" value="' + descuentos.toFixed(2) + '" ' + isReadOnlyAttr + ' ' + disabledAttr + '></div>';
@@ -9814,10 +9878,22 @@ function cargarModalEdicion($row) {
             dias = parseFloat($row.find('.col-horas').first().text().replace(/,/g, '')) || 0;
         }
         var diasAcumulados = $row.data('dias-acumulados') || 0;
-        originalValues = { dias: dias };
-        html += '<div class="mb-3"><label class="form-label"><i class="fas fa-umbrella-beach me-1"></i>Días a tomar</label>';
+        var $descInput = $row.find('.edit-descuentos');
+        var descuentos = 0;
+        if ($descInput.length) {
+            descuentos = parseNumber($descInput.val());
+        } else {
+            descuentos = parseFloat($row.find('.col-otros-descuentos').text().replace(/[^\d.-]/g, '')) || 0;
+        }
+        originalValues = { dias: dias, descuentos: descuentos };
+        html += '<div class="row">';
+        html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-umbrella-beach me-1"></i>Días a tomar</label>';
         html += '<input type="number" step="0.5" class="form-control edit-field" id="editDias" value="' + dias.toFixed(2) + '" max="' + diasAcumulados + '" ' + isReadOnlyAttr + '>';
         html += '<small class="text-info d-block mt-1">Días acumulados disponibles: <span id="disponiblesDisplay">' + diasAcumulados + '</span></small></div>';
+        html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1 text-danger"></i>Retenciones (Descuentos)</label>';
+        html += '<input type="number" step="0.01" min="0" class="form-control edit-field" id="editDescuentos" value="' + descuentos.toFixed(2) + '" ' + isReadOnlyAttr + '>';
+        html += '<small class="text-white-50">Se restan del neto a pagar (además de CESS e impuesto)</small></div>';
+        html += '</div>';
         html += '<div class="card mt-3 bg-dark text-success" style="border-color: rgba(255,255,255,0.05);"><div class="card-body"><h6 class="card-title" style="font-size:0.85rem;">Previsualización</h6>';
         html += '<div class="row text-center mt-2"><div class="col-6"><small class="text-white-50">Importe vacaciones</small><h5 id="previewDevengado" class="text-info mt-1">$0.00</h5></div>';
         html += '<div class="col-6"><small class="text-white-50">Neto a Pagar</small><h5 id="previewNeto" class="text-success mt-1">$0.00</h5></div></div></div></div>';
@@ -9916,7 +9992,7 @@ function cargarModalEdicion($row) {
         });
         recalcularPreviewBono();
     } else if (tipo === 'vacaciones') {
-        $('#editDias').off('input').on('input', function() {
+        $('#editDias, #editDescuentos').off('input').on('input', function() {
             recalcularPreviewVacaciones();
         });
         recalcularPreviewVacaciones();
@@ -10344,11 +10420,11 @@ function recalcularPreviewAuto() {
         var descuentos = parseFloat($('#editDescuentos').val()) || 0;
         var tipoDescuento = $('#tablaNominas tbody tr[data-id="' + window.editCurrentRowId + '"]').data('tipo-descuento') || 'total_rangos';
         
-        var importeHE = (salarioHora * recargoNocturno) * horas;
-        var importeNtT = tarifaNoctTemprana * noctT;
-        var importeNtD = tarifaNoctTardia * noctD;
-        var importeDT = (salarioHora * recargoNocturno) * dt;
-        
+        var importeHE = (salarioHora * recargoExtraDiurna) * horas;
+        var importeNtT = (salarioHora * recargoExtraNocturna) * noctT;
+        var importeNtD = (salarioHora * recargoExtraNocturna) * noctD;
+        var importeDT = (salarioHora * recargoDobleturno) * dt;
+
         var totalDevengado = importeHE + importeNtT + importeNtD + importeDT;
         
         var contribucion = 0, impuesto = 0;
@@ -10447,7 +10523,14 @@ function recalcularPreviewVacaciones() {
         contribucion = importe * 0.05;
         impuesto = calcularImpuestoProgresivo(importe);
     }
-    var neto = importe - (contribucion + impuesto);
+    var netoBase = importe - (contribucion + impuesto);
+    if (netoBase < 0) netoBase = 0;
+    var descuentos = Math.max(0, parseFloat($('#editDescuentos').val()) || 0);
+    if (descuentos > netoBase) {
+        $('#editDescuentos').val(netoBase.toFixed(2));
+        descuentos = netoBase;
+    }
+    var neto = netoBase - descuentos;
     if (neto < 0) neto = 0;
     $('#previewDevengado').text('$' + importe.toFixed(2));
     $('#previewNeto').text('$' + neto.toFixed(2));
@@ -10848,7 +10931,7 @@ $('#btnModalActualizar').on('click', function() {
         // ✅ VALIDACIÓN: Horas en Cero
         // ==========================================
         var nombreCampo = getNombreCampo(tipoNomina);
-        if (horas === 0 || horas < 0.5) {
+        if (tipoNomina === 'automatica' && (horas === 0 || horas < 0.5)) {
             Swal.fire({
                 title: `<i class="fas fa-exclamation-triangle text-warning me-2"></i> ${nombreCampo.charAt(0).toUpperCase() + nombreCampo.slice(1)} en Cero`,
                 html: `
@@ -10890,6 +10973,39 @@ $('#btnModalActualizar').on('click', function() {
             var noctT = Math.max(0, parseFloat($('#editNoctT').val()) || 0);
             var noctD = Math.max(0, parseFloat($('#editNoctD').val()) || 0);
             var dt = Math.max(0, parseFloat($('#editDT').val()) || 0);
+            
+            // ==========================================
+            // ✅ VALIDACIÓN EXTRAORDINARIA: TODO EN CERO
+            // ==========================================
+            if (horas === 0 && noctT === 0 && noctD === 0 && dt === 0 && descuentos === 0) {
+                Swal.fire({
+                    title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i> Nómina Extraordinaria en Cero',
+                    html: `
+                        <div class="text-center">
+                            <i class="fas fa-clock fa-3x mb-3" style="color: #f59e0b;"></i>
+                            <p>El trabajador <strong>${escapeHtml(nombre)}</strong> tiene <span class="text-danger fw-bold">todos los valores en cero</span>.</p>
+                            <p class="text-muted small">No se puede guardar un trabajador sin al menos un valor (HE Diurnas, Nt 7-23h, Nt 23-7h, Doble Turno o Descuentos).</p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    confirmButtonText: '<i class="fas fa-pen me-2"></i>Asignar valores',
+                    showCancelButton: true,
+                    cancelButtonText: '<i class="fas fa-trash-alt me-2"></i>Eliminar',
+                    cancelButtonColor: '#ef4444',
+                    background: '#1a1a2e',
+                    color: '#ffffff'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        setTimeout(function() {
+                            $('#editHoras').focus().select();
+                        }, 200);
+                    } else if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+                        eliminarTrabajadorPorId(id, nombre);
+                    }
+                });
+                return;
+            }
+            
             datos.nocturnidad_temprana = noctT;
             datos.nocturnidad_tardia = noctD;
             datos.doble_turno = dt;
@@ -10901,6 +11017,7 @@ $('#btnModalActualizar').on('click', function() {
 
     } else if (tipoNomina === 'vacaciones') {
         dias = Math.max(0, parseFloat($('#editDias').val()) || 0);
+        descuentos = Math.max(0, parseFloat($('#editDescuentos').val()) || 0);
         
         // ==========================================
         // ✅ VALIDACIÓN: Días en Cero
@@ -10935,6 +11052,7 @@ $('#btnModalActualizar').on('click', function() {
         }
         
         datos.dias_vacaciones = dias;
+        datos.descuentos = descuentos;
         console.log('Datos a enviar (VACACIONES):', datos);
 
     } else if (tipoNomina === 'ajuste') {
@@ -11068,6 +11186,7 @@ $('#btnModalActualizar').on('click', function() {
                         $row.find('.edit-horas').trigger('input');
                     } else if (tipoNomina === 'vacaciones') {
                         $row.find('.edit-dias').val(dias);
+                        $row.find('.edit-descuentos').val(descuentos);
                         $row.find('.edit-dias').trigger('input');
                     } else if (tipoNomina === 'ajuste') {
                         $row.find('.edit-bono').val(monto);
@@ -11181,6 +11300,7 @@ $(document).on('closed.bs.alert', '#modalEdicionBody .alert', function () {
             enfocarCampoEdicion();
         } else if (tipoNomina === 'vacaciones') {
             $('#editDias').val(original.dias);
+            $('#editDescuentos').val((parseFloat(original.descuentos) || 0).toFixed(2));
             recalcularPreviewVacaciones();
             enfocarCampoEdicion();
         } else if (tipoNomina === 'ajuste') {
@@ -11461,7 +11581,9 @@ function ajustarColumnasPorTipoDescuento(apiInstance) {
                 }
             } else if (tipoNomina === 'vacaciones') {
                 var diasInput = fila.find('.edit-dias');
+                var descuentosInput = fila.find('.edit-descuentos');
                 datos.dias_vacaciones = diasInput.length ? parseNumber(diasInput.val()) : 0;
+                datos.descuentos = descuentosInput.length ? parseNumber(descuentosInput.val()) : 0;
             } else {
                 procesadas++;
                 exitosas++;
@@ -11554,7 +11676,14 @@ if ($tabla.length && $tabla.find('tbody tr').length > 0) {
                         {
                             extend: 'pdf',
                             text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                            className: 'btn-win btn-sm'
+                            className: 'btn-win btn-sm',
+                            action: function(e, dt, node, config) {
+                                if (tipoNomina === 'extraordinaria') {
+                                    exportarPdfOficial(obtenerTrabajadoresFiltrados(dt), 'general', '');
+                                    return;
+                                }
+                                $.fn.dataTable.ext.buttons.pdf.action.call(this, e, dt, node, config);
+                            }
                         },
                         {
                             extend: 'print',
@@ -11667,49 +11796,8 @@ if ($tabla.length && $tabla.find('tbody tr').length > 0) {
 					text: '<i class="fas fa-file-pdf text-danger me-2"></i> PDF',
 					className: 'btn-win btn-sm',
 					action: function(e, dt, node, config) {
-						// Obtener los trabajadores filtrados actualmente
-						var trabajadoresFiltrados = [];
-						var filas = dt.rows({ search: 'applied' }).nodes();
-						
-						$(filas).each(function() {
-							const $row = $(this);
-							const catCod = $row.data('categoria-codigo') || '';
-							const catNom = $row.data('categoria-nombre') || '';
-							const categoriaFull = (catCod && catNom) ? (catCod + ' - ' + catNom) : (catCod || catNom || '-');
-							
-							var trabajador = {
-								codigo: $row.find('td:eq(0)').text().trim(),
-								ci: $row.find('td:eq(1)').text().trim(),
-								nombre: $row.find('td:eq(2)').text().trim(),
-								area: $row.data('area') || $row.find('td:eq(3)').text().trim(),
-								cargoId: $row.data('cargo-id') || 0,
-								cargo: $row.data('cargo') || $row.find('td:eq(4)').text().trim(),
-								centroCosto: $row.data('centro-costo') || $row.find('td:eq(5)').text().trim(),
-								centroCostoCodigo: parseInt($row.data('centro-costo-codigo')) || 9999,
-								categoria: categoriaFull,
-								categoriaCodigo: catCod || '-',
-								escala: $row.data('escala-romana') || '-',
-								escalaNumero: $row.data('escala-numero') || 0,
-								escalaDescripcion: $row.data('escala-descripcion') || '-',
-								tipoContrato: $row.data('tipo-contrato') || '',
-								tarifaSal: parseFloat($row.data('salario-hora')) || 0,
-								horas: parseFloat($row.find('.col-horas').text().replace(/,/g, '')) || 0,
-								aCobrar: parseFloat($row.find('.salario-laboral').text().replace('$', '').replace(/,/g, '')) || 0,
-								bono: parseFloat($row.find('.col-otros-pagos').text().replace('$', '').replace(/,/g, '')) || 0,
-								devengado: parseFloat($row.find('.total-devengado').text().replace('$', '').replace(/,/g, '')) || 0,
-								impS: parseFloat($row.find('.contribucion').text().replace('$', '').replace(/,/g, '')) || 0,
-								retenciones: parseFloat($row.find('.total-deducciones').text().replace('$', '').replace(/,/g, '')) || 0,
-								descuentos: (function() {
-									var $input = $row.find('.edit-descuentos');
-									return $input.length ? (parseFloat($input.val()) || 0) : (parseFloat($row.find('.col-otros-descuentos').text().replace('$', '').replace(/,/g, '').trim()) || 0);
-								})(),
-								pagado: parseFloat($row.find('.neto').text().replace('$', '').replace(/,/g, '')) || 0,
-								vacDias: parseFloat($row.find('.vacaciones-dias').text().replace(/,/g, '')) || 0,
-								tiempoImp: parseFloat($row.find('.vacations-importe').text().replace('$', '').replace(/,/g, '')) || 0,
-								firma: ''
-							};
-							trabajadoresFiltrados.push(trabajador);
-						});
+						// Obtener los trabajadores filtrados actualmente (con todos los campos de extraordinaria)
+						var trabajadoresFiltrados = obtenerTrabajadoresFiltrados(dt);
 						
 						if (trabajadoresFiltrados.length === 0) {
 							Swal.fire({
@@ -11879,6 +11967,22 @@ customize: function(win) {
     var fechaHora12h = `${day}/${month}/${year} - ${hoursStr}:${minutesStr}:${secondsStr} ${ampm}`;
 
     var $table = $(win.document.body).find('table');
+
+    // 🔽 EXTRAORDINARIA: Inyectar columna $HE/D (importe) justo después de HE/D (horas)
+    if (tipoNomina === 'extraordinaria') {
+        $table.find('tbody tr').each(function() {
+            var $fila = $(this);
+            var $celdaHoras = $fila.find('td').eq(9);
+            var $salDev = $fila.find('td').eq(16);
+            var $dtImp = $fila.find('td').eq(15);
+            if ($celdaHoras.length && $salDev.length && $dtImp.length) {
+                var _pHE = function(txt) { return parseFloat(String(txt).replace(/[^0-9.\-]/g, '')) || 0; };
+                var importeHE = _pHE($salDev.text()) - _pHE($dtImp.text());
+                $celdaHoras.after('<td class="text-right">$' + importeHE.toFixed(2) + '</td>');
+            }
+        });
+    }
+
     var totalColumns = $table.find('tbody tr:first td').length;
 
     // 🔽 NUEVO: Quitar el título <h1> que agrega el plugin (la cabecera ya trae el título del reporte)
@@ -12180,6 +12284,7 @@ customize: function(win) {
                 <th rowspan="2">Escala</th>
                 <th rowspan="2" class="text-right">S. Básico</th>
                 <th rowspan="2" class="text-right">HE/D</th>
+                <th rowspan="2" class="text-right">$/HE/D</th>
                 <th rowspan="2" class="text-right">Nt 7-23h</th>
                 <th rowspan="2" class="text-right">$/Nt 7-23h</th>
                 <th rowspan="2" class="text-right">Nt 23-7h</th>
@@ -12228,6 +12333,8 @@ customize: function(win) {
                 <th rowspan="2">Cargo</th>
                 <th rowspan="2">CC</th>
                 <th rowspan="2">Cat.</th>
+                <th rowspan="2" class="text-right">S. Básico</th>
+                <th rowspan="2" class="text-right">Tarf.</th>
                 <th rowspan="2" class="text-right">Días Tomados</th>
                 <th rowspan="2" class="text-right">Días Restantes</th>
                 <th rowspan="2" class="text-right">Total Dev.</th>
@@ -12531,8 +12638,8 @@ function generarContenidoCSV(trabajadores) {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('MONTO AJUSTE'), esc('OTROS PAGOS'), esc('VAC. DÍAS'), esc('VAC. IMPORTE'), esc('DEVENGADO'), esc('CESS'), esc('RET.'), esc('NETO')];
     } else if (esExtraominaria) {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('CAT.'), esc('TARF.'),
-                  esc('HE/D'), esc('NT 7-23H'), esc('$/NT 7-23H'), esc('NT 23-7H'), esc('$/NT 23-7H'),
-                  esc('DT'), esc('$/DT'), esc('DEVENGADO'), esc('CESS'), esc('RET.'), esc('PAGADO')];
+                  esc('HE/D'), esc('$/HE/D'), esc('NT 7-23H'), esc('$/NT 7-23H'), esc('NT 23-7H'), esc('$/NT 23-7H'),
+                  esc('DT'), esc('$/DT'), esc('DEVENGADO'), esc('CESS'), esc('DSCTOS.'), esc('RET. TOT.'), esc('PAGADO')];
     } else {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('DEVENGADO'), esc('DEDUCC.'), esc('NETO')];
     }
@@ -12565,12 +12672,13 @@ function generarContenidoCSV(trabajadores) {
             row = [
                 esc(t.codigo), esc(t.ci), esc(t.nombre),
                 esc(t.categoriaCodigo), esc((t.tarifaSal || 0).toFixed(2)),
-                esc((t.importeHE || 0).toFixed(2)),
-                esc((t.noctT || 0).toFixed(2)), esc('$' + (t.importeNtT || 0).toFixed(2)),
-                esc((t.noctD || 0).toFixed(2)), esc('$' + (t.importeNtD || 0).toFixed(2)),
-                esc((t.dt || 0).toFixed(2)), esc('$' + (t.importeDT || 0).toFixed(2)),
+                esc((t.horas || 0).toFixed(0)), esc('$' + (t.importeHE || 0).toFixed(2)),
+                esc((t.noctT || 0).toFixed(0)), esc('$' + (t.importeNtT || 0).toFixed(2)),
+                esc((t.noctD || 0).toFixed(0)), esc('$' + (t.importeNtD || 0).toFixed(2)),
+                esc((t.dt || 0).toFixed(0)), esc('$' + (t.importeDT || 0).toFixed(2)),
                 esc('$' + (t.devengado || 0).toFixed(2)),
                 esc('$' + (t.impS || 0).toFixed(2)),
+                esc('$' + (t.descuentos || 0).toFixed(2)),
                 esc('$' + (t.retenciones || 0).toFixed(2)),
                 esc('$' + (t.pagado || 0).toFixed(2))
             ];
@@ -12588,6 +12696,10 @@ function generarContenidoCSV(trabajadores) {
             lines.push(esc('Observación: ' + (t.concepto || 'Sin concepto')));
         }
     });
+
+    if (observacionesCierreGlobal) {
+        lines.push(esc('Observaciones de Cierre: ' + observacionesCierreGlobal));
+    }
 
     return '\uFEFF' + lines.join('\r\n');
 }
@@ -13785,10 +13897,10 @@ function recalcularFilaAutomatica(fila) {
     if (tipoNominaActual === 'automatica') {
         importeFeriados = salarioDiario * diasFeriados * 2;
     } else {
-        importeHE = (salarioHora * recargoNocturno) * horas;
-        importeNtT = tarifaNoctTemprana * noctT;
-        importeNtD = tarifaNoctTardia * noctD;
-        importeDT = (salarioHora * recargoNocturno) * dt;
+        importeHE = (salarioHora * recargoExtraDiurna) * horas;
+        importeNtT = (salarioHora * recargoExtraNocturna) * noctT;
+        importeNtD = (salarioHora * recargoExtraNocturna) * noctD;
+        importeDT = (salarioHora * recargoDobleturno) * dt;
     }
 
     var factor909 = 0.0909; 
@@ -13988,6 +14100,45 @@ $(document).on('click', '.guardar-fila', function() {
     var id = fila.data('id');
     
     // ==========================================
+    // ✅ VALIDACIÓN EXTRAORDINARIA: TODO EN CERO
+    // ==========================================
+    if (tipoNomina === 'extraordinaria') {
+        var hrsExt = parseNumber(fila.find('.edit-horas').val());
+        var ntTExt = parseNumber(fila.find('.edit-noct-temprana').val());
+        var ntDExt = parseNumber(fila.find('.edit-noct-tardia').val());
+        var dtExt = parseNumber(fila.find('.edit-doble-turno').val());
+        var dscExt = parseNumber(fila.find('.edit-descuentos').val());
+        if (hrsExt === 0 && ntTExt === 0 && ntDExt === 0 && dtExt === 0 && dscExt === 0) {
+            Swal.fire({
+                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i> Nómina Extraordinaria en Cero',
+                html: `
+                    <div class="text-center">
+                        <i class="fas fa-clock fa-3x mb-3" style="color: #f59e0b;"></i>
+                        <p>El trabajador <strong>${escapeHtml(trabajadorNombre)}</strong> tiene <span class="text-danger fw-bold">todos los valores en cero</span>.</p>
+                        <p class="text-muted small">No se puede guardar un trabajador sin al menos un valor (HE Diurnas, Nt 7-23h, Nt 23-7h, Doble Turno o Descuentos).</p>
+                    </div>
+                `,
+                icon: 'warning',
+                confirmButtonText: '<i class="fas fa-pen me-2"></i>Asignar valores',
+                showCancelButton: true,
+                cancelButtonText: '<i class="fas fa-trash-alt me-2"></i>Eliminar',
+                cancelButtonColor: '#ef4444',
+                background: '#1a1a2e',
+                color: '#ffffff'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    setTimeout(function() {
+                        fila.find('.edit-horas').focus().select();
+                    }, 200);
+                } else if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+                    eliminarTrabajadorPorId(id, trabajadorNombre);
+                }
+            });
+            return;
+        }
+    }
+    
+    // ==========================================
     // ✅ VALIDACIÓN UNIVERSAL ANTES DE GUARDAR
     // ==========================================
     var campoValor = 0;
@@ -14000,7 +14151,7 @@ $(document).on('click', '.guardar-fila', function() {
     }
     
     // Si el campo clave está en cero, mostrar advertencia
-    if (campoValor === 0 || campoValor < 0.5) {
+    if (tipoNomina !== 'extraordinaria' && (campoValor === 0 || campoValor < 0.5)) {
         Swal.fire({
             title: `<i class="fas fa-exclamation-triangle text-warning me-2"></i> ${nombreCampo.charAt(0).toUpperCase() + nombreCampo.slice(1)} en Cero`,
             html: `
@@ -14080,6 +14231,7 @@ $(document).on('click', '.guardar-fila', function() {
             }
         } else if (tipoNomina == 'vacaciones') {
             datos.dias_vacaciones = parseNumber(fila.find('.edit-dias').val());
+            datos.descuentos = parseNumber(fila.find('.edit-descuentos').val());
         }
         
         $.ajax({
@@ -15249,24 +15401,7 @@ function validarCamposCero(fila) {
             break;
             
         case 'extraordinaria':
-            var horasNormalesInput = fila.find('.edit-horas');
-            var noctTInput = fila.find('.edit-noct-temprana');
-            var noctDInput = fila.find('.edit-noct-tardia');
-            var dtInput = fila.find('.edit-doble-turno');
-            var horasNormales = horasNormalesInput.length ? parseNumber(horasNormalesInput.val()) : 0;
-            var noctT = noctTInput.length ? parseNumber(noctTInput.val()) : 0;
-            var noctD = noctDInput.length ? parseNumber(noctDInput.val()) : 0;
-            var dt = dtInput.length ? parseNumber(dtInput.val()) : 0;
-            
-            if (horasNormales > 0 || noctT > 0 || noctD > 0 || dt > 0) {
-                esValido = true;
-            } else {
-                esValido = false;
-                campoValor = 0;
-                nombreCampo = 'horas trabajadas (HE diurnas, nocturnidad, doble turno)';
-                icono = 'fa-clock';
-                mensajeAyuda = 'Asigne horas en al menos un concepto para este empleado.';
-            }
+            esValido = true;
             break;
             
         case 'vacaciones':
@@ -15644,7 +15779,9 @@ function updateExtraList(focusId) {
     var diasLaborables = <?php echo $dias_laborables; ?>;
     var html = selectedExtra.map(w => {
         var salarioDiario = w.salario_mensual / diasLaborables;
-        var valorHoraExtra = w.sh * recargoNocturno;
+        var valorHoraExtra = w.sh * recargoExtraDiurna;
+        var valorHoraNocturna = w.sh * recargoExtraNocturna;
+        var valorDobleTurno = w.sh * recargoDobleturno;
         
         return `
             <div class="selected-worker-card" style="margin-bottom:0.9375rem; border-left: 0.1875rem solid #3b82f6;">
@@ -15669,12 +15806,12 @@ function updateExtraList(focusId) {
                         <div class="fw-bold text-info">$${w.sh.toFixed(2)}</div>
                     </div>
                     <div class="col-3 text-center">
-                        <small class="text-muted"><i class="fas fa-sun"></i> HE +25%</small>
+                        <small class="text-muted"><i class="fas fa-sun"></i> HE +50%</small>
                         <div class="fw-bold text-warning">$${valorHoraExtra.toFixed(2)}</div>
                     </div>
                     <div class="col-3 text-center">
-                        <small class="text-muted"><i class="fas fa-bed"></i> Nt Tarifa</small>
-                        <div class="fw-bold text-success">$${tarifaNoctTemprana.toFixed(2)} / $${tarifaNoctTardia.toFixed(2)}</div>
+                        <small class="text-muted"><i class="fas fa-bed"></i> Nt x${recargoExtraNocturna}</small>
+                        <div class="fw-bold text-success">$${valorHoraNocturna.toFixed(2)}</div>
                     </div>
                 </div>
                 
@@ -15685,7 +15822,7 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm horas-input" 
                                    data-id="${w.id}" value="${w.horasExtraNormales || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#f59e0b;">
-                            <span class="input-group-text bg-dark text-warning">+25%</span>
+                            <span class="input-group-text bg-dark text-warning">x${recargoExtraDiurna}</span>
                         </div>
                         <small class="text-muted">$${valorHoraExtra.toFixed(2)}/h</small>
                     </div>
@@ -15696,9 +15833,9 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm noct-temprana-input" 
                                    data-id="${w.id}" value="${w.noctTemprana || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#3b82f6;">
-                            <span class="input-group-text bg-dark text-info">$${tarifaNoctTemprana.toFixed(2)}</span>
+                            <span class="input-group-text bg-dark text-info">x${recargoExtraNocturna}</span>
                         </div>
-                        <small class="text-muted">Tarifa fija CUP/h</small>
+                        <small class="text-muted">$${valorHoraNocturna.toFixed(2)}/h</small>
                     </div>
                     
                     <div class="col-md-3">
@@ -15707,9 +15844,9 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm noct-tardia-input" 
                                    data-id="${w.id}" value="${w.noctTardia || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#8b5cf6;">
-                            <span class="input-group-text bg-dark" style="color:#8b5cf6;">$${tarifaNoctTardia.toFixed(2)}</span>
+                            <span class="input-group-text bg-dark" style="color:#8b5cf6;">x${recargoExtraNocturna}</span>
                         </div>
-                        <small class="text-muted">Tarifa fija CUP/h</small>
+                        <small class="text-muted">$${valorHoraNocturna.toFixed(2)}/h</small>
                     </div>
                     
                     <div class="col-md-3">
@@ -15718,16 +15855,16 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm doble-turno-input" 
                                    data-id="${w.id}" value="${w.dobleTurno || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#22c55e;">
-                            <span class="input-group-text bg-dark text-success">+25%</span>
+                            <span class="input-group-text bg-dark text-success">x${recargoDobleturno}</span>
                         </div>
-                        <small class="text-muted">$${valorHoraExtra.toFixed(2)}/h</small>
+                        <small class="text-muted">$${valorDobleTurno.toFixed(2)}/h</small>
                     </div>
                 </div>
                 <div class="row mt-2">
                     <div class="col-12">
                         <small class="text-muted">
                             <i class="fas fa-calculator me-1"></i>
-                            HE: $${w.sh.toFixed(2)} × ${recargoNocturno} | Nt 7-23h: $${tarifaNoctTemprana.toFixed(2)}/h | Nt 23-7h: $${tarifaNoctTardia.toFixed(2)}/h | DT: $${w.sh.toFixed(2)} × ${recargoNocturno}
+                            HE: $${w.sh.toFixed(2)} × ${recargoExtraDiurna} | Nt 7-23h: $${w.sh.toFixed(2)} × ${recargoExtraNocturna} | Nt 23-7h: $${w.sh.toFixed(2)} × ${recargoExtraNocturna} | DT: $${w.sh.toFixed(2)} × ${recargoDobleturno}
                         </small>
                     </div>
                 </div>
@@ -15763,10 +15900,10 @@ function updateExtraTotals() {
             tNoctD += noctD;
             tDT += dt;
             
-            var importeHE = (w.sh * recargoNocturno) * hrsNorm;
-            var importeNtT = tarifaNoctTemprana * noctT;
-            var importeNtD = tarifaNoctTardia * noctD;
-            var importeDT = (w.sh * recargoNocturno) * dt;
+            var importeHE = (w.sh * recargoExtraDiurna) * hrsNorm;
+            var importeNtT = (w.sh * recargoExtraNocturna) * noctT;
+            var importeNtD = (w.sh * recargoExtraNocturna) * noctD;
+            var importeDT = (w.sh * recargoDobleturno) * dt;
             var salTotal = importeHE + importeNtT + importeNtD + importeDT;
             tDev += salTotal;
             
@@ -16835,6 +16972,47 @@ function acumularTotales(objetoDestino, trabajador) {
     objetoDestino.vacDias += trabajador.vacDias || 0;
     objetoDestino.tiempoImp += trabajador.tiempoImp || 0;
     objetoDestino.salarioMensual += trabajador.salarioMensual || 0;  // <-- CORRECCIÓN: Agregado
+    // 🔽 EXTRAORDINARIA: acumular también horas e importes de las columnas adicionales
+    objetoDestino.horas += trabajador.horas || 0;
+    objetoDestino.importeHE += trabajador.importeHE || 0;
+    objetoDestino.noctT += trabajador.noctT || 0;
+    objetoDestino.importeNtT += trabajador.importeNtT || 0;
+    objetoDestino.noctD += trabajador.noctD || 0;
+    objetoDestino.importeNtD += trabajador.importeNtD || 0;
+    objetoDestino.dt += trabajador.dt || 0;
+    objetoDestino.importeDT += trabajador.importeDT || 0;
+}
+
+// 🔽 Fila de total/subtotal para EXTRAORDINARIA: totaliza TODAS las columnas numéricas excepto Tarifa (col 5).
+// data: { horas, importeHE, noctT, importeNtT, noctD, importeNtD, dt, importeDT, devengado, impS, retenciones, pagado }
+// cfg: { trClass, trStyle, cellClass, cellStyle, strong, moneyPrefix }
+function filaTotalExtraordinaria(label, data, cfg) {
+    cfg = cfg || {};
+    var cc = cfg.cellClass ? ' class="' + cfg.cellClass + '"' : '';
+    var cs = cfg.cellStyle ? ' style="' + cfg.cellStyle + '"' : '';
+    var st = cfg.strong ? '<strong>' : '';
+    var en = cfg.strong ? '</strong>' : '';
+    var mp = cfg.moneyPrefix !== undefined ? cfg.moneyPrefix : '$';
+    var num = function(k) { return st + (data[k] || 0).toFixed(0) + en; };
+    var mon = function(k) { return st + mp + (data[k] || 0).toFixed(2) + en; };
+    return '<tr' + (cfg.trClass ? ' class="' + cfg.trClass + '"' : '') + (cfg.trStyle ? ' style="' + cfg.trStyle + '"' : '') + '>' +
+        '<td colspan="4"' + cc + cs + '>' + st + label + en + '</td>' +
+        '<td' + cc + cs + '>' + st + '-' + en + '</td>' +
+        '<td' + cc + cs + '>' + num('horas') + '</td>' +
+        '<td' + cc + cs + '>' + mon('importeHE') + '</td>' +
+        '<td' + cc + cs + '>' + num('noctT') + '</td>' +
+        '<td' + cc + cs + '>' + mon('importeNtT') + '</td>' +
+        '<td' + cc + cs + '>' + num('noctD') + '</td>' +
+        '<td' + cc + cs + '>' + mon('importeNtD') + '</td>' +
+        '<td' + cc + cs + '>' + num('dt') + '</td>' +
+        '<td' + cc + cs + '>' + mon('importeDT') + '</td>' +
+        '<td' + cc + cs + '>' + mon('devengado') + '</td>' +
+        '<td' + cc + cs + '>' + mon('impS') + '</td>' +
+        '<td' + cc + cs + '>' + mon('descuentos') + '</td>' +
+        '<td' + cc + cs + '>' + mon('retenciones') + '</td>' +
+        '<td' + cc + cs + '>' + mon('pagado') + '</td>' +
+        '<td' + cc + cs + '>' + st + '-' + en + '</td>' +
+        '</tr>';
 }
 
 function generarFilaExcel(t) {
@@ -16845,11 +17023,12 @@ function generarFilaExcel(t) {
             <td style="border:0.5pt solid #000;">${window.escapeHtml(t.nombre)}</td>
             <td style="text-align:center; border:0.5pt solid #000;">${window.escapeHtml(t.categoriaCodigo)}</td>
             <td style="text-align:right; border:0.5pt solid #000;">${t.tarifaSal.toFixed(2)}</td>
-            <td style="text-align:right; border:0.5pt solid #000;">${t.horas}</td>
+            <td style="text-align:right; border:0.5pt solid #000;">${tipoNomina === 'vacaciones' ? (t.diasTomados || 0).toFixed(2) : t.horas}</td>
             <td style="text-align:right; border:0.5pt solid #000;">${t.aCobrar.toFixed(2)}</td>
-            <td style="text-align:right; border:0.5pt solid #000;">${t.bono.toFixed(2)}</td>
-            <td style="text-align:right; border:0.5pt solid #000;">${t.devengado.toFixed(2)}</td>
+            ${tipoNomina === 'vacaciones' ? '' : `<td style="text-align:right; border:0.5pt solid #000;">${t.bono.toFixed(2)}</td>`}
+            ${tipoNomina === 'vacaciones' ? '' : `<td style="text-align:right; border:0.5pt solid #000;">${t.devengado.toFixed(2)}</td>`}
             <td style="text-align:right; border:0.5pt solid #000;">${t.impS.toFixed(2)}</td>
+            <td style="text-align:right; border:0.5pt solid #000;">${t.descuentos.toFixed(2)}</td>
             <td style="text-align:right; border:0.5pt solid #000;">${t.retenciones.toFixed(2)}</td>
             <td style="text-align:right; font-weight:bold; border:0.5pt solid #000;">${t.pagado.toFixed(2)}</td>
             <td style="text-align:right; border:0.5pt solid #000;">${t.vacDias.toFixed(2)}</td>
@@ -16922,15 +17101,15 @@ function construirPaginasDeNomina(trabajadores, alcance) {
     let contadorFilas = 0;
     
     // CORRECCIÓN: Inicialización de propiedades descuentos y salarioMensual para evitar undefined
-    let subtotalPagina = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0 };
-    let totalGeneral = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0 };
+    let subtotalPagina = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0, horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
+    let totalGeneral = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0, horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
 
     function cerrarPagina() {
         if (paginaActual.length === 0) return;
         paginas.push({ rows: [...paginaActual], subtotal: { ...subtotalPagina } });
         paginaActual = [];
         contadorFilas = 0;
-        subtotalPagina = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0 };
+        subtotalPagina = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0, horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
     }
 
     if (alcance === 'general') {
@@ -16948,7 +17127,7 @@ function construirPaginasDeNomina(trabajadores, alcance) {
         let grupos = agruparTrabajadores(trabajadores, campoAgrupacion);
 
         Object.entries(grupos).forEach(([clave, empleados]) => {
-            let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0 };
+            let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0, horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
             let espacioNecesario = empleados.length + 2; 
 
             if (paginaActual.length > 0 && (contadorFilas + espacioNecesario > FILAS_POR_PAGINA)) {
@@ -17025,7 +17204,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 17 : 16));
+        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 19 : (tipoNomina === 'vacaciones' ? 14 : 16)));
         let estructura = construirPaginasDeNomina(trabajadores, alcance);
         let htmlBody = '';
 
@@ -17072,15 +17251,17 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                                 <td style="border:0.5pt solid #000;">${window.escapeHtml(row.data.nombre)}</td>
                                 <td style="text-align:center; border:0.5pt solid #000;">${window.escapeHtml(row.data.categoriaCodigo)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">${row.data.tarifaSal.toFixed(2)}</td>
+                                <td style="text-align:right; border:0.5pt solid #000;">${(row.data.horas || 0).toFixed(0)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeHE || 0).toFixed(2)}</td>
-                                <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctT || 0).toFixed(2)}</td>
+                                <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctT || 0).toFixed(0)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeNtT || 0).toFixed(2)}</td>
-                                <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctD || 0).toFixed(2)}</td>
+                                <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctD || 0).toFixed(0)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeNtD || 0).toFixed(2)}</td>
-                                <td style="text-align:right; border:0.5pt solid #000;">${(row.data.dt || 0).toFixed(2)}</td>
+                                <td style="text-align:right; border:0.5pt solid #000;">${(row.data.dt || 0).toFixed(0)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeDT || 0).toFixed(2)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.devengado || 0).toFixed(2)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.impS || 0).toFixed(2)}</td>
+                                <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.descuentos || 0).toFixed(2)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.retenciones || 0).toFixed(2)}</td>
                                 <td style="text-align:right; font-weight:bold; border:0.5pt solid #000;">$${(row.data.pagado || 0).toFixed(2)}</td>
                                 <td style="border:0.5pt solid #000;"></td>
@@ -17114,14 +17295,17 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                                 <td style="text-align:right; border:0.5pt solid #000; color:#004b87;"><b>${row.data.pagado.toFixed(2)}</b></td>
                                 <td style="border:0.5pt solid #000;">-</td>
                             </tr>`;
+                    } else if (esExtraominaria) {
+                        htmlBody += filaTotalExtraordinaria(window.escapeHtml(row.titulo) + ':', row.data, { trStyle: 'background-color:#f2f2f2; font-weight:bold;', cellStyle: 'text-align:right; border:0.5pt solid #000;', strong: true });
                     } else {
                         htmlBody += `
                             <tr style="background-color:#f2f2f2; font-weight:bold;">
                                 <td colspan="6" style="text-align:right; border:0.5pt solid #000;"><b>${window.escapeHtml(row.titulo)}:</b></td>
                                 <td style="text-align:right; border:0.5pt solid #000;">${row.data.aCobrar.toFixed(2)}</td>
-                                <td style="text-align:right; border:0.5pt solid #000;">${row.data.bono.toFixed(2)}</td>
-                                <td style="text-align:right; border:0.5pt solid #000;">${row.data.devengado.toFixed(2)}</td>
+                                ${tipoNomina === 'vacaciones' ? '' : `<td style="text-align:right; border:0.5pt solid #000;">${row.data.bono.toFixed(2)}</td>`}
+                                ${tipoNomina === 'vacaciones' ? '' : `<td style="text-align:right; border:0.5pt solid #000;">${row.data.devengado.toFixed(2)}</td>`}
                                 <td style="text-align:right; border:0.5pt solid #000;">${row.data.impS.toFixed(2)}</td>
+                                <td style="text-align:right; border:0.5pt solid #000;">${row.data.descuentos.toFixed(2)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">${row.data.retenciones.toFixed(2)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000; color:#004b87;"><b>${row.data.pagado.toFixed(2)}</b></td>
                                 <td style="text-align:right; border:0.5pt solid #000;">${row.data.vacDias.toFixed(2)}</td>
@@ -17158,14 +17342,17 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                         <td style="text-align:right; border:0.5pt solid #000; color:#b45309;"><b>${pag.subtotal.pagado.toFixed(2)}</b></td>
                         <td style="border:0.5pt solid #000;">-</td>
                     </tr>`;
+            } else if (esExtraominaria) {
+                htmlBody += filaTotalExtraordinaria('SUBTOTAL PÁGINA ' + numPag + ':', pag.subtotal, { trStyle: 'background-color:#fff3cd; font-weight:bold;', cellStyle: 'text-align:right; border:0.5pt solid #000;', strong: true });
             } else {
                 htmlBody += `
                     <tr style="background-color:#fff3cd; font-weight:bold;">
                         <td colspan="6" style="text-align:right; border:0.5pt solid #000;"><b>SUBTOTAL PÁGINA ${numPag}:</b></td>
                         <td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.aCobrar.toFixed(2)}</td>
-                        <td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.bono.toFixed(2)}</td>
-                        <td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.devengado.toFixed(2)}</td>
+                        ${tipoNomina === 'vacaciones' ? '' : `<td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.bono.toFixed(2)}</td>`}
+                        ${tipoNomina === 'vacaciones' ? '' : `<td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.devengado.toFixed(2)}</td>`}
                         <td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.impS.toFixed(2)}</td>
+                        <td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.descuentos.toFixed(2)}</td>
                         <td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.retenciones.toFixed(2)}</td>
                         <td style="text-align:right; border:0.5pt solid #000; color:#b45309;"><b>${pag.subtotal.pagado.toFixed(2)}</b></td>
                         <td style="text-align:right; border:0.5pt solid #000;">${pag.subtotal.vacDias.toFixed(2)}</td>
@@ -17202,23 +17389,16 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                     <td style="border:0.5pt solid #000;"></td>
                 </tr>`;
         } else if (esExtraominaria) {
-            htmlBody += `
-                <tr style="background-color:#d9e1f2; font-weight:bold;">
-                    <td colspan="12" style="text-align:right; border:0.5pt solid #000;"><b>TOTAL GENERAL NOMINA:</b></td>
-                    <td style="text-align:right; border:0.5pt solid #000;">$${gTot.devengado.toFixed(2)}</td>
-                    <td style="text-align:right; border:0.5pt solid #000;">$${gTot.impS.toFixed(2)}</td>
-                    <td style="text-align:right; border:0.5pt solid #000;">$${gTot.retenciones.toFixed(2)}</td>
-                    <td style="text-align:right; border:0.5pt solid #000; color:#1e3a8a;"><b>$${gTot.pagado.toFixed(2)}</b></td>
-                    <td style="border:0.5pt solid #000;"></td>
-                </tr>`;
+            htmlBody += filaTotalExtraordinaria('TOTAL GENERAL NOMINA:', gTot, { trStyle: 'background-color:#d9e1f2; font-weight:bold;', cellStyle: 'text-align:right; border:0.5pt solid #000;', strong: true });
         } else {
             htmlBody += `
                 <tr style="background-color:#d9e1f2; font-weight:bold;">
                     <td colspan="6" style="text-align:right; border:0.5pt solid #000;"><b>TOTAL GENERAL NOMINA:</b></td>
                     <td style="text-align:right; border:0.5pt solid #000;">${gTot.aCobrar.toFixed(2)}</td>
-                    <td style="text-align:right; border:0.5pt solid #000;">${gTot.bono.toFixed(2)}</td>
-                    <td style="text-align:right; border:0.5pt solid #000;">${gTot.devengado.toFixed(2)}</td>
+                    ${tipoNomina === 'vacaciones' ? '' : `<td style="text-align:right; border:0.5pt solid #000;">${gTot.bono.toFixed(2)}</td>`}
+                    ${tipoNomina === 'vacaciones' ? '' : `<td style="text-align:right; border:0.5pt solid #000;">${gTot.devengado.toFixed(2)}</td>`}
                     <td style="text-align:right; border:0.5pt solid #000;">${gTot.impS.toFixed(2)}</td>
+                    <td style="text-align:right; border:0.5pt solid #000;">${gTot.descuentos.toFixed(2)}</td>
                     <td style="text-align:right; border:0.5pt solid #000;">${gTot.retenciones.toFixed(2)}</td>
                     <td style="text-align:right; border:0.5pt solid #000; color:#1e3a8a;"><b>${gTot.pagado.toFixed(2)}</b></td>
                     <td style="text-align:right; border:0.5pt solid #000;">${gTot.vacDias.toFixed(2)}</td>
@@ -17241,15 +17421,15 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
         ` : esExtraominaria ? `
             <tr class="table-header">
                 <td>Código</td><td>CI</td><td>Nombre y Apellidos</td><td>Cat.</td><td>Tarf.</td>
-                <td>HE/D</td><td>Nt 7-23h</td><td>$/Nt 7-23h</td>
+                <td>HE/D</td><td>$/HE/D</td><td>Nt 7-23h</td><td>$/Nt 7-23h</td>
                 <td>Nt 23-7h</td><td>$/Nt 23-7h</td>
                 <td>D/T</td><td>$/DT</td>
-                <td>Deven.</td><td>Imp. CESS.</td><td>Ret.</td><td>Pagado</td><td>Firma</td>
+                <td>Deven.</td><td>Imp. CESS.</td><td>Dsctos.</td><td>Ret. Tot.</td><td>Pagado</td><td>Firma</td>
             </tr>
         ` : `
             <tr class="table-header">
-                <td>Código</td><td>CI</td><td>Nombre y Apellidos</td><td>Cat.</td><td>Tarf.</td><td>Horas</td>
-                <td>A cobrar</td><td>Bon.</td><td>Deven.</td><td>Imp. CESS.</td><td>Ret.</td><td>Pagado</td>
+                <td>Código</td><td>CI</td><td>Nombre y Apellidos</td><td>Cat.</td><td>Tarf.</td><td>${tipoNomina === 'vacaciones' ? 'Días' : 'Horas'}</td>
+                <td>A cobrar</td>${tipoNomina === 'vacaciones' ? '' : '<td>Bon.</td>'}${tipoNomina === 'vacaciones' ? '' : '<td>Deven.</td>'}<td>Imp. CESS.</td><td>Dsctos.</td><td>Ret. Tot.</td><td>Pagado</td>
                 <td>Vac.</td><td>Tiem. Imp.</td><td>Firma</td>
             </tr>
         `;
@@ -17285,8 +17465,8 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                 <tr>
                     <td colspan="3" class="header-meta"><b>Tipo Nómina:</b> ${window.escapeHtml(tipoNominaTexto)}</td>
                     <td colspan="2" class="header-meta"><b>Período:</b> ${periodoTexto}</td>
-                    <td colspan="${esBono ? 3 : (esAjuste ? 3 : 4)}" class="header-meta"><b>Nº Nómina / No. Instrum. Pago:</b> ${window.escapeHtml(numeroNomina)}</td>
-                    <td colspan="${esBono ? 3 : (esAjuste ? 5 : 6)}" rowspan="2" style="vertical-align:top; border:0.5pt solid #000; font-size:8.5pt; line-height:1.4;">
+                    <td colspan="${esBono ? 3 : (esAjuste ? 3 : 5)}" class="header-meta"><b>Nº Nómina / No. Instrum. Pago:</b> ${window.escapeHtml(numeroNomina)}</td>
+                    <td colspan="${esBono ? 3 : (esAjuste ? 5 : 7)}" rowspan="2" style="vertical-align:top; border:0.5pt solid #000; font-size:8.5pt; line-height:1.4;">
                         <b>REVISADO POR:</b> ${nombreRevisado}<br>
                         <b>APROBADO POR:</b> ${nombreAprobado}<br>
                         <b>ELABORADO POR:</b> ___________________________<br>
@@ -17299,7 +17479,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                         <b>${esBono ? 'Monto a Distribuir: ' + '$' + montoDistribuidoGlobal.toFixed(2) : 'REEUP: ' + escapeHtml(reeup)}</b><br>
                         <b>NIT:</b> ${window.escapeHtml(nitEmpresa)}
                     </td>
-                    <td colspan="${esBono ? 3 : (esAjuste ? 3 : 4)}" class="header-meta"><b>Fecha Emisión:</b> ${fechaActual12h} ${horaActual12h}</td>
+                    <td colspan="${esBono ? 3 : (esAjuste ? 3 : 5)}" class="header-meta"><b>Fecha Emisión:</b> ${fechaActual12h} ${horaActual12h}</td>
                 </tr>
                 ${observacionesCierreGlobal ? `
                 <tr>
@@ -17374,8 +17554,23 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 17 : 16));
-        const widthsConfig = esBono ? [35, 55, '*', 22, 55, 55, 50, 55, 55, 55, 55] : esAjuste ? [30, 45, '*', 18, 42, 45, 24, 42, 42, 38, 42, 42, 42] : esExtraominaria ? [30, 50, '*', 18, 26, 28, 28, 28, 28, 28, 28, 28, 38, 38, 38, 42, 42] : [30, 50, '*', 18, 42, 30, 24, 38, 30, 38, 38, 38, 42, 22, 40, 42];
+        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 19 : (tipoNomina === 'vacaciones' ? 15 : 17)));
+        const widthsConfig = esBono ? [35, 55, '*', 22, 55, 55, 50, 55, 55, 55, 55] : esAjuste ? [30, 45, '*', 18, 42, 45, 24, 42, 42, 38, 42, 42, 42] : esExtraominaria ? [30, 50, '*', 18, 26, 28, 28, 28, 28, 28, 28, 28, 28, 38, 38, 38, 38, 42, 42] : (tipoNomina === 'vacaciones' ? [30, 50, '*', 18, 42, 30, 24, 38, 38, 38, 38, 42, 22, 40, 42] : [30, 50, '*', 18, 42, 30, 24, 38, 30, 38, 38, 38, 38, 42, 22, 40, 42]);
+
+        // 🔽 Fila de total/subtotal para EXTRAORDINARIA: totaliza TODAS las columnas excepto Tarifa
+        function filaTotalExtraPdf(label, data, style) {
+            function c(k) { return { text: (data[k] || 0).toFixed(2), alignment: 'right', style: style }; }
+            function h(k) { return { text: (data[k] || 0).toFixed(0), alignment: 'right', style: style }; }
+            var boldStyle = style === 'groupFooter' ? 'groupFooterBold' : (style === 'pageSubtotal' ? 'pageSubtotalBold' : 'tableFooterBold');
+            return [
+                { text: label, colSpan: 4, alignment: 'right', style: style }, {}, {}, {},
+                { text: '-', alignment: 'right', style: style },
+                h('horas'), c('importeHE'), h('noctT'), c('importeNtT'), h('noctD'), c('importeNtD'), h('dt'), c('importeDT'),
+                c('devengado'), c('impS'), c('descuentos'), c('retenciones'),
+                { text: (data.pagado || 0).toFixed(2), alignment: 'right', style: boldStyle },
+                { text: '', style: style }
+            ];
+        }
 
         let estructura = construirPaginasDeNomina(trabajadores, alcance);
         let docContent = [];
@@ -17423,6 +17618,7 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                     { text: 'Cat.', style: 'tableHeader' },
                     { text: 'Tarf.', style: 'tableHeader' },
                     { text: 'HE/D', style: 'tableHeader' },
+                    { text: '$/HE/D', style: 'tableHeader' },
                     { text: 'Nt 7-23h', style: 'tableHeader' },
                     { text: '$/Nt 7-23h', style: 'tableHeader' },
                     { text: 'Nt 23-7h', style: 'tableHeader' },
@@ -17431,7 +17627,8 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                     { text: '$/DT', style: 'tableHeader' },
                     { text: 'Deven.', style: 'tableHeader' },
                     { text: 'Imp. CESS', style: 'tableHeader' },
-                    { text: 'Ret.', style: 'tableHeader' },
+                    { text: 'Dsctos', style: 'tableHeader' },
+                    { text: 'Ret. Tot.', style: 'tableHeader' },
                     { text: 'Pagado', style: 'tableHeader' },
                     { text: 'Firma', style: 'tableHeader' }
                 ]);
@@ -17443,12 +17640,13 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                     { text: 'Cat.', style: 'tableHeader' },
                     { text: 'S. Básico', style: 'tableHeader' },
                     { text: 'Tarf.', style: 'tableHeader' },
-                    { text: 'Horas', style: 'tableHeader' },
+                    { text: (tipoNomina === 'vacaciones' ? 'Días' : 'Horas'), style: 'tableHeader' },
                     { text: 'A cobrar', style: 'tableHeader' },
-                    { text: 'Bon.', style: 'tableHeader' },
-                    { text: 'Deven.', style: 'tableHeader' },
+                    ...(tipoNomina === 'vacaciones' ? [] : [{ text: 'Bon.', style: 'tableHeader' }]),
+                    ...(tipoNomina === 'vacaciones' ? [] : [{ text: 'Deven.', style: 'tableHeader' }]),
                     { text: 'Imp. CESS', style: 'tableHeader' },
-                    { text: 'Ret.', style: 'tableHeader' },
+                    { text: 'Dsctos', style: 'tableHeader' },
+                    { text: 'Ret. Tot.', style: 'tableHeader' },
                     { text: 'Pagado', style: 'tableHeader' },
                     { text: 'Vac.', style: 'tableHeader' },
                     { text: 'Tiem. Imp.', style: 'tableHeader' },
@@ -17494,15 +17692,17 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                             { text: row.data.nombre, alignment: 'left', style: 'tableCell' },
                             { text: row.data.categoriaCodigo, alignment: 'center', style: 'tableCell' },
                             { text: row.data.tarifaSal.toFixed(2), alignment: 'right', style: 'tableCell' },
+                            { text: (row.data.horas || 0).toFixed(0), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.importeHE || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
-                            { text: (row.data.noctT || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
+                            { text: (row.data.noctT || 0).toFixed(0), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.importeNtT || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
-                            { text: (row.data.noctD || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
+                            { text: (row.data.noctD || 0).toFixed(0), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.importeNtD || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
-                            { text: (row.data.dt || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
+                            { text: (row.data.dt || 0).toFixed(0), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.importeDT || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.devengado || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.impS || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
+                            { text: (row.data.descuentos || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.retenciones || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.pagado || 0).toFixed(2), alignment: 'right', style: 'tableCellBold' },
                             { text: '', style: 'tableCell' }
@@ -17515,11 +17715,12 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                             { text: row.data.categoriaCodigo, alignment: 'center', style: 'tableCell' },
                             { text: salarioBasicoResuelto.toFixed(2), alignment: 'right', style: 'tableCell' },
                             { text: row.data.tarifaSal.toFixed(2), alignment: 'right', style: 'tableCell' },
-                            { text: row.data.horas.toString(), alignment: 'right', style: 'tableCell' },
+                            { text: (tipoNomina === 'vacaciones' ? (row.data.diasTomados || 0).toFixed(2) : row.data.horas.toString()), alignment: 'right', style: 'tableCell' },
                             { text: row.data.aCobrar.toFixed(2), alignment: 'right', style: 'tableCell' },
-                            { text: row.data.bono.toFixed(2), alignment: 'right', style: 'tableCell' },
-                            { text: row.data.devengado.toFixed(2), alignment: 'right', style: 'tableCell' },
+                            ...(tipoNomina === 'vacaciones' ? [] : [{ text: row.data.bono.toFixed(2), alignment: 'right', style: 'tableCell' }]),
+                            ...(tipoNomina === 'vacaciones' ? [] : [{ text: row.data.devengado.toFixed(2), alignment: 'right', style: 'tableCell' }]),
                             { text: row.data.impS.toFixed(2), alignment: 'right', style: 'tableCell' },
+                            { text: (row.data.descuentos || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
                             { text: row.data.retenciones.toFixed(2), alignment: 'right', style: 'tableCell' },
                             { text: row.data.pagado.toFixed(2), alignment: 'right', style: 'tableCellBold' },
                             { text: row.data.vacDias.toFixed(2), alignment: 'right', style: 'tableCell' },
@@ -17554,23 +17755,16 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                             { text: '', style: 'groupFooter' }
                         ]);
                     } else if (esExtraominaria) {
-                        tableRows.push([
-                            { text: `${row.titulo}:`, colSpan: 12, alignment: 'right', style: 'groupFooter' },
-                            {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-                            { text: (row.data.devengado || 0).toFixed(2), alignment: 'right', style: 'groupFooter' },
-                            { text: (row.data.impS || 0).toFixed(2), alignment: 'right', style: 'groupFooter' },
-                            { text: (row.data.retenciones || 0).toFixed(2), alignment: 'right', style: 'groupFooter' },
-                            { text: (row.data.pagado || 0).toFixed(2), alignment: 'right', style: 'groupFooterBold' },
-                            { text: '', style: 'groupFooter' }
-                        ]);
+                        tableRows.push(filaTotalExtraPdf(row.titulo + ':', row.data, 'groupFooter'));
                     } else {
                         tableRows.push([
                             { text: `${row.titulo}:`, colSpan: 7, alignment: 'right', style: 'groupFooter' },
                             {}, {}, {}, {}, {}, {},
                             { text: row.data.aCobrar.toFixed(2), alignment: 'right', style: 'groupFooter' },
-                            { text: row.data.bono.toFixed(2), alignment: 'right', style: 'groupFooter' },
-                            { text: row.data.devengado.toFixed(2), alignment: 'right', style: 'groupFooter' },
+                            ...(tipoNomina === 'vacaciones' ? [] : [{ text: row.data.bono.toFixed(2), alignment: 'right', style: 'groupFooter' }]),
+                            ...(tipoNomina === 'vacaciones' ? [] : [{ text: row.data.devengado.toFixed(2), alignment: 'right', style: 'groupFooter' }]),
                             { text: row.data.impS.toFixed(2), alignment: 'right', style: 'groupFooter' },
+                            { text: (row.data.descuentos || 0).toFixed(2), alignment: 'right', style: 'groupFooter' },
                             { text: row.data.retenciones.toFixed(2), alignment: 'right', style: 'groupFooter' },
                             { text: row.data.pagado.toFixed(2), alignment: 'right', style: 'groupFooterBold' },
                             { text: row.data.vacDias.toFixed(2), alignment: 'right', style: 'groupFooter' },
@@ -17608,23 +17802,16 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                     { text: '', style: 'pageSubtotal' }
                 ]);
             } else if (esExtraominaria) {
-                tableRows.push([
-                    { text: `SUBTOTAL PÁGINA ${numPag}:`, colSpan: 12, alignment: 'right', style: 'pageSubtotal' },
-                    {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-                    { text: (pag.subtotal.devengado || 0).toFixed(2), alignment: 'right', style: 'pageSubtotal' },
-                    { text: (pag.subtotal.impS || 0).toFixed(2), alignment: 'right', style: 'pageSubtotal' },
-                    { text: (pag.subtotal.retenciones || 0).toFixed(2), alignment: 'right', style: 'pageSubtotal' },
-                    { text: (pag.subtotal.pagado || 0).toFixed(2), alignment: 'right', style: 'pageSubtotalBold' },
-                    { text: '', style: 'pageSubtotal' }
-                ]);
+                tableRows.push(filaTotalExtraPdf('SUBTOTAL PÁGINA ' + numPag + ':', pag.subtotal, 'pageSubtotal'));
             } else {
                 tableRows.push([
                     { text: `SUBTOTAL PÁGINA ${numPag}:`, colSpan: 7, alignment: 'right', style: 'pageSubtotal' },
                     {}, {}, {}, {}, {}, {},
                     { text: pag.subtotal.aCobrar.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
-                    { text: pag.subtotal.bono.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
-                    { text: pag.subtotal.devengado.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
+                    ...(tipoNomina === 'vacaciones' ? [] : [{ text: pag.subtotal.bono.toFixed(2), alignment: 'right', style: 'pageSubtotal' }]),
+                    ...(tipoNomina === 'vacaciones' ? [] : [{ text: pag.subtotal.devengado.toFixed(2), alignment: 'right', style: 'pageSubtotal' }]),
                     { text: pag.subtotal.impS.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
+                    { text: pag.subtotal.descuentos.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
                     { text: pag.subtotal.retenciones.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
                     { text: pag.subtotal.pagado.toFixed(2), alignment: 'right', style: 'pageSubtotalBold' },
                     { text: pag.subtotal.vacDias.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
@@ -17662,23 +17849,16 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                         { text: '', style: 'tableFooter' }
                     ]);
                 } else if (esExtraominaria) {
-                    tableRows.push([
-                        { text: 'TOTAL GENERAL NOMINA:', colSpan: 12, alignment: 'right', style: 'tableFooter' },
-                        {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
-                        { text: (gTot.devengado || 0).toFixed(2), alignment: 'right', style: 'tableFooter' },
-                        { text: (gTot.impS || 0).toFixed(2), alignment: 'right', style: 'tableFooter' },
-                        { text: (gTot.retenciones || 0).toFixed(2), alignment: 'right', style: 'tableFooter' },
-                        { text: (gTot.pagado || 0).toFixed(2), alignment: 'right', style: 'tableFooterBold' },
-                        { text: '', style: 'tableFooter' }
-                    ]);
+                    tableRows.push(filaTotalExtraPdf('TOTAL GENERAL NOMINA:', gTot, 'tableFooter'));
                 } else {
                     tableRows.push([
                         { text: 'TOTAL GENERAL NOMINA:', colSpan: 7, alignment: 'right', style: 'tableFooter' },
                         {}, {}, {}, {}, {}, {},
                         { text: gTot.aCobrar.toFixed(2), alignment: 'right', style: 'tableFooter' },
-                        { text: gTot.bono.toFixed(2), alignment: 'right', style: 'tableFooter' },
-                        { text: gTot.devengado.toFixed(2), alignment: 'right', style: 'tableFooter' },
+                        ...(tipoNomina === 'vacaciones' ? [] : [{ text: gTot.bono.toFixed(2), alignment: 'right', style: 'tableFooter' }]),
+                        ...(tipoNomina === 'vacaciones' ? [] : [{ text: gTot.devengado.toFixed(2), alignment: 'right', style: 'tableFooter' }]),
                         { text: gTot.impS.toFixed(2), alignment: 'right', style: 'tableFooter' },
+                        { text: gTot.descuentos.toFixed(2), alignment: 'right', style: 'tableFooter' },
                         { text: gTot.retenciones.toFixed(2), alignment: 'right', style: 'tableFooter' },
                         { text: gTot.pagado.toFixed(2), alignment: 'right', style: 'tableFooterBold' },
                         { text: gTot.vacDias.toFixed(2), alignment: 'right', style: 'tableFooter' },
@@ -17720,7 +17900,10 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
 											},
 											{ text: `Emisión: ${fechaActual12h} ${horaActual12h}`, fontSize: 7 }
 										]
-                                    }
+                                    },
+                                    observacionesCierreGlobal
+                                        ? { text: `Observaciones de Cierre: ${observacionesCierreGlobal}`, fontSize: 6.5, bold: true, margin: [0, 2, 0, 0] }
+                                        : { text: '', fontSize: 6.5 }
                                 ],
                                 margin: [5, 2, 0, 0]
                             },
@@ -17873,21 +18056,21 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 17 : 15));
+        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 19 : (tipoNomina === 'vacaciones' ? 14 : 16)));
         
         let paginas = [];
         let paginaActual = [];
         let contadorFilas = 0;
         
-        let subtotalPagina = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0 };
-        let totalGeneral = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0 };
+        let subtotalPagina = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0, horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
+        let totalGeneral = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0, horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
 
         function cerrarPagina() {
             if (paginaActual.length === 0) return;
             paginas.push({ rows: [...paginaActual], subtotal: { ...subtotalPagina } });
             paginaActual = [];
             contadorFilas = 0;
-            subtotalPagina = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0 };
+            subtotalPagina = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0, horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
         }
 
         if (alcance === 'general') {
@@ -17905,7 +18088,7 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
             let grupos = agruparTrabajadores(trabajadores, campoAgrupacion);
 
             Object.entries(grupos).forEach(([clave, empleados]) => {
-                let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0 };
+let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0, pagado: 0, vacDias: 0, tiempoImp: 0, descuentos: 0, salarioMensual: 0, horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
                 let espacioNecesario = empleados.length + 2;
 
                 if (paginaActual.length > 0 && (contadorFilas + espacioNecesario > FILAS_POR_PAGINA)) {
@@ -17990,15 +18173,17 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
                                 <td class="text-left" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.nombre)}</td>
                                 <td class="text-center" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.categoriaCodigo)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.tarifaSal.toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.horas || 0).toFixed(0)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.importeHE || 0).toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.noctT || 0).toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.noctT || 0).toFixed(0)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.importeNtT || 0).toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.noctD || 0).toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.noctD || 0).toFixed(0)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.importeNtD || 0).toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.dt || 0).toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.dt || 0).toFixed(0)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.importeDT || 0).toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.devengado || 0).toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.impS || 0).toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.descuentos || 0).toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.retenciones || 0).toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt; font-weight:bold;">${(row.data.pagado || 0).toFixed(2)}</td>
                                 <td style="border:0.5pt solid #000;"></td>
@@ -18011,11 +18196,12 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
                                 <td class="text-left" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.nombre)}</td>
                                 <td class="text-center" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.categoriaCodigo)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.tarifaSal.toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.horas}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${tipoNomina === 'vacaciones' ? (row.data.diasTomados || 0).toFixed(2) : row.data.horas}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.aCobrar.toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.bono.toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.devengado.toFixed(2)}</td>
+                                ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.bono.toFixed(2)}</td>`}
+                                ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.devengado.toFixed(2)}</td>`}
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.impS.toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.descuentos || 0).toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.retenciones.toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt; font-weight:bold;">${row.data.pagado.toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.vacDias.toFixed(2)}</td>
@@ -18056,23 +18242,16 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
                                 <td style="border:0.5pt solid #000;">-</td>
                             </tr>`;
                     } else if (esExtraominaria) {
-                        cuerpoHtml += `
-                            <tr style="background-color:#f9f9f9; font-weight:bold; font-size:7pt;">
-                                <td colspan="12" style="text-align:right; border:0.5pt solid #000;"><b>${escapeHtml(row.titulo)}:</b></td>
-                                <td class="text-right" style="border:0.5pt solid #000;">${(row.data.devengado || 0).toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000;">${(row.data.impS || 0).toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000;">${(row.data.retenciones || 0).toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000; color:#004b87;"><b>${(row.data.pagado || 0).toFixed(2)}</b></td>
-                                <td style="border:0.5pt solid #000;">-</td>
-                            </tr>`;
+                        cuerpoHtml += filaTotalExtraordinaria(escapeHtml(row.titulo) + ':', row.data, { trStyle: 'background-color:#f9f9f9; font-weight:bold; font-size:7pt;', cellStyle: 'text-align:right; border:0.5pt solid #000;', moneyPrefix: '' });
                     } else {
                         cuerpoHtml += `
                             <tr style="background-color:#f9f9f9; font-weight:bold; font-size:7pt;">
                                 <td colspan="6" style="text-align:right; border:0.5pt solid #000;"><b>${escapeHtml(row.titulo)}:</b></td>
                                 <td class="text-right" style="border:0.5pt solid #000;">${row.data.aCobrar.toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000;">${row.data.bono.toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000;">${row.data.devengado.toFixed(2)}</td>
+                                ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000;">${row.data.bono.toFixed(2)}</td>`}
+                                ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000;">${row.data.devengado.toFixed(2)}</td>`}
                                 <td class="text-right" style="border:0.5pt solid #000;">${row.data.impS.toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000;">${(row.data.descuentos || 0).toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000;">${row.data.retenciones.toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; color:#004b87;"><b>${row.data.pagado.toFixed(2)}</b></td>
                                 <td class="text-right" style="border:0.5pt solid #000;">${row.data.vacDias.toFixed(2)}</td>
@@ -18110,23 +18289,16 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
                         <td style="border:0.5pt solid #000;">-</td>
                     </tr>`;
             } else if (esExtraominaria) {
-                cuerpoHtml += `
-                    <tr style="background-color:#fff3cd; font-weight:bold; font-size:7pt;">
-                        <td colspan="12" style="text-align:right; border:0.5pt solid #000;"><b>SUBTOTAL PÁGINA ${numPag}:</b></td>
-                        <td class="text-right" style="border:0.5pt solid #000;">${(pag.subtotal.devengado || 0).toFixed(2)}</td>
-                        <td class="text-right" style="border:0.5pt solid #000;">${(pag.subtotal.impS || 0).toFixed(2)}</td>
-                        <td class="text-right" style="border:0.5pt solid #000;">${(pag.subtotal.retenciones || 0).toFixed(2)}</td>
-                        <td class="text-right" style="border:0.5pt solid #000; color:#b45309;"><b>${(pag.subtotal.pagado || 0).toFixed(2)}</b></td>
-                        <td style="border:0.5pt solid #000;">-</td>
-                    </tr>`;
+                cuerpoHtml += filaTotalExtraordinaria('SUBTOTAL PÁGINA ' + numPag + ':', pag.subtotal, { trStyle: 'background-color:#fff3cd; font-weight:bold; font-size:7pt;', cellStyle: 'text-align:right; border:0.5pt solid #000;', moneyPrefix: '' });
             } else {
                 cuerpoHtml += `
                     <tr style="background-color:#fff3cd; font-weight:bold; font-size:7pt;">
                         <td colspan="6" style="text-align:right; border:0.5pt solid #000;"><b>SUBTOTAL PÁGINA ${numPag}:</b></td>
                         <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.aCobrar.toFixed(2)}</td>
-                        <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.bono.toFixed(2)}</td>
-                        <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.devengado.toFixed(2)}</td>
+                        ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.bono.toFixed(2)}</td>`}
+                        ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.devengado.toFixed(2)}</td>`}
                         <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.impS.toFixed(2)}</td>
+                        <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.descuentos.toFixed(2)}</td>
                         <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.retenciones.toFixed(2)}</td>
                         <td class="text-right" style="border:0.5pt solid #000; color:#b45309;"><b>${pag.subtotal.pagado.toFixed(2)}</b></td>
                         <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.vacDias.toFixed(2)}</td>
@@ -18164,23 +18336,16 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
                             <td style="border:0.5pt solid #000;"></td>
                         </tr>`;
                 } else if (esExtraominaria) {
-                    cuerpoHtml += `
-                        <tr style="background-color:#d9e1f2; font-weight:bold; font-size:7pt;">
-                            <td colspan="12" style="text-align:right; border:0.5pt solid #000;"><b>TOTAL GENERAL NOMINA:</b></td>
-                            <td class="text-right" style="border:0.5pt solid #000;">${(gTot.devengado || 0).toFixed(2)}</td>
-                            <td class="text-right" style="border:0.5pt solid #000;">${(gTot.impS || 0).toFixed(2)}</td>
-                            <td class="text-right" style="border:0.5pt solid #000;">${(gTot.retenciones || 0).toFixed(2)}</td>
-                            <td class="text-right" style="border:0.5pt solid #000; color:#1e3a8a;"><b>${(gTot.pagado || 0).toFixed(2)}</b></td>
-                            <td style="border:0.5pt solid #000;"></td>
-                        </tr>`;
+                    cuerpoHtml += filaTotalExtraordinaria('TOTAL GENERAL NOMINA:', gTot, { trStyle: 'background-color:#d9e1f2; font-weight:bold; font-size:7pt;', cellStyle: 'text-align:right; border:0.5pt solid #000;', moneyPrefix: '' });
                 } else {
                     cuerpoHtml += `
                         <tr style="background-color:#d9e1f2; font-weight:bold; font-size:7pt;">
                             <td colspan="6" style="text-align:right; border:0.5pt solid #000;"><b>TOTAL GENERAL NOMINA:</b></td>
                             <td class="text-right" style="border:0.5pt solid #000;">${gTot.aCobrar.toFixed(2)}</td>
-                            <td class="text-right" style="border:0.5pt solid #000;">${gTot.bono.toFixed(2)}</td>
-                            <td class="text-right" style="border:0.5pt solid #000;">${gTot.devengado.toFixed(2)}</td>
+                            ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000;">${gTot.bono.toFixed(2)}</td>`}
+                            ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000;">${gTot.devengado.toFixed(2)}</td>`}
                             <td class="text-right" style="border:0.5pt solid #000;">${gTot.impS.toFixed(2)}</td>
+                            <td class="text-right" style="border:0.5pt solid #000;">${gTot.descuentos.toFixed(2)}</td>
                             <td class="text-right" style="border:0.5pt solid #000;">${gTot.retenciones.toFixed(2)}</td>
                             <td class="text-right" style="border:0.5pt solid #000; color:#1e3a8a;"><b>${gTot.pagado.toFixed(2)}</b></td>
                             <td class="text-right" style="border:0.5pt solid #000;">${gTot.vacDias.toFixed(2)}</td>
@@ -18215,6 +18380,7 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Cat.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Tarf.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.875rem;">HE/D</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/HE/D</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">Nt 7-23h</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/Nt 7-23h</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">Nt 23-7h</th>
@@ -18223,7 +18389,8 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/DT</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Deven.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Imp. CESS</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Ret.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Dsctos.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Ret. Tot.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.8125rem;">Pagado</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:3.125rem;">Firma</th>
                 </tr>
@@ -18234,12 +18401,13 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:8.125rem;">Nombre y Apellidos</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Cat.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Tarf.</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.75rem;">Horas</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.75rem;">${tipoNomina === 'vacaciones' ? 'Días' : 'Horas'}</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.8125rem;">A cobrar</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Bon.</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.8125rem;">Deven.</th>
+                    ${tipoNomina === 'vacaciones' ? '' : '<th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Bon.</th>'}
+                    ${tipoNomina === 'vacaciones' ? '' : '<th style="border:0.5pt solid #000; padding:0.1875rem; width:2.8125rem;">Deven.</th>'}
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.8125rem;">Imp. CESS</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Ret.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.8125rem;">Dsctos.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Ret. Tot.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:3rem;">Pagado</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Vac.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.8125rem;">Tiem. Imp.</th>
@@ -18425,6 +18593,7 @@ function generarContenidoTXT(trabajadores) {
                  padRight("CI", 11) + " | " + 
                  padRight("NOMBRE Y APELLIDOS", 30) + " | " + 
                  padLeft("HE/D", 10) + " | " + 
+                 padLeft("$/HE/D", 10) + " | " + 
                  padLeft("NT 7-23H", 8) + " | " + 
                  padLeft("$/NT 7-23H", 10) + " | " + 
                  padLeft("NT 23-7H", 8) + " | " + 
@@ -18433,7 +18602,8 @@ function generarContenidoTXT(trabajadores) {
                  padLeft("$/DT", 8) + " | " + 
                  padLeft("DEVENGADO", 14) + " | " + 
                  padLeft("CESS", 12) + " | " + 
-                 padLeft("RET.", 12) + " | " + 
+                 padLeft("DSCTOS.", 12) + " | " + 
+                 padLeft("RET. TOT.", 12) + " | " + 
                  padLeft("PAGADO", 14);
     } else {
         header = padRight("COD", 6) + " | " + 
@@ -18453,15 +18623,33 @@ function generarContenidoTXT(trabajadores) {
     var totalDev = 0;
     var totalDed = 0;
     var totalCess = 0;
+    var totalDescuentos = 0;
     var totalNet = 0;
     var totalBono = 0;
+    var totalHoras = 0;
+    var totalImporteHE = 0;
+    var totalNoctT = 0;
+    var totalImporteNtT = 0;
+    var totalNoctD = 0;
+    var totalImporteNtD = 0;
+    var totalDt = 0;
+    var totalImporteDT = 0;
 
     trabajadores.forEach(function(t) {
         totalDev += t.devengado || 0;
         totalDed += t.retenciones || 0;
         totalCess += t.impS || 0;
+        totalDescuentos += t.descuentos || 0;
         totalNet += t.pagado || 0;
         totalBono += t.bono || 0;
+        totalHoras += t.horas || 0;
+        totalImporteHE += t.importeHE || 0;
+        totalNoctT += t.noctT || 0;
+        totalImporteNtT += t.importeNtT || 0;
+        totalNoctD += t.noctD || 0;
+        totalImporteNtD += t.importeNtD || 0;
+        totalDt += t.dt || 0;
+        totalImporteDT += t.importeDT || 0;
 
         var nombreTruncado = t.nombre.substring(0, 30);
         
@@ -18476,15 +18664,17 @@ function generarContenidoTXT(trabajadores) {
             line = padRight(t.codigo, 6) + " | " + 
                    padRight(t.ci, 11) + " | " + 
                    padRight(nombreTruncado, 30) + " | " + 
+                   padLeft((t.horas || 0).toFixed(0), 10) + " | " + 
                    padLeft("$" + (t.importeHE || 0).toFixed(2), 10) + " | " + 
-                   padLeft((t.noctT || 0).toFixed(2), 8) + " | " + 
+                   padLeft((t.noctT || 0).toFixed(0), 8) + " | " + 
                    padLeft("$" + (t.importeNtT || 0).toFixed(2), 10) + " | " + 
-                   padLeft((t.noctD || 0).toFixed(2), 8) + " | " + 
+                   padLeft((t.noctD || 0).toFixed(0), 8) + " | " + 
                    padLeft("$" + (t.importeNtD || 0).toFixed(2), 10) + " | " + 
-                   padLeft((t.dt || 0).toFixed(2), 4) + " | " + 
+                   padLeft((t.dt || 0).toFixed(0), 4) + " | " + 
                    padLeft("$" + (t.importeDT || 0).toFixed(2), 8) + " | " + 
                    padLeft("$" + (t.devengado || 0).toFixed(2), 14) + " | " + 
                    padLeft("$" + (t.impS || 0).toFixed(2), 12) + " | " + 
+                   padLeft("$" + (t.descuentos || 0).toFixed(2), 12) + " | " + 
                    padLeft("$" + (t.retenciones || 0).toFixed(2), 12) + " | " + 
                    padLeft("$" + (t.pagado || 0).toFixed(2), 14);
         } else {
@@ -18521,15 +18711,17 @@ function generarContenidoTXT(trabajadores) {
         totalLine = padRight("TOTAL", 6) + " | " + 
                     padRight("", 11) + " | " + 
                     padRight("TOTALES GENERALES", 30) + " | " + 
-                    padLeft("", 10) + " | " + 
-                    padLeft("", 8) + " | " + 
-                    padLeft("", 10) + " | " + 
-                    padLeft("", 8) + " | " + 
-                    padLeft("", 10) + " | " + 
-                    padLeft("", 4) + " | " + 
-                    padLeft("", 8) + " | " + 
+                    padLeft(totalHoras.toFixed(0), 10) + " | " + 
+                    padLeft("$" + totalImporteHE.toFixed(2), 10) + " | " + 
+                    padLeft(totalNoctT.toFixed(0), 8) + " | " + 
+                    padLeft("$" + totalImporteNtT.toFixed(2), 10) + " | " + 
+                    padLeft(totalNoctD.toFixed(0), 8) + " | " + 
+                    padLeft("$" + totalImporteNtD.toFixed(2), 10) + " | " + 
+                    padLeft(totalDt.toFixed(0), 4) + " | " + 
+                    padLeft("$" + totalImporteDT.toFixed(2), 8) + " | " + 
                     padLeft("$" + totalDev.toFixed(2), 14) + " | " + 
                     padLeft("$" + totalCess.toFixed(2), 12) + " | " + 
+                    padLeft("$" + totalDescuentos.toFixed(2), 12) + " | " + 
                     padLeft("$" + totalDed.toFixed(2), 12) + " | " + 
                     padLeft("$" + totalNet.toFixed(2), 14);
     } else {
@@ -18541,6 +18733,10 @@ function generarContenidoTXT(trabajadores) {
                     padLeft("$" + totalNet.toFixed(2), 14);
     }
     lines.push(totalLine);
+    if (observacionesCierreGlobal) {
+        lines.push("");
+        lines.push("OBSERVACIONES DE CIERRE: " + observacionesCierreGlobal);
+    }
     lines.push("==========================================================================");
     
     // ============================================================
@@ -18779,9 +18975,7 @@ $('#opcionSoloCess').on('click', function() {
     $('#btnConfirmarTipoDescuento').prop('disabled', false);
 });
 
-$('#btnConfirmarTipoDescuento').on('click', function() {
-    if (!tipoDescuentoSeleccionado) return;
-    
+function procederGeneracionAutomatica() {
     $('#tipoDiscountHidden').val(tipoDescuentoSeleccionado);
     
     Swal.fire({
@@ -18796,6 +18990,43 @@ $('#btnConfirmarTipoDescuento').on('click', function() {
     });
     
     $('#formGenerarAutomatica').submit();
+}
+
+$('#btnConfirmarTipoDescuento').on('click', function() {
+    if (!tipoDescuentoSeleccionado) return;
+    
+    // Pre-validación: impedir generar una nómina automática ya existente en el período
+    var anioSel = document.getElementById('anioSelect');
+    var mesSel = document.getElementById('mesSelect');
+    var periodoCheck = (anioSel && mesSel && anioSel.value && mesSel.value)
+        ? anioSel.value + '-' + mesSel.value
+        : (new URLSearchParams(window.location.search)).get('periodo') || '';
+    
+    fetch('nominas.php?action=verificar_nomina_automatica&ajax=1&periodo=' + encodeURIComponent(periodoCheck) + '&t=' + Date.now(), { cache: 'no-store' })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            if (data && data.exists) {
+                var fmtCUP = new Intl.NumberFormat('es-CU', { style: 'currency', currency: 'CUP', minimumFractionDigits: 2 });
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Imposible generar nuevamente una Nómina Automática ya Existente:',
+                    html: '<div style="text-align:left; font-size:0.85rem; line-height:1.8;">'
+                        + '<p style="margin:0 0 0.5rem;"><strong>Detalle de Nómina:</strong> No.: <strong>' + (data.numero_nomina || '-') + '</strong> | Período: <strong>' + (data.periodo_label || '') + '</strong></p>'
+                        + '<p style="margin:0;"><strong>CANTIDAD DE TRABAJADORES EN NÓMINA:</strong> ' + data.cantidad + '</p>'
+                        + '<p style="margin:0;"><strong>IMPORTE DEVENGADO:</strong> ' + fmtCUP.format(data.devengado || 0) + '</p>'
+                        + '<p style="margin:0;"><strong>IMPORTE NETO PAGADO:</strong> ' + fmtCUP.format(data.neto || 0) + '</p>'
+                        + '</div>',
+                    allowOutsideClick: false,
+                    showCloseButton: true,
+                    confirmButtonText: '<i class="fas fa-check me-1"></i> Entendido'
+                });
+                return;
+            }
+            procederGeneracionAutomatica();
+        })
+        .catch(function() {
+            procederGeneracionAutomatica();
+        });
 });
 
 function analizarCubanCI(ci) {
@@ -18958,11 +19189,48 @@ function generarTirillasPago(trabajadores) {
             `;
         }
 
-        filasHtml += `
-            <div class="tirilla">
-                <div class="header-tirilla">
-                    ${escapeHtml(nombreEmpresa)} - NOTIFICACION DE PAGO - <span style="color:red;">${mesAnio}</span> - ${escapeHtml(t.ci)}  <span style="color:red;">${escapeHtml(t.nombre)}</span> (${tipoNomina})
-                </div>
+        let tablaTirillaHtml = '';
+        if (tipoNominaActiva === 'extraordinaria') {
+            tablaTirillaHtml = `
+                <table class="tabla-tirilla">
+                    <thead>
+                        <tr>
+                            <th class="centrado">HE/D</th>
+                            <th class="centrado">$HE/D</th>
+                            <th class="centrado">Nt 7-23h</th>
+                            <th class="centrado">$/Nt 7-23h</th>
+                            <th class="centrado">Nt 23-7h</th>
+                            <th class="centrado">$/Nt 23-7h</th>
+                            <th class="centrado">D/T</th>
+                            <th class="centrado">$/DT</th>
+                            <th class="centrado">Deven.</th>
+                            <th class="centrado">Imp. CESS</th>
+                            <th class="centrado">Dsctos.</th>
+                            <th class="centrado">Ret. Tot.</th>
+                            <th class="centrado">Pagado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="centrado">${t.horas || 0}</td>
+                            <td class="derecha">$${(t.importeHE || 0).toFixed(2)}</td>
+                            <td class="centrado">${t.noctT || 0}</td>
+                            <td class="derecha">$${(t.importeNtT || 0).toFixed(2)}</td>
+                            <td class="centrado">${t.noctD || 0}</td>
+                            <td class="derecha">$${(t.importeNtD || 0).toFixed(2)}</td>
+                            <td class="centrado">${t.dt || 0}</td>
+                            <td class="derecha">$${(t.importeDT || 0).toFixed(2)}</td>
+                            <td class="derecha">$${(t.devengado || 0).toFixed(2)}</td>
+                            <td class="derecha">$${(t.impS || 0).toFixed(2)}</td>
+                            <td class="derecha">$${(t.descuentos || 0).toFixed(2)}</td>
+                            <td class="derecha">$${(t.retenciones || 0).toFixed(2)}</td>
+                            <td class="derecha"><span style="color:red;">$${(t.pagado || 0).toFixed(2)}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        } else if (tipoNominaActiva === 'automatica') {
+            tablaTirillaHtml = `
                 <table class="tabla-tirilla">
                     <thead>
                         <tr>
@@ -18975,6 +19243,7 @@ function generarTirillasPago(trabajadores) {
                             <th class="derecha">CESS</th>
                             <th class="derecha">RET</th>
                             <th class="derecha">PAGADO</th>
+                            <th class="centrado" colspan="2">Vacaciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -18990,9 +19259,61 @@ function generarTirillasPago(trabajadores) {
                             <td class="derecha">
 								<span style="color:red;">$${t.pagado.toFixed(2)}</span>
 							</td>
+                            <td class="centrado">${(t.vacAcumMes || 0).toFixed(2)}</td>
+                            <td class="derecha">$${(t.importeVacMes || 0).toFixed(2)}</td>
                         </tr>
                     </tbody>
                 </table>
+            `;
+        } else {
+            tablaTirillaHtml = `
+                <table class="tabla-tirilla">
+                    <thead>
+                        <tr>
+                            ${tipoNominaActiva === 'vacaciones' ? '<th class="centrado">SAL. BÁS.</th>' : ''}
+                            ${tipoNominaActiva === 'vacaciones' ? '<th class="centrado">ESC.</th>' : ''}
+                            <th class="centrado">TARIFA</th>
+                            <th class="centrado">${tipoNominaActiva === 'vacaciones' ? 'DÍAS' : 'HRS'}</th>
+                            <th class="derecha">A COBRAR</th>
+                            ${tipoNominaActiva === 'vacaciones' ? '' : '<th class="derecha">BONO</th>'}
+                            ${tipoNominaActiva === 'vacaciones' ? '' : '<th class="derecha">$/Feriad.</th>'}
+                            ${tipoNominaActiva === 'vacaciones' ? '' : '<th class="derecha">DEVENG</th>'}
+                            <th class="derecha">CESS</th>
+                            <th class="derecha">RET</th>
+                            <th class="derecha">PAGADO</th>
+                            ${tipoNominaActiva === 'vacaciones' ? '<th class="centrado">DÍAS REST.</th>' : ''}
+                            ${tipoNominaActiva === 'vacaciones' ? '<th class="derecha">IMP. SUBMAYOR</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            ${tipoNominaActiva === 'vacaciones' ? `<td class="centrado">$${(t.salarioMensual || 0).toFixed(2)}</td>` : ''}
+                            ${tipoNominaActiva === 'vacaciones' ? `<td class="centrado">${(t.escala || '-')}</td>` : ''}
+                            <td class="centrado">$${t.tarifaSal.toFixed(2)}</td>
+                            <td class="centrado">${tipoNominaActiva === 'vacaciones' ? (t.diasTomados || 0).toFixed(2) : t.horas}</td>
+                            <td class="derecha">$${t.aCobrar.toFixed(2)}</td>
+                            ${tipoNominaActiva === 'vacaciones' ? '' : `<td class="derecha">$${t.bono.toFixed(2)}</td>`}
+                            ${tipoNominaActiva === 'vacaciones' ? '' : `<td class="derecha">$${(t.feriadoImp || 0).toFixed(2)}</td>`}
+                            ${tipoNominaActiva === 'vacaciones' ? '' : `<td class="derecha">$${t.devengado.toFixed(2)}</td>`}
+                            <td class="derecha">$${t.impS.toFixed(2)}</td>
+                            <td class="derecha">$${t.retenciones.toFixed(2)}</td>
+                            <td class="derecha">
+								<span style="color:red;">$${t.pagado.toFixed(2)}</span>
+							</td>
+                            ${tipoNominaActiva === 'vacaciones' ? `<td class="centrado">${(t.vacDias || 0).toFixed(2)}</td>` : ''}
+                            ${tipoNominaActiva === 'vacaciones' ? `<td class="derecha">$${(t.tiempoImp || 0).toFixed(2)}</td>` : ''}
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        }
+
+        filasHtml += `
+            <div class="tirilla">
+                <div class="header-tirilla">
+                    ${escapeHtml(nombreEmpresa)} - NOTIFICACION DE PAGO - <span style="color:red;">${mesAnio}</span> - ${escapeHtml(t.ci)}  <span style="color:red;">${escapeHtml(t.nombre)}</span> (${tipoNomina})
+                </div>
+                ${tablaTirillaHtml}
                 ${infoVacacionesHtml}
                 <div class="linea-corte">════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════</div>
             </div>
@@ -19428,7 +19749,7 @@ function generarTirillasPago(trabajadores) {
                                 <div class="me-3"><i class="fas fa-sun fa-2x" style="color: #8b5cf6;"></i></div>
                                 <div class="flex-grow-1">
                                     <h5 class="mb-1" style="color: #fff; font-size:0.95rem;">Liquidación de fracciones del submayor de vacaciones</h5>
-                                    <p class="mb-0 small" style="color: rgba(255,255,255,0.6);">Calcula automáticamente el importe de los días acumulados en el submayor de vacaciones del período.</p>
+                                    <p class="mb-0 small" style="color: rgba(255,255,255,0.6);">Liquidación final de vacaciones: paga automáticamente el importe de TODOS los días acumulados del trabajador (queda en cero) e incluye fracciones ya liquidadas en ajustes previos.</p>
                                 </div>
                             </div>
                         </div>

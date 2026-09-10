@@ -1052,6 +1052,10 @@ try {
                ROUND(COALESCE((SELECT SUM(CASE WHEN s.tipo_movimiento = 'disfrute' THEN -s.dias ELSE s.dias END)
                                FROM submayor_vacaciones s WHERE s.trabajador_id = t.id), 0), 2) as saldo_submayor,
                ROUND(COALESCE((SELECT SUM(CASE WHEN n.tipo_nomina = 'vacaciones' THEN -n.dias_vacaciones_tomados
+                                               WHEN n.tipo_nomina IN ('automatica','ajuste') AND n.vacaciones_acumuladas_mes > 0
+                                                    AND EXISTS(SELECT 1 FROM submayor_vacaciones s2
+                                                               WHERE s2.nomina_id = n.id AND s2.tipo_movimiento = 'disfrute')
+                                                    THEN -n.vacaciones_acumuladas_mes
                                                WHEN n.tipo_nomina IN ('automatica','ajuste') THEN n.vacaciones_acumuladas_mes
                                                ELSE 0 END)
                                FROM nominas n WHERE n.trabajador_id = t.id AND n.estado = 'contabilizado'), 0), 2) as saldo_nominas
@@ -1063,6 +1067,8 @@ try {
     $stmt_trazabilidad = $pdo->query("
         SELECT n.trabajador_id,
                SUM(CASE WHEN n.tipo_nomina IN ('automatica','ajuste') AND n.vacaciones_acumuladas_mes > 0
+                         AND NOT EXISTS(SELECT 1 FROM submayor_vacaciones sd2
+                                        WHERE sd2.nomina_id = n.id AND sd2.tipo_movimiento = 'disfrute')
                          AND (sm.id IS NULL OR ABS(COALESCE(sm.dias, 0) - n.vacaciones_acumuladas_mes) > 0.009)
                          THEN 1 ELSE 0 END) AS nomina_sin_acumulacion,
                SUM(CASE WHEN n.tipo_nomina = 'vacaciones' AND n.dias_vacaciones_tomados > 0

@@ -44,6 +44,33 @@ function asegurarTarifasNocturnidad($pdo) {
 /**
  * Asegura que existan los parámetros de correo en configuracion_general.
  */
+/**
+ * Asegura que existan los recargos de horas extraordinarias (PDL/MIPYME).
+ * Por defecto: HE diurnas 150%, HE nocturnas 200%, doble turno 200%.
+ */
+function asegurarRecargosExtra($pdo) {
+    $params = [
+        'recargo_extra_diurna'   => '1.50',
+        'recargo_extra_nocturna' => '2.00',
+        'recargo_doble_turno'    => '2.00',
+    ];
+    try {
+        $check = $pdo->prepare("SELECT parametro FROM configuracion_general WHERE parametro = ?");
+        $ins   = $pdo->prepare("INSERT INTO configuracion_general (parametro, valor, tipo_dato, descripcion) VALUES (?, ?, ?, ?)");
+        foreach ($params as $p => $default) {
+            $check->execute([$p]);
+            if (!$check->fetch()) {
+                $desc = [
+                    'recargo_extra_diurna'   => 'Recargo hora extra diurna (multiplicador, 1.5 = 150%)',
+                    'recargo_extra_nocturna' => 'Recargo hora extra nocturna (multiplicador, 2.0 = 200%)',
+                    'recargo_doble_turno'    => 'Recargo doble turno (multiplicador, 2.0 = 200%)',
+                ][$p];
+                $ins->execute([$p, $default, 'decimal', $desc]);
+            }
+        }
+    } catch (PDOException $e) {}
+}
+
 function asegurarParamsMail($pdo) {
     $params = [
         'mail_activo'     => 'texto',
