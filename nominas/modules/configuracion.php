@@ -321,10 +321,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (isset($_POST['guardar_config_google'])) {
         require_once '../config/mail.php';
-        $params_google = [
-            'google_client_id'     => isset($_POST['google_client_id']) && trim($_POST['google_client_id']) !== '' ? cifrarSecreto(trim($_POST['google_client_id'])) : '',
-            'google_client_secret' => isset($_POST['google_client_secret']) && trim($_POST['google_client_secret']) !== '' ? cifrarSecreto(trim($_POST['google_client_secret'])) : '',
-        ];
+        $params_google = [];
+        if (isset($_POST['google_client_id']) && trim($_POST['google_client_id']) !== '') {
+            $params_google['google_client_id'] = cifrarSecreto(trim($_POST['google_client_id']));
+        }
+        if (isset($_POST['google_client_secret']) && trim($_POST['google_client_secret']) !== '') {
+            $params_google['google_client_secret'] = cifrarSecreto(trim($_POST['google_client_secret']));
+        }
+        $params_google['googleoauth'] = (($_POST['googleoauth'] ?? '') === '1') ? 'true' : 'false';
         
         try {
             foreach ($params_google as $param => $valor) {
@@ -378,6 +382,7 @@ $proveedores_smtp = getProveedoresSMTP();
 $config_google = [
     'client_id'     => descifrarSecreto($config['google_client_id'] ?? ''),
     'client_secret' => descifrarSecreto($config['google_client_secret'] ?? ''),
+    'oauth_activo'  => ($config['googleoauth'] ?? 'true') === 'true',
 ];
 
 // Obtener rangos de impuesto vigentes
@@ -1358,16 +1363,24 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                 <div id="collapseGoogle" class="collapse">
                 <div class="p-4">
                     <form method="POST" id="googleForm">
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div class="form-check form-switch" style="display:flex; align-items:center; gap:0.625rem; padding-left:0; margin-bottom:0;">
+                                    <input type="checkbox" class="form-check-input" style="width:2.4em; height:1.25em; cursor:pointer; margin-left:0;" name="googleoauth" id="googleoauth" value="1" <?php echo $config_google['oauth_activo'] ? 'checked' : ''; ?> onchange="toggleGoogleOauth()">
+                                    <label class="form-check-label mb-0" for="googleoauth" id="googleoauthLabel" style="color:#d1d5db; cursor:pointer; font-size:0.9rem;"><i class="fas fa-power-off me-1"></i> Activar/Desactivar Servicio</label>
+                                </div>
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Google Client ID</label>
-                                <input type="text" class="form-control" name="google_client_id" value="<?php echo htmlspecialchars($config_google['client_id']); ?>" placeholder="5820987538-...apps.googleusercontent.com" autocomplete="off">
+                                <input type="text" class="form-control" name="google_client_id" id="google_client_id" value="<?php echo htmlspecialchars($config_google['client_id']); ?>" placeholder="5820987538-...apps.googleusercontent.com" autocomplete="off" <?php echo $config_google['oauth_activo'] ? '' : 'disabled'; ?>>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Google Client Secret</label>
                                 <div class="password-wrapper">
-                                <input type="password" class="form-control" name="google_client_secret" id="google_client_secret" value="<?php echo htmlspecialchars($config_google['client_secret']); ?>" placeholder="GOCSPX-..." autocomplete="new-password">
-                                <button type="button" class="password-toggle" id="toggleGoogleSecret" tabindex="-1" title="Mostrar/ocultar secret" data-tooltip="Mostrar/ocultar secret" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                <input type="password" class="form-control" name="google_client_secret" id="google_client_secret" value="<?php echo htmlspecialchars($config_google['client_secret']); ?>" placeholder="GOCSPX-..." autocomplete="new-password" <?php echo $config_google['oauth_activo'] ? '' : 'disabled'; ?>>
+                                <button type="button" class="password-toggle" id="toggleGoogleSecret" tabindex="-1" title="Mostrar/ocultar secret" data-tooltip="Mostrar/ocultar secret" data-tooltip-theme="warning" <?php echo $config_google['oauth_activo'] ? '' : 'disabled'; ?>><i class="fas fa-eye"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -2095,6 +2108,14 @@ document.getElementById('toggleGoogleSecret')?.addEventListener('click', functio
     input.type = esPass ? 'text' : 'password';
     icon.className = esPass ? 'fas fa-eye-slash' : 'fas fa-eye';
 });
+
+function toggleGoogleOauth() {
+    const activo = document.getElementById('googleoauth')?.checked === true;
+    ['google_client_id', 'google_client_secret', 'toggleGoogleSecret'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !activo;
+    });
+}
 
 document.getElementById('mail_proveedor')?.addEventListener('change', function() {
     const prov = proveedoresSMTP[this.value];

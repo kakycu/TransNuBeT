@@ -158,22 +158,25 @@ if ($db_ok && isset($_SESSION['user_id']) && isset($_SESSION['logged_in']) && $_
 $google_client_id = '';
 $google_client_secret = '';
 $google_configurado = false;
+$google_oauth_activo = false;
 $redirect_uri_google = '';
 if ($db_ok && $pdo) {
     try {
-        $stmt = $pdo->prepare("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('google_client_id','google_client_secret')");
+        $stmt = $pdo->prepare("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('google_client_id','google_client_secret','googleoauth')");
         $stmt->execute();
         $gcfg = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
         require_once 'config/mail.php';
         $google_client_id = trim(descifrarSecreto($gcfg['google_client_id'] ?? ''));
         $google_client_secret = trim(descifrarSecreto($gcfg['google_client_secret'] ?? ''));
         $google_configurado = ($google_client_id !== '');
+        $google_oauth_activo = (($gcfg['googleoauth'] ?? 'true') === 'true');
         $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $gHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $gDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/login.php')), '/');
         $redirect_uri_google = $proto . '://' . $gHost . $gDir . '/login.php?action=google_callback';
     } catch (Exception $e) {
         $google_configurado = false;
+        $google_oauth_activo = false;
     }
 }
 
@@ -182,7 +185,7 @@ if ($flash_login !== '') {
     unset($_SESSION['login_flash']);
 }
 
-if ($db_ok && $google_configurado && isset($_GET['action']) && $_GET['action'] === 'google') {
+if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action']) && $_GET['action'] === 'google') {
     if (session_status() === PHP_SESSION_NONE) session_start();
     $_SESSION['google_popup'] = (isset($_GET['popup']) && $_GET['popup'] === '1') ? 1 : 0;
     $google_state = bin2hex(random_bytes(16));
@@ -200,7 +203,7 @@ if ($db_ok && $google_configurado && isset($_GET['action']) && $_GET['action'] =
     exit;
 }
 
-if ($db_ok && $google_configurado && isset($_GET['action']) && $_GET['action'] === 'google_callback') {
+if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action']) && $_GET['action'] === 'google_callback') {
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (isset($_GET['error'])) {
         $_SESSION['login_flash'] = 'google_cancelado';
@@ -369,7 +372,7 @@ if ($db_ok && $google_configurado && isset($_GET['action']) && $_GET['action'] =
     exit;
 }
 
-if ($db_ok && $google_configurado && isset($_GET['action']) && $_GET['action'] === 'google_token') {
+if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action']) && $_GET['action'] === 'google_token') {
     if (session_status() === PHP_SESSION_NONE) session_start();
 
     // Respuesta JSON para el flujo con ventana emergente de Google (Google Identity Services)
@@ -2611,22 +2614,28 @@ body::after {
             </div>
 
             <?php if ($db_ok): ?>
-            <div class="google-divider">
-                <span>o continúa con</span>
-            </div>
-            <div id="googleLoginBtn" class="google-login-btn-container">
-                <?php if (!$google_configurado): ?>
-                <div class="btn-google-login disabled" style="pointer-events: none; opacity: 0.5;" title="Login con Google no configurado por el administrador">
-                    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
-                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                    </svg>
-                    <span class="google-btn-text">Continuar con Google</span>
+                <?php if ($google_oauth_activo): ?>
+                <div class="google-divider">
+                    <span>o continúa con</span>
+                </div>
+                <div id="googleLoginBtn" class="google-login-btn-container">
+                    <?php if (!$google_configurado): ?>
+                    <div class="btn-google-login disabled" style="pointer-events: none; opacity: 0.5;" title="Login con Google no configurado por el administrador">
+                        <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                        </svg>
+                        <span class="google-btn-text">Continuar con Google</span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php else: ?>
+                <div class="google-divider">
+                    <span>INICIAR CON GOOGLE DESHABILITADO</span>
                 </div>
                 <?php endif; ?>
-            </div>
             <?php endif; ?>
         </form>
 
@@ -2699,6 +2708,7 @@ const restabpw = <?php echo intval($restabpw); ?>;
 const mailConfigurado = <?php echo $mail_configurado ? 'true' : 'false'; ?>;
 const googleClientId = <?php echo json_encode($google_client_id); ?>;
 const googleConfigurado = <?php echo $google_configurado ? 'true' : 'false'; ?>;
+const googleOauthActivo = <?php echo $google_oauth_activo ? 'true' : 'false'; ?>;
 
 // ==========================================
 // LOGIN CON GOOGLE
@@ -2757,7 +2767,7 @@ function mostrarErrorGoogle(titulo, mensaje, esAdvertencia) {
 }
 
 function prepararGoogle() {
-    if (!googleConfigurado || !dbOk) return;
+    if (!googleOauthActivo || !googleConfigurado || !dbOk) return;
     // Siempre visible: botón personalizado al instante (con perfil si existe)
     mostrarBotonGooglePersonalizado();
     if (window.google && google.accounts && google.accounts.id) {
@@ -2938,7 +2948,7 @@ function abrirPopupGoogle() {
     });
 }
 
-if (dbOk && googleConfigurado) {
+if (dbOk && googleConfigurado && googleOauthActivo) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', prepararGoogle);
     } else {

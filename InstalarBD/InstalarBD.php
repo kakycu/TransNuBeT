@@ -350,7 +350,8 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (32, 'google_client_secret', '', 'texto', 'Client Secret de la app OAuth de Google para el login con Google', NULL, NULL),
 (33, 'recargo_extra_diurna', '1.50', 'decimal', 'Recargo hora extra diurna (multiplicador, 1.5 = 150%)', NULL, NULL),
 (34, 'recargo_extra_nocturna', '2.00', 'decimal', 'Recargo hora extra nocturna Nt 7-23h y Nt 23-7h (multiplicador, 2.0 = 200%)', NULL, NULL),
-(35, 'recargo_doble_turno', '2.00', 'decimal', 'Recargo doble turno (multiplicador, 2.0 = 200%)', NULL, NULL);
+(35, 'recargo_doble_turno', '2.00', 'decimal', 'Recargo doble turno (multiplicador, 2.0 = 200%)', NULL, NULL),
+(36, 'googleoauth', 'true', 'booleano', 'Habilita o deshabilita el login con Google (OAuth 2.0) en el login', '2026-09-12 19:23:46', NULL);
 
 -- --------------------------------------------------------
 
@@ -955,7 +956,7 @@ ALTER TABLE `clasif_usuarios`
 -- AUTO_INCREMENT de la tabla `configuracion_general`
 --
 ALTER TABLE `configuracion_general`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT de la tabla `configuracion_rangos_impuesto`
