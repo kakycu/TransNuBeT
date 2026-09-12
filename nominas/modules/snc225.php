@@ -1160,7 +1160,10 @@ function nombreArchivoSNC(ext) {
 function obtenerFechaHoraSNC() {
     var f = new Date();
     var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-    return f.getDate() + ' de ' + meses[f.getMonth()] + ' ' + f.getFullYear() + ', ' + ('0'+f.getHours()).slice(-2) + ':' + ('0'+f.getMinutes()).slice(-2);
+    var h = f.getHours();
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var h12 = h % 12 || 12;
+    return f.getDate() + ' de ' + meses[f.getMonth()] + ' ' + f.getFullYear() + ', ' + ('0' + h12).slice(-2) + ':' + ('0' + f.getMinutes()).slice(-2) + ' ' + ampm;
 }
 
 function obtenerFechaCalculoLabel() {

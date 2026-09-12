@@ -1,23 +1,23 @@
 <?php
-// modules/exportar_sin_nomina.php - Trabajadores activos SIN nómina en un período (PDF, Word, Excel, CSV, TXT)
+// modules/exportar_sin_cuenta.php - Resumen de trabajadores SIN cuenta bancaria (tarjeta) por período
+// Cada columna es la suma del importe_neto de las nóminas según su tipo_nomina:
+//   SALAR. BÁSICO = automatica, NOCT. H. EXT = extraordinaria, VACAC. = vacaciones,
+//   AJUSTE Y/O LIQUID. = ajuste, RENDIM. = bono, TOTAL A PAGAR = importe_neto total.
 header('Content-Type: application/json');
 
 require_once '../config/database.php';
 require_once '../includes/funciones.php';
 
-// Iniciar sesión
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Verificar sesión
 if (!isset($_SESSION['usuario_id']) && !isset($_SESSION['logged_in'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'mensaje' => 'Su sesión ha expirado o no está autenticado. Inicie sesión nuevamente para continuar.']);
     exit;
 }
 
-// Control de acceso por rol
 if (!permiso_puede('nominas', 'exportar')) {
     http_response_code(403);
     echo json_encode(['success' => false, 'mensaje' => 'No tiene permisos suficientes para exportar. Contacte al administrador del sistema.']);
@@ -53,78 +53,121 @@ if (file_exists($ruta_logo)) {
 $formato  = $_POST['formato'] ?? $_GET['formato'] ?? '';
 $accion   = $_POST['accion'] ?? $_GET['accion'] ?? '';
 $periodo  = $_POST['periodo'] ?? $_GET['periodo'] ?? date('Y-m');
+$estado   = $_POST['estado'] ?? $_GET['estado'] ?? 'contabilizado';
+$cuenta   = $_POST['cuenta'] ?? $_GET['cuenta'] ?? 'sin';
+$trabajadorId = (int)($_POST['trabajador_id'] ?? $_GET['trabajador_id'] ?? 0);
 
-// Validar formato del período YYYY-MM
 if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodo)) {
     echo json_encode(['success' => false, 'mensaje' => 'Período no válido. Use el formato AAAA-MM.']);
     exit;
 }
 
+// Filtro opcional por trabajador
+$trabajador_label = '';
+if ($trabajadorId > 0) {
+    $stmtT = $pdo->prepare("SELECT nombre_completo FROM trabajadores WHERE id = ?");
+    $stmtT->execute([$trabajadorId]);
+    $trabajador_label = (string)($stmtT->fetchColumn() ?: '');
+    if ($trabajador_label === '') {
+        echo json_encode(['success' => false, 'mensaje' => 'El trabajador seleccionado no existe.']);
+        exit;
+    }
+}
+
+// Estados permitidos: vacío o 'todos' = sin filtro
+if ($estado === '') $estado = 'todos';
+$estadosPermitidos = ['borrador', 'contabilizado'];
+if (!in_array($estado, $estadosPermitidos) && $estado !== 'todos') {
+    echo json_encode(['success' => false, 'mensaje' => 'Estado no válido.']);
+    exit;
+}
+
+// Filtro de cuenta bancaria: vacío o 'todos' = sin filtro
+if ($cuenta === '') $cuenta = 'todos';
+$cuentasPermitidas = ['con', 'sin'];
+if (!in_array($cuenta, $cuentasPermitidas) && $cuenta !== 'todos') {
+    echo json_encode(['success' => false, 'mensaje' => 'Filtro de cuenta bancaria no válido.']);
+    exit;
+}
+
 $anio = (int)substr($periodo, 0, 4);
 $mes  = (int)substr($periodo, 5, 2);
-$periodo_desde = $periodo . '-01';
-$periodo_hasta = date('Y-m-t', strtotime($periodo_desde));
 
 // ========================
-// TRABAJADORES SIN NÓMINA EN EL PERÍODO SELECCIONADO
-// Se consideran los trabajadores dados de alta en o después del inicio del
-// período (fecha_alta >= mes seleccionado), activos o no. Se listan solo los
-// que NO tuvieron nómina no borrador en ese mes.
+// TRABAJADORES CON NÓMINA EN EL PERÍODO Y SIN CUENTA BANCARIA
 // ========================
-function obtenerSinNomina($pdo, $periodo_desde, $periodo_hasta) {
-    $ini = $periodo_desde;
-    $fin = $periodo_hasta;
-    $mes = substr($periodo_desde, 5, 2);
-    $anio = substr($periodo_desde, 0, 4);
-    $stmt = $pdo->prepare("
+function obtenerTrabajadoresSinCuenta($pdo, $anio, $mes, $estado, $cuenta, $trabajadorId = 0) {
+    $filtroEstado = '';
+    $params = [':anio' => $anio, ':mes' => $mes];
+    if ($estado !== 'todos') {
+        $filtroEstado = ' AND n.estado = :estado';
+        $params[':estado'] = $estado;
+    }
+    if ($cuenta === 'con') {
+        $filtroCuenta = " AND t.cuentabanc IS NOT NULL AND TRIM(t.cuentabanc) <> ''";
+    } elseif ($cuenta === 'sin') {
+        $filtroCuenta = " AND (t.cuentabanc IS NULL OR TRIM(t.cuentabanc) = '')";
+    } else {
+        $filtroCuenta = '';
+    }
+    $filtroTrabajador = '';
+    if ($trabajadorId > 0) {
+        $filtroTrabajador = ' AND t.id = :trabajador_id';
+        $params[':trabajador_id'] = $trabajadorId;
+    }
+    $sql = "
         SELECT t.id, t.codigo, t.ci, t.nombre_completo,
-               COALESCE(a.nombre_area, '') AS area,
-               COALESCE(cc.nombre, '') AS centro_costo,
-               COALESCE(t.fecha_alta, '') AS fecha_alta,
-               COALESCE(t.fecha_baja, '') AS fecha_baja,
-               COALESCE(MAX(CASE WHEN n2.estado != 'borrador' THEN n2.periodo_desde END), '') AS ultima_nomina,
-               COUNT(CASE WHEN n2.estado != 'borrador' THEN 1 END) AS total_nominas,
-               COALESCE(SUM(CASE WHEN n2.estado != 'borrador' THEN n2.total_salario_devengado ELSE 0 END), 0) AS total_devengado,
-               COALESCE(SUM(CASE WHEN n2.estado != 'borrador' THEN n2.importe_neto ELSE 0 END), 0) AS total_neto
+               COALESCE(SUM(CASE WHEN n.tipo_nomina = 'automatica'     THEN n.importe_neto ELSE 0 END), 0) AS monto_automatica,
+               COALESCE(SUM(CASE WHEN n.tipo_nomina = 'extraordinaria' THEN n.importe_neto ELSE 0 END), 0) AS monto_extraordinaria,
+               COALESCE(SUM(CASE WHEN n.tipo_nomina = 'vacaciones'     THEN n.importe_neto ELSE 0 END), 0) AS monto_vacaciones,
+               COALESCE(SUM(CASE WHEN n.tipo_nomina = 'ajuste'         THEN n.importe_neto ELSE 0 END), 0) AS monto_ajuste,
+               COALESCE(SUM(CASE WHEN n.tipo_nomina = 'bono'           THEN n.importe_neto ELSE 0 END), 0) AS monto_bono,
+               COALESCE(SUM(n.importe_neto), 0) AS total_a_pagar
         FROM trabajadores t
-        LEFT JOIN areas a ON t.area_id = a.id
-        LEFT JOIN centros_costo cc ON t.centro_costo_id = cc.id
-        LEFT JOIN nominas n2 ON n2.trabajador_id = t.id
-        WHERE (t.fecha_alta IS NOT NULL AND t.fecha_alta >= :ini)
-          AND t.id NOT IN (
-              SELECT DISTINCT n.trabajador_id
-              FROM nominas n
-              WHERE n.estado != 'borrador'
-                AND MONTH(n.periodo_desde) = :mes
-                AND YEAR(n.periodo_desde) = :anio
-          )
-        GROUP BY t.id, t.codigo, t.ci, t.nombre_completo, a.nombre_area, cc.nombre, t.fecha_alta, t.fecha_baja
+        INNER JOIN nominas n ON n.trabajador_id = t.id
+        WHERE YEAR(n.periodo_desde) = :anio
+          AND MONTH(n.periodo_desde) = :mes
+          $filtroCuenta
+          $filtroTrabajador
+          $filtroEstado
+        GROUP BY t.id, t.codigo, t.ci, t.nombre_completo
         ORDER BY t.nombre_completo ASC
-    ");
-    $stmt->execute([':ini' => $ini, ':mes' => $mes, ':anio' => $anio]);
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $resultado = [];
     foreach ($filas as $f) {
         $resultado[] = [
-            'id'             => (int)$f['id'],
-            'codigo'         => $f['codigo'],
-            'ci'             => $f['ci'],
-            'nombre'         => $f['nombre_completo'],
-            'area'           => $f['area'],
-            'centro_costo'   => $f['centro_costo'],
-            'fecha_alta'     => ($f['fecha_alta'] !== '') ? date('d/m/Y', strtotime($f['fecha_alta'])) : '—',
-            'fecha_baja'     => ($f['fecha_baja'] !== '') ? date('d/m/Y', strtotime($f['fecha_baja'])) : '—',
-            'ultima_nomina'  => ($f['ultima_nomina'] !== '') ? date('d/m/Y', strtotime($f['ultima_nomina'])) : 'Nunca',
-            'total_nominas'  => (int)$f['total_nominas'],
-            'total_devengado'=> (float)round($f['total_devengado'], 2),
-            'total_neto'     => (float)round($f['total_neto'], 2)
+            'id'              => (int)$f['id'],
+            'codigo'          => $f['codigo'],
+            'ci'              => $f['ci'],
+            'nombre'          => $f['nombre_completo'],
+            'salar_basico'    => (float)round($f['monto_automatica'], 2),
+            'noct_h_ext'      => (float)round($f['monto_extraordinaria'], 2),
+            'vacac'           => (float)round($f['monto_vacaciones'], 2),
+            'ajuste_liquid'   => (float)round($f['monto_ajuste'], 2),
+            'rendim'          => (float)round($f['monto_bono'], 2),
+            'total_a_pagar'   => (float)round($f['total_a_pagar'], 2)
         ];
     }
     return $resultado;
 }
 
-$trabajadores = obtenerSinNomina($pdo, $periodo_desde, $periodo_hasta);
+$trabajadores = obtenerTrabajadoresSinCuenta($pdo, $anio, $mes, $estado, $cuenta, $trabajadorId);
+
+$cuentaLabels = ['con' => 'Con cuenta', 'sin' => 'Sin cuenta', 'todos' => 'Todas las cuentas'];
+$cuenta_label = $cuentaLabels[$cuenta] ?? 'Sin cuenta';
+
+$totales = [
+    'salar_basico'  => (float)round(array_sum(array_column($trabajadores, 'salar_basico')), 2),
+    'noct_h_ext'    => (float)round(array_sum(array_column($trabajadores, 'noct_h_ext')), 2),
+    'vacac'         => (float)round(array_sum(array_column($trabajadores, 'vacac')), 2),
+    'ajuste_liquid' => (float)round(array_sum(array_column($trabajadores, 'ajuste_liquid')), 2),
+    'rendim'        => (float)round(array_sum(array_column($trabajadores, 'rendim')), 2),
+    'total_a_pagar' => (float)round(array_sum(array_column($trabajadores, 'total_a_pagar')), 2),
+];
 
 // ========================
 // MODO LISTA (para el modal)
@@ -134,8 +177,15 @@ if ($accion === 'lista') {
         'success' => true,
         'periodo' => $periodo,
         'periodo_label' => nombreMesEspanol($mes) . ' ' . $anio,
+        'estado'  => $estado,
+        'estado_label' => ($estado === 'todos') ? 'Todos los estados' : ucfirst($estado),
+        'cuenta'  => $cuenta,
+        'cuenta_label' => $cuenta_label,
+        'trabajador_id' => $trabajadorId,
+        'trabajador_label' => $trabajador_label,
         'registros' => count($trabajadores),
-        'trabajadores' => $trabajadores
+        'trabajadores' => $trabajadores,
+        'totales'   => $totales
     ]);
     exit;
 }
@@ -150,7 +200,7 @@ if (!in_array($formato, $formatosPermitidos)) {
 }
 
 if (empty($trabajadores)) {
-    echo json_encode(['success' => false, 'mensaje' => 'No hay trabajadores sin nómina con alta en el período seleccionado.']);
+    echo json_encode(['success' => false, 'mensaje' => 'No hay trabajadores ' . ($cuenta === 'sin' ? 'sin cuenta bancaria' : ($cuenta === 'con' ? 'con cuenta bancaria' : '')) . ' con nóminas en el período y estado seleccionados.']);
     exit;
 }
 
@@ -161,12 +211,20 @@ $carpeta = __DIR__ . '/exports/';
 if (!is_dir($carpeta)) mkdir($carpeta, 0777, true);
 
 $nombreEmpresa = $config_empresa['nombre_empresa'];
-$titulo = 'TRABAJADORES SIN NÓMINA';
-$subtitulo = $nombreEmpresa . ' - Período: ' . nombreMesEspanol($mes) . ' ' . $anio;
-$meta1 = 'Generado por: ' . $user_nombre_completo . '  |  Emisión: ' . date('d/m/Y H:i:s');
-$meta2 = 'Total de trabajadores: ' . count($trabajadores);
+$tituloTxt = ($cuenta === 'con') ? 'RESUMEN CON TARJETA' : (($cuenta === 'todos') ? 'RESUMEN DE TRABAJADORES' : 'RESUMEN SIN TARJETA');
+$subtituloBase = strtoupper(nombreMesEspanol($mes)) . ' / ' . $anio;
+$titulo = $tituloTxt;
+$subtitulo = ($cuenta === 'con') ? 'TRABAJADORES CON TARJETA ' . $subtituloBase : (($cuenta === 'todos') ? 'TRABAJADORES CON NÓMINAS ' . $subtituloBase : 'TRABAJADORES SIN TARJETA ' . $subtituloBase);
+$estadoTxt = ($estado === 'todos') ? 'Todos los estados' : ucfirst($estado);
+$cuentaTxt = ucfirst($cuenta_label);
+$meta1 = 'Generado por: ' . $user_nombre_completo . '  |  Emisión: ' . date('d/m/Y H:i');
+$meta2 = 'Estado: ' . $estadoTxt . '  |  Cuenta bancaria: ' . $cuentaTxt;
+if ($trabajadorId > 0 && $trabajador_label !== '') {
+    $meta2 .= '  |  Trabajador: ' . mb_strtoupper($trabajador_label, 'UTF-8');
+}
+$meta2 .= '  |  Total de trabajadores: ' . count($trabajadores);
 
-$nombreBase = 'trabajadores_sin_nomina_' . $periodo . '_' . date('Ymd_His');
+$nombreBase = 'trabajadores_' . ($cuenta === 'sin' ? 'sin_tarjeta' : ($cuenta === 'con' ? 'con_tarjeta' : 'todas_cuentas')) . '_' . $periodo . '_' . $estado . '_' . date('Ymd_His');
 $archivoSalida = '';
 $success = false;
 
@@ -197,10 +255,15 @@ function txtPad($texto, $len, $pad = ' ') {
 }
 
 $firmasData = [
-    ['Elaborado por:', ($config_empresa['especialista_gestionRRHH'] ?? '') !== '' ? $config_empresa['especialista_gestionRRHH'] : $user_nombre_completo, 'Especialista de Recursos Humanos'],
+    ['Generado por:', $user_nombre_completo, 'Usuario del sistema'],
     ['Revisado por:', $config_empresa['especialista_gestion'], 'Especialista en Gestión Económica'],
     ['Aprobado por:', $config_empresa['jefe_proyecto'], 'Director de Proyecto']
 ];
+
+// Columnas del reporte (9 columnas, en el mismo orden que el Excel del cliente)
+$headers   = ['No.', 'No CI.', 'Nombre y Apellidos', 'SALAR. BÁSICO', 'NOCT. H. EXT', 'VACAC.', 'AJUSTE Y/O LIQUID.', 'RENDIM.', 'TOTAL A PAGAR'];
+$anchors   = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+$pdfAnchos = [16, 42, 105, 46, 46, 44, 52, 44, 48];
 
 // ========================
 // GENERAR EL ARCHIVO SEGÚN FORMATO
@@ -215,10 +278,7 @@ if ($formato === 'excel') {
     $archivoSalida = $carpeta . $nombreBase . '.xlsx';
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setTitle('Sin Nómina');
-
-    $headers = ['No.', 'Expediente', 'CI', 'Nombre Completo', 'Área', 'Centro de Costo', 'Fecha Alta', 'Fecha Baja', 'Última Nómina', 'Total Nóminas', 'Total Devengado', 'Total Neto'];
-    $anchors = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+    $sheet->setTitle('Sin Tarjeta');
 
     // ---- Encabezado con logo ----
     $sheet->getRowDimension(1)->setRowHeight(62);
@@ -234,18 +294,18 @@ if ($formato === 'excel') {
         $drawing->getShadow()->setVisible(false);
         $drawing->setWorksheet($sheet);
     }
-    $sheet->mergeCells('B1:L1');
+    $sheet->mergeCells('B1:I1');
     $sheet->setCellValue('B1', $nombreEmpresa);
     $sheet->getStyle('B1')->getFont()->setBold(true)->setSize(18)->getColor()->setRGB('1F2937');
     $sheet->getStyle('B1')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
 
     $sheet->getRowDimension(2)->setRowHeight(18);
-    $sheet->mergeCells('B2:L2');
+    $sheet->mergeCells('B2:I2');
     $sheet->setCellValue('B2', $titulo);
     $sheet->getStyle('B2')->getFont()->setBold(true)->setSize(13)->getColor()->setRGB('C0392B');
 
     $sheet->getRowDimension(3)->setRowHeight(16);
-    $sheet->mergeCells('B3:L3');
+    $sheet->mergeCells('B3:I3');
     $sheet->setCellValue('B3', $subtitulo . '  |  ' . $meta1 . '  |  ' . $meta2);
     $sheet->getStyle('B3')->getFont()->setSize(9)->getColor()->setRGB('4B5563');
 
@@ -253,35 +313,33 @@ if ($formato === 'excel') {
     foreach ($anchors as $i => $col) {
         $sheet->setCellValue($col . $filaHeader, $headers[$i]);
     }
-    $sheet->getStyle('A' . $filaHeader . ':L' . $filaHeader)->getFont()->setBold(true);
-    $sheet->getStyle('A' . $filaHeader . ':L' . $filaHeader)->getFill()
+    $sheet->getStyle('A' . $filaHeader . ':I' . $filaHeader)->getFont()->setBold(true);
+    $sheet->getStyle('A' . $filaHeader . ':I' . $filaHeader)->getFill()
         ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
         ->getStartColor()->setRGB('C0392B');
-    $sheet->getStyle('A' . $filaHeader . ':L' . $filaHeader)->getFont()->getColor()->setRGB('FFFFFF');
-    $sheet->getStyle('A' . $filaHeader . ':L' . $filaHeader)->getAlignment()
+    $sheet->getStyle('A' . $filaHeader . ':I' . $filaHeader)->getFont()->getColor()->setRGB('FFFFFF');
+    $sheet->getStyle('A' . $filaHeader . ':I' . $filaHeader)->getAlignment()
         ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
         ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
-    $sheet->getRowDimension($filaHeader)->setRowHeight(20);
+    $sheet->getRowDimension($filaHeader)->setRowHeight(32);
 
     $fila = $filaHeader + 1;
     foreach ($trabajadores as $i => $t) {
         $sheet->setCellValue('A' . $fila, $i + 1);
-        $sheet->setCellValue('B' . $fila, $t['codigo']);
-        $sheet->setCellValue('C' . $fila, $t['ci']);
-        $sheet->setCellValue('D' . $fila, $t['nombre']);
-        $sheet->setCellValue('E' . $fila, $t['area']);
-        $sheet->setCellValue('F' . $fila, $t['centro_costo']);
-        $sheet->setCellValue('G' . $fila, $t['fecha_alta']);
-        $sheet->setCellValue('H' . $fila, $t['fecha_baja']);
-        $sheet->setCellValue('I' . $fila, $t['ultima_nomina']);
-        $sheet->setCellValue('J' . $fila, $t['total_nominas']);
-        $sheet->setCellValue('K' . $fila, formatoMoney($t['total_devengado']));
-        $sheet->setCellValue('L' . $fila, formatoMoney($t['total_neto']));
-        $sheet->getStyle('A' . $fila . ':L' . $fila)->getFont()->setSize(9);
-        $sheet->getStyle('K' . $fila)->getNumberFormat()->setFormatCode('#,##0.00');
-        $sheet->getStyle('L' . $fila)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->setCellValue('B' . $fila, $t['ci']);
+        $sheet->setCellValue('C' . $fila, $t['nombre']);
+        $sheet->setCellValue('D' . $fila, formatoMoney($t['salar_basico']));
+        $sheet->setCellValue('E' . $fila, formatoMoney($t['noct_h_ext']));
+        $sheet->setCellValue('F' . $fila, formatoMoney($t['vacac']));
+        $sheet->setCellValue('G' . $fila, formatoMoney($t['ajuste_liquid']));
+        $sheet->setCellValue('H' . $fila, formatoMoney($t['rendim']));
+        $sheet->setCellValue('I' . $fila, formatoMoney($t['total_a_pagar']));
+        $sheet->getStyle('A' . $fila . ':I' . $fila)->getFont()->setSize(9);
+        foreach (['D','E','F','G','H','I'] as $mc) {
+            $sheet->getStyle($mc . $fila)->getNumberFormat()->setFormatCode('#,##0.00');
+        }
         if ($i % 2 === 1) {
-            $sheet->getStyle('A' . $fila . ':L' . $fila)->getFill()
+            $sheet->getStyle('A' . $fila . ':I' . $fila)->getFill()
                 ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
                 ->getStartColor()->setRGB('F3F4F6');
         }
@@ -289,12 +347,28 @@ if ($formato === 'excel') {
     }
     $ultimaFila = $fila - 1;
 
+    // ---- Fila TOTAL GENERAL ----
+    $sheet->setCellValue('C' . $fila, 'TOTAL GENERAL');
+    $sheet->setCellValue('D' . $fila, formatoMoney($totales['salar_basico']));
+    $sheet->setCellValue('E' . $fila, formatoMoney($totales['noct_h_ext']));
+    $sheet->setCellValue('F' . $fila, formatoMoney($totales['vacac']));
+    $sheet->setCellValue('G' . $fila, formatoMoney($totales['ajuste_liquid']));
+    $sheet->setCellValue('H' . $fila, formatoMoney($totales['rendim']));
+    $sheet->setCellValue('I' . $fila, formatoMoney($totales['total_a_pagar']));
+    $sheet->getStyle('A' . $fila . ':I' . $fila)->getFont()->setBold(true);
+    $sheet->getStyle('A' . $fila . ':I' . $fila)->getFill()
+        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+        ->getStartColor()->setRGB('FED7D7');
+    $sheet->getStyle('A' . $fila . ':I' . $fila)->getBorders()->getTop()
+        ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM);
+    $ultimaFila++;
+
     // ---- Firmas ----
     $fila += 2;
     $bloques = [
         ['C', 'E', $firmasData[0]],
-        ['F', 'H', $firmasData[1]],
-        ['I', 'K', $firmasData[2]]
+        ['F', 'G', $firmasData[1]],
+        ['H', 'I', $firmasData[2]]
     ];
     foreach ($bloques as $bloque) {
         list($colIni, $colFin, $firma) = $bloque;
@@ -314,25 +388,22 @@ if ($formato === 'excel') {
         $sheet->getStyle($colIni . ($fila + 3))->getFont()->setSize(8)->getColor()->setRGB('4B5563');
     }
     $fila += 5;
-    $sheet->mergeCells('A' . $fila . ':L' . $fila);
+    $sheet->mergeCells('A' . $fila . ':I' . $fila);
     $sheet->setCellValue('A' . $fila, 'FIN DEL REPORTE - ' . $nombreEmpresa);
     $sheet->getStyle('A' . $fila)->getAlignment()
         ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle('A' . $fila)->getFont()->setBold(true)->setSize(10);
 
     $sheet->getColumnDimension('A')->setWidth(6);
-    $sheet->getColumnDimension('B')->setWidth(12);
-    $sheet->getColumnDimension('C')->setWidth(14);
-    $sheet->getColumnDimension('D')->setWidth(42);
-    $sheet->getColumnDimension('E')->setWidth(20);
-    $sheet->getColumnDimension('F')->setWidth(24);
-    $sheet->getColumnDimension('G')->setWidth(12);
+    $sheet->getColumnDimension('B')->setWidth(14);
+    $sheet->getColumnDimension('C')->setWidth(42);
+    $sheet->getColumnDimension('D')->setWidth(14);
+    $sheet->getColumnDimension('E')->setWidth(14);
+    $sheet->getColumnDimension('F')->setWidth(12);
+    $sheet->getColumnDimension('G')->setWidth(18);
     $sheet->getColumnDimension('H')->setWidth(12);
-    $sheet->getColumnDimension('I')->setWidth(13);
-    $sheet->getColumnDimension('J')->setWidth(10);
-    $sheet->getColumnDimension('K')->setWidth(14);
-    $sheet->getColumnDimension('L')->setWidth(14);
-    $sheet->getStyle('A1:L' . $ultimaFila)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+    $sheet->getColumnDimension('I')->setWidth(15);
+    $sheet->getStyle('A1:I' . $ultimaFila)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
 
     try {
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
@@ -348,13 +419,14 @@ if ($formato === 'excel') {
     if ($fp) {
         fwrite($fp, "\xEF\xBB\xBF");
         fputcsv($fp, ['EMPRESA: ' . $nombreEmpresa]);
-        fputcsv($fp, [$titulo . ' - Período: ' . nombreMesEspanol($mes) . ' ' . $anio]);
+        fputcsv($fp, [$titulo . ' - ' . $subtitulo]);
         fputcsv($fp, [$meta1 . '  |  ' . $meta2]);
         fputcsv($fp, []);
-        fputcsv($fp, ['No.', 'Expediente', 'CI', 'Nombre Completo', 'Área', 'Centro de Costo', 'Fecha Alta', 'Fecha Baja', 'Última Nómina', 'Total Nóminas', 'Total Devengado', 'Total Neto']);
+        fputcsv($fp, $headers);
         foreach ($trabajadores as $i => $t) {
-            fputcsv($fp, [$i + 1, $t['codigo'], $t['ci'], $t['nombre'], $t['area'], $t['centro_costo'], $t['fecha_alta'], $t['fecha_baja'], $t['ultima_nomina'], $t['total_nominas'], formatoMoney($t['total_devengado']), formatoMoney($t['total_neto'])]);
+            fputcsv($fp, [$i + 1, $t['ci'], $t['nombre'], formatoMoney($t['salar_basico']), formatoMoney($t['noct_h_ext']), formatoMoney($t['vacac']), formatoMoney($t['ajuste_liquid']), formatoMoney($t['rendim']), formatoMoney($t['total_a_pagar'])]);
         }
+        fputcsv($fp, ['', '', 'TOTAL GENERAL', formatoMoney($totales['salar_basico']), formatoMoney($totales['noct_h_ext']), formatoMoney($totales['vacac']), formatoMoney($totales['ajuste_liquid']), formatoMoney($totales['rendim']), formatoMoney($totales['total_a_pagar'])]);
         fputcsv($fp, []);
         foreach ($firmasData as $firma) {
             fputcsv($fp, [$firma[0] . ' ' . $firma[1] . ' (' . $firma[2] . ')']);
@@ -367,29 +439,33 @@ if ($formato === 'excel') {
 } elseif ($formato === 'txt') {
     $archivoSalida = $carpeta . $nombreBase . '.txt';
     $lineas = [];
-    $lineas[] = str_repeat('=', 163);
+    $lineas[] = str_repeat('=', 183);
     $lineas[] = $titulo;
     $lineas[] = $subtitulo;
     $lineas[] = $meta1 . '  |  ' . $meta2;
-    $lineas[] = str_repeat('=', 163);
+    $lineas[] = str_repeat('=', 183);
     $lineas[] = '';
-    $lineas[] = txtPad('No.', 4) . txtPad('Expediente', 10) . txtPad('CI', 12) . txtPad('Nombre Completo', 40) . txtPad('Área', 20) . txtPad('Centro de Costo', 26) . txtPad('F.Alta', 11) . txtPad('F.Baja', 11) . txtPad('Última Nómina', 14) . txtPad('Total', 6) . txtPad('Devengado', 13) . txtPad('Neto', 10);
-    $lineas[] = str_repeat('-', 163);
+    $lineas[] = txtPad('No.', 5) . txtPad('No CI.', 13) . txtPad('Nombre y Apellidos', 40) . txtPad('SALAR. BÁSICO', 16) . txtPad('NOCT. H. EXT', 16) . txtPad('VACAC.', 13) . txtPad('AJUSTE/LIQUID.', 18) . txtPad('RENDIM.', 13) . txtPad('TOTAL A PAGAR', 16);
+    $lineas[] = str_repeat('-', 183);
     foreach ($trabajadores as $i => $t) {
-        $lineas[] = txtPad($i + 1, 4)
-            . txtPad($t['codigo'], 10)
-            . txtPad($t['ci'], 12)
+        $lineas[] = txtPad($i + 1, 5)
+            . txtPad($t['ci'], 13)
             . txtPad($t['nombre'], 40)
-            . txtPad($t['area'], 20)
-            . txtPad($t['centro_costo'], 26)
-            . txtPad($t['fecha_alta'], 11)
-            . txtPad($t['fecha_baja'], 11)
-            . txtPad($t['ultima_nomina'], 14)
-            . txtPad($t['total_nominas'], 6)
-            . txtPad(formatoMoney($t['total_devengado']), 13)
-            . txtPad(formatoMoney($t['total_neto']), 10);
+            . txtPad(formatoMoney($t['salar_basico']), 16)
+            . txtPad(formatoMoney($t['noct_h_ext']), 16)
+            . txtPad(formatoMoney($t['vacac']), 13)
+            . txtPad(formatoMoney($t['ajuste_liquid']), 18)
+            . txtPad(formatoMoney($t['rendim']), 13)
+            . txtPad(formatoMoney($t['total_a_pagar']), 16);
     }
-    $lineas[] = str_repeat('-', 163);
+    $lineas[] = str_repeat('-', 183);
+    $lineas[] = txtPad('TOTAL GENERAL', 58)
+        . txtPad(formatoMoney($totales['salar_basico']), 16)
+        . txtPad(formatoMoney($totales['noct_h_ext']), 16)
+        . txtPad(formatoMoney($totales['vacac']), 13)
+        . txtPad(formatoMoney($totales['ajuste_liquid']), 18)
+        . txtPad(formatoMoney($totales['rendim']), 13)
+        . txtPad(formatoMoney($totales['total_a_pagar']), 16);
     $lineas[] = 'Total de trabajadores: ' . count($trabajadores);
     $lineas[] = '';
     foreach ($firmasData as $firma) {
@@ -407,19 +483,25 @@ if ($formato === 'excel') {
     foreach ($trabajadores as $i => $t) {
         $filasHtml .= '<tr>'
             . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:center;">' . ($i + 1) . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem;">' . htmlspecialchars($t['codigo'], ENT_QUOTES, 'UTF-8') . '</td>'
             . '<td style="border:0.0625rem solid #000; padding:0.1875rem;">' . htmlspecialchars($t['ci'], ENT_QUOTES, 'UTF-8') . '</td>'
             . '<td style="border:0.0625rem solid #000; padding:0.1875rem;">' . htmlspecialchars($t['nombre'], ENT_QUOTES, 'UTF-8') . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem;">' . htmlspecialchars($t['area'], ENT_QUOTES, 'UTF-8') . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem;">' . htmlspecialchars($t['centro_costo'], ENT_QUOTES, 'UTF-8') . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:center;">' . htmlspecialchars($t['fecha_alta'], ENT_QUOTES, 'UTF-8') . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:center;">' . htmlspecialchars($t['fecha_baja'], ENT_QUOTES, 'UTF-8') . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:center;">' . htmlspecialchars($t['ultima_nomina'], ENT_QUOTES, 'UTF-8') . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:center;">' . $t['total_nominas'] . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($t['total_devengado']) . '</td>'
-            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($t['total_neto']) . '</td>'
+            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($t['salar_basico']) . '</td>'
+            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($t['noct_h_ext']) . '</td>'
+            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($t['vacac']) . '</td>'
+            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($t['ajuste_liquid']) . '</td>'
+            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($t['rendim']) . '</td>'
+            . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($t['total_a_pagar']) . '</td>'
             . '</tr>';
     }
+    $totalesHtml = '<tr style="background:#FED7D7; font-weight:bold;">'
+        . '<td colspan="3" style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">TOTAL GENERAL</td>'
+        . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($totales['salar_basico']) . '</td>'
+        . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($totales['noct_h_ext']) . '</td>'
+        . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($totales['vacac']) . '</td>'
+        . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($totales['ajuste_liquid']) . '</td>'
+        . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($totales['rendim']) . '</td>'
+        . '<td style="border:0.0625rem solid #000; padding:0.1875rem; text-align:right;">' . formatoMoney($totales['total_a_pagar']) . '</td>'
+        . '</tr>';
     $firmasHtml = '<table style="width:100%; border-collapse:collapse; margin-top:1.25rem;">';
     $firmasHtml .= '<tr>';
     foreach ($firmasData as $firma) {
@@ -436,7 +518,7 @@ if ($formato === 'excel') {
     $html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
         . '<head><meta charset="utf-8"><title>' . htmlspecialchars($titulo) . '</title>'
         . '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->'
-        . '<style>@page WordSection1 { size: 792pt 612pt; margin:0.5in; } div.WordSection1 { page: WordSection1; } body { font-family: Calibri, Arial, sans-serif; } table { border-collapse: collapse; width:100%; } th { border:0.0625rem solid #000; padding:0.25rem; background:#C0392B; color:#fff; font-size:0.5625rem; } </style>'
+        . '<style>@page WordSection1 { size: 792pt 612pt; margin:0.5in; } div.WordSection1 { page: WordSection1; } body { font-family: Calibri, Arial, sans-serif; } table { border-collapse: collapse; width:100%; } th { border:0.0625rem solid #000; padding:0.25rem; background:#C0392B; color:#fff; font-size:0.4375rem; } </style>'
         . '</head><body><div class="WordSection1">'
         . '<table style="width:100%; border:none;"><tr>'
         . '<td style="width:4.375rem; border:none; vertical-align:middle;">' . $logoWord . '</td>'
@@ -446,8 +528,8 @@ if ($formato === 'excel') {
         . '<td style="width:10.625rem; border:none; vertical-align:middle; font-size:0.5625rem; text-align:right;">' . htmlspecialchars($meta1, ENT_QUOTES, 'UTF-8') . '<br>' . htmlspecialchars($meta2, ENT_QUOTES, 'UTF-8') . '</td>'
         . '</tr></table>'
         . '<table><tr>'
-        . '<th>No.</th><th>Expediente</th><th>CI</th><th>Nombre Completo</th><th>Área</th><th>Centro de Costo</th><th>F. Alta</th><th>F. Baja</th><th>Últ. Nómina</th><th>Total</th><th>Devengado</th><th>Neto</th>'
-        . '</tr>' . $filasHtml . '</table>'
+        . '<th>No.</th><th>No CI.</th><th>Nombre y Apellidos</th><th>SALAR. BÁSICO</th><th>NOCT. H. EXT</th><th>VACAC.</th><th>AJUSTE Y/O LIQUID.</th><th>RENDIM.</th><th>TOTAL A PAGAR</th>'
+        . '</tr>' . $filasHtml . $totalesHtml . '</table>'
         . $firmasHtml
         . '<p style="text-align:center; margin-top:0.9375rem; font-weight:bold;">FIN DEL REPORTE - ' . htmlspecialchars($nombreEmpresa, ENT_QUOTES, 'UTF-8') . '</p>'
         . '</div></body></html>';
@@ -458,7 +540,6 @@ if ($formato === 'excel') {
 } elseif ($formato === 'pdf') {
     $archivoSalida = $carpeta . $nombreBase . '.pdf';
 
-    // Convertir logo PNG (con transparencia) a JPEG con fondo blanco para incrustar en el PDF
     $logo = null;
     if (function_exists('imagecreatefrompng') && file_exists($ruta_logo)) {
         $gd = @imagecreatefrompng($ruta_logo);
@@ -482,12 +563,10 @@ if ($formato === 'excel') {
 
     $w = 792; $h = 612;
     $mIzq = 36; $mSup = 55; $mInf = 42;
-    $anchos = [20, 45, 50, 115, 65, 80, 55, 55, 55, 32, 55, 55];
+    $anchos = $pdfAnchos;
     $totalAncho = array_sum($anchos);
     $x0 = ($w - $totalAncho) / 2;
-    $altoCab = 18; $altoFila = 15;
-
-    $headers = ['No.', 'Expediente', 'CI', 'Nombre Completo', 'Área', 'Centro Costo', 'F. Alta', 'F. Baja', 'Últ. Nómina', 'Total', 'Devengado', 'Neto'];
+    $altoCab = 30; $altoFila = 15;
 
     $paginas = [];
     $contenido = '';
@@ -516,10 +595,15 @@ if ($formato === 'excel') {
         $y = 472;
 
         $cx = $x0;
-        foreach ($headers as $i => $hd) {
+        $subHeaders = [['No.', ''], ['No CI.', ''], ['Nombre y Apellidos', ''], ['SALAR.', 'BÁSICO'], ['NOCT.', 'H. EXT'], ['VACAC.', ''], ['AJUSTE', 'Y/O LIQUID.'], ['RENDIM.', ''], ['TOTAL', 'A PAGAR']];
+        $cx = $x0;
+        foreach ($subHeaders as $i => $sh) {
             $an = $anchos[$i];
             $contenido .= sprintf("0.75 0.22 0.17 rg %.2f %.2f %.2f %.2f re f\n", $cx, $y - $altoCab, $an, $altoCab);
-            $contenido .= "BT /F2 8 Tf 1 1 1 rg 1 0 0 1 " . ($cx + 3) . " " . ($y - 12) . " Tm (" . pdfEscape(sanitizar($hd, 'Windows-1252')) . ") Tj ET\n";
+            $contenido .= "BT /F2 7 Tf 1 1 1 rg 1 0 0 1 " . ($cx + 3) . " " . ($y - 26) . " Tm (" . pdfEscape(sanitizar($sh[0], 'Windows-1252')) . ") Tj ET\n";
+            if ($sh[1] !== '') {
+                $contenido .= "BT /F2 5.5 Tf 1 1 1 rg 1 0 0 1 " . ($cx + 3) . " " . ($y - 17) . " Tm (" . pdfEscape(sanitizar($sh[1], 'Windows-1252')) . ") Tj ET\n";
+            }
             $cx += $an;
         }
         $contenido .= sprintf("0 0 0 RG 0.8 w %.2f %.2f m %.2f %.2f l S\n", $x0, $y - $altoCab, $x0 + $totalAncho, $y - $altoCab);
@@ -539,8 +623,8 @@ if ($formato === 'excel') {
         }
 
         $cx = $x0;
-        $celdas = [($ind + 1), $t['codigo'], $t['ci'], $t['nombre'], $t['area'], $t['centro_costo'], $t['fecha_alta'], $t['fecha_baja'], $t['ultima_nomina'], $t['total_nominas'], formatoMoney($t['total_devengado']), formatoMoney($t['total_neto'])];
-        $centro = [0, 2, 6, 7, 8, 9, 10, 11];
+        $celdas = [($ind + 1), $t['ci'], $t['nombre'], formatoMoney($t['salar_basico']), formatoMoney($t['noct_h_ext']), formatoMoney($t['vacac']), formatoMoney($t['ajuste_liquid']), formatoMoney($t['rendim']), formatoMoney($t['total_a_pagar'])];
+        $centro = [0, 1, 3, 4, 5, 6, 7, 8];
         foreach ($anchos as $i => $an) {
             $texto = (string)$celdas[$i];
             if (in_array($i, $centro)) {
@@ -555,6 +639,21 @@ if ($formato === 'excel') {
         $y -= $altoFila;
         $ind++;
     }
+
+    // TOTAL GENERAL
+    if ($y - $altoFila < $mInf) {
+        $paginas[] = $contenido;
+        $iniciarPagina();
+    }
+    $contenido .= sprintf("0.94 0.84 0.84 rg %.2f %.2f %.2f %.2f re f\n", $x0, $y - $altoFila, $totalAncho, $altoFila);
+    $cx = $x0;
+    $celdasTot = ['', '', 'TOTAL GENERAL', formatoMoney($totales['salar_basico']), formatoMoney($totales['noct_h_ext']), formatoMoney($totales['vacac']), formatoMoney($totales['ajuste_liquid']), formatoMoney($totales['rendim']), formatoMoney($totales['total_a_pagar'])];
+    foreach ($anchos as $i => $an) {
+        $texto = (string)$celdasTot[$i];
+        $contenido .= "BT /F2 8 Tf 0 0 0 rg 1 0 0 1 " . ($cx + 2) . " " . ($y - 10.5) . " Tm (" . pdfEscape(sanitizar(pdfTruncar($texto, (int)floor(($an - 6) / 4.5)), 'Windows-1252')) . ") Tj ET\n";
+        $cx += $an;
+    }
+    $y -= $altoFila;
 
     // Cierre de tabla
     $contenido .= sprintf("0 0 0 RG 0.8 w %.2f %.2f m %.2f %.2f l S\n", $x0, $y, $x0 + $totalAncho, $y);
@@ -592,7 +691,7 @@ if ($formato === 'excel') {
     }
     for ($i = 0; $i < $nPaginas; $i++) {
         $contentObj = $contentStart + $i;
-        $resources = "<< /Font << /F1 " . ($contentStart + $nPaginas + ($logo ? 2 : 0)) . " 0 R /F2 " . ($contentStart + $nPaginas + ($logo ? 3 : 1)) . " 0 R >> >>";
+        $resources = "<< /Font << /F1 " . ($contentStart + $nPaginas + 2) . " 0 R /F2 " . ($contentStart + $nPaginas + 3) . " 0 R >> >>";
         if ($logo) {
             $resources = "<< /Font << /F1 " . ($contentStart + $nPaginas + 2) . " 0 R /F2 " . ($contentStart + $nPaginas + 3) . " 0 R >> /XObject << /Im1 $imgObj 0 R >> >>";
         }

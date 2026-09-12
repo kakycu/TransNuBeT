@@ -3392,7 +3392,7 @@ $(document).ready(function () {
                     </td>
                 </tr>
             </table>
-            <p class="metadatos">Generado por: ${usuarioNombre} &nbsp;|&nbsp; Fecha: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
+            <p class="metadatos">Generado por: ${usuarioNombre} &nbsp;|&nbsp; Fecha: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
             <hr>
             ${$clonedTable[0].outerHTML}
             <table class="firmas">
@@ -3569,7 +3569,7 @@ $(document).ready(function () {
                     `;
                     win.document.head.appendChild(styleElement);
                     var fFecha = new Date().toLocaleDateString('es-ES');
-                    var fHora = new Date().toLocaleTimeString('es-ES');
+                    var fHora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
                     var headerHtml = '<div class="dtp-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:0.125rem solid #004B87; padding-bottom:0.9375rem; margin-bottom:0;">';
                     headerHtml += '<div style="display:flex; align-items:center;">';

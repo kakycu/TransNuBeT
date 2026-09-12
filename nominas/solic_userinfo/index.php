@@ -1376,7 +1376,7 @@ header('Expires: 0');
     function listadoImprimir() {
         if (!datosActual) { listadoSwalError('Primero genere el reporte.'); return; }
         var now = new Date();
-        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
         var tablaHtml = listadoTablaHtml();
 
         var win = window.open('', '_blank');
@@ -1442,7 +1442,7 @@ header('Expires: 0');
 
     function listadoExportarXls() {
         var now = new Date();
-        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
         var esCompleto = (datosActual.modo === 'completo');
         var numCols = esCompleto ? 5 : 6;
         var tabla = '<table border="1">';
@@ -1575,7 +1575,7 @@ header('Expires: 0');
 
     function listadoExportarDocx() {
         var now = new Date();
-        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
         var esCompleto = (datosActual.modo === 'completo');
         var numCols = esCompleto ? 5 : 6;
 
@@ -1708,7 +1708,7 @@ header('Expires: 0');
                                 { text: (nombreEmpresa || '').toUpperCase(), fontSize: 9, alignment: 'center', margin: [0, 2, 0, 0] }
                             ]},
                             { stack: [
-                                { text: 'Emisión: ' + new Date().toLocaleDateString('es-ES') + ' - ' + new Date().toLocaleTimeString('es-ES'), fontSize: 8, alignment: 'right' },
+                                { text: 'Emisión: ' + new Date().toLocaleDateString('es-ES') + ' - ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }), fontSize: 8, alignment: 'right' },
                                 { text: 'REEUP: ' + (reeup || ''), fontSize: 8, alignment: 'right' },
                                 { text: 'NIT: ' + (nitEmpresa || ''), fontSize: 8, alignment: 'right' }
                             ]}

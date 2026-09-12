@@ -3237,8 +3237,8 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
                     </a>
                 </li>
                 <li><a class="dropdown-item" href="#" id="menuHistorialMontos"><i class="fas fa-history text-warning me-2"></i> Historial de Montos <small class="d-block text-muted">Historial Montos Redistribuidos</small></a></li>
-                <li><a class="dropdown-item" href="#" id="menuListadoDevengado"><i class="fas fa-user-tie text-success me-2"></i> Total Devengado Trabajador <small class="d-block text-muted">Reporte de Total de Salario Cobrado por Trabajador</small></a></li>
-                <li><a class="dropdown-item" href="#" id="menuSinNomina"><i class="fas fa-user-slash text-danger me-2"></i> Trabajadores Sin Nómina <small class="d-block text-muted">Activos sin nómina en el período seleccionado</small></a></li>
+                <li><a class="dropdown-item" href="#" id="menuResumenSalarial"><i class="fas fa-user-tie text-success me-2"></i> RESUMEN SALARIAL <small class="d-block text-muted">Resumen por trabajador o por cuenta bancaria</small></a></li>
+                <li><a class="dropdown-item" href="#" id="menuSinNomina"><i class="fas fa-user-slash text-danger me-2"></i> Trabajadores Sin Nómina <small class="d-block text-muted">Alta en el período sin nómina en ese mes</small></a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><h6 class="dropdown-header text-light px-3 py-1">Personalizar Vista</h6></li>
                 <li><a class="dropdown-item" href="#" id="menuColumnas"><i class="fas fa-columns me-2" style="color: #60a5fa;"></i> Mostrar/Ocultar Columnas</a></li>
@@ -3720,19 +3720,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         </p>
                     </div>
                 </div>
-<!-- Localiza este bloque en tu código -->
 <div class="d-flex gap-2">
     
-    <!-- NUEVO: Botón condicionado por PHP según la pestaña activa -->
-    <?php if ($tipo_nomina_activa == 'bono'): ?>
+    <!-- Botón condicionado por PHP según la pestaña activa (La condicion se la comente , siempre sale)-->
+    <?php //if ($tipo_nomina_activa == 'bono'): ?>
         <button class="btn-win btn-win-sm" id="btnFullHistorialBonos" title="Ver historial de montos definidos" data-tooltip="Ver historial de montos definidos" data-tooltip-theme="info" style="padding:0.375rem 0.75rem; background: rgba(147, 51, 234, 0.2); border: 0.0625rem solid #a855f7;">
             <i class="fas fa-history me-1"></i> Historial Montos
         </button>
-    <?php endif; ?>
+    <?php //endif; ?>
 
-    <!-- NUEVO: Botón Listado Total Salario Devengado por Trabajador -->
-    <button class="btn-win btn-win-sm" id="btnListadoDevengado" title="Listado Total Salario Devengado por trabajador y mes" data-tooltip="Listado Total Salario Devengado por trabajador y mes" data-tooltip-theme="info" style="padding:0.375rem 0.75rem; background: rgba(var(--color-success-rgb), 0.2); border: 0.0625rem solid var(--color-success);">
-        <i class="fas fa-user-tie me-1"></i> Listado Salario Devengado
+    <!--Botón Listado Total Salario Devengado por Trabajador -->
+    <button class="btn-win btn-win-sm" id="btnListadoDevengado" title="Listado Total Salario Devengado por trabajador y mes" data-tooltip="Resumen Por Trabajador/Por Cuenta Bancaria" data-tooltip-theme="info" style="padding:0.375rem 0.75rem; background: rgba(var(--color-success-rgb), 0.2); border: 0.0625rem solid var(--color-success);">
+        <i class="fas fa-user-tie me-1"></i> Resumen Salarial
     </button>
 
     <!-- Botón Actualizar Página (Ya existente) -->
@@ -4314,7 +4313,8 @@ document.addEventListener('DOMContentLoaded', function () {
     width:0.875rem;
 }
 
-#listadoResultadosBusqueda {
+#listadoResultadosBusqueda,
+#sinCuentaResultadosBusqueda {
     position: absolute;
     top:100%;
     left:0;
@@ -4329,7 +4329,8 @@ document.addEventListener('DOMContentLoaded', function () {
     min-width:100%;
 }
 
-#listadoResultadosBusqueda .listado-opt-trabajador {
+#listadoResultadosBusqueda .listado-opt-trabajador,
+#sinCuentaResultadosBusqueda .sinCuenta-opt-trabajador {
     color: #ffffff;
     padding:0.5rem 0.75rem;
     border-bottom: 0.0625rem solid rgba(255,255,255,0.06);
@@ -4337,12 +4338,15 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 
 #listadoResultadosBusqueda .listado-opt-trabajador:hover,
-#listadoResultadosBusqueda .listado-opt-trabajador:focus {
+#listadoResultadosBusqueda .listado-opt-trabajador:focus,
+#sinCuentaResultadosBusqueda .sinCuenta-opt-trabajador:hover,
+#sinCuentaResultadosBusqueda .sinCuenta-opt-trabajador:focus {
     background: rgba(96, 165, 250, 0.15);
     color: #ffffff;
 }
 
-#listadoResultadosBusqueda .text-white-50 {
+#listadoResultadosBusqueda .text-white-50,
+#sinCuentaResultadosBusqueda .text-white-50 {
     color: rgba(255,255,255,0.6) !important;
 }
 
@@ -6049,6 +6053,180 @@ if ($existe_nomina) {
     </div>
 </div>
 
+<!-- Modal Selección Tipo de Resumen Salarial -->
+<div class="modal fade" id="modalSeleccionResumenSalarial" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-modern">
+            <div class="modal-header" style="background: linear-gradient(135deg, #059669, #0ea5e9); border-bottom: none;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-user-tie fa-2x me-3" style="color: #ffffff;"></i>
+                    <div>
+                        <h5 class="modal-title" style="color: white; font-weight: 600;">Seleccionar Tipo de Resumen</h5>
+                        <p class="small mb-0" style="color: rgba(255,255,255,0.8);">Elija el tipo de resumen salarial a generar</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-custom" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card-option-descuento" id="opcionResumenPorTrabajador" style="cursor: pointer; padding:1.25rem; border-radius: 1rem; background: var(--panel-2); border: 0.125rem solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-user fa-2x" style="color: #34d399;"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-1" style="color: #ffffff;">POR TRABAJADOR</h5>
+                                    <p class="mb-0 small" style="color: rgba(255,255,255,0.6);">Listado Total Salario Devengado por Trabajador según año, mes y estado</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card-option-descuento" id="opcionResumenPorCuentaBancaria" style="cursor: pointer; padding:1.25rem; border-radius: 1rem; background: var(--panel-2); border: 0.125rem solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-credit-card fa-2x" style="color: #f59e0b;"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-1" style="color: #ffffff;">POR CUENTA BANCARIA</h5>
+                                    <p class="mb-0 small" style="color: rgba(255,255,255,0.6);">Resumen Sin Tarjeta por tipos de nóminas (sin, con o todas las cuentas)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 0.0625rem solid rgba(255,255,255,0.1); padding:1rem 1.5rem;">
+                <button type="button" class="btn-win" data-bs-dismiss="modal" data-tooltip="Cancelar" data-tooltip-theme="danger">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSinCuenta" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content modal-content-modern">
+            <div class="modal-header" style="background: linear-gradient(135deg, #92400e, #d97706); border-bottom: none;">
+                <h5 class="modal-title text-white" id="sinCuentaModalTitle"><i class="fas fa-credit-card me-2"></i> Resumen Sin Tarjeta</h5>
+                <button type="button" class="btn-close-custom" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="row g-3 align-items-end mb-2">
+                    <div class="col-md-auto" style="width:5.5rem;">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #f59e0b;"><i class="fas fa-calendar-alt me-1"></i> Año</label>
+                        <select id="sinCuentaAnio" class="form-select form-select-sm" title="Seleccionar año" data-tooltip="Seleccionar año" data-tooltip-theme="secondary">
+                            <?php
+                            $stmt_sc = $pdo->query("SELECT DISTINCT YEAR(periodo_desde) as anio FROM nominas ORDER BY anio DESC");
+                            $anios_sc = $stmt_sc->fetchAll(PDO::FETCH_COLUMN);
+                            if (empty($anios_sc)) $anios_sc = [(int)date('Y')];
+                            $periodo_ref_sc = date('Y-m');
+                            $anio_ref_sc = (int)substr($periodo_ref_sc, 0, 4);
+                            $mes_ref_sc = (int)substr($periodo_ref_sc, 5, 2);
+                            if (!in_array($anio_ref_sc, $anios_sc)) $anios_sc[] = $anio_ref_sc;
+                            foreach ($anios_sc as $yy): ?>
+                            <option value="<?php echo $yy; ?>" <?php echo $yy == $anio_ref_sc ? 'selected' : ''; ?>><?php echo $yy; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-auto" style="width:7rem;">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #f59e0b;"><i class="fas fa-calendar-day me-1"></i> Mes</label>
+                        <select id="sinCuentaMes" class="form-select form-select-sm" title="Seleccionar mes" data-tooltip="Seleccionar mes" data-tooltip-theme="secondary">
+                            <?php for ($mm = 1; $mm <= 12; $mm++): ?>
+                            <option value="<?php echo $mm; ?>" <?php echo $mm == $mes_ref_sc ? 'selected' : ''; ?>><?php echo ucfirst(nombreMesEspanol($mm)); ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #f59e0b;"><i class="fas fa-list-check me-1"></i> Estado</label>
+                        <select id="sinCuentaEstado" class="form-select form-select-sm" title="Filtrar por estado" data-tooltip="Filtrar por estado" data-tooltip-theme="secondary">
+                            <option value="contabilizado" selected>Contabilizado</option>
+                            <option value="borrador">Borrador</option>
+                            <option value="todos">Todos los estados</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #f59e0b;"><i class="fas fa-credit-card me-1"></i> Cuenta Bancaria</label>
+                        <select id="sinCuentaCuenta" class="form-select form-select-sm" title="Filtrar por cuenta bancaria" data-tooltip="Filtrar por cuenta bancaria" data-tooltip-theme="secondary">
+                            <option value="sin" selected>Sin cuenta</option>
+                            <option value="con">Con cuenta</option>
+                            <option value="todos">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #f59e0b;"><i class="fas fa-user me-1 text-info"></i> Nombre del Trabajador</label>
+                        <div class="buscador-trabajador-modal">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text" style="background: rgba(96, 165, 250, 0.15); border: 0.0625rem solid rgba(96, 165, 250, 0.3); color: #60a5fa;">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="sinCuentaBuscarTrabajador" class="form-control" placeholder="Buscar por nombre, código o CI (opcional)..." autocomplete="off" style="background: rgba(20,20,30,0.9); border: 0.0625rem solid rgba(96,165,250,0.3); color: white;">
+                                <button class="btn btn-sm" type="button" id="sinCuentaLimpiarTrabajador" data-tooltip="Limpiar búsqueda" data-tooltip-theme="danger" style="background: rgba(239,68,68,0.2); border: 0.0625rem solid rgba(239,68,68,0.3); color: #fca5a5;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div id="sinCuentaResultadosBusqueda" class="dropdown-menu" style="width:100%; max-height:15.625rem; overflow-y: auto; display: none; background: #1e1e2e; border: 0.0625rem solid rgba(96,165,250,0.3); z-index: 1100;">
+                            </div>
+                        </div>
+                        <input type="hidden" id="sinCuentaTrabajadorId" value="">
+                        <div id="sinCuentaTrabajadorInfo" class="mt-2 small text-white-50"></div>
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="button" class="btn-win btn-win-sm" id="btnBuscarSinCuenta" title="Buscar trabajadores" data-tooltip="Buscar trabajadores" data-tooltip-theme="warning"><i class="fas fa-search me-1"></i> Buscar</button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <span id="sinCuentaResumenWrap" title="Filtros aplicados" data-tooltip="Filtros aplicados" data-tooltip-theme="secondary" style="display:block; width:100%; color:#fbbf24; font-size:0.75rem; line-height:1.35; text-align:left; background:rgba(245,158,11,0.08); border:0.0625rem solid rgba(245,158,11,0.2); border-radius:0.5rem; padding:0.375rem 0.625rem;">
+                        <span class="d-block fw-semibold" id="sinCuentaResumen"><i class="fas fa-filter me-1"></i>Sin datos</span>
+                    </span>
+                </div>
+                <div class="table-responsive" style="max-height:26.25rem; overflow-y: auto;">
+                    <table class="table table-sm table-dark table-hover border-secondary align-middle" id="tablaSinCuenta">
+                        <thead>
+                            <tr>
+                                <th>No.</th>
+                                <th>No CI.</th>
+                                <th>Nombre y Apellidos</th>
+                                <th class="text-end">SALAR. BÁSICO</th>
+                                <th class="text-end">NOCT. H. EXT</th>
+                                <th class="text-end">VACAC.</th>
+                                <th class="text-end">AJUSTE Y/O LIQUID.</th>
+                                <th class="text-end">RENDIM.</th>
+                                <th class="text-end">TOTAL A PAGAR</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="9" class="text-center text-muted"><i class="fas fa-spinner fa-pulse me-1"></i> Cargando...</td></tr>
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: rgba(245,158,11,0.12); font-weight:600;">
+                                <td colspan="3" class="text-end">TOTAL GENERAL</td>
+                                <td class="text-end" id="sinCuentaTotBasico">0.00</td>
+                                <td class="text-end" id="sinCuentaTotNoct">0.00</td>
+                                <td class="text-end" id="sinCuentaTotVacac">0.00</td>
+                                <td class="text-end" id="sinCuentaTotAjuste">0.00</td>
+                                <td class="text-end" id="sinCuentaTotRendim">0.00</td>
+                                <td class="text-end" id="sinCuentaTotTotal">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:0.0625rem solid rgba(255,255,255,0.1);">
+                <button type="button" class="btn-win btn-win-sm" id="btnSinCuentaPrint" title="Imprimir resumen sin tarjeta" data-tooltip="Imprimir resumen sin tarjeta" data-tooltip-theme="info"><i class="fas fa-print text-warning me-1"></i> Imprimir</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnSinCuentaPDF" title="Exportar como PDF" data-tooltip="Exportar como PDF" data-tooltip-theme="info"><i class="fas fa-file-pdf text-danger me-1"></i> PDF</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnSinCuentaWord" title="Exportar como Word" data-tooltip="Exportar como Word" data-tooltip-theme="info"><i class="fas fa-file-word text-primary me-1"></i> WORD</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnSinCuentaExcel" title="Exportar como Excel" data-tooltip="Exportar como Excel" data-tooltip-theme="info"><i class="fas fa-file-excel text-success me-1"></i> EXCEL</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnSinCuentaCSV" title="Exportar como CSV" data-tooltip="Exportar como CSV" data-tooltip-theme="info"><i class="fas fa-file-csv text-info me-1"></i> CSV</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnSinCuentaTXT" title="Exportar como TXT" data-tooltip="Exportar como TXT" data-tooltip-theme="info"><i class="fas fa-file-alt text-secondary me-1"></i> TXT</button>
+                <button type="button" class="btn-win btn-win-sm" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"><i class="fas fa-times me-1"></i> Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- SCRIPTS -->
 <!-- 1. Librerías Base (jQuery y Bootstrap) -->
 <script src="../js/jquery-3.6.0.min.js"></script>
@@ -6059,6 +6237,8 @@ if ($existe_nomina) {
 <script src="../js/jszip.min.js"></script>
 <script src="../js/pdfmake.min.js"></script>
 <script src="../js/vfs_fonts.js"></script>
+<script src="../js/xlsx.full.min.js"></script>
+<script src="../js/exceljs.min.js"></script>
 <script src="../js/sweetalert2.all.min.js"></script>
 <script src="../js/html2canvas.min.js"></script>
 <script src="../js/jspdf.umd.min.js"></script>
@@ -6770,7 +6950,7 @@ $('#btnImprimirFull').on('click', function() {
     const tableBody = $('#tablaFullHistorial tbody').html();
     const totalValue = $('#totalFullHistorial').text();
     const now = new Date();
-    const fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+    const fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     
     // Obtener el filtro seleccionado
     const filtroSelect = document.getElementById('filtroAnio');
@@ -6912,7 +7092,7 @@ $('#btnImprimirFull').on('click', function() {
 // --- Exportar PDF del Historial con Formato Oficial SC-4-06 ---
 $('#btnExportPDFFull').on('click', function() {
     const now = new Date();
-    const fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+    const fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     const totalAcumulado = $('#totalFullHistorial').text();
     
     // Obtener el filtro seleccionado
@@ -7111,7 +7291,7 @@ $('#btnExportPDFFull').on('click', function() {
 // --- Exportar Word del Historial de Montos ---
 $('#btnExportWordFull').on('click', function() {
     const now = new Date();
-    const fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+    const fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     const totalAcumulado = $('#totalFullHistorial').text();
     const filtroSelect = document.getElementById('filtroAnio');
     const filtroSeleccionado = filtroSelect ? filtroSelect.value : 'todos';
@@ -7187,7 +7367,7 @@ $('#btnExportCsvFull').on('click', function() {
 // --- Exportar TXT del Historial de Montos ---
 $('#btnExportTxtFull').on('click', function() {
     const now = new Date();
-    const fechaHora = now.toLocaleDateString('es-ES') + ' ' + now.toLocaleTimeString('es-ES');
+    const fechaHora = now.toLocaleDateString('es-ES') + ' ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     const totalAcumulado = $('#totalFullHistorial').text();
     const filtroSelect = document.getElementById('filtroAnio');
     const filtroSeleccionado = filtroSelect ? filtroSelect.value : 'todos';
@@ -8170,7 +8350,7 @@ function limpiarFiltrosModal(modalId, filtroActivo) {
 // Exponer la función de impresión global para evitar ReferenceError
 window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
     const fechaActual = new Date().toLocaleDateString('es-ES');
-    const horaActual = new Date().toLocaleTimeString('es-ES');
+    const horaActual = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     const FILAS_POR_PAGINA = 15;
 
     trabajadores = ordenarTrabajadoresPorAlcance(trabajadores, alcance);
@@ -13195,10 +13375,24 @@ backdrop: 'rgba(0,0,0,0.6)'
         cargarHistorialMontos();
     });
 
-    $('#menuListadoDevengado').on('click', function(e) {
+    $('#menuResumenSalarial').on('click', function(e) {
         e.preventDefault();
-        $('#btnListadoDevengado').trigger('click');
+        var modal = new bootstrap.Modal(document.getElementById('modalSeleccionResumenSalarial'), { backdrop: 'static' });
+        modal.show();
     });
+
+    $('#opcionResumenPorCuentaBancaria').on('click', function() {
+        var sel = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionResumenSalarial'));
+        if (sel) sel.hide();
+        var modal = new bootstrap.Modal(document.getElementById('modalSinCuenta'), { backdrop: 'static' });
+        modal.show();
+        if (!sinCuentaBuscarIniciado) {
+            sinCuentaBuscarIniciado = true;
+            sinCuentaInitBuscar();
+        }
+        cargarSinCuenta();
+    });
+
     $('#menuExportPDF').on('click', function(e) {
         e.preventDefault();
         $('.buttons-pdf').click();
@@ -13237,7 +13431,7 @@ backdrop: 'rgba(0,0,0,0.6)'
     var SIN_NOMINA_ESP_GESTION = <?php echo json_encode($config_empresa['especialista_gestion'] ?? ESPECIALISTA); ?>;
     var SIN_NOMINA_ESP_RRHH = <?php echo json_encode($config_empresa['especialista_gestionRRHH'] ?? ''); ?>;
     var SIN_NOMINA_PRINT_CSS = <?php echo json_encode('
-        @page { size: landscape; margin: 12mm; }
+        @page { size: landscape; margin: 6mm 10mm 10mm 10mm; }
         * { box-sizing: border-box; }
         body { font-family: Arial, Helvetica, sans-serif; font-size: 0.6875rem; color: #000; margin: 0; }
         .btn-print { background: #b91c1c; color: #fff; border: none; border-radius: 0.375rem; padding: 0.625rem 1.125rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
@@ -13255,6 +13449,8 @@ backdrop: 'rgba(0,0,0,0.6)'
         .sn-tabla th { background: #b91c1c; color: #fff; border: 0.0625rem solid #000; padding: 0.1875rem; font-size: 8pt; }
         .sn-tabla td { border: 0.0625rem solid #666; padding: 0.125rem 0.1875rem; font-size: 8pt; }
         .sn-tabla tbody tr:nth-child(even) { background: #f3f4f6; }
+        .sn-total-fila { background: #fed7d7; font-weight: bold; }
+        .sn-total-fila td { border-top: 0.125rem solid #000; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .sn-firmas { margin-top: 1.5625rem; }
@@ -13264,7 +13460,7 @@ backdrop: 'rgba(0,0,0,0.6)'
         .sn-firma-linea { border-bottom: 0.0625rem solid #000; height: 1rem; margin: 0 0.625rem; }
         .sn-firma-cargo { font-size: 10pt; font-weight: bold; margin: 0.25rem 0 0; }
         .sn-firma-subcargo { font-size: 8pt; color: #444; margin: 0; }
-        @media print { .no-print { display: none; } }
+        @media print { .no-print { display: none !important; } }
     '); ?>;
 
     $('#menuSinNomina').on('click', function(e) {
@@ -13302,7 +13498,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                 if (data.success) {
                     var html = '';
                     if (data.trabajadores.length === 0) {
-                        html = '<tr><td colspan="12" class="text-center text-success py-3"><i class="fas fa-check-circle me-2"></i>Todos los trabajadores activos tienen nómina en ' + data.periodo_label + '.</td></tr>';
+                        html = '<tr><td colspan="12" class="text-center text-success py-3"><i class="fas fa-check-circle me-2"></i>Todos los trabajadores con alta en ' + data.periodo_label + ' tienen nómina.</td></tr>';
                     } else {
                         $.each(data.trabajadores, function(i, t) {
                             html += '<tr>'
@@ -13452,7 +13648,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                         + '<td class="text-right">' + formatMoneySN(t.total_neto) + '</td>'
                         + '</tr>';
                 });
-                var fechaHora = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                var fechaHora = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
                 var contenido = `
                     <table class="sn-cabecera" cellspacing="0" cellpadding="0">
                         <tr>
@@ -13529,6 +13725,676 @@ backdrop: 'rgba(0,0,0,0.6)'
             });
     }
     // ==================== FIN TRABAJADORES SIN NÓMINA ====================
+
+    // ==================== RESUMEN SIN TARJETA (TRABAJADORES SIN CUENTA BANCARIA) ====================
+    var sinCuentaBuscarIniciado = false;
+    var sinCuentaDatos = null;
+
+    function sinCuentaInitBuscar() {
+        $('#sinCuentaBuscarTrabajador').on('input', function() { sinCuentaBuscarTrabajador($(this).val()); });
+
+        $('#sinCuentaLimpiarTrabajador').on('click', function() {
+            $('#sinCuentaTrabajadorId').val('');
+            $('#sinCuentaBuscarTrabajador').val('');
+            $('#sinCuentaResultadosBusqueda').hide().empty();
+            $('#sinCuentaTrabajadorInfo').empty();
+            cargarSinCuenta();
+        });
+
+        $(document).on('click', '.sinCuenta-opt-trabajador', function(e) {
+            e.preventDefault();
+            var id = parseInt($(this).data('id')) || 0;
+            var t = null;
+            $.each(window.trabajadoresTodos || [], function(i, item) {
+                if (parseInt(item.id) === id) { t = item; return false; }
+            });
+            if (t) {
+                $('#sinCuentaTrabajadorId').val(t.id);
+                $('#sinCuentaBuscarTrabajador').val(t.nombre_completo);
+                $('#sinCuentaResultadosBusqueda').hide().empty();
+                $('#sinCuentaTrabajadorInfo').html('<i class="fas fa-check-circle text-success me-1"></i>Seleccionado: <strong>' + escHtmlSC(t.nombre_completo) + '</strong> <small class="text-white-50">(' + escHtmlSC(t.codigo || 'S/C') + ' · ' + escHtmlSC(t.ci || 'S/CI') + ')</small>');
+                cargarSinCuenta();
+            }
+        });
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.buscador-trabajador-modal').length) {
+                $('#sinCuentaResultadosBusqueda').hide().empty();
+            }
+        });
+    }
+
+    function sinCuentaBuscarTrabajador(texto) {
+        var term = (texto || '').toLowerCase().trim();
+        var cont = $('#sinCuentaResultadosBusqueda');
+        if (term.length < 2) { cont.hide().empty(); return; }
+
+        var matches = [];
+        $.each(window.trabajadoresTodos || [], function(i, t) {
+            var hayNombre = (t.nombre_completo || '').toLowerCase().indexOf(term) !== -1;
+            var hayCodigo = (t.codigo || '').toLowerCase().indexOf(term) !== -1;
+            var hayCI = (t.ci || '').toLowerCase().indexOf(term) !== -1;
+            if (hayNombre || hayCodigo || hayCI) matches.push(t);
+        });
+
+        if (!matches.length) {
+            cont.html('<div class="dropdown-item text-muted">Sin resultados</div>').show();
+            return;
+        }
+
+        var html = '';
+        matches.slice(0, 40).forEach(function(t) {
+            html += '<a class="dropdown-item sinCuenta-opt-trabajador" href="#" data-id="' + t.id + '">'
+                + '<i class="fas fa-user me-2 text-info"></i>' + escHtmlSC(t.nombre_completo)
+                + ' <small class="text-white-50">(' + escHtmlSC(t.codigo || 'S/C') + ' · ' + escHtmlSC(t.ci || 'S/CI') + ')</small>'
+                + '</a>';
+        });
+        cont.html(html).show();
+    }
+
+    function escHtmlSC(v) {
+        return $('<div>').text(v == null ? '' : String(v)).html();
+    }
+
+    $('#btnBuscarSinCuenta').on('click', function() {
+        cargarSinCuenta();
+    });
+
+    $('#sinCuentaAnio, #sinCuentaMes, #sinCuentaEstado, #sinCuentaCuenta').on('change', function() {
+        cargarSinCuenta();
+    });
+
+    function periodoSinCuentaActual() {
+        var anio = $('#sinCuentaAnio').val() || new Date().getFullYear();
+        var mes = $('#sinCuentaMes').val() || '01';
+        return anio + '-' + String(mes).padStart(2, '0');
+    }
+
+    function formatMoneySC(v) {
+        return '$' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function cargarSinCuenta() {
+        var periodo = periodoSinCuentaActual();
+        var estado = $('#sinCuentaEstado').val() || 'contabilizado';
+        var cuenta = $('#sinCuentaCuenta').val() || 'sin';
+        var trabajadorId = $('#sinCuentaTrabajadorId').val() ? parseInt($('#sinCuentaTrabajadorId').val()) : 0;
+        var tituloSC = $('#sinCuentaCuenta').val() === 'con' ? 'Resumen Con Tarjeta' : ($('#sinCuentaCuenta').val() === 'todos' ? 'Resumen de Trabajadores' : 'Resumen Sin Tarjeta');
+        $('#sinCuentaModalTitle').html('<i class="fas fa-credit-card me-2"></i> ' + tituloSC);
+        var parametros = { accion: 'lista', periodo: periodo, estado: estado, cuenta: cuenta };
+        if (trabajadorId) parametros.trabajador_id = trabajadorId;
+        var tbody = $('#tablaSinCuenta tbody');
+        tbody.html('<tr><td colspan="9" class="text-center text-muted"><i class="fas fa-spinner fa-pulse me-1"></i> Consultando...</td></tr>');
+        $('#sinCuentaResumen').html('<i class="fas fa-spinner fa-pulse me-1"></i> Consultando...');
+        ['sinCuentaTotBasico', 'sinCuentaTotNoct', 'sinCuentaTotVacac', 'sinCuentaTotAjuste', 'sinCuentaTotRendim', 'sinCuentaTotTotal'].forEach(function(id) {
+            $('#' + id).text('0.00');
+        });
+        $.getJSON('exportar_sin_cuenta.php', parametros)
+            .done(function(data) {
+                if (data.success) {
+                    sinCuentaDatos = data;
+                    var html = '';
+                    if (data.trabajadores.length === 0) {
+                        html = '<tr><td colspan="9" class="text-center text-success py-3"><i class="fas fa-check-circle me-2"></i>No hay trabajadores ' + (cuenta === 'sin' ? 'sin cuenta bancaria' : (cuenta === 'con' ? 'con cuenta bancaria' : 'con nóminas')) + ' en ' + data.periodo_label + ' (' + data.estado_label + ').</td></tr>';
+                    } else {
+                        $.each(data.trabajadores, function(i, t) {
+                            html += '<tr>'
+                                + '<td>' + (i + 1) + '</td>'
+                                + '<td>' + $('<div>').text(t.ci).html() + '</td>'
+                                + '<td>' + $('<div>').text(t.nombre).html() + '</td>'
+                                + '<td class="text-end">' + formatMoneySC(t.salar_basico) + '</td>'
+                                + '<td class="text-end">' + formatMoneySC(t.noct_h_ext) + '</td>'
+                                + '<td class="text-end">' + formatMoneySC(t.vacac) + '</td>'
+                                + '<td class="text-end">' + formatMoneySC(t.ajuste_liquid) + '</td>'
+                                + '<td class="text-end">' + formatMoneySC(t.rendim) + '</td>'
+                                + '<td class="text-end text-warning">' + formatMoneySC(t.total_a_pagar) + '</td>'
+                                + '</tr>';
+                        });
+                    }
+                    tbody.html(html);
+                    if (data.totales) {
+                        $('#sinCuentaTotBasico').text(formatMoneySC(data.totales.salar_basico));
+                        $('#sinCuentaTotNoct').text(formatMoneySC(data.totales.noct_h_ext));
+                        $('#sinCuentaTotVacac').text(formatMoneySC(data.totales.vacac));
+                        $('#sinCuentaTotAjuste').text(formatMoneySC(data.totales.ajuste_liquid));
+                        $('#sinCuentaTotRendim').text(formatMoneySC(data.totales.rendim));
+                        $('#sinCuentaTotTotal').text(formatMoneySC(data.totales.total_a_pagar));
+                    }
+                    resumenSinCuenta(data);
+                } else {
+                    tbody.html('<tr><td colspan="9" class="text-center text-danger py-3">' + $('<div>').text(data.mensaje || 'Error').html() + '</td></tr>');
+                    $('#sinCuentaResumen').html('<i class="fas fa-exclamation-triangle me-1"></i> Error');
+                }
+            })
+            .fail(function() {
+                tbody.html('<tr><td colspan="9" class="text-center text-danger py-3">No se pudo consultar el servidor.</td></tr>');
+                $('#sinCuentaResumen').html('<i class="fas fa-exclamation-triangle me-1"></i> Error');
+            });
+    }
+
+    function resumenSinCuenta(data) {
+        var cuentaTxt = data.cuenta_label || 'Sin cuenta';
+        var lineaEstado = data.estado === 'todos' ? 'Todos los estados' : (data.estado_label || data.estado);
+        var partes = [
+            data.registros + ' trabajador(es)',
+            cuentaTxt,
+            data.periodo_label || '',
+            lineaEstado
+        ];
+        if (data.trabajador_id && data.trabajador_label) partes.splice(1, 0, data.trabajador_label);
+        $('#sinCuentaResumen').html('<i class="fas fa-filter me-1"></i>' + $('<div>').text(partes.join('  |  ')).html());
+    }
+
+    function exportarSinCuenta(formato) {
+        if (!sinCuentaDatos || !sinCuentaDatos.success || !sinCuentaDatos.trabajadores || sinCuentaDatos.trabajadores.length === 0) {
+            Swal.fire({
+                icon: 'warning', title: '<i class="fas fa-credit-card me-2" style="color:#fbbf24;"></i> Sin datos',
+                text: 'Primero consulte los trabajadores para poder exportar.',
+                confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido',
+                confirmButtonColor: '#3b82f6', background: '#1a1a2e', color: '#ffffff'
+            });
+            return;
+        }
+        var d = sinCuentaDatos;
+        var cuenta = $('#sinCuentaCuenta').val() || 'sin';
+        var estado = $('#sinCuentaEstado').val() || 'contabilizado';
+        var periodo = d.periodo || periodoSinCuentaActual();
+        var extMap = { pdf: 'pdf', word: 'doc', excel: 'xlsx', csv: 'csv', txt: 'txt' };
+        var sufijoCuenta = cuenta === 'sin' ? 'sin_tarjeta' : (cuenta === 'con' ? 'con_tarjeta' : 'todas_cuentas');
+        var ahora = new Date();
+        function p2(n) { return String(n).padStart(2, '0'); }
+        var fechats = ahora.getFullYear() + p2(ahora.getMonth() + 1) + p2(ahora.getDate()) + '_' + p2(ahora.getHours()) + p2(ahora.getMinutes()) + p2(ahora.getSeconds());
+        var nombreBase = 'trabajadores_' + sufijoCuenta + '_' + periodo + '_' + estado + '_' + fechats;
+        var nombreArchivo = nombreBase + '.' + (extMap[formato] || formato);
+
+        function sinCuentaDescargar(contenido, nombreArch, mime) {
+            var blob = new Blob(['\ufeff' + contenido], { type: mime || 'text/plain;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = nombreArch;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
+        }
+
+        function sinCuentaNum(v) {
+            return Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function sinCuentaCsvCell(v) {
+            v = String(v == null ? '' : v);
+            if (/[",\r\n]/.test(v)) { v = '"' + v.replace(/"/g, '""') + '"'; }
+            return v;
+        }
+
+        var titulo = cuenta === 'con' ? 'RESUMEN CON TARJETA' : (cuenta === 'todos' ? 'RESUMEN DE TRABAJADORES' : 'RESUMEN SIN TARJETA');
+        var periodoEtiqueta = String(d.periodo_label || periodo).toUpperCase().split(' ').join(' / ');
+        var tituloCabecera = titulo + ' (' + periodoEtiqueta + ')';
+        var filtrosLine = '  |  Estado: ' + (d.estado_label || estado)
+            + '  |  Cuenta bancaria: ' + (d.cuenta_label || cuenta)
+            + (d.trabajador_id && d.trabajador_label ? '  |  Trabajador: ' + String(d.trabajador_label).toUpperCase() : '');
+        var fechaHora = ahora.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' - ' + ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        var nombreEmpresaTxt = SIN_NOMINA_EMPRESA || nombreEmpresa || '';
+        var usuarioTxt = SIN_NOMINA_USUARIO || usuarioNombre || '';
+
+        if (formato === 'pdf') {
+            var body = [[
+                { text: 'No.', style: 'tableHeader' },
+                { text: 'No CI.', style: 'tableHeader' },
+                { text: 'Nombre y Apellidos', style: 'tableHeader' },
+                { text: 'SALAR. BÁSICO', style: 'tableHeader', alignment: 'right' },
+                { text: 'NOCT. H. EXT', style: 'tableHeader', alignment: 'right' },
+                { text: 'VACAC.', style: 'tableHeader', alignment: 'right' },
+                { text: 'AJUSTE Y/O LIQUID.', style: 'tableHeader', alignment: 'right' },
+                { text: 'RENDIM.', style: 'tableHeader', alignment: 'right' },
+                { text: 'TOTAL A PAGAR', style: 'tableHeader', alignment: 'right' }
+            ]];
+            $.each(d.trabajadores, function(i, t) {
+                body.push([
+                    { text: String(i + 1) },
+                    { text: String(t.ci || '') },
+                    { text: String(t.nombre || '') },
+                    { text: sinCuentaNum(t.salar_basico), alignment: 'right' },
+                    { text: sinCuentaNum(t.noct_h_ext), alignment: 'right' },
+                    { text: sinCuentaNum(t.vacac), alignment: 'right' },
+                    { text: sinCuentaNum(t.ajuste_liquid), alignment: 'right' },
+                    { text: sinCuentaNum(t.rendim), alignment: 'right' },
+                    { text: sinCuentaNum(t.total_a_pagar), alignment: 'right', bold: true }
+                ]);
+            });
+            if (d.totales) {
+                body.push([
+                    { text: 'TOTAL GENERAL', bold: true, fillColor: '#f0f4f8', colSpan: 3 }, {}, {},
+                    { text: sinCuentaNum(d.totales.salar_basico), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: sinCuentaNum(d.totales.noct_h_ext), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: sinCuentaNum(d.totales.vacac), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: sinCuentaNum(d.totales.ajuste_liquid), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: sinCuentaNum(d.totales.rendim), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: sinCuentaNum(d.totales.total_a_pagar), bold: true, alignment: 'right', fillColor: '#f0f4f8' }
+                ]);
+            }
+            var docDefinition = {
+                pageSize: 'LETTER',
+                pageOrientation: 'landscape',
+                pageMargins: [18, 18, 18, 30],
+                content: [
+                    {
+                        table: {
+                            widths: [55, '*', 170],
+                            body: [[
+                                (SIN_NOMINA_LOGO ? { image: SIN_NOMINA_LOGO, width: 40, alignment: 'center' } : { text: '' }),
+                                {
+                                    stack: [
+                                        { text: nombreEmpresaTxt.toUpperCase(), fontSize: 12, bold: true, alignment: 'center' },
+                                        { text: tituloCabecera, fontSize: 12, bold: true, alignment: 'center', margin: [0, 2, 0, 0] }
+                                    ]
+                                },
+                                {
+                                    stack: [
+                                        { text: 'Emisión: ' + fechaHora, fontSize: 8, alignment: 'right' },
+                                        { text: 'Generado por: ' + usuarioTxt, fontSize: 8, alignment: 'right' },
+                                        { text: 'Total de trabajadores: ' + (d.registros || d.trabajadores.length), fontSize: 8, alignment: 'right' }
+                                    ]
+                                }
+                            ]]
+                        },
+                        layout: 'noBorders',
+                        margin: [0, 0, 0, 6]
+                    },
+                    { text: filtrosLine, fontSize: 9, bold: true, margin: [0, 2, 0, 8] },
+                    {
+                        table: {
+                            headerRows: 1,
+                            widths: [22, 55, '*', 58, 58, 56, 68, 56, 62],
+                            body: body
+                        },
+                        layout: {
+                            fillColor: function(rowIndex) { return rowIndex === 0 ? '#004B87' : null; }
+                        }
+                    },
+                    { text: '', margin: [0, 14, 0, 0] },
+                    {
+                        columns: [
+                            {
+                                width: '*',
+                                stack: [
+                                    { text: 'Generado por:', bold: true, fontSize: 9 },
+                                    { text: usuarioTxt, bold: true, fontSize: 8, margin: [0, 24, 0, 0] },
+                                    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] },
+                                    { text: 'Usuario del sistema', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] }
+                                ]
+                            },
+                            {
+                                width: '*',
+                                stack: [
+                                    { text: 'Revisado por:', bold: true, fontSize: 9 },
+                                    { text: String(SIN_NOMINA_ESP_GESTION || especialistaGestion || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 24, 0, 0] },
+                                    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] },
+                                    { text: 'Especialista en Gestión Económica', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] }
+                                ]
+                            },
+                            {
+                                width: '*',
+                                stack: [
+                                    { text: 'Aprobado por:', bold: true, fontSize: 9 },
+                                    { text: String(SIN_NOMINA_JEFE || jefeProyecto || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 24, 0, 0] },
+                                    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] },
+                                    { text: 'Director de Proyecto', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                styles: {
+                    tableHeader: { color: '#ffffff', bold: true }
+                },
+                footer: function(currentPage, pageCount) {
+                    return { text: 'Documento generado por el Sistema de Gestión de Nóminas - Usuario: ' + usuarioTxt + '   Página ' + currentPage + ' de ' + pageCount, fontSize: 7, color: '#666', alignment: 'center', margin: [0, 8, 0, 0] };
+                }
+            };
+            if (typeof pdfMake !== 'undefined') {
+                pdfMake.createPdf(docDefinition).download(nombreArchivo);
+            } else {
+                Swal.fire({
+                    icon: 'error', title: 'Error', text: 'La librería pdfMake no está disponible.',
+                    confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido', confirmButtonColor: '#ef4444', background: '#1a1a2e', color: '#ffffff'
+                });
+            }
+            return;
+        }
+
+        if (formato === 'csv' || formato === 'txt') {
+            if (formato === 'csv') {
+                var lineas = [];
+                lineas.push('LISTADO ' + titulo);
+                lineas.push(['EMPRESA', nombreEmpresaTxt].join(','));
+                lineas.push(['PERIODO', (d.periodo_label || periodo)].join(','));
+                lineas.push(['ESTADO', (d.estado_label || estado)].join(','));
+                lineas.push(['CUENTA BANCARIA', (d.cuenta_label || cuenta)].join(','));
+                lineas.push(['EMISION', fechaHora].join(','));
+                lineas.push(['GENERADO POR', usuarioTxt].join(','));
+                lineas.push(['TOTAL DE TRABAJADORES', (d.registros || d.trabajadores.length)].join(','));
+                lineas.push('');
+                lineas.push(['No.', 'No CI.', 'Nombre y Apellidos', 'SALAR. BÁSICO', 'NOCT. H. EXT', 'VACAC.', 'AJUSTE Y/O LIQUID.', 'RENDIM.', 'TOTAL A PAGAR'].join(','));
+                $.each(d.trabajadores, function(i, t) {
+                    lineas.push([i + 1, t.ci, t.nombre, sinCuentaNum(t.salar_basico), sinCuentaNum(t.noct_h_ext), sinCuentaNum(t.vacac), sinCuentaNum(t.ajuste_liquid), sinCuentaNum(t.rendim), sinCuentaNum(t.total_a_pagar)].map(sinCuentaCsvCell).join(','));
+                });
+                if (d.totales) {
+                    lineas.push(['TOTAL GENERAL', '', '', sinCuentaNum(d.totales.salar_basico), sinCuentaNum(d.totales.noct_h_ext), sinCuentaNum(d.totales.vacac), sinCuentaNum(d.totales.ajuste_liquid), sinCuentaNum(d.totales.rendim), sinCuentaNum(d.totales.total_a_pagar)].map(sinCuentaCsvCell).join(','));
+                }
+                sinCuentaDescargar(lineas.join('\r\n'), nombreArchivo, 'text/csv;charset=utf-8');
+            } else {
+                function padRightS(s, n) { s = String(s == null ? '' : s); return s.length >= n ? s : s + ' '.repeat(n - s.length); }
+                function padLeftS(s, n) { s = String(s == null ? '' : s); return s.length >= n ? s : ' '.repeat(n - s.length) + s; }
+                var tl = [];
+                tl.push('========================================================================');
+                tl.push('                ' + titulo);
+                tl.push('========================================================================');
+                tl.push('Empresa: ' + nombreEmpresaTxt);
+                tl.push('Período: ' + (d.periodo_label || periodo));
+                tl.push('Estado: ' + (d.estado_label || estado));
+                tl.push('Cuenta bancaria: ' + (d.cuenta_label || cuenta));
+                if (d.trabajador_id && d.trabajador_label) tl.push('Trabajador: ' + d.trabajador_label);
+                tl.push('Emisión: ' + fechaHora);
+                tl.push('Generado por: ' + usuarioTxt);
+                tl.push('Total de trabajadores: ' + (d.registros || d.trabajadores.length));
+                tl.push('------------------------------------------------------------------------');
+                tl.push(padRightS('No.', 5) + padRightS('No CI.', 12) + padRightS('Nombre y Apellidos', 30) + padLeftS('SALAR. BAS', 12) + padLeftS('NOCT. H. EXT', 12) + padLeftS('VACAC.', 10) + padLeftS('AJUSTE', 12) + padLeftS('RENDIM.', 10) + padLeftS('TOTAL', 12));
+                tl.push('------------------------------------------------------------------------');
+                $.each(d.trabajadores, function(i, t) {
+                    tl.push(padRightS(i + 1, 5) + padRightS(t.ci || '', 12) + padRightS(t.nombre || '', 30) + padLeftS(sinCuentaNum(t.salar_basico), 12) + padLeftS(sinCuentaNum(t.noct_h_ext), 12) + padLeftS(sinCuentaNum(t.vacac), 10) + padLeftS(sinCuentaNum(t.ajuste_liquid), 12) + padLeftS(sinCuentaNum(t.rendim), 10) + padLeftS(sinCuentaNum(t.total_a_pagar), 12));
+                });
+                tl.push('------------------------------------------------------------------------');
+                if (d.totales) {
+                    tl.push(padRightS('TOTAL GENERAL', 47) + padLeftS(sinCuentaNum(d.totales.salar_basico), 12) + padLeftS(sinCuentaNum(d.totales.noct_h_ext), 12) + padLeftS(sinCuentaNum(d.totales.vacac), 10) + padLeftS(sinCuentaNum(d.totales.ajuste_liquid), 12) + padLeftS(sinCuentaNum(d.totales.rendim), 10) + padLeftS(sinCuentaNum(d.totales.total_a_pagar), 12));
+                }
+                tl.push('========================================================================');
+                sinCuentaDescargar(tl.join('\r\n'), nombreArchivo, 'text/plain;charset=utf-8');
+            }
+            return;
+        }
+
+        var html = '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;">'
+            + '<tr><th colspan="9" style="font-size:0.875rem;text-align:center;">' + tituloCabecera + '</th></tr>'
+            + '<tr><td colspan="9" style="text-align:center;font-weight:bold;font-size:0.75rem;">' + escHtmlSC(nombreEmpresaTxt.toUpperCase()) + '</td></tr>'
+            + '<tr><td colspan="9"><b>Período:</b> ' + escHtmlSC(d.periodo_label || periodo) + '</td></tr>'
+            + '<tr><td colspan="9"><b>Estado:</b> ' + escHtmlSC(d.estado_label || estado) + ' | <b>Cuenta bancaria:</b> ' + escHtmlSC(d.cuenta_label || cuenta) + (d.trabajador_id && d.trabajador_label ? ' | <b>Trabajador:</b> ' + escHtmlSC(d.trabajador_label) : '') + '</td></tr>'
+            + '<tr><th>No.</th><th>No CI.</th><th>Nombre y Apellidos</th><th>SALAR. BÁSICO</th><th>NOCT. H. EXT</th><th>VACAC.</th><th>AJUSTE Y/O LIQUID.</th><th>RENDIM.</th><th>TOTAL A PAGAR</th></tr>';
+
+        $.each(d.trabajadores, function(i, t) {
+            html += '<tr><td>' + (i + 1) + '</td><td>' + escHtmlSC(t.ci) + '</td><td>' + escHtmlSC(t.nombre) + '</td>'
+                + '<td style="text-align:right;">' + sinCuentaNum(t.salar_basico) + '</td>'
+                + '<td style="text-align:right;">' + sinCuentaNum(t.noct_h_ext) + '</td>'
+                + '<td style="text-align:right;">' + sinCuentaNum(t.vacac) + '</td>'
+                + '<td style="text-align:right;">' + sinCuentaNum(t.ajuste_liquid) + '</td>'
+                + '<td style="text-align:right;">' + sinCuentaNum(t.rendim) + '</td>'
+                + '<td style="text-align:right;">' + sinCuentaNum(t.total_a_pagar) + '</td></tr>';
+        });
+        if (d.totales) {
+            html += '<tr style="background:#eee;"><th colspan="3">TOTAL GENERAL</th>'
+                + '<th style="text-align:right;">' + sinCuentaNum(d.totales.salar_basico) + '</th>'
+                + '<th style="text-align:right;">' + sinCuentaNum(d.totales.noct_h_ext) + '</th>'
+                + '<th style="text-align:right;">' + sinCuentaNum(d.totales.vacac) + '</th>'
+                + '<th style="text-align:right;">' + sinCuentaNum(d.totales.ajuste_liquid) + '</th>'
+                + '<th style="text-align:right;">' + sinCuentaNum(d.totales.rendim) + '</th>'
+                + '<th style="text-align:right;">' + sinCuentaNum(d.totales.total_a_pagar) + '</th></tr>';
+        }
+        html += '</table>';
+
+        html += '<table border="0" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;margin-top:3.4375rem;">'
+            + '<tr>'
+            + '<td style="text-align:center;width:33%;"><p><b>Generado por:</b></p><p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p>' + escHtmlSC(usuarioTxt) + '<br><span style="font-size:8pt;color:#444;">Usuario del sistema</span></td>'
+            + '<td style="text-align:center;width:33%;"><p><b>Revisado por:</b></p><p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p><b>' + escHtmlSC(String(SIN_NOMINA_ESP_GESTION || especialistaGestion || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Especialista en Gestión Económica</span></td>'
+            + '<td style="text-align:center;width:33%;"><p><b>Aprobado por:</b></p><p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p><b>' + escHtmlSC(String(SIN_NOMINA_JEFE || jefeProyecto || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Director de Proyecto</span></td>'
+            + '</tr>'
+            + '</table>'
+            + '<p style="font-size:8pt;color:#666;text-align:center;margin-top:0.9375rem;">Documento generado por el Sistema de Gestión de Nóminas - Usuario: ' + escHtmlSC(usuarioTxt) + '</p>';
+
+        if (formato === 'excel') {
+            if (typeof ExcelJS === 'undefined') {
+                Swal.fire({
+                    icon: 'error', title: 'Error', text: 'La librería ExcelJS no está disponible.',
+                    confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido', confirmButtonColor: '#ef4444', background: '#1a1a2e', color: '#ffffff'
+                });
+                return;
+            }
+            function sinCuentaNumN(v) { var n = Number(v); return isNaN(n) ? 0 : n; }
+            var wb = new ExcelJS.Workbook();
+            wb.creator = nombreEmpresaTxt || 'TransNuBeT';
+            wb.created = new Date();
+            var nombreHoja = (cuenta === 'con') ? 'Resume_Con_Tarjeta' : ((cuenta === 'todos') ? 'Resume_Todos' : 'Resume_Sin_Tarjeta');
+            var ws = wb.addWorksheet(nombreHoja, {
+                pageSetup: { orientation: 'landscape', fitToPage: true, margins: { left: 0.7, right: 0.7, top: 0.7, bottom: 0.7, header: 0.3, footer: 0.3 } }
+            });
+            var colW = [6, 13, 32, 13, 12, 10, 13, 11, 14];
+            for (var cw = 0; cw < colW.length; cw++) { ws.getColumn(cw + 1).width = colW[cw]; }
+            var filaExcel = 1;
+            function scCelda(fila, col, valor, opts) {
+                var c = ws.getCell(fila, col);
+                c.value = valor;
+                opts = opts || {};
+                if (opts.bold) c.font = { name: 'Arial', size: opts.size || 10, bold: true };
+                else if (opts.size) c.font = { name: 'Arial', size: opts.size };
+                if (opts.align) c.alignment = { horizontal: opts.align, vertical: 'middle' };
+                return c;
+            }
+            scCelda(filaExcel, 1, tituloCabecera, { bold: true, size: 12, align: 'center' });
+            ws.mergeCells(filaExcel, 1, filaExcel, 9);
+            filaExcel++;
+            scCelda(filaExcel, 1, String(nombreEmpresaTxt).toUpperCase(), { bold: true, size: 10, align: 'center' });
+            ws.mergeCells(filaExcel, 1, filaExcel, 9);
+            filaExcel++;
+            scCelda(filaExcel, 1, 'Período: ' + (d.periodo_label || periodo), { bold: true, size: 10 });
+            ws.mergeCells(filaExcel, 1, filaExcel, 9);
+            filaExcel++;
+            scCelda(filaExcel, 1, 'Estado: ' + (d.estado_label || estado) + '  |  Cuenta bancaria: ' + (d.cuenta_label || cuenta) + (d.trabajador_id && d.trabajador_label ? '  |  Trabajador: ' + String(d.trabajador_label).toUpperCase() : ''), { bold: true, size: 10 });
+            ws.mergeCells(filaExcel, 1, filaExcel, 9);
+            filaExcel++;
+            scCelda(filaExcel, 1, 'Emisión: ' + fechaHora, { size: 10 });
+            ws.mergeCells(filaExcel, 1, filaExcel, 9);
+            filaExcel++;
+            scCelda(filaExcel, 1, 'Generado por: ' + String(usuarioTxt || ''), { size: 10 });
+            ws.mergeCells(filaExcel, 1, filaExcel, 9);
+            filaExcel++;
+            scCelda(filaExcel, 1, 'Total de trabajadores: ' + (d.registros || d.trabajadores.length), { size: 10 });
+            ws.mergeCells(filaExcel, 1, filaExcel, 9);
+            filaExcel++;
+            filaExcel++;
+            var filaHeader = filaExcel;
+            var headers = ['No.', 'No CI.', 'Nombre y Apellidos', 'SALAR. BÁSICO', 'NOCT. H. EXT', 'VACAC.', 'AJUSTE Y/O LIQUID.', 'RENDIM.', 'TOTAL A PAGAR'];
+            for (var hi = 0; hi < headers.length; hi++) {
+                var hc = scCelda(filaHeader, hi + 1, headers[hi], { bold: true, size: 10, align: 'center' });
+                hc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004B87' } };
+                hc.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+                hc.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+            }
+            filaExcel++;
+            $.each(d.trabajadores, function(i, t) {
+                scCelda(filaExcel, 1, i + 1, { align: 'center' });
+                scCelda(filaExcel, 2, String(t.ci || ''), { align: 'center' });
+                scCelda(filaExcel, 3, String(t.nombre || ''));
+                scCelda(filaExcel, 4, sinCuentaNumN(t.salar_basico), { align: 'right' }).numFmt = '$#,##0.00';
+                scCelda(filaExcel, 5, sinCuentaNumN(t.noct_h_ext), { align: 'right' }).numFmt = '$#,##0.00';
+                scCelda(filaExcel, 6, sinCuentaNumN(t.vacac), { align: 'right' }).numFmt = '$#,##0.00';
+                scCelda(filaExcel, 7, sinCuentaNumN(t.ajuste_liquid), { align: 'right' }).numFmt = '$#,##0.00';
+                scCelda(filaExcel, 8, sinCuentaNumN(t.rendim), { align: 'right' }).numFmt = '$#,##0.00';
+                scCelda(filaExcel, 9, sinCuentaNumN(t.total_a_pagar), { bold: true, align: 'right' }).numFmt = '$#,##0.00';
+                filaExcel++;
+            });
+            if (d.totales) {
+                var fc = scCelda(filaExcel, 1, 'TOTAL GENERAL', { bold: true, align: 'left' });
+                ws.mergeCells(filaExcel, 1, filaExcel, 3);
+                for (var tci = 4; tci <= 8; tci++) {
+                    var vals = [d.totales.salar_basico, d.totales.noct_h_ext, d.totales.vacac, d.totales.ajuste_liquid, d.totales.rendim];
+                    scCelda(filaExcel, tci, sinCuentaNumN(vals[tci - 4]), { bold: true, align: 'right' }).numFmt = '$#,##0.00';
+                }
+                scCelda(filaExcel, 9, sinCuentaNumN(d.totales.total_a_pagar), { bold: true, align: 'right' }).numFmt = '$#,##0.00';
+            }
+            filaExcel++;
+            filaExcel++;
+            var firmasL = ['Generado por:', 'Revisado por:', 'Aprobado por:'];
+            for (var fi = 0; fi < firmasL.length; fi++) { scCelda(filaExcel, fi * 3 + 1, firmasL[fi], { bold: true }); }
+            filaExcel++;
+            var firmasN = [String(usuarioTxt).toUpperCase(), String(SIN_NOMINA_ESP_GESTION || especialistaGestion || '').toUpperCase(), String(SIN_NOMINA_JEFE || jefeProyecto || '').toUpperCase()];
+            for (var fi2 = 0; fi2 < firmasN.length; fi2++) { scCelda(filaExcel, fi2 * 3 + 1, firmasN[fi2], { bold: true }); }
+            filaExcel++;
+            var firmasC = ['Usuario del sistema', 'Especialista en Gestión Económica', 'Director de Proyecto'];
+            for (var fi3 = 0; fi3 < firmasC.length; fi3++) { scCelda(filaExcel, fi3 * 3 + 1, firmasC[fi3]); }
+            wb.xlsx.writeBuffer().then(function(buffer) {
+                var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = nombreArchivo;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
+            });
+        } else if (formato === 'word') {
+            var htmlWord = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>' + titulo + '</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--></head><body>' + html + '</body></html>';
+            sinCuentaDescargar(htmlWord, nombreArchivo, 'application/msword;charset=utf-8');
+        }
+    }
+
+    $('#btnSinCuentaPDF').on('click', function() { exportarSinCuenta('pdf'); });
+    $('#btnSinCuentaWord').on('click', function() { exportarSinCuenta('word'); });
+    $('#btnSinCuentaExcel').on('click', function() { exportarSinCuenta('excel'); });
+    $('#btnSinCuentaCSV').on('click', function() { exportarSinCuenta('csv'); });
+    $('#btnSinCuentaTXT').on('click', function() { exportarSinCuenta('txt'); });
+    $('#btnSinCuentaPrint').on('click', function() { imprimirSinCuenta(); });
+
+    function imprimirSinCuenta() {
+        var periodo = periodoSinCuentaActual();
+        var estado = $('#sinCuentaEstado').val() || 'contabilizado';
+        var cuenta = $('#sinCuentaCuenta').val() || 'sin';
+        var trabajadorId = $('#sinCuentaTrabajadorId').val() ? parseInt($('#sinCuentaTrabajadorId').val()) : 0;
+        var parametros = { accion: 'lista', periodo: periodo, estado: estado, cuenta: cuenta };
+        if (trabajadorId) parametros.trabajador_id = trabajadorId;
+        $.getJSON('exportar_sin_cuenta.php', parametros)
+            .done(function(data) {
+                if (!data.success || data.trabajadores.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '<i class="fas fa-credit-card me-2" style="color:#fbbf24;"></i> Sin datos',
+                        text: 'No hay trabajadores con nóminas en el período y estado seleccionados.',
+                        confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido',
+                        confirmButtonColor: '#3b82f6',
+                        background: '#1a1a2e',
+                        color: '#ffffff'
+                    });
+                    return;
+                }
+                var filas = '';
+                $.each(data.trabajadores, function(i, t) {
+                    filas += '<tr>'
+                        + '<td class="text-right">' + (i + 1) + '</td>'
+                        + '<td>' + escHtmlSN(t.ci) + '</td>'
+                        + '<td>' + escHtmlSN(t.nombre) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(t.salar_basico) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(t.noct_h_ext) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(t.vacac) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(t.ajuste_liquid) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(t.rendim) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(t.total_a_pagar) + '</td>'
+                        + '</tr>';
+                });
+                var filaTotales = '';
+                if (data.totales) {
+                    filaTotales = '<tr class="sn-total-fila">'
+                        + '<td colspan="3" class="text-right">TOTAL GENERAL</td>'
+                        + '<td class="text-right">' + formatMoneySC(data.totales.salar_basico) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(data.totales.noct_h_ext) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(data.totales.vacac) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(data.totales.ajuste_liquid) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(data.totales.rendim) + '</td>'
+                        + '<td class="text-right">' + formatMoneySC(data.totales.total_a_pagar) + '</td>'
+                        + '</tr>';
+                }
+                var fechaHora = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                var cuentaLbl = data.cuenta_label || 'Sin cuenta';
+                var tituloPrint = (cuenta === 'con') ? 'RESUMEN CON TARJETA' : ((cuenta === 'todos') ? 'RESUMEN DE TRABAJADORES' : 'RESUMEN SIN TARJETA');
+                var tituloPrintCabecera = tituloPrint + ' (' + escHtmlSN(data.periodo_label).toUpperCase().split(' ').join(' / ') + ')';
+                var filtrosPrint = 'Estado: ' + escHtmlSN(data.estado_label) + '  |  Cuenta bancaria: ' + escHtmlSN(cuentaLbl) + (data.trabajador_id && data.trabajador_label ? '  |  Trabajador: ' + escHtmlSN(data.trabajador_label).toUpperCase() : '');
+                var contenido = `
+                    <table class="sn-cabecera" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td class="sn-cabecera-logo">${SIN_NOMINA_LOGO ? '<img src="' + SIN_NOMINA_LOGO + '" alt="Logo">' : ''}</td>
+                            <td class="sn-cabecera-titulo">
+                                <div class="sn-empresa">${escHtmlSN(SIN_NOMINA_EMPRESA)}</div>
+                                <div class="sn-titulo">${tituloPrintCabecera}</div>
+                                <div class="sn-alcance">${filtrosPrint}</div>
+                            </td>
+                            <td class="sn-cabecera-datos">
+                                <strong>Emisión:</strong> ${fechaHora}<br>
+                                <strong>Generado por:</strong> ${escHtmlSN(SIN_NOMINA_USUARIO)}<br>
+                                <strong>Total de trabajadores:</strong> <span class="sn-total">${data.registros}</span>
+                            </td>
+                        </tr>
+                    </table>
+                    <table class="sn-tabla">
+                        <thead><tr>
+                            <th>No.</th><th>No CI.</th><th>Nombre y Apellidos</th><th>SALAR. BÁSICO</th><th>NOCT. H. EXT</th><th>VACAC.</th><th>AJUSTE Y/O LIQUID.</th><th>RENDIM.</th><th>TOTAL A PAGAR</th>
+                        </tr></thead>
+                        <tbody>${filas}</tbody>
+                        ${filaTotales ? '<tfoot>' + filaTotales + '</tfoot>' : ''}
+                    </table>
+                    <div class="sn-firmas">
+                        <table class="sn-firmas-tabla">
+                            <tr>
+                                <td>
+                                    <p class="sn-firma-label">Generado por:</p>
+                                    <p class="sn-firma-linea"></p>
+                                    <p class="sn-firma-cargo">${escHtmlSN(SIN_NOMINA_USUARIO)}</p>
+                                    <p class="sn-firma-subcargo">Usuario del sistema</p>
+                                </td>
+                                <td>
+                                    <p class="sn-firma-label">Revisado por:</p>
+                                    <p class="sn-firma-linea"></p>
+                                    <p class="sn-firma-cargo">${escHtmlSN(SIN_NOMINA_ESP_GESTION)}</p>
+                                    <p class="sn-firma-subcargo">Especialista en Gestión Económica</p>
+                                </td>
+                                <td>
+                                    <p class="sn-firma-label">Aprobado por:</p>
+                                    <p class="sn-firma-linea"></p>
+                                    <p class="sn-firma-cargo">${escHtmlSN(SIN_NOMINA_JEFE)}</p>
+                                    <p class="sn-firma-subcargo">Director de Proyecto</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>`;
+                var win = window.open('', '_blank');
+                if (!win) {
+                    Swal.fire({
+                        title: '<i class="fas fa-external-link-alt me-2" style="color:#fbbf24;"></i> Permiso requerido',
+                        html: '<div class="text-center"><p>El navegador bloqueó la ventana emergente.</p><p class="text-muted small">Permita las ventanas emergentes para este sitio e inténtelo de nuevo.</p></div>',
+                        icon: 'warning',
+                        confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido',
+                        confirmButtonColor: '#3b82f6',
+                        background: '#1a1a2e',
+                        color: '#ffffff'
+                    });
+                    return;
+                }
+                win.document.open();
+                win.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Resumen Sin Tarjeta</title><style>' + SIN_NOMINA_PRINT_CSS + '</style></head><body>' + PRINT_TOOLBAR_HTML + contenido + '</body></html>');
+                win.document.close();
+            })
+            .fail(function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: '<i class="fas fa-wifi text-danger me-2"></i> Error de conexión',
+                    text: 'No se pudo consultar el servidor.',
+                    confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido',
+                    confirmButtonColor: '#dc3545',
+                    background: '#1a1a2e',
+                    color: '#ffffff'
+                });
+            });
+    }
+    // ==================== FIN RESUMEN SIN TARJETA ====================
 
 function aplicarFiltros() {
     if (!nominasTable) return;
@@ -14597,7 +15463,7 @@ window.imprimirCuadrePendiente = function(rep, tituloReporte) {
     var periodoTexto = nombreMes(rep && rep.periodo ? rep.periodo : '');
     var tipoTexto = (rep && rep.tipo) ? escapeHtml(rep.tipo) : '';
     var esContabilizada = (tituloReporte || '').toUpperCase().indexOf('CONTABILIZADA') !== -1;
-    var fecha = new Date().toLocaleString('es');
+    var fecha = new Date().toLocaleString('es', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
     var POR_PAGINA = 18;
     var paginas = [];
@@ -14866,7 +15732,7 @@ window.cuadreExportarXls = function(rep, titulo) {
     var html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Chequeo de Cuadre</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'
         + '<table border="1"><tr><td colspan="' + nCol + '" style="text-align:center;font-weight:bold;font-size:0.75rem;">' + th + '</td></tr>'
         + '<tr><td colspan="' + nCol + '"><b>Empresa:</b> ' + escapeHtml(nombreEmpresa || '') + '</td></tr>'
-        + '<tr><td colspan="' + nCol + '"><b>Per&iacute;odo:</b> ' + c.periodoTexto + ' &nbsp;&nbsp;<b>Tipo de n&oacute;mina:</b> ' + c.tipoTexto + ' &nbsp;&nbsp;<b>Generado:</b> ' + new Date().toLocaleString('es') + '</td></tr>'
+        + '<tr><td colspan="' + nCol + '"><b>Per&iacute;odo:</b> ' + c.periodoTexto + ' &nbsp;&nbsp;<b>Tipo de n&oacute;mina:</b> ' + c.tipoTexto + ' &nbsp;&nbsp;<b>Generado:</b> ' + new Date().toLocaleString('es', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) + '</td></tr>'
         + '<tr><td colspan="' + nCol + '"><b>Filas revisadas:</b> ' + c.filasRev + ' &nbsp;&nbsp;<b>Con descuadres:</b> ' + c.filasErr + ' &nbsp;&nbsp;<b>Errores:</b> ' + c.errTotal + ' (impuestos: ' + c.impTotal + ', aritm&eacute;tica: ' + c.aritTotal + ')</td></tr>'
         + '<tr><th>Trabajador ID</th><th>No. N&oacute;mina</th>' + periodoTh + '<th>Trabajador</th><th>Tipo</th><th>Verificaci&oacute;n</th><th>Almacenado</th><th>Calculado</th><th>Diferencia</th></tr>';
     for (var i = 0; i < c.lista.length; i++) {
@@ -14900,7 +15766,7 @@ window.cuadreExportarPdf = function(rep, titulo) {
         fila.push(String(e.trabajador || ''), String(e.tipo || ''), String(e.detalle || ''), String(e.encontrado || ''), String(e.esperado || ''), String(e.diferencia || ''));
         tbody.push(fila);
     }
-    var fecha = new Date().toLocaleString('es');
+    var fecha = new Date().toLocaleString('es', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     var doc = {
         pageSize: 'LETTER',
         pageOrientation: 'landscape',
@@ -14974,7 +15840,7 @@ window.cuadreExportarTxt = function(rep, titulo) {
 window.cuadreExportarDocx = function(rep, titulo) {
     var c = window.cuadreContexto(rep, titulo);
     var th = titulo || 'N\u00d3MINAS EN BORRADOR';
-    var fecha = new Date().toLocaleString('es');
+    var fecha = new Date().toLocaleString('es', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     var periodoTh = c.esContabilizada ? '<th style="color:#fff;font-size:8pt;">Per&iacute;odo</th>' : '';
     var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>' + th + '</title></head><body>'
         + '<table border="0" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;">'
@@ -18574,7 +19440,7 @@ function generarContenidoTXT(trabajadores) {
         }
     }
     
-    lines.push("FECHA GENERACIÓN: " + new Date().toLocaleString('es-ES'));
+    lines.push("FECHA GENERACIÓN: " + new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
     lines.push("==========================================================================");
     lines.push("");
     
@@ -20546,7 +21412,7 @@ $(function() {
     function listadoImprimir() {
         if (!datosActual) { listadoSwalError('Primero genere el reporte.'); return; }
         var now = new Date();
-        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
         var estadoTxt = LISTADO_ESTADO_TXT[$('#listadoEstado').val() || ''] || 'TODOS';
         var tablaHtml = listadoTablaHtml();
 
@@ -20629,7 +21495,7 @@ $(function() {
     // ----------------------------------------------------------
     function listadoExportarXls() {
         var now = new Date();
-        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
         var esCompleto = (datosActual.modo === 'completo');
         var numCols = esCompleto ? 5 : 6;
         var estadoTxt = LISTADO_ESTADO_TXT[$('#listadoEstado').val() || ''] || 'TODOS';
@@ -20773,7 +21639,7 @@ $(function() {
 
     function listadoExportarDocx() {
         var now = new Date();
-        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES');
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
         var estadoTxt = LISTADO_ESTADO_TXT[$('#listadoEstado').val() || ''] || 'TODOS';
         var esCompleto = (datosActual.modo === 'completo');
         var numCols = esCompleto ? 5 : 6;
@@ -20928,7 +21794,7 @@ $(function() {
                                 },
                                 {
                                     stack: [
-                                        { text: 'Emisión: ' + new Date().toLocaleDateString('es-ES') + ' - ' + new Date().toLocaleTimeString('es-ES'), fontSize: 8, alignment: 'right' },
+                                        { text: 'Emisión: ' + new Date().toLocaleDateString('es-ES') + ' - ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }), fontSize: 8, alignment: 'right' },
                                         { text: 'REEUP: ' + (reeup || ''), fontSize: 8, alignment: 'right' },
                                         { text: 'NIT: ' + (nitEmpresa || ''), fontSize: 8, alignment: 'right' }
                                     ]
@@ -21029,6 +21895,13 @@ $(function() {
 
         $('#btnListadoDevengado').on('click', function(e) {
             e.preventDefault();
+            var modalSel = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSeleccionResumenSalarial'));
+            modalSel.show();
+        });
+
+        $('#opcionResumenPorTrabajador').on('click', function() {
+            var sel = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionResumenSalarial'));
+            if (sel) sel.hide();
             var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalListadoDevengadoTrabajador'));
             if (!$('#listadoAnio option').length || $('#listadoAnio option').length <= 1) {
                 listadoCargarAnios();
