@@ -1,6 +1,7 @@
 <?php
 // ajax/pendiente_reset.php - Decide sobre una solicitud de cambio de contraseña pendiente
 require_once '../config/database.php';
+require_once '../config/mail.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -47,7 +48,21 @@ if ($action === 'restablecer') {
     $stmtUpd = $pdo->prepare("UPDATE clasif_usuarios SET password = ?, reset_token = NULL, reset_expira = NULL, fecha_actualizacion = NOW() WHERE id = ?");
     $stmtUpd->execute([$hashed, $id]);
 
-    echo json_encode(['success' => true]);
+    // Notificar por correo si el usuario tiene email configurado
+    $correo = notificarPasswordCambiada($pdo, $id);
+
+    $respuesta = ['success' => true, 'message' => 'Contraseña actualizada correctamente'];
+    if ($correo['success']) {
+        $respuesta['correo'] = 'enviado';
+    } elseif ($correo['error'] === 'sin_email') {
+        $respuesta['correo'] = 'sin_email';
+    } else {
+        $respuesta['correo'] = 'no_enviado';
+        $respuesta['correo_error'] = ($correo['error'] === 'mail_not_configured')
+            ? 'SMTP no configurado'
+            : $correo['error'];
+    }
+    echo json_encode($respuesta);
     exit;
 }
 

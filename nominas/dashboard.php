@@ -298,6 +298,20 @@ try {
     error_log("Error en consulta últimas nóminas: " . $e->getMessage());
 }
 
+// Años disponibles para el filtro del card Últimas Nóminas
+$anios_ultimas_nominas = [];
+try {
+    $anios_ultimas_nominas = array_map(
+        fn($f) => (int)$f['anio'],
+        $pdo->query("SELECT DISTINCT YEAR(periodo_desde) AS anio FROM nominas WHERE periodo_desde IS NOT NULL ORDER BY anio DESC")->fetchAll()
+    );
+    if ($anios_ultimas_nominas === []) {
+        $anios_ultimas_nominas = [date('Y')];
+    }
+} catch (PDOException $e) {
+    $anios_ultimas_nominas = [date('Y')];
+}
+
 // ============================================
 // CONSULTA PARA NÓMINAS POR MES (GRÁFICO AGRUPADO)
 // ============================================
@@ -607,17 +621,65 @@ $centros_colores = ['#3b82f6', '#fbbf24', 'var(--color-success-soft)', '#a78bfa'
 $periodo_referencia = 'Sin datos';
 
 try {
-    // Obtener el período de referencia
-    $periodo_stmt = $pdo->query("
-        SELECT DISTINCT 
-            DATE_FORMAT(periodo_desde, '%Y-%m') as periodo,
-            MONTH(periodo_desde) as mes_numero,
-            YEAR(periodo_desde) as anio
-        FROM nominas 
-        WHERE estado != 'borrador'
-        ORDER BY periodo_desde DESC 
-        LIMIT 1
-    ");
+    // Años disponibles para el filtro del card Centros de Costo
+    $anios_centros_costo = array_map(
+        fn($f) => (int)$f['anio'],
+        $pdo->query("SELECT DISTINCT YEAR(periodo_desde) AS anio FROM nominas WHERE estado != 'borrador' ORDER BY anio DESC")->fetchAll()
+    );
+    if ($anios_centros_costo === []) {
+        $anios_centros_costo = [date('Y')];
+    }
+    $anio_cc_seleccionado = (isset($_GET['anio_cc']) && $_GET['anio_cc'] !== '') ? intval($_GET['anio_cc']) : 0;
+    $mes_cc_seleccionado = (isset($_GET['mes_cc']) && $_GET['mes_cc'] !== '') ? intval($_GET['mes_cc']) : 0;
+
+    // Meses disponibles por año para el combo de mes
+    $meses_cc_por_anio = [];
+    foreach ($anios_centros_costo as $anio_cc_item) {
+        $stmt_meses = $pdo->prepare("SELECT DISTINCT MONTH(periodo_desde) AS mes FROM nominas WHERE estado != 'borrador' AND YEAR(periodo_desde) = ? ORDER BY mes");
+        $stmt_meses->execute([$anio_cc_item]);
+        $meses_cc_por_anio[$anio_cc_item] = array_map('intval', $stmt_meses->fetchAll(PDO::FETCH_COLUMN));
+    }
+    $meses_disponibles_cc = ($anio_cc_seleccionado > 0 && isset($meses_cc_por_anio[$anio_cc_seleccionado])) ? $meses_cc_por_anio[$anio_cc_seleccionado] : [];
+
+    // Obtener el período de referencia (filtrado por año y mes si se especifican)
+    if ($anio_cc_seleccionado > 0 && $mes_cc_seleccionado > 0) {
+        $sql_periodo = "
+            SELECT DISTINCT 
+                DATE_FORMAT(periodo_desde, '%Y-%m') as periodo,
+                MONTH(periodo_desde) as mes_numero,
+                YEAR(periodo_desde) as anio
+            FROM nominas 
+            WHERE estado != 'borrador'
+                AND YEAR(periodo_desde) = " . (int)$anio_cc_seleccionado . "
+                AND MONTH(periodo_desde) = " . (int)$mes_cc_seleccionado . "
+            ORDER BY periodo_desde DESC 
+            LIMIT 1
+        ";
+    } elseif ($anio_cc_seleccionado > 0) {
+        $sql_periodo = "
+            SELECT DISTINCT 
+                DATE_FORMAT(periodo_desde, '%Y-%m') as periodo,
+                MONTH(periodo_desde) as mes_numero,
+                YEAR(periodo_desde) as anio
+            FROM nominas 
+            WHERE estado != 'borrador'
+                AND YEAR(periodo_desde) = " . (int)$anio_cc_seleccionado . "
+            ORDER BY periodo_desde DESC 
+            LIMIT 1
+        ";
+    } else {
+        $sql_periodo = "
+            SELECT DISTINCT 
+                DATE_FORMAT(periodo_desde, '%Y-%m') as periodo,
+                MONTH(periodo_desde) as mes_numero,
+                YEAR(periodo_desde) as anio
+            FROM nominas 
+            WHERE estado != 'borrador'
+            ORDER BY periodo_desde DESC 
+            LIMIT 1
+        ";
+    }
+    $periodo_stmt = $pdo->query($sql_periodo);
     $periodo_ref = $periodo_stmt->fetch();
     if ($periodo_ref) {
         $mes_espanol = nombreMesEspanol($periodo_ref['mes_numero']);
@@ -625,10 +687,10 @@ try {
         $periodo_ref_mes = $periodo_ref['mes_numero'];
         $periodo_ref_anio = $periodo_ref['anio'];
     } else {
-        // Si no hay datos, usar mes actual
+        // Si no hay datos para el año/mes seleccionado, usar mes actual
         $periodo_ref_mes = date('m');
         $periodo_ref_anio = date('Y');
-        $periodo_referencia = nombreMesEspanol(date('m')) . ' ' . date('Y');
+        $periodo_referencia = ($anio_cc_seleccionado > 0 ? 'Sin datos para el período seleccionado' : nombreMesEspanol(date('m')) . ' ' . date('Y'));
     }
     
     // ============================================
@@ -1061,6 +1123,16 @@ try {
     $cierres_meses = [];
 }
 $cierres_meses_total = count($cierres_meses);
+
+// Años disponibles para el filtro del card Visor de Cuadres por Meses
+$anios_cierres_meses = [];
+foreach (array_keys($cierres_meses) as $ym_cierres) {
+    $anio_cierres = (int)substr($ym_cierres, 0, 4);
+    if (!in_array($anio_cierres, $anios_cierres_meses, true)) {
+        $anios_cierres_meses[] = $anio_cierres;
+    }
+}
+rsort($anios_cierres_meses);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -1889,6 +1961,18 @@ $cierres_meses_total = count($cierres_meses);
                     </small>
                 </div>
                 <div>
+                    <select id="filtroAnioCentros" class="form-select form-select-sm me-2" style="width: auto; min-width: 9rem; display: inline-block; vertical-align: middle; background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); border-radius: 0.5rem;" title="Filtrar por año" data-tooltip="Filtrar por año" data-tooltip-theme="secondary">
+                        <option value="">Todos los años</option>
+                        <?php foreach ($anios_centros_costo as $anio_cc): ?>
+                            <option value="<?php echo (int)$anio_cc; ?>" <?php echo ($anio_cc_seleccionado == $anio_cc) ? 'selected' : ''; ?>><?php echo (int)$anio_cc; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select id="filtroMesCentros" class="form-select form-select-sm me-2" style="width: auto; min-width: 9rem; display: inline-block; vertical-align: middle; background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); border-radius: 0.5rem;" title="Filtrar por mes" data-tooltip="Filtrar por mes" data-tooltip-theme="secondary" <?php echo ($anio_cc_seleccionado > 0) ? '' : 'disabled'; ?>>
+                        <option value="">Todos los meses</option>
+                        <?php foreach ($meses_disponibles_cc as $mes_cc_item): ?>
+                            <option value="<?php echo (int)$mes_cc_item; ?>" <?php echo ($mes_cc_seleccionado == $mes_cc_item) ? 'selected' : ''; ?>><?php echo nombreMesEspanol($mes_cc_item); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                     <button class="btn-win btn-win-sm" onclick="exportarCentrosCosto()" title="Exportar gráfico a PNG" data-tooltip="Exportar gráfico a PNG" data-tooltip-theme="info">
                         <i class="fas fa-download me-1"></i> PNG
                     </button>
@@ -1898,7 +1982,7 @@ $cierres_meses_total = count($cierres_meses);
                     <span class="badge-win ms-2"><i class="fas fa-chart-bar me-1"></i> Salario vs Empleados</span>
                 </div>
             </div>
-            <div class="p-3 collapse" id="collapseCentrosCosto">
+            <div class="p-3 collapse show" id="collapseCentrosCosto">
                 <div class="row">
                     <div class="col-lg-8">
                         <div style="height:21.875rem; position: relative;">
@@ -1978,6 +2062,12 @@ $cierres_meses_total = count($cierres_meses);
                         <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-calendar-check me-2" style="color: var(--color-success-soft, #34d399);"></i> Visor de Cuadres por Meses
                         <span class="badge ms-2" style="background: rgba(var(--color-success-rgb), 0.14); color: var(--color-success-soft, #34d399); border: 0.0625rem solid var(--color-success); font-size:0.65rem;"><?php echo $cierres_meses_total; ?> mes<?php echo $cierres_meses_total === 1 ? '' : 'es'; ?></span>
                     </h6>
+                    <select id="filtroAnioCierres" class="form-select form-select-sm" style="width: auto; min-width: 9rem; background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); border-radius: 0.5rem;" title="Filtrar por año" data-tooltip="Filtrar por año" data-tooltip-theme="secondary">
+                        <option value="">Todos los años</option>
+                        <?php foreach ($anios_cierres_meses as $anio_cierre): ?>
+                            <option value="<?php echo (int)$anio_cierre; ?>"><?php echo (int)$anio_cierre; ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div id="collapseCierresMeses" class="collapse">
                 <div class="p-4">
@@ -1995,7 +2085,7 @@ $cierres_meses_total = count($cierres_meses);
                             <?php endforeach; ?>
                         </div>
                         <?php foreach ($cierres_meses as $ym => $mes): ?>
-                        <div class="mb-3" style="border: 0.0625rem solid var(--border, rgba(255,255,255,0.08)); border-radius: 0.75rem; overflow: hidden;">
+                        <div class="mb-3 cierres-bloque-mes" data-anio="<?php echo (int)substr($ym, 0, 4); ?>" data-ym="<?php echo htmlspecialchars($ym); ?>" style="border: 0.0625rem solid var(--border, rgba(255,255,255,0.08)); border-radius: 0.75rem; overflow: hidden;">
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 py-2" style="background: rgba(var(--color-success-rgb), 0.08); border-bottom: 0.0625rem solid var(--border, rgba(255,255,255,0.08)); cursor: pointer;" onclick="toggleCierresMes('cmes_<?php echo $ym; ?>', this)">
                                 <div class="d-flex align-items-center gap-2">
                                     <i class="fas fa-chevron-down cierres-chevon" style="font-size:0.75rem; color: var(--color-success-soft, #34d399); transition: transform 0.25s ease;"></i>
@@ -2048,7 +2138,7 @@ $cierres_meses_total = count($cierres_meses);
                             </div>
                         </div>
                         <?php endforeach; ?>
-                        <small class="text-secondary" style="font-size:0.75rem; color: var(--muted, #9ca3af);">
+                        <small id="cierresInfoPie" class="text-secondary" style="font-size:0.75rem; color: var(--muted, #9ca3af);">
                             <i class="fas fa-info-circle me-1"></i>Datos procedentes de la tabla <code>cierres_nomina</code> (cuadres contables por período).
                         </small>
                     <?php endif; ?>
@@ -2070,6 +2160,14 @@ $cierres_meses_total = count($cierres_meses);
                 </div>
                 <div class="p-3 collapse" id="collapseUltimasNominas">
                     <div class="row mb-3">
+                        <div class="col-md-4">
+                            <select id="filtroAnio" class="form-select form-select-sm" style="background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); border-radius: 0.5rem;" title="Filtrar por año" data-tooltip="Filtrar por año" data-tooltip-theme="secondary">
+                                <option value="">Todos los años</option>
+                                <?php foreach ($anios_ultimas_nominas as $anio_filtro): ?>
+                                    <option value="<?php echo (int)$anio_filtro; ?>"><?php echo (int)$anio_filtro; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                         <div class="col-md-4">
                             <select id="filtroTipo" class="form-select form-select-sm" style="background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); border-radius: 0.5rem;" title="Filtrar por tipo" data-tooltip="Filtrar por tipo" data-tooltip-theme="secondary">
                                 <option value="">Todos los tipos</option>
@@ -2122,7 +2220,7 @@ $cierres_meses_total = count($cierres_meses);
                                         $nombre_mes = nombreMesEspanol($nomina['mes']) . ' ' . $nomina['anio'];
                                         $deducciones_fila = floatval($nomina['total_devengado']) - floatval($nomina['total_neto']);
                                     ?>
-                                    <tr>
+                                    <tr data-anio="<?php echo (int)$nomina['anio']; ?>">
                                         <td style="display: none;"><?php echo $fecha_ordenable; ?></td>
                                         <td><strong><?php echo htmlspecialchars($nombre_mes); ?></strong></td>
                                         <td><span class="badge bg-info"><?php echo ucfirst($nomina['tipo_nomina'] ?? 'ordinaria'); ?></span></td>
@@ -2167,9 +2265,9 @@ $cierres_meses_total = count($cierres_meses);
                                     <td colspan="3" style="text-align: right; font-weight: 600; color: var(--txt);">
                                         <i class="fas fa-calculator me-2"></i> TOTALES:
                                     </td>
-                                    <td style="font-weight: 600; color: var(--blue);"><?php echo formatearMoneda($totales_devengado); ?></td>
-                                    <td style="font-weight: 600; color: var(--red);"><?php echo formatearMoneda($totales_deducciones); ?></td>
-                                    <td style="font-weight: 700; color: var(--color-success-soft);"><?php echo formatearMoneda($totales_neto); ?></td>
+                                    <td style="font-weight: 600; color: var(--blue);" id="totDevengado"><?php echo formatearMoneda($totales_devengado); ?></td>
+                                    <td style="font-weight: 600; color: var(--red);" id="totDeducciones"><?php echo formatearMoneda($totales_deducciones); ?></td>
+                                    <td style="font-weight: 700; color: var(--color-success-soft);" id="totNeto"><?php echo formatearMoneda($totales_neto); ?></td>
                                     <td colspan="2"></td>
                                 </tr>
                             </tfoot>
@@ -2318,26 +2416,40 @@ document.getElementById('logoutSidebarBtn')?.addEventListener('click', function(
 // ============================================
 $.fn.dataTable.ext.search.push(
     function(settings, data, dataIndex) {
+        var anio = $('#filtroAnio').val();
         var tipo = $('#filtroTipo').val();
         var estado = $('#filtroEstado').val();
-        var tipoFila = data[2] || '';
-        var estadoFila = data[7] || '';
+        var nodoFila = settings.aoData[dataIndex].nTr;
+        var anioFila = (nodoFila.getAttribute('data-anio') || '').trim();
+        var af = settings.aoData[dataIndex]._aFilterData || [];
+        var tipoFila = String(af[2] || '').trim().toLowerCase();
+        var estadoFila = String(af[7] || '').trim().toLowerCase();
         
-        var tempDiv = document.createElement('div');
-        tempDiv.innerHTML = estadoFila;
-        estadoFila = tempDiv.textContent || tempDiv.innerText || '';
-        estadoFila = estadoFila.trim().toLowerCase();
-        tipoFila = tipoFila.toLowerCase();
-        
+        if (anio && anioFila !== anio) return false;
         if (tipo && !tipoFila.includes(tipo.toLowerCase())) return false;
         if (estado && !estadoFila.includes(estado.toLowerCase())) return false;
         return true;
     }
 );
 
-$('#filtroTipo, #filtroEstado').on('change', function() {
+$('#filtroAnio, #filtroTipo, #filtroEstado').on('change', function() {
     $('#nominasTable').DataTable().draw();
 });
+
+function recalcTotalesNominas() {
+    var totDev = 0, totDed = 0, totNet = 0;
+    var tabla = $('#nominasTable').DataTable();
+    tabla.rows({ search: 'applied' }).every(function() {
+        var datos = this.data();
+        var dev = parseFloat(String(datos[4] || '0').replace(/[^0-9.\-]/g, '')) || 0;
+        var ded = parseFloat(String(datos[5] || '0').replace(/[^0-9.\-]/g, '')) || 0;
+        var net = parseFloat(String(datos[6] || '0').replace(/[^0-9.\-]/g, '')) || 0;
+        totDev += dev; totDed += ded; totNet += net;
+    });
+    $('#totDevengado').text(totDev.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    $('#totDeducciones').text(totDed.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    $('#totNeto').text(totNet.toLocaleString('es-CU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+}
 
 // ============================================
 // DATATABLE INITIALIZATION
@@ -2406,6 +2518,7 @@ if (hayDatosValidos) {
         ],
         drawCallback: function() {
             $('.paginate_button').addClass('btn-win-sm');
+            recalcTotalesNominas();
         }
     });
 }
@@ -5380,11 +5493,18 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(function (r) { return r.json(); })
             .then(function (res) {
                 if (res.success) {
+                    let notaCorreo = '';
+                    if (res.correo === 'enviado') {
+                        notaCorreo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); border-radius:.4rem; font-size:.8rem; color:#34d399;"><i class="fas fa-envelope me-1"></i> Se envió una notificación a su correo electrónico.</div>';
+                    } else if (res.correo === 'no_enviado') {
+                        notaCorreo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(255,170,0,.1); border:1px solid rgba(255,170,0,.35); border-radius:.4rem; font-size:.75rem; color:#ffa500;"><i class="fas fa-exclamation-triangle me-1"></i> No se envió notificación por correo (' + (res.correo_error || 'error SMTP') + ').</div>';
+                    }
                     Swal.fire({
                         icon: 'success',
                         title: 'Contraseña actualizada',
-                        text: 'Su contraseña se cambió correctamente. A partir de ahora utilícela para acceder al sistema.',
-                        background: '#0f172a', color: '#eee', confirmButtonColor: '#22c55e'
+                        html: 'Su contraseña se cambió correctamente. A partir de ahora utilícela para acceder al sistema.' + notaCorreo,
+                        background: '#0f172a', color: '#eee', confirmButtonColor: '#22c55e',
+                        confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
                     });
                     ocultarBarra();
                 } else {
@@ -5507,6 +5627,78 @@ document.getElementById('collapseCierresMeses')?.addEventListener('hidden.bs.col
     document.querySelectorAll('.cierres-body').forEach(function (el) { el.style.display = 'none'; });
     document.querySelectorAll('.cierres-chevon').forEach(function (el) { el.style.transform = ''; });
 });
+
+// Filtro por año del Visor de Cuadres por Meses
+(function () {
+    var btnFiltroCierres = document.getElementById('filtroAnioCierres');
+    if (!btnFiltroCierres) return;
+    var legenda = document.getElementById('cierresLegenda');
+    var infoPie = document.getElementById('cierresInfoPie');
+    btnFiltroCierres.addEventListener('change', function () {
+        var anio = btnFiltroCierres.value;
+        document.querySelectorAll('.cierres-bloque-mes').forEach(function (bloque) {
+            var visible = !anio || bloque.getAttribute('data-anio') === anio;
+            bloque.style.display = visible ? '' : 'none';
+        });
+        if (legenda) {
+            legenda.style.display = anio ? 'none' : '';
+        }
+        if (infoPie) {
+            infoPie.style.display = anio ? 'none' : '';
+        }
+    });
+})();
+
+// Filtro por año y mes del card Distribución por Centros de Costo
+(function () {
+    var btnFiltroCosto = document.getElementById('filtroAnioCentros');
+    var btnFiltroMesCosto = document.getElementById('filtroMesCentros');
+    if (!btnFiltroCosto || !btnFiltroMesCosto) return;
+
+    var mesesPorAnio = <?php echo json_encode($meses_cc_por_anio); ?>;
+    var nombresMeses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    function recargarConFiltros(anio, mes) {
+        var url = new URL(window.location.href);
+        if (anio) {
+            url.searchParams.set('anio_cc', anio);
+        } else {
+            url.searchParams.delete('anio_cc');
+        }
+        if (mes) {
+            url.searchParams.set('mes_cc', mes);
+        } else {
+            url.searchParams.delete('mes_cc');
+        }
+        url.searchParams.delete('anio_distrib');
+        url.searchParams.delete('anio');
+        url.searchParams.delete('mes');
+        window.location.href = url.toString();
+    }
+
+    function poblarMeses(anio) {
+        btnFiltroMesCosto.innerHTML = '<option value="">Todos los meses</option>';
+        var meses = (anio && mesesPorAnio[anio]) ? mesesPorAnio[anio] : [];
+        meses.forEach(function (m) {
+            var opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = nombresMeses[m] ? nombresMeses[m] : m;
+            btnFiltroMesCosto.appendChild(opt);
+        });
+        btnFiltroMesCosto.disabled = !(anio && meses.length > 0);
+        return meses;
+    }
+
+    btnFiltroCosto.addEventListener('change', function () {
+        var anio = btnFiltroCosto.value;
+        poblarMeses(anio);
+        recargarConFiltros(anio, '');
+    });
+
+    btnFiltroMesCosto.addEventListener('change', function () {
+        recargarConFiltros(btnFiltroCosto.value, btnFiltroMesCosto.value);
+    });
+})();
 </script>
 </body>
 </html>

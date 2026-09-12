@@ -4,6 +4,9 @@
 // 1. Cargar base de datos primero (config/database.php lee las credenciales desde config.php)
 require_once '../config/database.php';
 
+// Cifrado de contraseña SMTP (para editar mail_password de forma segura)
+require_once '../config/mail.php';
+
 // 2. Iniciar sesión únicamente si config.php no lo hizo
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -71,6 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax'])) {
             $registro = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($registro) {
+                if ($tabla === 'configuracion_general' && in_array($registro['parametro'] ?? '', ['mail_password', 'google_client_id', 'google_client_secret'], true)) {
+                    $registro['valor'] = descifrarSecreto($registro['valor'] ?? '');
+                }
                 echo json_encode(['success' => true, 'data' => $registro]);
             } else {
                 echo json_encode(['success' => false, 'error' => 'Registro no localizado en el sistema']);
@@ -121,6 +127,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax'])) {
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             $registros = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if ($tabla === 'configuracion_general') {
+                foreach ($registros as &$r) {
+                    if (in_array($r['parametro'] ?? '', ['mail_password', 'google_client_id', 'google_client_secret'], true)) {
+                        $r['valor'] = '••••••••';
+                    }
+                }
+                unset($r);
+            }
             
             echo json_encode(['success' => true, 'data' => $registros]);
             exit();
@@ -373,9 +388,11 @@ function obtenerDatosFormulario($tabla, $post) {
             ];
             break;
         case 'configuracion_general':
+            $parametro = trim($post['parametro'] ?? '');
+            $valor = trim($post['valor'] ?? '');
             $datos = [
-                'parametro' => trim($post['parametro'] ?? ''),
-                'valor' => trim($post['valor'] ?? ''),
+                'parametro' => $parametro,
+                'valor' => in_array($parametro, ['mail_password', 'google_client_id', 'google_client_secret'], true) ? cifrarSecreto($valor) : $valor,
                 'tipo_dato' => $post['tipo_dato'] ?? 'texto',
                 'descripcion' => trim($post['descripcion'] ?? '')
             ];

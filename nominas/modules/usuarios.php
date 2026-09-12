@@ -127,6 +127,7 @@ foreach ($stmt_roles_stats->fetchAll() as $rs) {
 $puede_crear_usuario = permiso_puede('usuarios', 'crear');
 $puede_editar_usuario = permiso_puede('usuarios', 'editar');
 $puede_eliminar_usuario = permiso_puede('usuarios', 'eliminar');
+$es_rol_admin = (permiso_rol_codigo() === 'Admin');
 ?>
 
 <!DOCTYPE html>
@@ -889,6 +890,9 @@ $puede_eliminar_usuario = permiso_puede('usuarios', 'eliminar');
             <a class="btn-win btn-win-sm" href="users.php?id=<?php echo $usr['id']; ?>" title="Ver perfil" data-tooltip="Ver perfil" data-tooltip-theme="info"><i class="fas fa-user"></i></a>
             <?php if ($puede_editar_usuario): ?>
             <button class="btn-win btn-win-sm" onclick="editarUsuario(<?php echo $usr['id']; ?>)" title="Editar" data-tooltip="Editar" data-tooltip-theme="warning"><i class="fas fa-edit"></i></button>
+            <?php if ($es_rol_admin): ?>
+            <button class="btn-win btn-win-sm" onclick="resetPasswordUsuario(<?php echo $usr['id']; ?>, '<?php echo addslashes($nombre_completo); ?>')" title="Resetear contraseña" data-tooltip="Resetear contraseña" data-tooltip-theme="primary"><i class="fas fa-key"></i></button>
+            <?php endif; ?>
             <button class="btn-win btn-win-sm <?php echo $usr['activo'] ? 'btn-win-warning' : 'btn-win-success'; ?>" onclick="toggleEstadoUsuario(<?php echo $usr['id']; ?>, <?php echo $usr['activo']; ?>, '<?php echo addslashes($nombre_completo); ?>')" title="<?php echo $usr['activo'] ? 'Desactivar' : 'Activar'; ?>" data-tooltip="<?php echo $usr['activo'] ? 'Desactivar' : 'Activar'; ?>" data-tooltip-theme="warning"><i class="fas <?php echo $usr['activo'] ? 'fa-user-slash' : 'fa-user-check'; ?>"></i></button>
             <?php endif; ?>
             <?php if ($puede_eliminar_usuario): ?>
@@ -1511,6 +1515,52 @@ function toggleEstadoUsuario(id, estadoActual, nombre) {
                 Swal.fire({ icon: 'error', title: '<i class="fas fa-wifi me-2"></i> Error', text: 'Error de conexión', background: 'var(--panel)', color: 'var(--txt)' });
             });
         }
+    });
+}
+
+function resetPasswordUsuario(id, nombre) {
+    Swal.fire({
+        title: '<i class="fas fa-key text-primary me-2"></i> Resetear contraseña',
+        html: '¿Seguro que desea resetear la contraseña de <strong>' + nombre + '</strong>?<br><small>Se generará una nueva contraseña aleatoria.</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3b82f6',
+        confirmButtonText: '<i class="fas fa-key me-2"></i> Sí, resetear',
+        cancelButtonText: '<i class="fas fa-times me-2"></i> Cancelar',
+        background: '#1a1a2e',
+        color: '#fff'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const formData = new FormData();
+        formData.append('id', id);
+        fetch('../ajax/reset_password_usuario.php', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let htmlInfo = '';
+                if (data.correo === 'enviado') {
+                    htmlInfo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); border-radius:.4rem; font-size:.8rem; color:#34d399;"><i class="fas fa-envelope me-1"></i> ' + data.correo_texto + '</div>';
+                } else if (data.correo === 'no_enviado') {
+                    htmlInfo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(255,170,0,.1); border:1px solid rgba(255,170,0,.35); border-radius:.4rem; font-size:.75rem; color:#ffa500;"><i class="fas fa-exclamation-triangle me-1"></i> ' + data.correo_texto + '</div>';
+                } else if (data.correo === 'sin_email') {
+                    htmlInfo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(148,163,184,.1); border:1px solid rgba(148,163,184,.3); border-radius:.4rem; font-size:.75rem; color:#94a3b8;"><i class="fas fa-envelope-slash me-1"></i> ' + data.correo_texto + '</div>';
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: '<i class="fas fa-check-circle me-2"></i> Contraseña reseteada',
+                    html: 'Nueva contraseña de <strong>' + nombre + '</strong>:<br><code style="font-size:1.2rem; background:rgba(255,255,255,.1); padding:.25rem .6rem; border-radius:.4rem; display:inline-block; margin-top:.5rem;">' + data.nueva_password + '</code><br><small style="display:block; margin-top:.5rem; color:#94a3b8;"><i class="fas fa-info-circle me-1"></i> Copie y guarde esta contraseña ahora.</small>' + htmlInfo,
+                    confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
+                    confirmButtonColor: '#10b981',
+                    background: 'var(--panel)',
+                    color: 'var(--txt)'
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: '<i class="fas fa-check-circle me-2"></i> Error', text: data.message, confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido', background: 'var(--panel)', color: 'var(--txt)' });
+            }
+        })
+        .catch(() => {
+            Swal.fire({ icon: 'error', title: '<i class="fas fa-wifi me-2"></i> Error', text: 'Error de conexión', background: 'var(--panel)', color: 'var(--txt)' });
+        });
     });
 }
 

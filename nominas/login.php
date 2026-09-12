@@ -164,8 +164,9 @@ if ($db_ok && $pdo) {
         $stmt = $pdo->prepare("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('google_client_id','google_client_secret')");
         $stmt->execute();
         $gcfg = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-        $google_client_id = trim($gcfg['google_client_id'] ?? '');
-        $google_client_secret = trim($gcfg['google_client_secret'] ?? '');
+        require_once 'config/mail.php';
+        $google_client_id = trim(descifrarSecreto($gcfg['google_client_id'] ?? ''));
+        $google_client_secret = trim(descifrarSecreto($gcfg['google_client_secret'] ?? ''));
         $google_configurado = ($google_client_id !== '');
         $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $gHost = $_SERVER['HTTP_HOST'] ?? 'localhost';

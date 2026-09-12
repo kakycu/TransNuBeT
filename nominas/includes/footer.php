@@ -680,6 +680,7 @@ html.no-tooltips .tt-box{display:none!important}
     }
     function show(e){
         if(document.documentElement.classList.contains('no-tooltips'))return;
+        if(!e||!e.target||!e.target.closest)return;
         var el=e.target.closest('[data-tooltip]');
         if(!el)return;
         var text=el.getAttribute('data-tooltip');
@@ -716,6 +717,7 @@ html.no-tooltips .tt-box{display:none!important}
         current=null;
     }
     document.addEventListener('mouseenter',function(e){
+        if(!e.target||!e.target.closest)return;
         var el=e.target.closest('[data-tooltip]');
         if(!el)return;
         if(current===el)return;
@@ -723,11 +725,13 @@ html.no-tooltips .tt-box{display:none!important}
         show(e);
     },true);
     document.addEventListener('mouseleave',function(e){
+        if(!e.target||!e.target.closest)return;
         var el=e.target.closest('[data-tooltip]');
         if(!el)return;
         hide();
     },true);
     document.addEventListener('focusin',function(e){
+        if(!e.target||!e.target.closest)return;
         var el=e.target.closest('[data-tooltip]');
         if(!el)return;
         show({target:el});

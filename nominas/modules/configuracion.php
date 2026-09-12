@@ -301,7 +301,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'mail_port'       => trim($_POST['mail_port'] ?? '587'),
             'mail_encryption' => trim($_POST['mail_encryption'] ?? 'tls'),
             'mail_usuario'    => trim($_POST['mail_usuario'] ?? ''),
-            'mail_password'   => trim($_POST['mail_password'] ?? ''),
+            'mail_password'   => cifrarMailPassword(trim($_POST['mail_password'] ?? '')),
             'mail_from'       => trim($_POST['mail_from'] ?? ''),
             'mail_from_name'  => trim($_POST['mail_from_name'] ?? ''),
         ];
@@ -318,12 +318,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tipo_mensaje = "error";
         }
     }
+    
+    if (isset($_POST['guardar_config_google'])) {
+        require_once '../config/mail.php';
+        $params_google = [
+            'google_client_id'     => isset($_POST['google_client_id']) && trim($_POST['google_client_id']) !== '' ? cifrarSecreto(trim($_POST['google_client_id'])) : '',
+            'google_client_secret' => isset($_POST['google_client_secret']) && trim($_POST['google_client_secret']) !== '' ? cifrarSecreto(trim($_POST['google_client_secret'])) : '',
+        ];
+        
+        try {
+            foreach ($params_google as $param => $valor) {
+                $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
+                $stmt->execute([$valor, $param]);
+            }
+            $mensaje = "Configuración de Google guardada correctamente";
+            $tipo_mensaje = "success";
+        } catch (PDOException $e) {
+            $mensaje = "Error al guardar configuración de Google: " . $e->getMessage();
+            $tipo_mensaje = "error";
+        }
+    }
 }
 
 // PRG (Post/Redirect/Get): tras un guardado exitoso, recargar la página para
 // que los nuevos valores se apliquen (constantes, formularios, etc.)
 if ($tipo_mensaje === 'success' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $botones_refresh = ['guardar_config_general', 'guardar_datos_entidad', 'guardar_rangos', 'guardar_config_mail'];
+    $botones_refresh = ['guardar_config_general', 'guardar_datos_entidad', 'guardar_rangos', 'guardar_config_mail', 'guardar_config_google'];
     foreach ($botones_refresh as $b) {
         if (isset($_POST[$b])) {
             $url = strtok($_SERVER['REQUEST_URI'], '?');
@@ -348,11 +368,17 @@ $config_mail = [
     'port'       => $config['mail_port'] ?? '587',
     'encryption' => $config['mail_encryption'] ?? 'tls',
     'usuario'    => $config['mail_usuario'] ?? '',
-    'password'   => $config['mail_password'] ?? '',
+    'password'   => descifrarMailPassword($config['mail_password'] ?? ''),
     'from'       => $config['mail_from'] ?? '',
     'from_name'  => $config['mail_from_name'] ?? '',
 ];
 $proveedores_smtp = getProveedoresSMTP();
+
+// Configuración de Google (OAuth) - client_id y client_secret cifrados en BD
+$config_google = [
+    'client_id'     => descifrarSecreto($config['google_client_id'] ?? ''),
+    'client_secret' => descifrarSecreto($config['google_client_secret'] ?? ''),
+];
 
 // Obtener rangos de impuesto vigentes
 $rangos_impuesto = $pdo->query("
@@ -530,6 +556,32 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
             outline: none !important;
             box-shadow: 0 0 0 0.125rem rgba(96, 165, 250, 0.2) !important;
             color: #ffffff !important;
+        }
+        
+        /* Chevron en selects con clase form-control (card SMTP) */
+        .select-wrap { position: relative; }
+        .select-wrap::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 0.9rem;
+            transform: translateY(-50%) rotate(0deg);
+            width: 1rem;
+            height: 1rem;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            transition: transform 0.2s ease;
+        }
+        .select-wrap:focus-within::after { transform: translateY(-50%) rotate(180deg); }
+        select.form-control.select-chev {
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            background-image: none !important;
+            padding-right: 2.5rem !important;
         }
         
         .input-group-text {
@@ -897,7 +949,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
 
     <!-- Mensajes de alerta -->
     <?php if ($mensaje): ?>
-    <div class="alert alert-<?php echo $tipo_mensaje; ?> alert-dismissible fade show mb-4 fade-in-up" role="alert">
+    <div class="alert alert-<?php echo $tipo_mensaje; ?> alert-dismissible fade show mb-4 fade-in-up" role="alert" id="configAlertMsg">
         <i class="fas fa-<?php echo $tipo_mensaje == 'success' ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
         <?php echo $mensaje; ?>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" title="Cerrar notificación" data-tooltip="Cerrar notificación" data-tooltip-theme="danger"></button>
@@ -1216,46 +1268,53 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Correo activo para recuperación</label>
-                                <select class="form-control" name="mail_activo" id="mail_activo" title="Activar/desactivar correo" data-tooltip="Activar/desactivar correo" data-tooltip-theme="secondary">
+                                <div class="select-wrap">
+                                <select class="form-control select-chev" name="mail_activo" id="mail_activo" title="Activar/desactivar correo" data-tooltip="Activar/desactivar correo" data-tooltip-theme="secondary">
                                     <option value="1" <?php echo $config_mail['activo'] === '1' ? 'selected' : ''; ?>>Sí, activado</option>
                                     <option value="0" <?php echo $config_mail['activo'] !== '1' ? 'selected' : ''; ?>>No, desactivado</option>
                                 </select>
+                                </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Proveedor SMTP</label>
-                                <select class="form-control" name="mail_proveedor" id="mail_proveedor" title="Proveedor de correo" data-tooltip="Proveedor de correo" data-tooltip-theme="secondary">
+                                <div class="select-wrap">
+                                <select class="form-control select-chev" name="mail_proveedor" id="mail_proveedor" title="Proveedor de correo" data-tooltip="Proveedor de correo" data-tooltip-theme="secondary">
                                     <?php foreach ($proveedores_smtp as $clave => $prov): ?>
                                         <option value="<?php echo $clave; ?>" <?php echo $config_mail['proveedor'] === $clave ? 'selected' : ''; ?>><?php echo htmlspecialchars($prov['nombre']); ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Cifrado</label>
-                                <select class="form-control" name="mail_encryption" id="mail_encryption" title="Tipo de encriptación" data-tooltip="Tipo de encriptación" data-tooltip-theme="secondary">
+                                <div class="select-wrap">
+                                <select class="form-control select-chev" name="mail_encryption" id="mail_encryption" title="Tipo de encriptación" data-tooltip="Tipo de encriptación" data-tooltip-theme="secondary">
                                     <option value="tls" <?php echo $config_mail['encryption'] === 'tls' ? 'selected' : ''; ?>>STARTTLS (puerto 587)</option>
                                     <option value="ssl" <?php echo $config_mail['encryption'] === 'ssl' ? 'selected' : ''; ?>>SSL/TLS (puerto 465)</option>
                                     <option value="none" <?php echo $config_mail['encryption'] === 'none' ? 'selected' : ''; ?>>Sin cifrado</option>
                                 </select>
+                                </div>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-8 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Servidor SMTP (Host)</label>
                                 <input type="text" class="form-control" name="mail_host" id="mail_host" value="<?php echo htmlspecialchars($config_mail['host']); ?>" placeholder="smtp.gmail.com">
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Puerto</label>
                                 <input type="number" class="form-control" name="mail_port" id="mail_port" value="<?php echo htmlspecialchars($config_mail['port']); ?>" min="1" max="65535">
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Usuario SMTP</label>
                                 <input type="text" class="form-control" name="mail_usuario" id="mail_usuario" value="<?php echo htmlspecialchars($config_mail['usuario']); ?>" placeholder="cuenta@gmail.com" autocomplete="off">
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Contraseña SMTP / Contraseña de aplicación</label>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Contraseña SMTP</label>
+                                <div class="password-wrapper">
                                 <input type="password" class="form-control" name="mail_password" id="mail_password" value="<?php echo htmlspecialchars($config_mail['password']); ?>" placeholder="••••••••••••" autocomplete="new-password">
+                                <button type="button" class="password-toggle" id="toggleMailPassword" tabindex="-1" title="Mostrar/ocultar contraseña" data-tooltip="Mostrar/ocultar contraseña" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                </div>
                             </div>
                         </div>
                         <div class="row">
@@ -1278,6 +1337,47 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                         </div>
                         <p class="text-secondary mt-3 mb-0" style="font-size:0.78rem;">
                             <i class="fas fa-info-circle me-1"></i>Gmail: use una "Contraseña de aplicación" de Google con verificación en dos pasos. El enlace de recuperación de contraseñas se envía desde este servidor SMTP y es válido por 30 minutos.
+                        </p>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuración de Google (OAuth) -->
+    <div class="row g-4 mt-1">
+        <div class="col-12 fade-in-up" style="animation-delay: 0.12s;">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10">
+                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseGoogle" aria-expanded="false" aria-controls="collapseGoogle">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fab fa-google me-2" style="color: #ea4335;"></i> Configuración Google (OAuth 2.0)
+                        <span class="badge ms-2" style="background: <?php echo (!empty($config_google['client_id'])) ? 'var(--color-success)' : '#ef4444'; ?>; font-size:0.65rem;"><?php echo (!empty($config_google['client_id'])) ? 'CONFIGURADO' : 'NO CONFIGURADO'; ?></span>
+                    </h6>
+                </div>
+                <div id="collapseGoogle" class="collapse">
+                <div class="p-4">
+                    <form method="POST" id="googleForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Google Client ID</label>
+                                <input type="text" class="form-control" name="google_client_id" value="<?php echo htmlspecialchars($config_google['client_id']); ?>" placeholder="5820987538-...apps.googleusercontent.com" autocomplete="off">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Google Client Secret</label>
+                                <div class="password-wrapper">
+                                <input type="password" class="form-control" name="google_client_secret" id="google_client_secret" value="<?php echo htmlspecialchars($config_google['client_secret']); ?>" placeholder="GOCSPX-..." autocomplete="new-password">
+                                <button type="button" class="password-toggle" id="toggleGoogleSecret" tabindex="-1" title="Mostrar/ocultar secret" data-tooltip="Mostrar/ocultar secret" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="submit" name="guardar_config_google" class="btn-win btn-win-primary" title="Guardar configuración de Google" data-tooltip="Guardar configuración de Google" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Configuración
+                            </button>
+                        </div>
+                        <p class="text-secondary mt-3 mb-0" style="font-size:0.78rem;">
+                            <i class="fas fa-info-circle me-1"></i>Obtenga sus credenciales en <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" style="color: #60a5fa;">Google Cloud Console</a>. El Client ID y Client Secret se almacenan cifrados en la base de datos.
                         </p>
                     </form>
                 </div>
@@ -1404,7 +1504,12 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                 <form id="restoreForm" enctype="multipart/form-data">
                     <div class="form-group mb-3">
                         <label class="form-label mb-2"><i class="fas fa-file-archive me-1"></i> Seleccionar archivo de backup:</label>
-                        <input type="file" name="backup_file" id="restoreFile" class="form-control" accept=".sql,.zip" required>
+                        <input type="file" name="backup_file" id="restoreFile" accept=".sql,.zip" required class="visually-hidden">
+                        <label for="restoreFile" id="chooseFileLabel" role="button" tabindex="0" class="form-control d-flex align-items-center" style="cursor:pointer;height:2.875rem;border-radius:0.5rem;">
+                            <i class="fas fa-folder-open me-2 text-teal" style="color:var(--accent,#14b8a6);"></i>
+                            <span id="restoreFileName" class="text-secondary">Seleccionar archivo…</span>
+                            <span class="ms-auto btn-win btn-win-primary btn-win-sm">Examinar</span>
+                        </label>
                         <small class="text-secondary mt-2 d-block">
                             <i class="fas fa-info-circle me-1"></i> Formatos soportados: .sql, .zip (máximo 300MB)
                         </small>
@@ -1518,6 +1623,35 @@ function updateClock() {
     if (clockSpan) clockSpan.textContent = `${hours.toString().padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
 }
 setInterval(updateClock, 1000); updateClock();
+
+// Mensaje de guardado como toast SweetAlert (tras PRG)
+(function () {
+    const alertMsg = document.getElementById('configAlertMsg');
+    if (!alertMsg) return;
+    const esError = alertMsg.classList.contains('alert-danger') || alertMsg.classList.contains('alert-warning');
+    setTimeout(function () {
+        Swal.fire({
+            icon: esError ? 'error' : 'success',
+            title: esError ? 'Ocurrió un error' : 'Guardado exitoso',
+            text: alertMsg.textContent.trim(),
+            background: 'var(--panel)', color: 'var(--txt)',
+            confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
+            confirmButtonColor: esError ? '#ef4444' : '#10b981',
+            timer: 3500,
+            timerProgressBar: true,
+            toast: true,
+            backdrop: false,
+            position: 'top-end',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: function () {
+                const bar = Swal.getTimerProgressBar();
+                if (bar) bar.style.background = esError ? '#ef4444' : '#10b981';
+            }
+        });
+        Swal.getTimerProgressBar && setTimeout(function () { alertMsg.remove(); }, 100);
+    }, 80);
+})();
 
 // Backup y Restore
 function realizarBackupManual() {
@@ -1794,6 +1928,20 @@ document.addEventListener('hidden.bs.modal', function () {
 
 document.getElementById('btnRestoreBackup')?.addEventListener('click', (e) => { e.preventDefault(); restaurarBackup(); });
 document.getElementById('confirmRestore')?.addEventListener('change', function() { document.getElementById('btnRestore').disabled = !this.checked; });
+document.getElementById('restoreFile')?.addEventListener('change', function() {
+    const nombreEl = document.getElementById('restoreFileName');
+    const sizeEl = document.getElementById('fileSizeInfo');
+    if (this.files && this.files.length > 0) {
+        const f = this.files[0];
+        if (nombreEl) { nombreEl.textContent = f.name; nombreEl.classList.remove('text-secondary'); nombreEl.classList.add('text-light'); }
+        if (sizeEl) sizeEl.textContent = 'Tamaño: ' + (f.size / 1024 / 1024).toFixed(2) + ' MB';
+        document.getElementById('chooseFileLabel')?.classList.add('border-success');
+    } else {
+        if (nombreEl) { nombreEl.textContent = 'Seleccionar archivo…'; nombreEl.classList.add('text-secondary'); nombreEl.classList.remove('text-light'); }
+        if (sizeEl) sizeEl.textContent = '';
+        document.getElementById('chooseFileLabel')?.classList.remove('border-success');
+    }
+});
 document.getElementById('restoreForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const fileInput = document.getElementById('restoreFile');
@@ -1930,16 +2078,76 @@ document.getElementById('btnRestoreBackupCard')?.addEventListener('click', (e) =
 // ============================================
 const proveedoresSMTP = <?php echo json_encode($proveedores_smtp); ?>;
 
+document.getElementById('toggleMailPassword')?.addEventListener('click', function() {
+    const input = document.getElementById('mail_password');
+    const icon = this.querySelector('i');
+    if (!input || !icon) return;
+    const esPass = input.type === 'password';
+    input.type = esPass ? 'text' : 'password';
+    icon.className = esPass ? 'fas fa-eye-slash' : 'fas fa-eye';
+});
+
+document.getElementById('toggleGoogleSecret')?.addEventListener('click', function() {
+    const input = document.getElementById('google_client_secret');
+    const icon = this.querySelector('i');
+    if (!input || !icon) return;
+    const esPass = input.type === 'password';
+    input.type = esPass ? 'text' : 'password';
+    icon.className = esPass ? 'fas fa-eye-slash' : 'fas fa-eye';
+});
+
 document.getElementById('mail_proveedor')?.addEventListener('change', function() {
     const prov = proveedoresSMTP[this.value];
-    if (prov && this.value !== 'custom') {
-        const host = document.getElementById('mail_host');
-        const port = document.getElementById('mail_port');
-        if (!host.value.trim()) host.value = prov.host || '';
-        if (!port.value.trim()) port.value = prov.puerto || '';
-        document.getElementById('mail_encryption').value = prov.encriptacion || 'tls';
+    const host = document.getElementById('mail_host');
+    const port = document.getElementById('mail_port');
+    const enc = document.getElementById('mail_encryption');
+    if (!prov || !host || !port || !enc) return;
+
+    if (this.value === 'custom') {
+        host.value = '';
+        port.value = '';
+        enc.innerHTML = '';
+        ['tls','ssl','none'].forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = v === 'tls' ? 'STARTTLS (puerto 587)' : v === 'ssl' ? 'SSL/TLS (puerto 465)' : 'Sin cifrado';
+            enc.appendChild(opt);
+        });
+        enc.value = 'tls';
+        enc.disabled = false;
+        return;
     }
+
+    host.value = prov.host || '';
+    port.value = prov.puerto || '';
+
+    enc.innerHTML = '';
+    const recomendado = prov.encriptacion || 'tls';
+    const definiciones = {
+        tls: 'STARTTLS (puerto 587)',
+        ssl: 'SSL/TLS (puerto 465)',
+        none: 'Sin cifrado'
+    };
+    Object.keys(definiciones).forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = definiciones[v];
+        enc.appendChild(opt);
+    });
+    enc.value = recomendado;
+    enc.disabled = false;
 });
+
+// Al cargar, preseleccionar el cifrado recomendado según el proveedor guardado (sin bloquear opciones)
+(function initEncryptionOptions() {
+    const provSel = document.getElementById('mail_proveedor');
+    const enc = document.getElementById('mail_encryption');
+    if (!provSel || !enc) return;
+    const prov = proveedoresSMTP[provSel.value];
+    if (!prov || provSel.value === 'custom') return;
+    const recomendado = prov.encriptacion || 'tls';
+    if (Array.from(enc.options).some(o => o.value === recomendado)) enc.value = recomendado;
+})();
 
 document.getElementById('btnProbarMail')?.addEventListener('click', function() {
     const form = document.getElementById('mailForm');

@@ -16,12 +16,17 @@ nominas/temp/
 nominas/solapines/
 *.log
 
+# ===== Artefactos de herramientas de desarrollo =====
+.playwright-mcp/
+
 # ===== Archivos de entorno / secretos =====
 .env
 .env.*
 *.local
 nominas/config.php
 correo_privado.php
+opencode.json
+.opencode/
 
 # ===== Credenciales de Google OAuth (secretos) =====
 client_secret_*.json

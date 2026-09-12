@@ -304,7 +304,7 @@ INSERT INTO `clasif_usuarios` (`id`, `nombre`, `apellidos`, `no_ci`, `direccion_
 CREATE TABLE `configuracion_general` (
   `id` int(11) NOT NULL,
   `parametro` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `valor` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `valor` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `tipo_dato` enum('entero','decimal','texto','fecha','booleano') COLLATE utf8mb4_unicode_ci DEFAULT 'texto',
   `descripcion` text COLLATE utf8mb4_unicode_ci,
   `fecha_modificacion` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

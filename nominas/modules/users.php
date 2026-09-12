@@ -769,6 +769,10 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
             <?php endif; ?>
         </li>
         <?php endif; ?>
+        <?php if ($es_propio || permiso_rol_codigo() === 'Admin'): ?>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); resetPasswordUsuario(<?php echo (int)$id; ?>, '<?php echo addslashes($nombre_completo); ?>');"><i class="fas fa-rotate-left me-2" style="color:#60a5fa;"></i>Resetear Contraseña</a></li>
+        <?php endif; ?>
         <?php if (($es_propio && $es_admin) || !$es_propio): ?>
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item" href="usuarios.php"><i class="fas fa-user-cog me-2" style="color:#a78bfa;"></i>Gestionar Usuarios</a></li>
@@ -1427,6 +1431,52 @@ function eliminarFotoUsuario() {
     });
 }
 
+function resetPasswordUsuario(id, nombre) {
+    Swal.fire({
+        title: '<i class="fas fa-rotate-left text-primary me-2"></i> Resetear contraseña',
+        html: '¿Seguro que desea resetear la contraseña de <strong>' + nombre + '</strong>?<br><small>Se generará una nueva contraseña aleatoria y se enviará al correo del usuario si lo tiene.</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3b82f6',
+        confirmButtonText: '<i class="fas fa-key me-2"></i> Sí, resetear',
+        cancelButtonText: '<i class="fas fa-times me-2"></i> Cancelar',
+        background: '#1a1a2e',
+        color: '#fff'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const formData = new FormData();
+        formData.append('id', id);
+        fetch('../ajax/reset_password_usuario.php', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let htmlInfo = '';
+                if (data.correo === 'enviado') {
+                    htmlInfo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); border-radius:.4rem; font-size:.8rem; color:#34d399;"><i class="fas fa-envelope me-1"></i> ' + data.correo_texto + '</div>';
+                } else if (data.correo === 'no_enviado') {
+                    htmlInfo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(255,170,0,.1); border:1px solid rgba(255,170,0,.35); border-radius:.4rem; font-size:.75rem; color:#ffa500;"><i class="fas fa-exclamation-triangle me-1"></i> ' + data.correo_texto + '</div>';
+                } else if (data.correo === 'sin_email') {
+                    htmlInfo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(148,163,184,.1); border:1px solid rgba(148,163,184,.3); border-radius:.4rem; font-size:.75rem; color:#94a3b8;"><i class="fas fa-envelope-slash me-1"></i> ' + data.correo_texto + '</div>';
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: '<i class="fas fa-check-circle me-2"></i> Contraseña reseteada',
+                    html: 'Nueva contraseña de <strong>' + nombre + '</strong>:<br><code style="font-size:1.2rem; background:rgba(255,255,255,.1); padding:.25rem .6rem; border-radius:.4rem; display:inline-block; margin-top:.5rem;">' + data.nueva_password + '</code><br><small style="display:block; margin-top:.5rem; color:#94a3b8;"><i class="fas fa-info-circle me-1"></i> Copie y guarde esta contraseña ahora.</small>' + htmlInfo,
+                    confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
+                    confirmButtonColor: '#10b981',
+                    background: 'var(--panel)',
+                    color: 'var(--txt)'
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: '<i class="fas fa-exclamation-circle me-2"></i> Error', text: data.message, confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido', background: 'var(--panel)', color: 'var(--txt)' });
+            }
+        })
+        .catch(() => {
+            Swal.fire({ icon: 'error', title: '<i class="fas fa-wifi me-2"></i> Error', text: 'Error de conexión', background: 'var(--panel)', color: 'var(--txt)' });
+        });
+    });
+}
+
 function editarUsuario(id) {
     Swal.fire({ title: '<i class="fas fa-spinner fa-spin me-2"></i> Cargando...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: 'var(--panel)', color: 'var(--txt)' });
     fetch('../ajax/get_usuario.php?id=' + id)
@@ -1640,11 +1690,18 @@ if (formUsuarioEl) formUsuarioEl.addEventListener('submit', function(e) {
             btn.disabled = false;
             if (res.success) {
                 if (typeof Swal !== 'undefined') {
+                    let notaCorreo = '';
+                    if (res.correo === 'enviado') {
+                        notaCorreo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); border-radius:.4rem; font-size:.8rem; color:#34d399;"><i class="fas fa-envelope me-1"></i> Se envió una notificación a su correo electrónico.</div>';
+                    } else if (res.correo === 'no_enviado') {
+                        notaCorreo = '<div style="margin-top:.6rem; padding:.5rem .75rem; background:rgba(255,170,0,.1); border:1px solid rgba(255,170,0,.35); border-radius:.4rem; font-size:.75rem; color:#ffa500;"><i class="fas fa-exclamation-triangle me-1"></i> No se envió notificación por correo (' + (res.correo_error || 'error SMTP') + ').</div>';
+                    }
                     Swal.fire({
-                        title: '<i class="fas fa-check-circle" style="color: 2"></i> Contraseña actualizada',
-                        text: res.message,
+                        title: '<i class="fas fa-check-circle" style="color: #22c55e;"></i> Contraseña actualizada',
+                        html: (res.message || '') + notaCorreo,
                         icon: 'success',
                         confirmButtonColor: '#22c55e',
+                        confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
                         background: '#1F1F1F',
                         color: '#FFFFFF'
                     }).then(function() {

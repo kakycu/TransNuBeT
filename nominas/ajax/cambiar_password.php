@@ -1,6 +1,7 @@
 ﻿<?php
 // ajax/cambiar_password.php - Cambio de contraseña del usuario autenticado
 require_once '../config/database.php';
+require_once '../config/mail.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -45,4 +46,18 @@ $hashed = password_hash($password_nueva, PASSWORD_DEFAULT);
 $stmt = $pdo->prepare("UPDATE clasif_usuarios SET password = ?, fecha_actualizacion = NOW() WHERE id = ?");
 $stmt->execute([$hashed, $id_actual]);
 
-echo json_encode(['success' => true, 'message' => 'Contraseña actualizada correctamente']);
+// Notificar por correo si el usuario tiene email configurado
+$correo = notificarPasswordCambiada($pdo, $id_actual);
+
+$respuesta = ['success' => true, 'message' => 'Contraseña actualizada correctamente'];
+if ($correo['success']) {
+    $respuesta['correo'] = 'enviado';
+} elseif ($correo['error'] === 'sin_email') {
+    $respuesta['correo'] = 'sin_email';
+} else {
+    $respuesta['correo'] = 'no_enviado';
+    $respuesta['correo_error'] = ($correo['error'] === 'mail_not_configured')
+        ? 'SMTP no configurado'
+        : $correo['error'];
+}
+echo json_encode($respuesta);
