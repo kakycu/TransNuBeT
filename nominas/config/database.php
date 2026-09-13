@@ -395,15 +395,42 @@ function getTrabajadoresActivos($pdo) {
                e.salario_hora_ordinaria, 
                a.nombre_area, 
                c.nombre as categoria_nombre,
-               t.cuentabanc
+               t.cuentabanc,
+               COALESCE(SUM(CASE WHEN pa.tipo_calculo = 'monto_fijo' THEN pa.monto END), 0) as pago_adicional_fijo_total
         FROM trabajadores t
         JOIN escalas_salariales e ON t.escala_salarial_id = e.id
         LEFT JOIN areas a ON t.area_id = a.id
         LEFT JOIN categorias_ocupacionales c ON t.categoria_ocupacional_id = c.id
+        LEFT JOIN trabajador_pago_adicional tpa ON t.id = tpa.trabajador_id
+        LEFT JOIN pagos_adicionales pa ON tpa.pago_adicional_id = pa.id AND pa.activo = 1
         WHERE t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())
+        GROUP BY t.id
         ORDER BY t.nombre_completo
     ");
     $stmt->execute();
+    $trabajadores = $stmt->fetchAll();
+    
+    foreach ($trabajadores as &$trabajador) {
+        $trabajador['pagos_adicionales'] = getPagosPorTrabajador($pdo, $trabajador['id']);
+    }
+    unset($trabajador);
+    
+    return $trabajadores;
+}
+
+/**
+ * Devuelve los pagos adicionales M:N asociados a un trabajador.
+ * Cada ítem: id, nombre, monto, tipo_calculo (monto_fijo|porcentaje), descripcion
+ */
+function getPagosPorTrabajador($pdo, $trabajador_id) {
+    $stmt = $pdo->prepare("
+        SELECT pa.id, pa.nombre, pa.monto, pa.tipo_calculo, pa.descripcion
+        FROM trabajador_pago_adicional tpa
+        JOIN pagos_adicionales pa ON tpa.pago_adicional_id = pa.id AND pa.activo = 1
+        WHERE tpa.trabajador_id = ?
+        ORDER BY pa.nombre
+    ");
+    $stmt->execute([$trabajador_id]);
     return $stmt->fetchAll();
 }
 

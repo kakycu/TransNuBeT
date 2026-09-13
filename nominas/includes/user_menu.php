@@ -2383,6 +2383,8 @@ html[data-theme="light"] {
 [data-theme="verde"] .win-sidebar .profile-info *:not(i):not(button):not(.btn):not(.btn-close):not(.badge):not(.importe-preview):not(.text-danger):not(.text-success):not(.text-warning):not(.text-info):not(.text-primary):not(.card-title):not(.modal-title):not(.card-collapse-title):not(.win-card-title):not(.card-header-title) {
     color: #d4f0d8 !important;
 }
+[data-theme="verde"] .edit-field { background-color:#0f1f12 !important; border:0.0625rem solid rgba(52,211,153,0.35) !important; color:#d4f0d8 !important; }
+[data-theme="verde"] .edit-field:focus { border-color:var(--accent) !important; box-shadow:0 0 0 0.125rem rgba(52,211,153,0.2) !important; }
 [data-theme="verde"] .focus-tab {
     background:rgba(12,28,14,0.92);
     color:#8ec99a;
@@ -2702,6 +2704,20 @@ html[data-theme="light"] {
 [data-theme="orgullo"] .buttons-colvis { background:rgba(139,92,246,0.08) !important; border:0.0625rem solid rgba(139,92,246,0.3) !important; color:#33264d !important; }
 [data-theme="orgullo"] .buttons-colvis:hover { background:rgba(124,58,237,0.16) !important; border-color:var(--accent-dark) !important; color:#4c1d95 !important; }
 [data-theme="orgullo"] tfoot [style*="rgba(255,255,255,0.1)"] td { color:#2a1f42 !important; }
+/* ===== ORGULLO: INFO CARDS (ficha/modal de empleados, submayor, etc.) ===== */
+[data-theme="orgullo"] .info-card { background: var(--panel-2) !important; border-left-color: rgba(139,92,246,0.55) !important; }
+[data-theme="orgullo"] .info-card:hover { background: rgba(255,255,255,0.6) !important; }
+[data-theme="orgullo"] .info-card-label { color: #6d28d9 !important; }
+[data-theme="orgullo"] .info-card-value { color: #33264d !important; }
+[data-theme="orgullo"] .info-card-value.text-light,
+[data-theme="orgullo"] .info-card-value.text-white { color: #33264d !important; }
+[data-theme="orgullo"] .info-card-value.text-success { color: #047857 !important; }
+[data-theme="orgullo"] .info-card-value.text-info { color: #0e7490 !important; }
+[data-theme="orgullo"] .info-card-value.text-warning { color: #b45309 !important; }
+[data-theme="orgullo"] .info-card-value.text-danger { color: #b91c1c !important; }
+/* ===== ORGULLO: TOOLTIPS (iconos de ayuda en labels, inputs, botones) ===== */
+[data-theme="orgullo"] .tooltip .tooltip-inner { background: #4c1d95 !important; color: #ffffff !important; border: 0.0625rem solid rgba(139,92,246,0.5) !important; }
+[data-theme="orgullo"] .tooltip .tooltip-arrow::before { border-top-color: #4c1d95 !important; border-bottom-color: #4c1d95 !important; border-left-color: #4c1d95 !important; border-right-color: #4c1d95 !important; }
 /* ===== ORGULLO: ALERTAS ===== */
 [data-theme="orgullo"] .alert { border:0.0625rem solid rgba(139,92,246,0.2) !important; }
 [data-theme="orgullo"] .alert-success { background:#d1fae5 !important; border:0.0625rem solid #10b981 !important; color:#065f46 !important; }
@@ -2745,7 +2761,8 @@ html[data-theme="light"] {
 [data-theme="orgullo"] .tipo-nomina-option { color:#33264d !important; }
 [data-theme="orgullo"] .tipo-nomina-option:hover { background:rgba(124,58,237,0.16) !important; color:#4c1d95 !important; }
 [data-theme="orgullo"] .tipo-nomina-preview { background:#f4eefb !important; color:#33264d !important; border-color:rgba(139,92,246,0.25) !important; }
-[data-theme="orgullo"] .nav-selector select option { background:#ffffff; color:#33264d; }
+[data-theme="orgullo"] .nav-selector select { color:#33264d !important; }
+[data-theme="orgullo"] .nav-selector select option { background:#ffffff !important; color:#33264d !important; }
 /* ===== ORGULLO: INPUTS / BUSCADORES ===== */
 [data-theme="orgullo"] .input-group-text { background:#ece2f8 !important; border:0.0625rem solid rgba(139,92,246,0.35) !important; color:#5b21b6 !important; }
 [data-theme="orgullo"] .input-group-text.bg-dark { background-color:#ece2f8 !important; border-color:rgba(139,92,246,0.35) !important; color:#5b21b6 !important; }
@@ -2762,7 +2779,11 @@ html[data-theme="light"] {
 [data-theme="orgullo"] .dt-search .form-control { background-color:#ffffff !important; border-color:rgba(139,92,246,0.35) !important; color:#33264d !important; }
 [data-theme="orgullo"] .dt-search .btn-outline-secondary { border-color:rgba(139,92,246,0.35) !important; color:#5b4a80 !important; }
 [data-theme="orgullo"] .form-control, [data-theme="orgullo"] .form-control-sm, [data-theme="orgullo"] .form-control-lg { background-color:#ffffff !important; border:0.0625rem solid rgba(139,92,246,0.35) !important; color:#33264d !important; }
-[data-theme="orgullo"] .form-select { background-color:#ffffff !important; border:0.0625rem solid rgba(139,92,246,0.35) !important; color:#33264d !important; }
+[data-theme="orgullo"] .form-select, [data-theme="orgullo"] .input-group .form-select { background-color:#ffffff !important; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 0.75rem center !important; background-size:1rem !important; padding-right:2rem !important; border:0.0625rem solid rgba(139,92,246,0.35) !important; color:#33264d !important; }
+[data-theme="orgullo"] .nav-selector select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 0.75rem center !important; background-size:1rem !important; padding-right:2rem !important; }
+[data-theme="dark"] .nav-selector select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 0.75rem center !important; background-size:1rem !important; padding-right:2rem !important; }
+[data-theme="blue"] .nav-selector select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 0.75rem center !important; background-size:1rem !important; padding-right:2rem !important; }
+[data-theme="verde"] .nav-selector select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2334d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 0.75rem center !important; background-size:1rem !important; padding-right:2rem !important; }
 [data-theme="orgullo"] option { background:#ffffff !important; color:#33264d !important; }
 [data-theme="orgullo"] .dark-input,
 [data-theme="orgullo"] .dark-textarea { background:#ffffff !important; border-color:rgba(139,92,246,0.35) !important; color:#33264d !important; }

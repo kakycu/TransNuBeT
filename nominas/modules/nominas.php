@@ -1295,7 +1295,11 @@ if (!function_exists('getTrabajadoresActivos')) {
 					cc.nombre as centro_costo_nombre,
 					t.no_acumular_vacaciones,
 					t.cuentabanc,
-					t.cargo_id
+					t.cargo_id,
+					COALESCE((SELECT SUM(CASE WHEN pa.tipo_calculo = 'monto_fijo' THEN pa.monto ELSE 0 END)
+					          FROM trabajador_pago_adicional tpa
+					          JOIN pagos_adicionales pa ON pa.id = tpa.pago_adicional_id AND pa.activo = 1
+					          WHERE tpa.trabajador_id = t.id), 0) as pago_adicional_fijo_total
 				FROM trabajadores t 
 				JOIN escalas_salariales e ON t.escala_salarial_id = e.id 
 				LEFT JOIN cargos_plantilla cp ON t.cargo_id = cp.id
@@ -1305,7 +1309,12 @@ if (!function_exists('getTrabajadoresActivos')) {
 				ORDER BY t.nombre_completo";
 		
 		$stmt = $pdo->query($sql);
-		return $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$trabajadores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($trabajadores as &$w) {
+			$w['pagos_adicionales'] = getPagosPorTrabajador($pdo, $w['id']);
+		}
+		unset($w);
+		return $trabajadores;
 	}
 }
 if (!function_exists('nombreMesEspanol')) {
@@ -1409,6 +1418,17 @@ if (isset($_POST['regenerar_nomina'])) {
             $salario_hora = $trabajador['salario_hora_ordinaria'];
             $salario_mensual = $trabajador['salario_mensual'];
             $salario_laboral = roundExcel($salario_hora * $horas_mensuales, 2);
+            $base = $salario_laboral;
+            $pago_adicional_total = 0.0;
+            foreach (($trabajador['pagos_adicionales'] ?? []) as $pa) {
+                if ($pa['tipo_calculo'] === 'monto_fijo') {
+                    $pago_adicional_total += (float)$pa['monto'];
+                } elseif ($pa['tipo_calculo'] === 'porcentaje') {
+                    $pago_adicional_total += (float)$pa['monto'] / 100 * $base;
+                }
+            }
+            $pago_adicional_total = roundExcel($pago_adicional_total, 2);
+            $pago_adicional_fijo_total = $trabajador['pago_adicional_fijo_total'] ?? 0.0;
             
             $importe_vacaciones_adicional = 0;
             if ($trabajador['no_acumular_vacaciones'] == 1) {
@@ -1417,7 +1437,7 @@ if (isset($_POST['regenerar_nomina'])) {
                 $importe_vacaciones_adicional = roundExcel($dias_a_acumular * $valor_por_dia, 2);
             }
             
-            $total_devengado = $salario_laboral + $importe_vacaciones_adicional;
+            $total_devengado = $salario_laboral + $importe_vacaciones_adicional + $pago_adicional_total;
             
             if ($tipo_descuento_reg == 'solo_cess') {
                 $contribucion = calcularCessProgresivoPHP($total_devengado);
@@ -1428,8 +1448,16 @@ if (isset($_POST['regenerar_nomina'])) {
             }
             
             $neto = roundExcel($total_devengado - ($contribucion + $impuesto), 2);
-            $pdo->prepare("INSERT INTO nominas (trabajador_id, periodo_desde, periodo_hasta, horas_laboradas, dias_feriados, importe_salario_laboral, total_salario_devengado, contribucion_especial, ingresos_personales, importe_neto, total_deducciones, tipo_nomina, estado, tipo_descuento) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-                ->execute([$trabajador['id'], $periodo_desde, $periodo_hasta, $horas_mensuales, 0, $salario_laboral, $total_devengado, $contribucion, $impuesto, $neto, roundExcel($contribucion + $impuesto, 2), $tipo_regenerar, 'borrador', $tipo_descuento_reg]);
+            $stmt_insert = $pdo->prepare("INSERT INTO nominas (trabajador_id, periodo_desde, periodo_hasta, horas_laboradas, dias_feriados, importe_salario_laboral, otros_salarios, total_salario_devengado, contribucion_especial, ingresos_personales, importe_neto, total_deducciones, tipo_nomina, estado, tipo_descuento) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt_insert->execute([$trabajador['id'], $periodo_desde, $periodo_hasta, $horas_mensuales, 0, $salario_laboral, $pago_adicional_total, $total_devengado, $contribucion, $impuesto, $neto, roundExcel($contribucion + $impuesto, 2), $tipo_regenerar, 'borrador', $tipo_descuento_reg]);
+            $nomina_id_insertado = $pdo->lastInsertId();
+            foreach (($trabajador['pagos_adicionales'] ?? []) as $pa) {
+                $importe = $pa['tipo_calculo'] === 'monto_fijo'
+                    ? (float)$pa['monto']
+                    : (float)$pa['monto'] / 100 * $base;
+                $pdo->prepare("INSERT INTO nomina_pagos_adicionales (nomina_id, trabajador_id, pago_adicional_id, importe_aplicado) VALUES (?,?,?,?)")
+                    ->execute([$nomina_id_insertado, $trabajador['id'], $pa['id'], roundExcel($importe, 2)]);
+            }
         }
         header("Location: nominas.php?periodo=$periodo&tipo=$tipo_regenerar&msg=generated");
     } elseif ($tipo_regenerar == 'extraordinaria') {
@@ -1469,6 +1497,17 @@ if (isset($_POST['generar_nomina_automatica'])) {
         $salario_hora = $trabajador['salario_hora_ordinaria'];
         $salario_mensual = $trabajador['salario_mensual'];
         $salario_laboral = roundExcel($salario_hora * $horas_mensuales, 2);
+        $base = $salario_laboral;
+        $pago_adicional_total = 0.0;
+        foreach (($trabajador['pagos_adicionales'] ?? []) as $pa) {
+            if ($pa['tipo_calculo'] === 'monto_fijo') {
+                $pago_adicional_total += (float)$pa['monto'];
+            } elseif ($pa['tipo_calculo'] === 'porcentaje') {
+                $pago_adicional_total += (float)$pa['monto'] / 100 * $base;
+            }
+        }
+        $pago_adicional_total = roundExcel($pago_adicional_total, 2);
+        $pago_adicional_fijo_total = $trabajador['pago_adicional_fijo_total'] ?? 0.0;
         
         $importe_vacaciones_adicional = 0;
         if ($trabajador['no_acumular_vacaciones'] == 1) {
@@ -1477,39 +1516,55 @@ if (isset($_POST['generar_nomina_automatica'])) {
             $importe_vacaciones_adicional = roundExcel($dias_a_acumular * $valor_por_dia, 2);
         }
         
-        $total_devengado = $salario_laboral + $importe_vacaciones_adicional;
+        $total_devengado = $salario_laboral + $importe_vacaciones_adicional + $pago_adicional_total;
         
         if ($tipo_descuento == 'solo_cess') {
             $contribucion = calcularCESSProgresivo($total_devengado);
             $impuesto = 0;
             $neto = roundExcel($total_devengado - $contribucion, 2);
             
-            $pdo->prepare("INSERT INTO nominas (
+            $stmt_insert = $pdo->prepare("INSERT INTO nominas (
                 trabajador_id, periodo_desde, periodo_hasta, horas_laboradas, dias_feriados, 
-                importe_salario_laboral, total_salario_devengado, contribucion_especial, 
+                importe_salario_laboral, otros_salarios, total_salario_devengado, contribucion_especial, 
                 ingresos_personales, importe_neto, total_deducciones, tipo_nomina, estado, descripcion, tipo_descuento
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-                ->execute([
-                    $trabajador['id'], $periodo_desde, $periodo_hasta, $horas_mensuales, 0,
-                    $salario_laboral, $total_devengado, $contribucion, $impuesto, $neto,
-                    roundExcel($contribucion + $impuesto, 2),
-                    $tipo, 'borrador', 'CESS progresivo: 5% hasta 15,000 CUP, 10% exceso', 'solo_cess'
-                ]);
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt_insert->execute([
+                $trabajador['id'], $periodo_desde, $periodo_hasta, $horas_mensuales, 0,
+                $salario_laboral, $pago_adicional_total, $total_devengado, $contribucion, $impuesto, $neto,
+                roundExcel($contribucion + $impuesto, 2),
+                $tipo, 'borrador', 'CESS progresivo: 5% hasta 15,000 CUP, 10% exceso', 'solo_cess'
+            ]);
+            $nomina_id_insertado = $pdo->lastInsertId();
+            foreach (($trabajador['pagos_adicionales'] ?? []) as $pa) {
+                $importe = $pa['tipo_calculo'] === 'monto_fijo'
+                    ? (float)$pa['monto']
+                    : (float)$pa['monto'] / 100 * $base;
+                $pdo->prepare("INSERT INTO nomina_pagos_adicionales (nomina_id, trabajador_id, pago_adicional_id, importe_aplicado) VALUES (?,?,?,?)")
+                    ->execute([$nomina_id_insertado, $trabajador['id'], $pa['id'], roundExcel($importe, 2)]);
+            }
         } else {
             $contribucion = roundExcel($total_devengado * ($tasa_contribucion / 100), 2);
             $impuesto = calcularTotalImpuesto($total_devengado, $rangos_impuesto);
             $neto = roundExcel($total_devengado - ($contribucion + $impuesto), 2);
             
-            $pdo->prepare("INSERT INTO nominas (
+            $stmt_insert = $pdo->prepare("INSERT INTO nominas (
                 trabajador_id, periodo_desde, periodo_hasta, horas_laboradas, dias_feriados, 
-                importe_salario_laboral, total_salario_devengado, contribucion_especial, 
+                importe_salario_laboral, otros_salarios, total_salario_devengado, contribucion_especial, 
                 ingresos_personales, importe_neto, total_deducciones, tipo_nomina, estado, tipo_descuento
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-                ->execute([
-                    $trabajador['id'], $periodo_desde, $periodo_hasta, $horas_mensuales, 0,
-                    $salario_laboral, $total_devengado, $contribucion, $impuesto, $neto,
-                    roundExcel($contribucion + $impuesto, 2), $tipo, 'borrador', 'total_rangos'
-                ]);
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt_insert->execute([
+                $trabajador['id'], $periodo_desde, $periodo_hasta, $horas_mensuales, 0,
+                $salario_laboral, $pago_adicional_total, $total_devengado, $contribucion, $impuesto, $neto,
+                roundExcel($contribucion + $impuesto, 2), $tipo, 'borrador', 'total_rangos'
+            ]);
+            $nomina_id_insertado = $pdo->lastInsertId();
+            foreach (($trabajador['pagos_adicionales'] ?? []) as $pa) {
+                $importe = $pa['tipo_calculo'] === 'monto_fijo'
+                    ? (float)$pa['monto']
+                    : (float)$pa['monto'] / 100 * $base;
+                $pdo->prepare("INSERT INTO nomina_pagos_adicionales (nomina_id, trabajador_id, pago_adicional_id, importe_aplicado) VALUES (?,?,?,?)")
+                    ->execute([$nomina_id_insertado, $trabajador['id'], $pa['id'], roundExcel($importe, 2)]);
+            }
         }
     }
     
@@ -2833,6 +2888,17 @@ if (isset($_POST['agregar_trabajadores_auto']) && isset($_SERVER['HTTP_X_REQUEST
         $salario_hora = floatval($trabajador['salario_hora_ordinaria']);
         $salario_mensual = floatval($trabajador['salario_mensual']);
         $salario_laboral = roundExcel($salario_hora * $horas_mensuales, 2);
+        $base = $salario_laboral;
+        $pago_adicional_total = 0.0;
+        $pagos_adicionales = getPagosPorTrabajador($pdo, $trabajador_id);
+        foreach ($pagos_adicionales as $pa) {
+            if ($pa['tipo_calculo'] === 'monto_fijo') {
+                $pago_adicional_total += (float)$pa['monto'];
+            } elseif ($pa['tipo_calculo'] === 'porcentaje') {
+                $pago_adicional_total += (float)$pa['monto'] / 100 * $base;
+            }
+        }
+        $pago_adicional_total = roundExcel($pago_adicional_total, 2);
         
         // Vacaciones proporcional
         $importe_vacaciones_adicional = 0;
@@ -2842,7 +2908,7 @@ if (isset($_POST['agregar_trabajadores_auto']) && isset($_SERVER['HTTP_X_REQUEST
             $importe_vacaciones_adicional = roundExcel($dias_a_acumular * $valor_por_dia, 2);
         }
         
-        $total_devengado = $salario_laboral + $importe_vacaciones_adicional;
+        $total_devengado = $salario_laboral + $importe_vacaciones_adicional + $pago_adicional_total;
         
         // Calcular impuestos
         if ($tipo_descuento == 'solo_cess') {
@@ -2857,18 +2923,28 @@ if (isset($_POST['agregar_trabajadores_auto']) && isset($_SERVER['HTTP_X_REQUEST
         
         $insert = $pdo->prepare("INSERT INTO nominas 
             (trabajador_id, periodo_desde, periodo_hasta, horas_laboradas, dias_feriados, 
-             importe_salario_laboral, total_salario_devengado, contribucion_especial, 
+             importe_salario_laboral, otros_salarios, total_salario_devengado, contribucion_especial, 
              ingresos_personales, importe_neto, total_deducciones, tipo_nomina, estado, tipo_descuento) 
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
         
         $result = $insert->execute([
             $trabajador_id, $periodo_desde, $periodo_hasta, $horas_mensuales, 0,
-            $salario_laboral, $total_devengado, $contribucion, $impuesto, $neto,
+            $salario_laboral, $pago_adicional_total, $total_devengado, $contribucion, $impuesto, $neto,
             roundExcel($contribucion + $impuesto, 2),
             'automatica', 'borrador', $tipo_descuento
         ]);
         
-        if ($result) $agregados++;
+        if ($result) {
+            $id_nomina_insertado = $pdo->lastInsertId();
+            foreach ($pagos_adicionales as $pa) {
+                $importe = $pa['tipo_calculo'] === 'monto_fijo'
+                    ? (float)$pa['monto']
+                    : (float)$pa['monto'] / 100 * $base;
+                $pdo->prepare("INSERT INTO nomina_pagos_adicionales (nomina_id, trabajador_id, pago_adicional_id, importe_aplicado) VALUES (?,?,?,?)")
+                    ->execute([$id_nomina_insertado, $trabajador_id, $pa['id'], roundExcel($importe, 2)]);
+            }
+            $agregados++;
+        }
     }
     
     echo json_encode(['success' => true, 'agregados' => $agregados, 'errores' => $errores]);
@@ -5134,6 +5210,15 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
     $total_doble_turno = 0; $total_importe_doble_turno = 0;
     $total_pago_resultado = 0;
     
+    $pagos_mn_por_nomina = [];
+    if ($tipo_nomina_activa == 'automatica') {
+        $stmt_pm = $pdo->prepare("SELECT npa.nomina_id, npa.trabajador_id, pa.nombre, pa.monto, pa.tipo_calculo, npa.importe_aplicado FROM nomina_pagos_adicionales npa JOIN pagos_adicionales pa ON pa.id = npa.pago_adicional_id JOIN nominas nm ON nm.id = npa.nomina_id WHERE nm.periodo_desde = ? AND nm.periodo_hasta = ? AND nm.tipo_nomina = ? ORDER BY pa.nombre");
+        $stmt_pm->execute([$periodo_desde, $periodo_hasta, $tipo_nomina_activa]);
+        foreach ($stmt_pm->fetchAll(PDO::FETCH_ASSOC) as $pm) {
+            $pagos_mn_por_nomina[$pm['nomina_id']][] = $pm;
+        }
+    }
+    
     $nominas_filtradas = $nominas;
     if ($filtro_cuenta == 'si') {
         $nominas_filtradas = array_filter($nominas, function($n) {
@@ -5243,7 +5328,8 @@ data-escala-descripcion="<?php
 	data-cargo-id="<?php echo $n['cargo_id'] ?? 0; ?>"
 	data-escala-numero="<?php echo $n['escala_numero'] ?? 0; ?>"
 	data-centro-costo-codigo="<?php echo $n['centro_costo_codigo'] ?? 0; ?>"
-	data-dias-acumulados-value="<?php echo $n['dias_acumulados'] ?? 0; ?>">
+	data-dias-acumulados-value="<?php echo $n['dias_acumulados'] ?? 0; ?>"
+	data-pagos-mn="<?php echo htmlspecialchars(json_encode($pagos_mn_por_nomina[$n['id']] ?? [], JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>">
 	
 	
     
@@ -9962,6 +10048,21 @@ function cargarModalEdicion($row) {
             html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Descuentos</label>';
             html += '<input type="number" step="0.01" class="form-control edit-field" id="editDescuentos" value="' + descuentos.toFixed(2) + '" ' + isReadOnlyAttr + ' ' + disabledAttr + '></div>';
             html += '</div>';
+
+            var pagosMn = $row.data('pagos-mn');
+            if (pagosMn && pagosMn.length > 0) {
+                html += '<div class="mb-3"><label class="form-label text-white-50"><i class="fas fa-list me-1 text-info"></i>Pagos adicionales aplicados</label>';
+                html += '<div class="rounded p-2" style="background: rgba(96,165,250,0.08); border: 0.0625rem solid rgba(96,165,250,0.2);">';
+                pagosMn.forEach(function(pm, i) {
+                    var tipoLbl = (pm.tipo_calculo === 'porcentaje') ? ' <span class="text-warning">(%)</span>' : '';
+                    html += '<div class="d-flex justify-content-between align-items-center py-1" style="border-bottom: 0.0625rem solid rgba(255,255,255,0.06);">';
+                    html += '<span class="small text-white"><i class="fas fa-circle me-2" style="font-size:0.4rem; color:#60a5fa;"></i>' + escapeHtml(pm.nombre) + tipoLbl + '</span>';
+                    html += '<span class="small text-info fw-bold">$' + Number(pm.importe_aplicado || 0).toFixed(2) + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                html += '<small class="text-white-50 d-block mt-1" style="font-size:0.7rem;"><i class="fas fa-info-circle me-1 text-info"></i>Importes calculados y persistidos en la generación; se reflejan en "Otros pagos".</small></div>';
+            }
         }
         
         html += '<div class="card mt-3 text-warning" style="background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.05);">';

@@ -464,11 +464,16 @@ if ($action === 'crear') {
                                 $_POST['direccion'], $_POST['telefono'], $_POST['email'], $cuenta_bancaria, $_POST['area_id'],
                                 $_POST['centro_costo_id'] ?: null, $_POST['categoria_id'], $_POST['escala_id'], $_POST['fecha_alta'], 
                                 $_POST['cargo_id'] ?: null,
-                                $_POST['tipo_contrato'] ?? 'Indeterminado',
-                                $_POST['vacaciones_acumuladas'] ?? 0, isset($_POST['no_acumular_vacaciones']) ? 1 : 0,
-                                $_POST['fecha_baja'] ?: null, $_POST['motivo_baja'] ?: null, isset($_POST['activo']) ? 1 : 0
+                                $_POST['tipo_contrato'] ?? 'Indeterminado', $_POST['fecha_baja'] ?: null, $_POST['motivo_baja'] ?: null, isset($_POST['activo']) ? 1 : 0,
+                                $_POST['vacaciones_acumuladas'] ?? 0, isset($_POST['no_acumular_vacaciones']) ? 1 : 0
                             ]);
                             $id_nuevo = $pdo->lastInsertId();
+                            
+                            if (isset($_POST['pagos_adicionales']) && is_array($_POST['pagos_adicionales'])) {
+                                foreach ($_POST['pagos_adicionales'] as $pid) {
+                                    $pdo->prepare("INSERT INTO trabajador_pago_adicional (trabajador_id, pago_adicional_id) VALUES (?, ?)")->execute([$id_nuevo, (int)$pid]);
+                                }
+                            }
                             
                             $foto_ruta = null;
                             if (isset($_POST['imagen_recortada']) && !empty($_POST['imagen_recortada'])) {
@@ -496,8 +501,9 @@ if ($action === 'crear') {
                                 JOIN escalas_salariales e ON t.escala_salarial_id = e.id
                                 WHERE t.id = ?
                             ");
-                            $stmt->execute([$id_nuevo]);
-                            $response['data'] = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt->execute([$id_nuevo]);
+                                $response['data'] = $stmt->fetch(PDO::FETCH_ASSOC);
+                                $response['data']['pagos_adicionales'] = getPagosPorTrabajador($pdo, $id_nuevo);
                         }
                     }
                 }
@@ -588,6 +594,13 @@ if ($action === 'crear') {
                                 $_POST['vacaciones_acumuladas'] ?? 0, isset($_POST['no_acumular_vacaciones']) ? 1 : 0, $foto_ruta, $id
                             ]);
                             
+                            $pdo->prepare("DELETE FROM trabajador_pago_adicional WHERE trabajador_id = ?")->execute([$id]);
+                            if (isset($_POST['pagos_adicionales']) && is_array($_POST['pagos_adicionales'])) {
+                                foreach ($_POST['pagos_adicionales'] as $pid) {
+                                    $pdo->prepare("INSERT INTO trabajador_pago_adicional (trabajador_id, pago_adicional_id) VALUES (?, ?)")->execute([$id, (int)$pid]);
+                                }
+                            }
+                            
                             $response['success'] = true;
                             $response['message'] = "Cambios actualizados correctamente";
                             $response['id'] = $id;
@@ -605,8 +618,9 @@ if ($action === 'crear') {
                                 JOIN escalas_salariales e ON t.escala_salarial_id = e.id
                                 WHERE t.id = ?
                             ");
-                            $stmt->execute([$id]);
-                            $response['data'] = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt->execute([$id]);
+                                $response['data'] = $stmt->fetch(PDO::FETCH_ASSOC);
+                                $response['data']['pagos_adicionales'] = getPagosPorTrabajador($pdo, $id);
                         }
                     }
                 }
@@ -664,6 +678,7 @@ $categorias = getCategoriasOcupacionales($pdo);
 $escalas = getEscalas($pdo);
 $centros_costo = getCentrosCosto($pdo);
 $cargos = $pdo->query("SELECT id, nombre_cargo FROM cargos_plantilla ORDER BY nombre_cargo")->fetchAll();
+$pagos_adicionales = $pdo->query("SELECT id, nombre, monto, tipo_calculo FROM pagos_adicionales WHERE activo = 1 ORDER BY nombre")->fetchAll();
 
 // Obtener empleados
 $empleados = $pdo->query("
@@ -679,6 +694,11 @@ $empleados = $pdo->query("
     LEFT JOIN centros_costo cc ON t.centro_costo_id = cc.id
     JOIN escalas_salariales e ON t.escala_salarial_id = e.id
 ")->fetchAll();
+
+foreach ($empleados as &$_emp) {
+    $_emp['pagos_adicionales'] = getPagosPorTrabajador($pdo, $_emp['id']);
+}
+unset($_emp);
 
 // Variable para abrir automáticamente el modal
 $abrir_modal_con_id = null;
@@ -1779,6 +1799,55 @@ html[data-theme="light"] .select2-dropdown { background-color: #ffffff !importan
 html[data-theme="light"] .select2-search--dropdown .select2-search__field { background: #ffffff !important; border-color: rgba(0,0,0,0.15) !important; color: #1f2937 !important; }
 html[data-theme="light"] .select2-results__option { color: #1f2937 !important; }
 html[data-theme="light"] .select2-results__option[aria-selected="true"] { background: rgba(var(--accent-rgb),0.15) !important; color: #5b21b6 !important; }
+#cardDatosSalariales { position: relative; z-index: 20; }
+#paDropdown .pa-toggle {
+    display: block;
+    width: 100%;
+    text-align: left;
+    color: var(--txt);
+}
+#paDropdown .pa-toggle span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#paDropdown .pa-menu {
+    width: 15rem;
+    max-height: 15.625rem;
+    overflow-y: auto;
+    background: rgba(22, 27, 34, 0.98);
+    border: 0.0625rem solid rgba(96, 165, 250, 0.25);
+}
+#paDropdown .pa-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    white-space: normal;
+    color: #ffffff;
+}
+#paDropdown .pa-item:hover, #paDropdown .pa-item:focus { background: rgba(96, 165, 250, 0.18); }
+#paDropdown .pa-buscar { font-size: 0.75rem !important; background-color: rgba(255,255,255,0.06); border-color: var(--border-2); color: var(--txt); }
+#paDropdown .pa-solo-label { font-size: 0.7rem; color: var(--txt); }
+#paDropdown .pa-buscar:focus { background-color: rgba(255,255,255,0.08); border-color: #60a5fa; color: var(--txt); box-shadow: none; }
+#paDropdown .pa-buscar::placeholder { color: rgba(255,255,255,0.4); }
+#paDropdown .pa-vacio { padding: 0.625rem 0.75rem; font-size: 0.75rem; color: rgba(255,255,255,0.5); text-align: center; }
+html[data-theme="light"] #paDropdown .pa-buscar { background-color: #ffffff; border-color: rgba(0,0,0,0.15); color: #1f2937; }
+html[data-theme="light"] #paDropdown .pa-buscar::placeholder { color: #9ca3af; }
+html[data-theme="light"] #paDropdown .pa-vacio { color: #6b7280; }
+#paDropdown .pa-item-nombre { flex: 1; min-width: 0; }
+#paDropdown .pa-count {
+    margin-left: auto;
+    font-size: 0.65rem;
+    color: #60a5fa;
+    white-space: nowrap;
+}
+html[data-theme="light"] #paDropdown .pa-menu { background: #ffffff; border-color: rgba(0,0,0,0.15); }
+html[data-theme="light"] #paDropdown .pa-item { color: #1f2937; }
+html[data-theme="light"] #paDropdown .pa-item:hover, html[data-theme="light"] #paDropdown .pa-item:focus { background: rgba(59,130,246,0.1); }
+html[data-theme="light"] #paDropdown .pa-count { color: #2563eb; }
 
 /* ===== Badges de Estado Laboral (visibles en ambos temas) ===== */
 /* Selectores reforzados para ganar la cascada frente al CSS dinámico de theme_config.php */
@@ -2780,7 +2849,7 @@ function exportarRangosEdadPNG() {
                             </div>
                             
                             <!-- Datos Salariales -->
-                            <div class="glass-card mt-2 p-2">
+                            <div class="glass-card mt-2 p-2" id="cardDatosSalariales">
                                 <div class="card-collapse-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseDatosSalariales" aria-expanded="true" aria-controls="collapseDatosSalariales">
                                     <h6 class="text-light mb-0 fs-6 card-collapse-title"><i class="fas fa-chart-line text-muted me-1"></i>Datos Salariales</h6>
                                     <i class="fas fa-chevron-down card-collapse-chevron"></i>
@@ -2856,6 +2925,44 @@ function exportarRangosEdadPNG() {
                                             <option value="A Prueba">🔍 A Prueba (Período de prueba)</option>
                                         </select>
                                     </div>
+                                    <div class="col-md-4" id="paDropdown">
+                                        <label class="form-label small mb-0">
+                                            <i class="fas fa-graduation-cap text-info me-1"></i>Pagos Adicionales
+                                            <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Pagos adicionales del trabajador (monto fijo o porcentaje). Se suman automáticamente al devengado en la nómina automática" style="cursor: help; font-size:0.65rem;"></i>
+                                        </label>
+                                        <button type="button" class="form-select form-select-sm pa-toggle" id="paDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span id="paDropdownText">Sin seleccionar</span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win pa-menu" aria-labelledby="paDropdownBtn">
+                                            <li><h6 class="dropdown-header text-light px-3 py-1">Pagos Adicionales</h6></li>
+                                            <li>
+                                                <div class="px-2 py-1">
+                                                    <input type="text" class="form-control form-control-sm pa-buscar" id="paBuscarInput" placeholder="Buscar pago..." oninput="paFiltrarPagos(this.value)" autocomplete="off">
+                                                </div>
+                                            </li>
+                                            <li>
+                                                <div class="px-2 pb-1">
+                                                    <label class="form-check form-check-inline m-0 d-flex align-items-center gap-2 pa-solo-label" style="cursor:pointer;">
+                                                        <input type="checkbox" class="form-check-input m-0" id="paSoloSeleccionados" onchange="paFiltrarPagos(undefined)" style="width:0.875rem; height:0.875rem;">
+                                                        <span><i class="fas fa-check-circle me-1" style="color:#22c55e;"></i>Solo seleccionados</span>
+                                                    </label>
+                                                </div>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <?php foreach ($pagos_adicionales as $pa): ?>
+                                            <li>
+                                                <label class="dropdown-item pa-item" style="cursor:pointer;">
+                                                    <input type="checkbox" class="form-check-input m-0 pago-adicional-check" name="pagos_adicionales[]" value="<?php echo htmlspecialchars($pa['id']); ?>" data-nombre="<?php echo htmlspecialchars($pa['nombre']); ?>" id="pago_adicional_<?php echo $pa['id']; ?>" onchange="markFormDirty(); actualizarPagosAdicionalesTexto(); paRefrescarSoloSeleccion();">
+                                                    <span class="pa-item-nombre"><?php echo htmlspecialchars($pa['nombre']); ?></span>
+                                                    <span class="pa-count"><?php echo $pa['tipo_calculo'] === 'porcentaje' ? htmlspecialchars($pa['monto']) . '%' : number_format($pa['monto'], 2) . ' CUP'; ?></span>
+                                                </label>
+                                            </li>
+                                            <?php endforeach; ?>
+                                            <li id="paBuscarSinResultados" style="display:none;">
+                                                <div class="pa-vacio">Sin resultados para la búsqueda</div>
+                                            </li>
+                                        </ul>
+                                    </div>
 <!-- Reemplazo del campo Cargo en el modal (Versión Corregida) -->
 <div class="col-md-8">
     <label class="form-label small mb-0">
@@ -2904,31 +3011,41 @@ function exportarRangosEdadPNG() {
                             </div>
                             
                             <!-- Vacaciones -->
-                            <div class="row g-2 mt-2 align-items-center">
-                                <div class="col-md-3">
-                                    <label class="form-label small mb-0">
-                                        <i class="fas fa-umbrella-beach text-info me-1"></i>Vac. Acum. (días)
-                                        <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Días de vacaciones acumulados según Ley 116 (máximo 22-24 días)" style="cursor: help; font-size:0.65rem;"></i>
-                                    </label>
-                                    <input type="number" step="0.01" class="form-control form-control-sm" name="vacaciones_acumuladas" id="vacaciones_acumuladas" value="0" oninput="actualizarValoresVacaciones()"
-                                           data-bs-toggle="tooltip" title="Ingrese la cantidad de días acumulados">
+                            <div class="glass-card mt-2 p-2">
+                                <div class="card-collapse-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseVacaciones" aria-expanded="true" aria-controls="collapseVacaciones">
+                                    <h6 class="text-light mb-0 fs-6 card-collapse-title"><i class="fas fa-umbrella-beach text-info me-1"></i>Vacaciones</h6>
+                                    <i class="fas fa-chevron-down card-collapse-chevron"></i>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small mb-0">
-                                        <i class="fas fa-coins text-warning me-1"></i>Importe Vac. Acum.
-                                        <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Valor monetario de las vacaciones acumuladas (Días × Valor por día)" style="cursor: help; font-size:0.65rem;"></i>
-                                    </label>
-                                    <input type="text" class="form-control form-control-sm text-end" id="valor_vacaciones_calculado" readonly style="background-color: var(--panel); font-weight: bold;"
-                                           data-bs-toggle="tooltip" title="Valor calculado automáticamente">
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch mt-2">
-                                        <input type="checkbox" class="form-check-input" style="width:2em; height:1em;" name="no_acumular_vacaciones" id="no_acumular_vacaciones" onchange="actualizarInfoDesdeFormulario()"
-                                               data-bs-toggle="tooltip" title="Marque para que las vacaciones se paguen en nómina en lugar de acumularse">
-                                        <label class="form-check-label small" for="no_acumular_vacaciones" style="color: #fbbf24;">
-                                            <i class="fas fa-money-bill-wave me-1"></i> No acumular (Pagar en nómina)
+                                <div class="collapse show" id="collapseVacaciones">
+                                <div class="mt-2">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-0">
+                                            <i class="fas fa-umbrella-beach text-info me-1"></i>Vac. Acum. (días)
+                                            <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Días de vacaciones acumulados según Ley 116 (máximo 22-24 días)" style="cursor: help; font-size:0.65rem;"></i>
                                         </label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" name="vacaciones_acumuladas" id="vacaciones_acumuladas" value="0" oninput="actualizarValoresVacaciones()"
+                                               data-bs-toggle="tooltip" title="Ingrese la cantidad de días acumulados">
                                     </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-0">
+                                            <i class="fas fa-coins text-warning me-1"></i>Importe Vac. Acum.
+                                            <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Valor monetario de las vacaciones acumuladas (Días × Valor por día)" style="cursor: help; font-size:0.65rem;"></i>
+                                        </label>
+                                        <input type="text" class="form-control form-control-sm text-end" id="valor_vacaciones_calculado" readonly style="background-color: var(--panel); font-weight: bold;"
+                                               data-bs-toggle="tooltip" title="Valor calculado automáticamente">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch mt-2">
+                                            <input type="checkbox" class="form-check-input" style="width:2em; height:1em;" name="no_acumular_vacaciones" id="no_acumular_vacaciones" onchange="actualizarInfoDesdeFormulario()"
+                                                   data-bs-toggle="tooltip" title="Marque para que las vacaciones se paguen en nómina en lugar de acumularse">
+                                            <label class="form-check-label small" for="no_acumular_vacaciones" style="color: #fbbf24;">
+                                                <i class="fas fa-money-bill-wave me-1"></i> No acumular (Pagar en nómina)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -3388,6 +3505,61 @@ function formatMoney(value) {
 }
 function markFormDirty() { formDirty = true; }
 function resetFormDirty() { formDirty = false; }
+function actualizarPagosAdicionalesTexto() {
+    const checks = document.querySelectorAll('.pago-adicional-check');
+    const txt = document.getElementById('paDropdownText');
+    if (!txt) return;
+    const selCount = document.querySelectorAll('.pago-adicional-check:checked').length;
+    if (selCount === 0) {
+        txt.textContent = 'Sin seleccionar';
+        txt.style.color = 'var(--faint)';
+    } else if (selCount === 1) {
+        const c = document.querySelector('.pago-adicional-check:checked');
+        txt.textContent = c ? (c.getAttribute('data-nombre') || '1 seleccionado') : '1 seleccionado';
+        txt.style.color = '';
+    } else {
+        txt.textContent = selCount + ' seleccionados';
+        txt.style.color = '';
+    }
+}
+function paFiltrarPagos(texto) {
+    if (texto === undefined) {
+        const inp = document.getElementById('paBuscarInput');
+        texto = inp ? inp.value : '';
+    }
+    const term = texto.toLowerCase().trim();
+    const soloSel = document.getElementById('paSoloSeleccionados') ? document.getElementById('paSoloSeleccionados').checked : false;
+    const items = document.querySelectorAll('#paDropdown .pa-menu .pa-item');
+    let visibles = 0;
+    items.forEach(function(lbl){
+        const nombre = lbl.querySelector('.pa-item-nombre');
+        const count = lbl.querySelector('.pa-count');
+        const textoItem = (nombre ? nombre.textContent : lbl.textContent) + ' ' + (count ? count.textContent : '');
+        const chk = lbl.querySelector('.pago-adicional-check');
+        const coincide = !term || textoItem.toLowerCase().indexOf(term) !== -1;
+        const estaSel = chk ? chk.checked : false;
+        const show = coincide && (!soloSel || estaSel);
+        lbl.closest('li').style.display = show ? '' : 'none';
+        if (show) visibles++;
+    });
+    const vacio = document.getElementById('paBuscarSinResultados');
+    if (vacio) vacio.style.display = visibles === 0 ? '' : 'none';
+}
+function paRefrescarSoloSeleccion() {
+    const soloSel = document.getElementById('paSoloSeleccionados');
+    if (soloSel && soloSel.checked) paFiltrarPagos(undefined);
+}
+(function(){
+    const paDropdown = document.getElementById('paDropdown');
+    if (!paDropdown) return;
+    paDropdown.addEventListener('shown.bs.dropdown', function(){
+        const inp = document.getElementById('paBuscarInput');
+        if (inp) { inp.value = ''; paFiltrarPagos(''); }
+        const solo = document.getElementById('paSoloSeleccionados');
+        if (solo) solo.checked = false;
+        if (inp) setTimeout(function(){ inp.focus(); }, 50);
+    });
+})();
 
 // ACTUALIZAR NOMBRE EN EL MODAL
 function actualizarNombreModal() {
@@ -3795,6 +3967,7 @@ function cancelarNavegacion() {
 function clearForm() {
     const form = document.getElementById('empleadoForm');
     if (form) form.reset();
+    actualizarPagosAdicionalesTexto();
     
     modoSoloLectura = false;
     aplicarModoSoloLectura(false);
@@ -4116,6 +4289,13 @@ function cargarEmpleadoEnFormulario(emp) {
     const tipoContrato = document.getElementById('tipo_contrato');
     if (tipoContrato) tipoContrato.value = emp.tipo_contrato || 'Indeterminado';
     
+    document.querySelectorAll('.pago-adicional-check').forEach(function(c){ c.checked = false; });
+    (emp.pagos_adicionales || []).forEach(function(pa){
+        var ch = document.querySelector('.pago-adicional-check[value="' + pa.id + '"]');
+        if (ch) ch.checked = true;
+    });
+    actualizarPagosAdicionalesTexto();
+    
     actualizarInfoSalarioBaseFormateado();
     actualizarValoresVacaciones();
     actualizarInfoDesdeFormulario();
@@ -4163,6 +4343,8 @@ function aplicarModoSoloLectura(activar) {
     }
     const badge = document.getElementById('badgeSoloLectura');
     if (badge) badge.style.display = activar ? 'inline-flex' : 'none';
+    const paToggle = document.getElementById('paDropdownBtn');
+    if (paToggle) paToggle.disabled = activar;
 }
 
 function editEmpleado(emp) {

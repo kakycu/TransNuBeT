@@ -185,6 +185,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax'])) {
         if ($accion === 'eliminar') {
             $id = intval($_POST['id'] ?? 0);
             
+            // --- Pagos Adicionales: soft-delete protege trabajadores vigentes e histórico de nóminas ---
+            if ($tabla === 'pagos_adicionales') {
+                // Contar TODAS las referencias (trabajadores asignados + nóminas históricas)
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM trabajador_pago_adicional WHERE pago_adicional_id = ?");
+                $stmt->execute([$id]);
+                $refsTrabajadores = intval($stmt->fetchColumn());
+                
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM nomina_pagos_adicionales WHERE pago_adicional_id = ?");
+                $stmt->execute([$id]);
+                $refsNomina = intval($stmt->fetchColumn());
+                
+                if ($refsTrabajadores > 0 || $refsNomina > 0) {
+                    // Primera llamada: informar y solicitar autorización (segundo paso)
+                    if (empty($_POST['autorizado'])) {
+                        $motivo = $refsTrabajadores > 0 ? 'referencias_trabajador' : 'referencias_nomina';
+                        echo json_encode([
+                            'success' => false,
+                            'requiere_autorizacion' => true,
+                            'motivo' => $motivo,
+                            'cantidad_refs' => $refsTrabajadores > 0 ? $refsTrabajadores : $refsNomina,
+                            'error' => ($refsTrabajadores > 0
+                                ? "No se puede eliminar físicamente porque {$refsTrabajadores} trabajador(es) recibe(n) este pago adicional."
+                                : "No se puede eliminar físicamente porque este pago adicional ya quedó registrado en {$refsNomina} nómina(s) histórica(s)."),
+                            'mensaje' => ($refsTrabajadores > 0
+                                ? "El registro será desactivado: dejará de aplicarse a trabajadores y a futuras nóminas, preservando el histórico ya generado."
+                                : "El registro será desactivado (dejará de aplicarse) para preservar el histórico de nóminas generadas.")
+                        ]);
+                        exit();
+                    }
+                
+                    // Segundo paso: validar rol autorizado (Admin/Editor/Super) — sin requerir contraseña
+                    $user_rol_codigo_aut = trim((string)($_SESSION['usuario_rol'] ?? $_SESSION['rol_codigo'] ?? $_SESSION['user_rol'] ?? ''));
+                    if (!in_array($user_rol_codigo_aut, ['Admin', 'Editor', 'Super'], true)) {
+                        echo json_encode(['success' => false, 'error' => 'Su rol no tiene los permisos necesarios para autorizar esta desactivación. Solo los roles Admin, Editor o Super pueden hacerlo.', 'denied' => true, 'rol_actual' => $user_rol_codigo_aut]);
+                        exit();
+                    }
+                    
+                    // Soft-delete: desactivar sin borrar histórico ni desvincular trabajadores
+                    $stmt = $pdo->prepare("UPDATE pagos_adicionales SET activo = 0 WHERE id = ?");
+                    $stmt->execute([$id]);
+                    echo json_encode(['success' => true, 'message' => 'El pago adicional ha sido desactivado correctamente', 'soft' => true]);
+                    exit();
+                }
+            }
+            
             $dependencia = verificarDependencias($pdo, $tabla, $id);
             if ($dependencia) {
                 echo json_encode(['success' => false, 'error' => $dependencia]);
@@ -289,6 +334,7 @@ function esTablaClasificador($tabla) {
         'escalas_salariales',
         'cargos_plantilla',
         'motivos_baja',
+        'pagos_adicionales',
         'configuracion_general',
         'configuracion_rangos_impuesto'
     ];
@@ -303,6 +349,7 @@ function obtenerCamposBusqueda($tabla) {
         'escalas_salariales' => ['escala_numero', 'descripcion'],
         'cargos_plantilla' => ['nombre_cargo', 'organo_grupo', 'nivel_preparacion'],
         'motivos_baja' => ['codigo', 'nombre', 'categoria', 'base_legal'],
+        'pagos_adicionales' => ['nombre', 'descripcion'],
         'configuracion_general' => ['parametro', 'valor', 'descripcion'],
         'configuracion_rangos_impuesto' => ['descripcion']
     ];
@@ -317,6 +364,7 @@ function obtenerOrdenamiento($tabla) {
         'escalas_salariales' => 'escala_numero',
         'cargos_plantilla' => 'organo_grupo, nombre_cargo',
         'motivos_baja' => 'codigo',
+        'pagos_adicionales' => 'nombre',
         'configuracion_general' => 'parametro',
         'configuracion_rangos_impuesto' => 'desde'
     ];
@@ -324,7 +372,7 @@ function obtenerOrdenamiento($tabla) {
 }
 
 function tieneCampoActivo($tabla) {
-    $activas = ['centros_costo', 'areas', 'categorias_ocupacionales', 'escalas_salariales', 'cargos_plantilla', 'motivos_baja'];
+    $activas = ['centros_costo', 'areas', 'categorias_ocupacionales', 'escalas_salariales', 'cargos_plantilla', 'motivos_baja', 'pagos_adicionales'];
     return in_array($tabla, $activas);
 }
 
@@ -387,6 +435,16 @@ function obtenerDatosFormulario($tabla, $post) {
                 'activo' => ($post['activo'] ?? 0) == 1 ? 1 : 0
             ];
             break;
+        case 'pagos_adicionales':
+            $tipo = ($post['tipo_calculo'] ?? 'monto_fijo') === 'porcentaje' ? 'porcentaje' : 'monto_fijo';
+            $datos = [
+                'nombre' => trim($post['nombre'] ?? ''),
+                'monto' => floatval($post['monto'] ?? 0),
+                'tipo_calculo' => $tipo,
+                'descripcion' => trim($post['descripcion'] ?? ''),
+                'activo' => ($post['activo'] ?? 0) == 1 ? 1 : 0
+            ];
+            break;
         case 'configuracion_general':
             $parametro = trim($post['parametro'] ?? '');
             $valor = trim($post['valor'] ?? '');
@@ -440,6 +498,15 @@ function validarDatos($tabla, $datos) {
             if (empty($datos['codigo'])) return 'El código legal es obligatorio';
             if (empty($datos['nombre'])) return 'La descripción del motivo es obligatoria';
             break;
+        case 'pagos_adicionales':
+            if (empty($datos['nombre'])) return 'El nombre del pago adicional es obligatorio';
+            if (!in_array($datos['tipo_calculo'], ['monto_fijo', 'porcentaje'])) return 'El tipo de cálculo es inválido';
+            if ($datos['tipo_calculo'] === 'monto_fijo') {
+                if ($datos['monto'] < 0) return 'El monto no puede ser negativo';
+            } else {
+                if ($datos['monto'] <= 0 || $datos['monto'] > 100) return 'El porcentaje debe estar entre 0 y 100';
+            }
+            break;
         case 'configuracion_general':
             if (empty($datos['parametro'])) return 'El nombre de parámetro es obligatorio';
             if (empty($datos['valor'])) return 'El valor de configuración es obligatorio';
@@ -480,6 +547,10 @@ function verificarDuplicado($pdo, $tabla, $datos, $id) {
             $stmt = $pdo->prepare("SELECT id FROM motivos_baja WHERE codigo = ? AND id != ?");
             $stmt->execute([$datos['codigo'], $id]);
             return $stmt->fetch() ? 'Este código de motivo ya existe' : null;
+        case 'pagos_adicionales':
+            $stmt = $pdo->prepare("SELECT id FROM pagos_adicionales WHERE nombre = ? AND id != ?");
+            $stmt->execute([$datos['nombre'], $id]);
+            return $stmt->fetch() ? 'Ya existe un pago adicional con este nombre' : null;
         case 'configuracion_general':
             $stmt = $pdo->prepare("SELECT id FROM configuracion_general WHERE parametro = ? AND id != ?");
             $stmt->execute([$datos['parametro'], $id]);
@@ -545,6 +616,12 @@ function verificarDependencias($pdo, $tabla, $id) {
             $stmt->execute([$id]);
             $count = $stmt->fetchColumn();
             return $count > 0 ? "Operación denegada. {$count} trabajadores tienen este motivo de baja asignado" : null;
+
+        case 'pagos_adicionales':
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM trabajador_pago_adicional WHERE pago_adicional_id = ?");
+            $stmt->execute([$id]);
+            $count = $stmt->fetchColumn();
+            return $count > 0 ? "Operación denegada. {$count} trabajadores reciben este pago adicional" : null;
     }
     return null;
 }
@@ -928,32 +1005,35 @@ if (file_exists($ruta_logo)) {
         
         <!-- Botonera selectora de clasificadores -->
         <div class="clasificador-selector">
-            <button class="clasificador-btn" data-tabla="centros_costo">
-                <i class="fas fa-chart-pie me-2"></i>Centros de Costo
-            </button>
             <button class="clasificador-btn" data-tabla="areas">
                 <i class="fas fa-building me-2"></i>Áreas
-            </button>
-            <button class="clasificador-btn" data-tabla="categorias_ocupacionales">
-                <i class="fas fa-user-tag me-2"></i>Categorías Ocupacionales
-            </button>
-            <button class="clasificador-btn" data-tabla="escalas_salariales">
-                <i class="fas fa-dollar-sign me-2"></i>Escalas Salariales
             </button>
             <button class="clasificador-btn" data-tabla="cargos_plantilla">
                 <i class="fas fa-briefcase me-2"></i>Cargos (Plantilla)
             </button>
-            <button class="clasificador-btn" data-tabla="motivos_baja">
-                <i class="fas fa-exclamation-triangle me-2"></i>Motivos de Baja
+            <button class="clasificador-btn" data-tabla="categorias_ocupacionales">
+                <i class="fas fa-user-tag me-2"></i>Categorías Ocupacionales
+            </button>
+            <button class="clasificador-btn" data-tabla="centros_costo">
+                <i class="fas fa-chart-pie me-2"></i>Centros de Costo
             </button>
             <button class="clasificador-btn" data-tabla="configuracion_general">
                 <i class="fas fa-cog me-2"></i>Configuración General
             </button>
-            <button class="clasificador-btn" data-tabla="configuracion_rangos_impuesto">
-                <i class="fas fa-percent me-2"></i>Rangos de Impuesto
+            <button class="clasificador-btn" data-tabla="escalas_salariales">
+                <i class="fas fa-dollar-sign me-2"></i>Escalas Salariales
+            </button>
+            <button class="clasificador-btn" data-tabla="motivos_baja">
+                <i class="fas fa-exclamation-triangle me-2"></i>Motivos de Baja
+            </button>
+            <button class="clasificador-btn" data-tabla="pagos_adicionales">
+                <i class="fas fa-graduation-cap me-2"></i>Pagos Adicionales
             </button>
             <button class="clasificador-btn" data-tabla="permisos_usuario">
                 <i class="fas fa-shield-halved me-2"></i>Permisos por Usuario
+            </button>
+            <button class="clasificador-btn" data-tabla="configuracion_rangos_impuesto">
+                <i class="fas fa-percent me-2"></i>Rangos de Impuesto
             </button>
         </div>
         
@@ -1217,6 +1297,29 @@ const TABLAS_CONFIG = {
             { name: 'activo', label: 'ACTIVO', type: 'switch', required: false }
         ]
     },
+    pagos_adicionales: {
+        nombre: 'Pagos Adicionales',
+        icono: 'fa-graduation-cap',
+        columnas: [
+            { data: 'nombre', titulo: 'Nombre' },
+            { data: 'tipo_calculo', titulo: 'Tipo' },
+            { data: 'monto', titulo: 'Monto (CUP) / Porcentaje (%)' },
+            { data: 'descripcion', titulo: 'Descripción' },
+            { data: 'activo', titulo: 'Estado' }
+        ],
+        tieneActivo: true,
+        campos: [
+            { name: 'nombre', label: 'NOMBRE (E.g. Maestría, Doctorado, Pago por años de servicio)', type: 'text', required: true },
+            { name: 'tipo_calculo', label: 'TIPO DE CÁLCULO', type: 'select', required: true,
+              options: [
+                { value: 'monto_fijo', label: 'Monto fijo mensual (CUP)' },
+                { value: 'porcentaje', label: 'Porcentaje sobre el salario laboral' }
+              ] },
+            { name: 'monto', label: 'MONTO MENSUAL (CUP)', type: 'number', required: true, step: 0.01, value: 0 },
+            { name: 'descripcion', label: 'DESCRIPCIÓN', type: 'textarea', required: false },
+            { name: 'activo', label: 'ACTIVO', type: 'switch', required: false }
+        ]
+    },
     configuracion_general: {
         nombre: 'Configuración General',
         icono: 'fa-cog',
@@ -1261,7 +1364,7 @@ let dataTableInstance = null;
 let ultimosRegistros = [];
 let tablaActual = new URLSearchParams(window.location.search).get('tabla');
 if (!tablaActual || !Object.keys(TABLAS_CONFIG).includes(tablaActual)) {
-    tablaActual = localStorage.getItem('clasificador_actual') || 'centros_costo';
+    tablaActual = 'areas';
 }
 const abrirNuevo = new URLSearchParams(window.location.search).get('nuevo') === '1';
 let paginaGuardada = 0;
@@ -1577,8 +1680,10 @@ function generarFormulario(datos = null) {
             html += `<select class="dark-select" id="${campo.name}" name="${campo.name}" ${campo.required ? 'required' : ''}>`;
             html += `<option value="">-- Seleccionar Opción --</option>`;
             campo.options.forEach(opt => {
-                const selected = (valor == opt) ? 'selected' : '';
-                html += `<option value="${opt}" ${selected}>${opt}</option>`;
+                const valOpt = (typeof opt === 'object' && opt !== null) ? opt.value : opt;
+                const textoOpt = (typeof opt === 'object' && opt !== null && opt.label) ? opt.label : opt;
+                const selected = (valor == valOpt) ? 'selected' : '';
+                html += `<option value="${valOpt}" ${selected}>${textoOpt}</option>`;
             });
             html += `</select>`;
         } else if (campo.type === 'select_db') {
@@ -1663,7 +1768,7 @@ function editarRegistro(id) {
                     text: response.error || 'No se pudo cargar el registro', 
                     background: '#1F1F1F', 
                     color: '#FFFFFF',
-					confirmButtonText: '<i class="fas fa-check me-2"></i>Entenido'
+					confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido'
                 });
             }
         },
@@ -1676,7 +1781,7 @@ function editarRegistro(id) {
                 text: 'No se pudieron recuperar los datos del registro', 
                 background: '#1F1F1F', 
                 color: '#FFFFFF',
-				confirmButtonText: '<i class="fas fa-check me-2"></i>Entenido'
+				confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido'
             });
         }
     });
@@ -1709,13 +1814,64 @@ function eliminarRegistro(id) {
                 dataType: 'json',
                 success: function(response) {
                     Swal.close();
+                    
+                    // --- Pagos Adicionales: requiere autorización (rol + contraseña) antes de desactivar ---
+                    if (response.requiere_autorizacion) {
+                        Swal.fire({
+                            title: '<i class="fas fa-shield-halved me-2" style="color: #60a5fa"></i>Confirmar desactivación',
+                            html: `<div class="text-start fs-6" style="color:#CCCCCC">
+                                <p class="mb-2">Este registro ya está vinculado al histórico de nóminas para conservarlo <strong>no se eliminará físicamente</strong>, solo será <strong style="color:#FBBF24">desactivado</strong> (dejará de aplicarse a futuras nóminas y trabajadores nuevos, preservando lo ya generado).</p>
+                                <p class="mb-0"><i class="fas fa-exclamation-triangle me-2" style="color:#FBBF24"></i>¿Procedo a desactivar este registro?</p>
+                            </div>`,
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#ef4444',
+                            confirmButtonText: '<i class="fas fa-check me-2"></i>Sí, desactivar',
+                            cancelButtonColor: '#6b7280',
+                            cancelButtonText: '<i class="fas fa-times me-2"></i>No, cancelar',
+                            background: '#1F1F1F',
+                            color: '#FFFFFF',
+                            focusCancel: true
+                        }).then((result) => {
+                            if (!result.isConfirmed) return;
+                            Swal.fire({ title: 'Desactivando...', text: 'Aplicando cambios', allowOutsideClick: false, showConfirmButton: false, background: '#1F1F1F', color: '#FFFFFF' });
+                            $.ajax({
+                                url: window.location.href,
+                                type: 'POST',
+                                data: {
+                                    accion_ajax: 'eliminar',
+                                    tabla: tablaActual,
+                                    id: id,
+                                    autorizado: 1
+                                },
+                                dataType: 'json',
+                                success: function(res2) {
+                                    Swal.close();
+                                    if (res2.success) {
+                                        Swal.fire({ icon: 'success', title: 'Desactivado', text: res2.message || 'El registro ha sido desactivado correctamente', background: '#1F1F1F', color: '#FFFFFF', timer: 2000, showConfirmButton: false });
+                                        cargarRegistros(true);
+                                    } else if (res2.denied) {
+                                        notificarAccesoDenegado(res2.error || 'No tiene permisos para autorizar esta operación');
+                                    } else {
+                                        notificarError('No se pudo desactivar', res2.error || res2.message);
+                                    }
+                                },
+                                error: function() {
+                                    Swal.close();
+                                    notificarError('Error de conexión', 'No se pudo completar la desactivación. Verifique su conexión e inténtelo de nuevo.');
+                                }
+                            });
+                        });
+                        return;
+                    }
+                    
                     if (response.success) {
                         Swal.fire({ icon: 'success', title: 'Eliminado', text: response.message, background: '#1F1F1F', color: '#FFFFFF', timer: 2000, showConfirmButton: false });
                         cargarRegistros(true);
                     } else if (response.denied) {
                         notificarAccesoDenegado(response.error || response.message);
                     } else {
-                        notificarError('No se pudo eliminar el registro', response.error || response.message);
+                        Swal.fire({ icon: 'error', title: 'No se pudo eliminar', text: response.error || 'No se pudo completar la operación', background: '#1F1F1F', color: '#FFFFFF' });
                     }
                 },
                 error: function() {
@@ -1826,7 +1982,7 @@ $('#btnGuardar').on('click', function() {
                     text: response.error, 
                     background: '#1F1F1F', 
                     color: '#FFFFFF',
-					confirmButtonText: '<i class="fas fa-check me-2"></i>Entenido'
+					confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido'
                 });
             }
         },
@@ -1839,7 +1995,7 @@ $('#btnGuardar').on('click', function() {
                 text: 'No se pudo procesar el almacenamiento', 
                 background: '#1F1F1F', 
                 color: '#FFFFFF',
-				confirmButtonText: '<i class="fas fa-check me-2"></i>Entenido'
+				confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido'
             });
         }
     });

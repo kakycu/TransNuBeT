@@ -651,6 +651,67 @@ CREATE TABLE `nominas` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `nomina_pagos_adicionales`
+--
+
+CREATE TABLE `nomina_pagos_adicionales` (
+  `id` int(11) NOT NULL,
+  `nomina_id` int(11) NOT NULL,
+  `trabajador_id` int(11) NOT NULL,
+  `pago_adicional_id` int(11) NOT NULL,
+  `tipo_calculo` enum('monto_fijo','porcentaje') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'monto_fijo',
+  `base_calculo` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `importe_aplicado` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `descripcion_captura` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `pagos_adicionales`
+--
+
+CREATE TABLE `pagos_adicionales` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `monto` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `tipo_calculo` enum('monto_fijo','porcentaje') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'monto_fijo',
+  `descripcion` text COLLATE utf8mb4_unicode_ci,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `pagos_adicionales`
+--
+
+INSERT INTO `pagos_adicionales` (`id`, `nombre`, `monto`, `tipo_calculo`, `descripcion`, `activo`, `created_at`, `updated_at`) VALUES
+(1, 'Maestría (Grado Científico)', '440.00', 'monto_fijo', 'Pago adicional por Grado Científico de Maestría', 1, '2026-09-13 03:19:29', '2026-09-13 07:23:27'),
+(2, 'Doctorado (Grado Científico)', '825.00', 'monto_fijo', 'Pago adicional por Grado Científico de Doctorado', 1, '2026-09-13 03:21:10', '2026-09-13 07:22:06'),
+(3, 'Antigüedad (5 años)', '1000.00', 'monto_fijo', 'Pago adicional por antigüedad: 5 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(4, 'Antigüedad (10 años)', '1400.00', 'monto_fijo', 'Pago adicional por antigüedad: 10 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(5, 'Antigüedad (15 años)', '1800.00', 'monto_fijo', 'Pago adicional por antigüedad: 15 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(6, 'Antigüedad (20 años)', '2200.00', 'monto_fijo', 'Pago adicional por antigüedad: 20 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(7, 'Antigüedad (25 años)', '2600.00', 'monto_fijo', 'Pago adicional por antigüedad: 25 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(8, 'Antigüedad (30 años)', '3000.00', 'monto_fijo', 'Pago adicional por antigüedad: 30 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(9, 'Antigüedad (32 años)', '3400.00', 'monto_fijo', 'Pago adicional por antigüedad: 32 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(10, 'Antigüedad (34 años)', '3800.00', 'monto_fijo', 'Pago adicional por antigüedad: 34 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(11, 'Antigüedad (36 años)', '4200.00', 'monto_fijo', 'Pago adicional por antigüedad: 36 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28'),
+(12, 'Antigüedad (38 años)', '4600.00', 'monto_fijo', 'Pago adicional por antigüedad: 38 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 07:23:02'),
+(13, 'Antigüedad (40 años)', '5000.00', 'monto_fijo', 'Pago adicional por antigüedad: 40 años de servicio', 1, '2026-09-13 06:49:28', '2026-09-13 06:49:28');
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `trabajador_pago_adicional`
+--
+
+CREATE TABLE `trabajador_pago_adicional` (
+  `trabajador_id` int(11) NOT NULL,
+  `pago_adicional_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
 -- Estructura de tabla para la tabla `secuencias_nominas`
 --
 
@@ -870,6 +931,22 @@ ALTER TABLE `nominas`
   ADD UNIQUE KEY `unique_por_tipo_periodo` (`trabajador_id`,`periodo_desde`,`periodo_hasta`,`tipo_nomina`,`numero_nomina`);
 
 --
+-- Indices de la tabla `nomina_pagos_adicionales`
+--
+ALTER TABLE `nomina_pagos_adicionales`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_npa_nomina` (`nomina_id`,`trabajador_id`),
+  ADD KEY `fk_npa_trabajador` (`trabajador_id`),
+  ADD KEY `fk_npa_pago` (`pago_adicional_id`);
+
+--
+-- Indices de la tabla `pagos_adicionales`
+--
+ALTER TABLE `pagos_adicionales`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_pagos_adicionales_nombre` (`nombre`);
+  
+--
 -- Índices de la tabla `secuencias_nominas`
 --
 ALTER TABLE `secuencias_nominas`
@@ -905,6 +982,10 @@ ALTER TABLE `trabajadores`
   ADD KEY `fk_trabajadores_motivo_baja` (`motivo_baja`),
   ADD KEY `centro_costo_id` (`centro_costo_id`),
   ADD KEY `fk_trabajadores_cargo_plantilla` (`cargo_id`);
+
+ALTER TABLE `trabajador_pago_adicional`
+  ADD PRIMARY KEY (`trabajador_id`,`pago_adicional_id`),
+  ADD KEY `fk_tpa_pago` (`pago_adicional_id`);
 
 --
 -- AUTO_INCREMENT de las tablas volcadas
@@ -1029,6 +1110,10 @@ ALTER TABLE `subsistemas`
 --
 ALTER TABLE `trabajadores`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+  
+ALTER TABLE `nomina_pagos_adicionales` 
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+
 
 --
 -- Restricciones para tablas volcadas
