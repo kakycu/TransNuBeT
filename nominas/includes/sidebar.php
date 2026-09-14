@@ -1065,7 +1065,7 @@ html.focus-mode .fluid-container {
 
         <?php if (permiso_puede('nominas', 'ver')): ?>
         <span class="nav-category">Nóminas y Procesos</span>
-        <div class="nav-group <?php echo ($current_file == 'nominas.php') ? 'open' : ''; ?>" id="nominasNavGroup">
+        <div class="nav-group <?php echo (in_array($current_file, ['nominas.php'])) ? 'open' : ''; ?>" id="nominasNavGroup">
             <a href="<?php echo $base_prefix; ?>modules/nominas.php" class="nav-item <?php echo ($current_file == 'nominas.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Nóminas" data-tooltip-theme="primary">
                 <i class="fas fa-calculator"></i>
                 <span class="sidebar-text">Nóminas</span>
@@ -1094,10 +1094,10 @@ html.focus-mode .fluid-container {
 
         <?php if (permiso_puede('bandecnom', 'ver')): ?>
         <span class="nav-category">Banco</span>
-        <div class="nav-group <?php echo ($current_file == 'bandecnom.php') ? 'open' : ''; ?>" id="bancoNavGroup">
+        <div class="nav-group <?php echo (in_array($current_file, ['bandecnom.php', 'assp.php'])) ? 'open' : ''; ?>" id="bancoNavGroup">
             <a href="<?php echo $base_prefix; ?>modules/bandecnom.php" class="nav-item <?php echo ($current_file == 'bandecnom.php') ? 'active' : ''; ?>" data-tooltip="Exportar al Banco" data-tooltip-theme="primary">
                 <i class="fas fa-university"></i>
-                <span class="sidebar-text">Banco</span>
+                <span class="sidebar-text">Banco, ONAT, MFP, etc.</span>
                 <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="bancoChevron"></i>
             </a>
             <div class="nav-submenu" id="bancoSubmenu">
@@ -1105,6 +1105,10 @@ html.focus-mode .fluid-container {
                     <i class="fas fa-file-export"></i>
                     <span class="sidebar-text">Exportar al Banco</span>
                     <span class="nav-badge sidebar-text">BETA</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/assp.php" class="nav-item <?php echo ($current_file == 'assp.php') ? 'active' : ''; ?>" data-tooltip="Aporte de Seguridad Social Patronal" data-tooltip-theme="primary">
+                    <i class="fas fa-shield-halved"></i>
+                    <span class="sidebar-text">Aporte Seg. Soc. Patronal</span>
                 </a>
             </div>
         </div>
