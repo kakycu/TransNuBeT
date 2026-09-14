@@ -1269,34 +1269,34 @@ function getBadge($codigo, $server_ok, $estados) {
                 </div>
             </div>
             <div class="footer-stats">
-                <span><i class="fas fa-chart-line"></i> Proyecto en crecimiento</span>
-                <span><i class="fas fa-cloud-upload-alt"></i> Backup automático</span>
+                <span onclick="abrirModalIndex('proyecto')"><i class="fas fa-chart-line"></i> Proyecto en crecimiento</span>
+                <span onclick="abrirModalIndex('backup')"><i class="fas fa-cloud-upload-alt"></i> Backup automático</span>
             </div>
         </div>
         
         <div class="footer-info-grid">
-            <div class="footer-info-item">
+            <div class="footer-info-item" onclick="abrirModalIndex('bd')">
                 <i class="fas fa-database"></i>
                 <div class="info-details">
                     <h4>Base de Datos</h4>
                     <p>MySQL 8.0 · Alta disponibilidad</p>
                 </div>
             </div>
-            <div class="footer-info-item">
+            <div class="footer-info-item" onclick="abrirModalIndex('seguridad')">
                 <i class="fas fa-shield-alt"></i>
                 <div class="info-details">
                     <h4>Seguridad</h4>
                     <p>Cifrado SSL · Autenticación 2FA</p>
                 </div>
             </div>
-            <div class="footer-info-item">
+            <div class="footer-info-item" onclick="abrirModalIndex('sincroniza')">
                 <i class="fas fa-sync-alt"></i>
                 <div class="info-details">
                     <h4>Sincronización</h4>
                     <p>Actualizaciones en tiempo real</p>
                 </div>
             </div>
-            <div class="footer-info-item">
+            <div class="footer-info-item" onclick="abrirModalIndex('soporte')">
                 <i class="fas fa-headset"></i>
                 <div class="info-details">
                     <h4>Soporte 24/7</h4>
@@ -1990,6 +1990,223 @@ document.addEventListener('keydown', function (e) {
         e.preventDefault();
     }
 });*/
+</script>
+
+<style>
+.iso27001-overlay {
+    position: fixed;
+    inset:0;
+    background: rgba(2, 6, 23, 0.72);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding:1.25rem;
+}
+.iso27001-box {
+    background: #15161d;
+    color: #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1.25rem 3.75rem rgba(0, 0, 0, 0.6);
+    max-width:35rem;
+    width:100%;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border: 0.0625rem solid rgba(255, 255, 255, 0.08);
+}
+.iso27001-titlebar {
+    display: flex;
+    align-items: center;
+    gap:0.625rem;
+    padding:0.75rem 1rem;
+    background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
+    border-bottom: 0.0625rem solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+}
+.iso27001-titlebar .tt-icon { font-size:1.125rem; color:#5eead4; }
+.iso27001-titlebar .tt-text {
+    font-size:0.9375rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing:0.0188rem;
+    flex: 1;
+}
+.iso27001-close {
+    width:1.875rem;
+    height:1.875rem;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: #e2e8f0;
+    font-size:1.125rem;
+    line-height:1;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+}
+.iso27001-close:hover { background: #ef4444; color: #fff; }
+.iso27001-body { padding:1.5rem 1.75rem 1.625rem; text-align: left; }
+.iso27001-body .iso-empresa {
+    font-size:1.0625rem;
+    font-weight: 700;
+    color: #fff;
+    line-height:1.35;
+    margin-bottom:0.375rem;
+}
+.iso27001-body .iso-empresa i { color:#5eead4; margin-right:0.5rem; }
+.iso27001-body .iso-sub {
+    font-size:0.8125rem;
+    color: #94a3b8;
+    margin-bottom:1.125rem;
+}
+.iso27001-body .iso-scroll {
+    max-height:18.75rem;
+    overflow-y: auto;
+    padding-right:0.375rem;
+}
+.iso27001-body h4 {
+    font-size:0.9062rem;
+    font-weight: 700;
+    color: #5eead4;
+    margin:0.875rem 0 0.375rem;
+}
+.iso27001-body h4:first-child { margin-top:0; }
+.iso27001-body p {
+    font-size:0.8125rem;
+    color: #cbd5e1;
+    line-height:1.55;
+    margin-bottom:0.625rem;
+}
+.iso27001-body .actions {
+    display: flex;
+    gap:0.625rem;
+    justify-content: flex-end;
+    margin-top:1.125rem;
+    padding-top:0.875rem;
+    border-top: 0.0625rem solid rgba(255, 255, 255, 0.08);
+}
+.iso27001-body .btn-iso-entendido {
+    background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
+    color: #fff;
+    border: none;
+    border-radius: 0.5rem;
+    padding:0.625rem 1.5rem;
+    font-size:0.8438rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.iso27001-body .btn-iso-entendido:hover {
+    transform: translateY(-0.0625rem);
+    box-shadow: 0 0.375rem 1.125rem rgba(15, 118, 110, 0.4);
+}
+</style>
+
+<!-- Modal Ventana: Información de las opciones del footer -->
+<div class="iso27001-overlay" id="modalIndex" style="display: none;">
+    <div class="iso27001-box">
+        <div class="iso27001-titlebar">
+            <i class="fas fa-shield-halved tt-icon" id="modalIdxIcon"></i>
+            <span class="tt-text" id="modalIdxTitulo">Información del Sistema</span>
+            <button type="button" class="iso27001-close" aria-label="Cerrar" onclick="cerrarModalIndex()">&times;</button>
+        </div>
+        <div class="iso27001-body">
+            <div class="iso-empresa"><i class="fas fa-building"></i><?php echo htmlspecialchars($COMPANY_NAME); ?></div>
+            <div class="iso-sub" id="modalIdxSub"></div>
+            <div class="iso-scroll" id="modalIdxContenido"></div>
+            <div class="actions">
+                <button type="button" class="btn-iso-entendido" onclick="cerrarModalIndex()"><i class="fas fa-check me-2"></i> Entendido</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var CONTENIDO_MODALES_INDEX = {
+    proyecto: {
+        icono: 'fa-chart-line',
+        titulo: 'Proyecto en crecimiento',
+        sub: 'Mejora continua · Evolución permanente',
+        html: '<h4>Un proyecto en constante evolución</h4>' +
+            '<p>El sistema de gestión de nóminas es un proyecto vivo que crece cada día: se incorporan nuevas funciones, se corrigen errores y se optimizan los procesos a partir del uso real y de las sugerencias de sus usuarios.</p>' +
+            '<h4>Modelo shareware</h4>' +
+            '<p>Se distribuye libremente y sin fines de lucro, permitiendo que cada institución lo adopte y aproveche sin barreras económicas.</p>' +
+            '<h4>Calidad basada en la comunidad</h4>' +
+            '<p>Cada actualización se produce con la retroalimentación de especialistas contables, de recursos humanos y de TI, garantizando un producto cada vez más sólido y alineado con la normativa vigente.</p>'
+    },
+    backup: {
+        icono: 'fa-cloud-upload-alt',
+        titulo: 'Backup automático',
+        sub: 'Copias de seguridad · Respaldo de la información',
+        html: '<h4>Protección de tus datos</h4>' +
+            '<p>El sistema dispone de un módulo de Backup/Restore para generar copias de seguridad de la base de datos (estructura, datos y configuraciones) y restaurarlas cuando sea necesario.</p>' +
+            '<h4>Respaldo periódico</h4>' +
+            '<p>Se recomienda programar copias periódicas (diarias o semanales) y almacenarlas en un medio seguro, garantizando la continuidad del negocio ante cualquier eventualidad.</p>' +
+            '<h4>Restauración confiable</h4>' +
+            '<p>El asistente de restauración valida la integridad de la copia antes de aplicarla, minimizando los riesgos de pérdida de información.</p>'
+    },
+    bd: {
+        icono: 'fa-database',
+        titulo: 'Base de Datos',
+        sub: 'MySQL 8.0 · Alta disponibilidad',
+        html: '<h4>Motor robusto y confiable</h4>' +
+            '<p>El sistema opera sobre MySQL 8.0, un motor de bases de datos reconocido por su rendimiento, estabilidad y madurez a nivel mundial.</p>' +
+            '<h4>Integridad y consistencia</h4>' +
+            '<p>Los movimientos de nóminas, submayores y pagos se registran con integridad referencial y transacciones atómicas, garantizando que los cálculos siempre sean verificables.</p>' +
+            '<h4>Alta disponibilidad</h4>' +
+            '<p>Diseñado para operar en servidores locales con alta disponibilidad, permitiendo consultas y procesos en tiempo real dentro de la red de la institución.</p>'
+    },
+    seguridad: {
+        icono: 'fa-shield-alt',
+        titulo: 'Seguridad',
+        sub: 'Cifrado SSL · Autenticación 2FA',
+        html: '<h4>Comunicación cifrada</h4>' +
+            '<p>Las conexiones web se protegen mediante cifrado SSL, evitando que las credenciales y la información sensible viajen en texto plano.</p>' +
+            '<h4>Autenticación reforzada</h4>' +
+            '<p>Se soporta autenticación en dos pasos (2FA) y login con cuenta de Google, además del control de acceso por roles y permisos por módulo.</p>' +
+            '<h4>Secretos protegidos</h4>' +
+            '<p>Las contraseñas SMTP y credenciales OAuth se almacenan cifradas en la base de datos, y las contraseñas de los usuarios se guardan con hash seguro.</p>'
+    },
+    sincroniza: {
+        icono: 'fa-sync-alt',
+        titulo: 'Sincronización',
+        sub: 'Actualizaciones en tiempo real',
+        html: '<h4>Información siempre al día</h4>' +
+            '<p>Los cambios realizados en el sistema se reflejan de inmediato: saldos de vacaciones, pagos adicionales, reportes y estados de nóminas se actualizan en tiempo real.</p>' +
+            '<h4>Cálculos consistentes</h4>' +
+            '<p>Cada modificación recalcula automáticamente los valores dependientes, manteniendo la coherencia entre submayores, acumulados y reportes.</p>' +
+            '<h4>Operación en red local</h4>' +
+            '<p>Al operar dentro de la red de la institución, todos los usuarios trabajan sobre la misma información sin necesidad de sincronización manual.</p>'
+    },
+    soporte: {
+        icono: 'fa-headset',
+        titulo: 'Soporte 24/7',
+        sub: 'Asistencia prioritaria',
+        html: '<h4>Canal directo de ayuda</h4>' +
+            '<p>Cuenta con el <b>formulario de Soporte Técnico</b> para crear tickets de atención por categorías (errores, cálculos, accesos, instalación de BD, entre otros).</p>' +
+            '<h4>Vías de contacto</h4>' +
+            '<p>Puede contactar por la <b>página de Contacto</b>, por <b>WhatsApp</b> o al correo de soporte durante el horario laboral.</p>' +
+            '<h4>Respuesta prioritaria</h4>' +
+            '<p>Los reportes de incidencias se atienden con prioridad, garantizando la mínima interrupción de los procesos de pago y control.</p>'
+    }
+};
+
+function abrirModalIndex(tipo) {
+    var cfg = CONTENIDO_MODALES_INDEX[tipo] || CONTENIDO_MODALES_INDEX.proyecto;
+    document.getElementById('modalIdxIcon').className = 'fas ' + cfg.icono + ' tt-icon';
+    document.getElementById('modalIdxTitulo').textContent = cfg.titulo;
+    document.getElementById('modalIdxSub').textContent = cfg.sub;
+    document.getElementById('modalIdxContenido').innerHTML = cfg.html;
+    document.getElementById('modalIndex').style.display = 'flex';
+}
+function cerrarModalIndex() {
+    document.getElementById('modalIndex').style.display = 'none';
+}
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') cerrarModalIndex();
+});
+document.querySelector('.iso27001-overlay') && document.querySelector('.iso27001-overlay').addEventListener('click', function (e) { if (e.target === this) cerrarModalIndex(); });
 </script>
 </body>
 </html>
