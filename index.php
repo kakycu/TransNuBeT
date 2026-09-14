@@ -1100,7 +1100,7 @@ function getBadge($codigo, $server_ok, $estados) {
 
     <div class="welcome-banner animate__animated animate__fadeInUp">
         <div style="display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
-            <img src="logotn.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
+            <img src="images/logotn.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
                  style="height: 135px; width: auto; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));"
                  onerror="this.onerror=null; this.style.display='none';">
             <div>
@@ -1981,6 +1981,15 @@ cards.forEach((card, index) => {
     card.style.animationDelay = `${index * 0.1}s`;
     card.classList.add('animate__animated', 'animate__fadeInUp');
 });
+</script>
+<script>
+/*document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+document.addEventListener('selectstart', function (e) { e.preventDefault(); });
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'F12' || (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.shiftKey === true && (e.key === 'i' || e.key === 'I')))) {
+        e.preventDefault();
+    }
+});*/
 </script>
 </body>
 </html>

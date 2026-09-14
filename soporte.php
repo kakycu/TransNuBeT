@@ -316,6 +316,21 @@ header.top .badges span {
     word-break: break-word;
     overflow-wrap: anywhere;
 }
+.modal-titlebar .win-caption { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.cap-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .12);
+    color: #e2e8f0;
+    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.cap-btn:hover { background: rgba(255, 255, 255, .25); color: #fff; }
+button.cap-btn { border: none; cursor: pointer; padding: 0; font-family: inherit; }
+.cap-btn.close:hover { background: #ef4444; color: #fff; }
 .step-body { padding: 4px clamp(12px, 3vw, 15px) 12px; }
 .panel-desc {
     color: var(--muted);
@@ -589,6 +604,12 @@ footer {
         <div class="modal-titlebar">
             <i class="fa-solid fa-headset tt-icon"></i>
             <span class="tt-text"><?php echo $SITE_NAME .' ' .$support_id; ?></span>
+            <div class="win-caption">
+                <a class="cap-btn" href="index.php" title="Ir al Inicio"><i class="fas fa-house"></i></a>
+                <a class="cap-btn" href="nominas/" title="Entrar al Sistema"><i class="fas fa-key"></i></a>
+                <a class="cap-btn" href="javascript:history.back()" title="Regresar Atr&aacute;s"><i class="fas fa-arrow-left"></i></a>
+                <a class="cap-btn close" href="index.php" title="Cerrar"><i class="fas fa-xmark"></i></a>
+            </div>
         </div>
         <div class="step-body">
             <p class="panel-desc">
@@ -714,12 +735,6 @@ footer {
                     <h4>Reporte de incidencias</h4>
                     <p>Env&iacute;e un correo con el asunto <b>[INCIDENCIA]</b> describiendo el problema y adjuntando capturas si es posible.</p>
                 </div>
-            </div>
-
-            <div class="actions">
-                <a href="index.php" class="btn btn-outline"><i class="fas fa-house"></i>&nbsp;Ir al Inicio</a>
-                <a href="nominas/" class="btn btn-outline"><i class="fas fa-key"></i>&nbsp;Entrar al Sistema</a>
-                <button onclick="history.back()" class="btn btn-outline"><i class="fas fa-arrow-left"></i>&nbsp;Regresar atr&aacute;s</button>
             </div>
 
             <div class="footer-links">

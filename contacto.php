@@ -3129,7 +3129,7 @@ if (i > 0) pdf.addPage('letter', 'portrait');
         'ql-link': 'Enlace', 'ql-video': 'Insertar video', 'ql-formula': 'Insertar formula',
         'ql-clean': 'Limpiar formato',
         'ql-emoji-btn': 'Emojis', 'ql-attach-btn': 'Adjuntar archivo',
-        'ql-html-btn': 'Ver HTML', 'ql-print-btn': 'Imprimir',
+        'ql-html-btn': 'Ver HTML', 'ql-print-btn': 'Imprimir', 'ql-pdf-btn': 'Exportar PDF',
         'ql-size-custom': 'Tamaño de letra', 'ql-sym-btn': 'Caracteres especiales',
         'ql-table-btn': 'Insertar tabla', 'ql-img-btn': 'Insertar imagen',
         'ql-color': 'Color de texto', 'ql-background': 'Color de fondo',
