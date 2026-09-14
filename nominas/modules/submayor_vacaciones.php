@@ -75,8 +75,20 @@ if (!function_exists('formatearMoneda')) {
 }
 if (!function_exists('numeroRomano')) {
     function numeroRomano($numero) {
-        $romanos = [1=>'I',2=>'II',3=>'III',4=>'IV',5=>'V',6=>'VI',7=>'VII',8=>'VIII',9=>'IX',10=>'X',11=>'XI',12=>'XII',13=>'XIII',14=>'XIV',15=>'XV',16=>'XVI'];
-        return $romanos[$numero] ?? $numero;
+        $numero = (int)$numero;
+        if ($numero < 1 || $numero > 3999) {
+            return (string)$numero;
+        }
+        $valores  = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+        $simbolos = ['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I'];
+        $resultado = '';
+        for ($i = 0; $i < count($valores); $i++) {
+            while ($numero >= $valores[$i]) {
+                $resultado .= $simbolos[$i];
+                $numero -= $valores[$i];
+            }
+        }
+        return $resultado;
     }
 }
 if (!function_exists('nombreMesEspanol')) {
@@ -279,6 +291,8 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
             cc.nombre as centro_costo,
             cp.nombre_cargo as cargo,
             e.salario_mensual,
+            e.escala_numero,
+            co.nombre as categoria_ocupacional,
             COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'acumulacion' THEN sv.dias
                               WHEN sv.tipo_movimiento = 'disfrute' THEN -sv.dias
                               ELSE sv.dias END), 0) as saldo_periodo,
@@ -296,6 +310,7 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
         LEFT JOIN centros_costo cc ON t.centro_costo_id = cc.id
         LEFT JOIN cargos_plantilla cp ON t.cargo_id = cp.id
         LEFT JOIN escalas_salariales e ON t.escala_salarial_id = e.id
+        LEFT JOIN categorias_ocupacionales co ON t.categoria_ocupacional_id = co.id
         WHERE 1=1
     ";
     
@@ -317,7 +332,7 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
     }
     
     // Agrupación necesaria para sumar el saldo del período por trabajador
-    $sql_versat .= " GROUP BY t.id, t.codigo, t.nombre_completo, t.ci, t.tipo_contrato, a.id, a.nombre_area, a.codigo, cc.id, cc.codigo, cc.nombre, cp.nombre_cargo, e.salario_mensual";
+    $sql_versat .= " GROUP BY t.id, t.codigo, t.nombre_completo, t.ci, t.tipo_contrato, a.id, a.nombre_area, a.codigo, cc.id, cc.codigo, cc.nombre, cp.nombre_cargo, e.salario_mensual, e.escala_numero, co.nombre";
     
     // Agregar ORDER BY según agrupación
     switch ($versat_agrupar) {
@@ -329,6 +344,12 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
             break;
         case 'contrato':
             $sql_versat .= " ORDER BY t.tipo_contrato, t.nombre_completo";
+            break;
+        case 'escala':
+            $sql_versat .= " ORDER BY e.escala_numero, t.nombre_completo";
+            break;
+        case 'categoria':
+            $sql_versat .= " ORDER BY co.nombre, t.nombre_completo";
             break;
         default:
             $sql_versat .= " ORDER BY t.nombre_completo";
@@ -391,6 +412,25 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
                 $grupo_nombre = $row['tipo_contrato'] ?? 'Sin Tipo de Contrato';
                 $grupo_codigo = '';
                 $grupo_tipo = 'contrato';
+                break;
+case 'escala':
+    if ($row['escala_numero'] !== null && $row['escala_numero'] !== '') {
+        $num_arabigo = (int)$row['escala_numero'];
+        $num_romano  = numeroRomano($num_arabigo);
+        $grupo_id     = 'escala_' . $num_arabigo;
+        $grupo_nombre = 'Escala ' . $num_arabigo . ' - ' . $num_romano;
+    } else {
+        $grupo_id     = 'sin_escala';
+        $grupo_nombre = 'Sin Escala';
+    }
+    $grupo_codigo = '';
+    $grupo_tipo = 'escala';
+    break;
+            case 'categoria':
+                $grupo_id = $row['categoria_ocupacional'] ?? 'sin_categoria';
+                $grupo_nombre = $row['categoria_ocupacional'] ?? 'Sin Categoría';
+                $grupo_codigo = '';
+                $grupo_tipo = 'categoria';
                 break;
             default:
                 $grupo_id = 'todos';
@@ -570,7 +610,7 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
             }
             @media print {
                 body { padding:0; }
-                .no-print { display: none; }
+                .no-print { display: none !important; }
                 .page-sheet { height:100vh; }
             }
             #auto-hide-toolbar { transition: transform 0.3s ease; }
@@ -590,6 +630,316 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
             .report-header, .filtros-aplicados, .grupo-header {
                 page-break-inside: avoid;
             }
+/* ============================================================
+   RESPONSIVE GLOBAL — Submayor de Vacaciones
+   Refuerzos PC grande / tablet / móvil / móvil pequeño
+   ============================================================ */
+
+/* Evitar scroll horizontal */
+html, body { overflow-x: hidden; max-width: 100vw; }
+body { word-wrap: break-word; overflow-wrap: break-word; }
+
+/* ============ TOPBAR ============ */
+.win-topbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.win-topbar > div:first-child {
+    flex-wrap: wrap;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.win-topbar > div:last-child {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+.page-title h1 {
+    font-size: clamp(0.95rem, 3vw, 1.5rem);
+    line-height: 1.25;
+    word-break: break-word;
+}
+.page-title p {
+    font-size: clamp(0.72rem, 2.2vw, 0.8rem);
+}
+
+/* ============ STATS GRID ============ */
+.stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+.stat-card-prof { min-width: 0; }
+.stat-value {
+    font-size: clamp(1.05rem, 3.2vw, 1.45rem);
+    word-break: break-word;
+}
+.stat-label { font-size: clamp(0.62rem, 1.9vw, 0.7rem); }
+.stat-sub { font-size: clamp(0.62rem, 1.8vw, 0.74rem); }
+
+/* ============ FILTROS GRID ============ */
+.filtros-grid {
+    /* Base: 12 columnas PC */
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 0.75rem 0.875rem;
+}
+/* En tablet: 6 columnas y reseteo de spans grandes */
+@media (max-width: 1024px) {
+    .filtros-grid { grid-template-columns: repeat(6, 1fr); }
+    .filtros-grid .f-item[style*="span 8"] { grid-column: span 6 !important; }
+    .filtros-grid .f-item[style*="span 4"] { grid-column: span 3 !important; }
+    .filtros-grid .f-item[style*="span 3"] { grid-column: span 3 !important; }
+    .filtros-grid .f-item[style*="span 2"] { grid-column: span 2 !important; }
+}
+/* En móvil: 2 columnas y todo full width */
+@media (max-width: 768px) {
+    .filtros-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .filtros-grid .f-item[style] { grid-column: 1 / -1 !important; }
+}
+/* En móvil pequeño: 1 columna */
+@media (max-width: 480px) {
+    .filtros-grid { grid-template-columns: 1fr; }
+}
+
+/* ============ CARDS ============ */
+.card-prof { min-width: 0; }
+.card-head {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: clamp(0.7rem, 2vw, 1rem) clamp(0.85rem, 2.5vw, 1.25rem);
+}
+.card-head h5 {
+    font-size: clamp(0.85rem, 2.6vw, 0.98rem);
+    word-break: break-word;
+    min-width: 0;
+}
+.card-body-prof {
+    padding: clamp(0.8rem, 2.5vw, 1.125rem) clamp(0.85rem, 2.5vw, 1.25rem);
+}
+
+/* ============ TABS ============ */
+.tabs-prof {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding: 0.3rem;
+}
+.tabs-prof::-webkit-scrollbar { height: 4px; }
+.tabs-prof::-webkit-scrollbar-thumb { background: rgba(96,165,250,0.5); border-radius: 3px; }
+.tab-prof {
+    font-size: clamp(0.72rem, 2.2vw, 0.83rem);
+    padding: clamp(0.45rem, 1.6vw, 0.56rem) clamp(0.65rem, 2vw, 1rem);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.tab-prof .count { font-size: clamp(0.6rem, 1.8vw, 0.68rem); }
+
+/* ============ TABLAS ============ */
+.table-prof-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+.table-prof-wrap::-webkit-scrollbar { height: 6px; }
+.table-prof-wrap::-webkit-scrollbar-thumb { background: rgba(96,165,250,0.5); border-radius: 3px; }
+
+.table-prof { font-size: clamp(0.72rem, 2.2vw, 0.82rem); }
+.table-prof thead th {
+    font-size: clamp(0.62rem, 1.9vw, 0.7rem);
+    padding: clamp(0.5rem, 1.8vw, 0.75rem) clamp(0.4rem, 1.5vw, 0.75rem);
+}
+.table-prof tbody td {
+    padding: clamp(0.5rem, 1.8vw, 0.68rem) clamp(0.4rem, 1.5vw, 0.75rem);
+}
+.table-prof tfoot td {
+    padding: clamp(0.5rem, 1.8vw, 0.68rem) clamp(0.4rem, 1.5vw, 0.75rem);
+}
+
+/* DataTables: scroll interno adaptativo */
+@media (max-width: 768px) {
+    .dataTables_wrapper .dataTables_scrollBody { max-height: 60vh !important; }
+}
+@media (max-width: 480px) {
+    .dataTables_wrapper .dataTables_scrollBody { max-height: 50vh !important; }
+}
+
+/* ============ DATATABLES CONTROLES ============ */
+.dataTables_wrapper .dt-toolbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.dt-length, .dt-search, .dt-buttons {
+    min-width: 0;
+}
+.dt-search .input-group { width: 100% !important; max-width: 100%; }
+.dataTables_wrapper .d-flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.dt-pagination { flex-wrap: wrap; justify-content: center; }
+.dataTables_paginate { flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+    .dt-length, .dt-buttons, .dt-search { width: 100%; }
+    .dt-length label { justify-content: flex-start; }
+    .dt-buttons { justify-content: flex-start; }
+    .dt-info { text-align: center; width: 100%; }
+}
+@media (max-width: 480px) {
+    .dataTables_paginate .paginate_button {
+        padding: 0.3rem 0.5rem !important;
+        margin: 0.1rem !important;
+        font-size: 0.72rem;
+    }
+}
+
+/* ============ INFO GRID ============ */
+.info-grid { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+.info-card-prof { min-width: 0; }
+.info-card-prof .val { font-size: clamp(0.85rem, 2.6vw, 1rem); word-break: break-word; }
+.info-card-prof .lbl { font-size: clamp(0.6rem, 1.9vw, 0.68rem); }
+
+/* Info-grid especial del offcanvas (3 columnas inline) */
+.offcanvas-body .info-grid { grid-template-columns: 1fr !important; }
+@media (min-width: 768px) {
+    .offcanvas-body .info-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+/* ============ MODALES ============ */
+.modal-content-prof {
+    max-height: calc(100vh - 1rem);
+    display: flex;
+    flex-direction: column;
+}
+.modal-content-prof .modal-body { overflow-y: auto; }
+
+@media (max-width: 768px) {
+    .modal-dialog { margin: 0.25rem; }
+    .modal-dialog.modal-xl { max-width: 100%; }
+    .modal-content-prof { border-radius: 0.75rem; }
+    .modal-content-prof .modal-header { padding: 0.7rem 0.9rem; }
+    .modal-content-prof .modal-body { padding: 0.85rem; }
+    .modal-content-prof .modal-footer { padding: 0.7rem 0.9rem; flex-wrap: wrap; gap: 0.4rem; }
+    .modal-content-prof .modal-footer .btn-prof { flex: 1 1 45%; }
+    .modal-title { font-size: clamp(0.85rem, 2.8vw, 1rem); }
+}
+
+/* Secciones del modal de ajuste */
+.ajuste-seccion {
+    padding: clamp(0.5rem, 2vw, 0.625rem) clamp(0.6rem, 2.2vw, 0.875rem);
+}
+.ajuste-seccion-titulo { font-size: clamp(0.7rem, 2.2vw, 0.78rem); }
+.ajuste-ficha {
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+    padding: clamp(0.5rem, 2vw, 0.625rem) clamp(0.6rem, 2.2vw, 0.75rem);
+}
+.ajuste-preview {
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    padding: clamp(0.7rem, 2.5vw, 0.875rem) clamp(0.7rem, 2.5vw, 1rem);
+}
+.ajuste-preview-item .val { font-size: clamp(0.85rem, 2.6vw, 1rem); word-break: break-word; }
+
+/* ============ OFFCANVAS ============ */
+.offcanvas-prof {
+    width: min(55rem, 96vw) !important;
+    max-width: 100vw;
+}
+@media (max-width: 480px) {
+    .offcanvas-prof { width: 100vw !important; }
+    .offcanvas-prof .offcanvas-header { padding: 0.7rem 0.9rem; }
+    .offcanvas-prof .offcanvas-body { padding: 0.85rem; }
+}
+
+/* Sticky header del auxiliar individual: offset dinámico */
+@media (max-width: 768px) {
+    #tablaHistorialIndividual thead tr:last-child th { top: 2rem !important; }
+    #tablaHistorialIndividual thead th {
+        font-size: clamp(0.6rem, 1.9vw, 0.68rem);
+        padding: 0.4rem 0.5rem;
+    }
+}
+
+/* ============ BANNER / RESUMEN ============ */
+.glass-card.p-4 {
+    padding: clamp(0.85rem, 3vw, 1rem) !important;
+}
+.glass-card .badge-factor { font-size: clamp(0.62rem, 1.9vw, 0.72rem); }
+
+/* ============ BOTONES FLOTANTES ============ */
+.scroll-quick-btns {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    gap: 0.4rem;
+}
+.scroll-quick-btn {
+    width: 2.4rem;
+    height: 2.4rem;
+    font-size: 0.85rem;
+    border-radius: 0.6rem;
+}
+@media (min-width: 768px) {
+    .scroll-quick-btns { right: 1.25rem; bottom: 1.25rem; }
+    .scroll-quick-btn { width: 2.75rem; height: 2.75rem; font-size: 1rem; border-radius: 0.75rem; }
+}
+
+/* ============ DROPDOWNS ============ */
+.dropdown-menu-win {
+    min-width: 14rem;
+    max-width: min(22rem, 92vw);
+}
+.dropdown-menu-win .dropdown-item {
+    font-size: clamp(0.75rem, 2.4vw, 0.9rem);
+    padding: 0.5rem 0.85rem !important;
+    word-break: break-word;
+    white-space: normal;
+}
+@media (max-width: 480px) {
+    .dropdown-menu-win { min-width: 12rem; max-width: 92vw; }
+}
+
+/* ============ FORMULARIOS ============ */
+.form-control-prof, .form-select-prof {
+    font-size: clamp(0.78rem, 2.4vw, 0.83rem) !important;
+    padding: clamp(0.42rem, 1.8vw, 0.5rem) clamp(0.6rem, 2vw, 0.75rem) !important;
+}
+.f-label { font-size: clamp(0.65rem, 2vw, 0.72rem); }
+
+/* ============ SELECT2 ============ */
+.select2-container--default .select2-selection--single {
+    height: clamp(2.2rem, 6vw, 2.375rem) !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: clamp(2.1rem, 5.8vw, 2.375rem) !important;
+    font-size: clamp(0.75rem, 2.4vw, 0.83rem) !important;
+}
+
+/* ============ UTILITARIOS ============ */
+[style*="white-space: nowrap"] { white-space: normal !important; }
+.text-truncate { max-width: 100%; }
+img, canvas, table { max-width: 100%; }
+
+/* ============ ACCESIBILIDAD ============ */
+@media (prefers-reduced-motion: reduce) {
+    .fade-in-up { animation: none !important; }
+    .win-topbar, .glass-card, .tab-prof { transition: none !important; }
+}
+
+/* Touch targets */
+@media (hover: none) and (pointer: coarse) {
+    .btn-win, .btn-win-sm, .btn-prof, .btn-icon-sm, .sidebar-toggle,
+    .scroll-quick-btn, .tab-prof { min-height: 2.4rem; }
+    .form-control-prof, .form-select-prof { min-height: 2.4rem; }
+}
+
+/* ============ MÓVIL MUY PEQUEÑO ============ */
+@media (max-width: 22.5rem) {
+    .stats-grid { grid-template-columns: 1fr !important; }
+    .page-title h1 { font-size: 0.92rem; }
+    .card-head h5 { font-size: 0.82rem; }
+    .table-prof { font-size: 0.68rem; }
+    .table-prof thead th, .table-prof tbody td { padding: 0.35rem 0.4rem; }
+    .scroll-quick-btn { width: 2.1rem; height: 2.1rem; font-size: 0.75rem; }
+}
         </style>
     </head>
     <body>
@@ -634,6 +984,12 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
             case 'contrato':
                 $html .= '📄 Tipo de Contrato: ' . htmlspecialchars($grupo['nombre']);
                 break;
+            case 'escala':
+                $html .= '📊 ' . htmlspecialchars($grupo['nombre']);
+                break;
+            case 'categoria':
+                $html .= '🏷️ Categoría: ' . htmlspecialchars($grupo['nombre']);
+                break;
             default:
                 $html .= '📊 ' . htmlspecialchars($grupo['nombre']);
         }
@@ -641,32 +997,32 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
         return $html;
     }
 
-    function versat_table_part($grupo, $start, $take, $isLast) {
-        $html = '<table><thead><tr>';
-        $html .= '<th>#</th><th>Código</th><th class="text-left">Trabajador</th><th>CI</th><th class="text-left">Cargo</th><th>Días Acumulados</th><th>Importe (CUP)</th>';
-        $html .= '</tr></thead><tbody>';
+	function versat_table_part($grupo, $start, $take, $isLast) {
+		$html = '<table><thead><tr>';
+		$html .= '<th>#</th><th>Código</th><th class="text-left">Trabajador</th><th>CI</th><th class="text-left">Cargo</th><th>Días Acumulados</th><th class="text-right">Importe (CUP)</th>';
+		$html .= '</tr></thead><tbody>';
         $filas = array_slice($grupo['trabajadores'], $start, $take);
         $nro = $start + 1;
-        foreach ($filas as $trabajador) {
-            $html .= '<tr>';
-            $html .= '<td class="text-center">' . $nro++ . '</td>';
-            $html .= '<td class="text-center">' . htmlspecialchars($trabajador['codigo']) . '</td>';
-            $html .= '<td class="text-left">' . htmlspecialchars($trabajador['nombre_completo']) . '</td>';
-            $html .= '<td class="text-center">' . htmlspecialchars($trabajador['ci']) . '</td>';
-            $html .= '<td class="text-left">' . htmlspecialchars($trabajador['cargo'] ?? '-') . '</td>';
-            $html .= '<td class="text-center">' . number_format($trabajador['saldo_dias'], 2) . ' días</td>';
-            $html .= '<td class="text-center">$' . number_format($trabajador['importe'], 2, '.', ',') . '</td>';
-            $html .= '</tr>';
-        }
-        $html .= '</tbody>';
-        if ($isLast) {
-            $html .= '<tfoot><tr class="subtotal-row">';
-            $html .= '<td colspan="5" class="text-center"><strong>TOTAL DEL GRUPO:</strong> (' . $grupo['total_trabajadores'] . ' trabajadores)</td>';
-            $html .= '<td class="text-center"><strong>' . number_format($grupo['total_dias'], 2) . ' días</strong></td>';
-            $html .= '<td class="text-center"><strong>$' . number_format($grupo['total_importe'], 2, '.', ',') . '</strong></td>';
-            $html .= '</tr></tfoot>';
-        }
-        $html .= '</table>';
+			foreach ($filas as $trabajador) {
+				$html .= '<tr>';
+				$html .= '<td class="text-center">' . $nro++ . '</td>';
+				$html .= '<td class="text-center">' . htmlspecialchars($trabajador['codigo']) . '</td>';
+				$html .= '<td class="text-left">' . htmlspecialchars($trabajador['nombre_completo']) . '</td>';
+				$html .= '<td class="text-center">' . htmlspecialchars($trabajador['ci']) . '</td>';
+				$html .= '<td class="text-left">' . htmlspecialchars($trabajador['cargo'] ?? '-') . '</td>';
+				$html .= '<td class="text-center">' . number_format($trabajador['saldo_dias'], 2) . ' días</td>';
+				$html .= '<td class="text-right">$' . number_format($trabajador['importe'], 2, '.', ',') . '</td>';
+				$html .= '</tr>';
+			}
+				$html .= '</tbody>';
+	if ($isLast) {
+		$html .= '<tfoot><tr class="subtotal-row">';
+		$html .= '<td colspan="5" class="text-center"><strong>TOTAL DEL GRUPO:</strong> (' . $grupo['total_trabajadores'] . ' trabajadores)</td>';
+		$html .= '<td class="text-center"><strong>' . number_format($grupo['total_dias'], 2) . ' días</strong></td>';
+		$html .= '<td class="text-right"><strong>$' . number_format($grupo['total_importe'], 2, '.', ',') . '</strong></td>';
+		$html .= '</tr></tfoot>';
+	}
+			$html .= '</table>';
         return $html;
     }
 
@@ -689,14 +1045,16 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
 
     $filtros_html = '<div class="filtros-aplicados">';
     $filtros_html .= '<strong>📊 Parámetros del reporte:</strong><br>';
-    $filtros_html .= '• Agrupado por: ';
-    switch ($versat_agrupar) {
-        case 'area': $filtros_html .= 'Área / Departamento'; break;
-        case 'centro_costo': $filtros_html .= 'Centro de Costo'; break;
-        case 'contrato': $filtros_html .= 'Tipo de Contrato'; break;
-        default: $filtros_html .= 'Sin agrupación';
-    }
-    $filtros_html .= '<br>• Período: ';
+	$filtros_html .= '• Agrupado por: <b>';
+	switch ($versat_agrupar) {
+		case 'area':         $filtros_html .= 'Área / Departamento'; break;
+		case 'centro_costo': $filtros_html .= 'Centro de Costo'; break;
+		case 'contrato':     $filtros_html .= 'Tipo de Contrato'; break;
+		case 'escala':       $filtros_html .= 'Escala Salarial'; break;
+		case 'categoria':    $filtros_html .= 'Categoría Ocupacional'; break;
+		default:             $filtros_html .= 'Sin agrupación';
+	}
+    $filtros_html .= '</b><br>• Período: <b>';
     if ($versat_anio !== '' && $versat_mes !== '') {
         $filtros_html .= htmlspecialchars(nombreMesEspanol($versat_mes) . ' de ' . $versat_anio);
     } elseif ($versat_anio !== '') {
@@ -704,12 +1062,12 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
     } else {
         $filtros_html .= 'Todos (histórico del submayor)';
     }
-    $filtros_html .= '<br>• Rango de días: ';
+    $filtros_html .= '</b><br>• Rango de días: <b>';
     $min_texto = ($versat_dias_min !== '') ? "≥ {$versat_dias_min} días" : 'sin mínimo';
     $max_texto = ($versat_dias_max !== '') ? "≤ {$versat_dias_max} días" : 'sin máximo';
     $filtros_html .= $min_texto . ' | ' . $max_texto;
-    $filtros_html .= '<br>• Tipo de contrato: ' . ($versat_tipo_contrato !== '' ? htmlspecialchars($versat_tipo_contrato) : 'Todos');
-    $filtros_html .= '<br>• Base de cálculo: ' . $dias_laborables_versat . ' días laborables por mes (9.09%)';
+    $filtros_html .= '</b><br>• Tipo de contrato: <b>' . ($versat_tipo_contrato !== '' ? htmlspecialchars($versat_tipo_contrato) : 'Todos');
+    $filtros_html .= '</b><br>• Base de cálculo: <b>' . $dias_laborables_versat . ' días laborables por mes (9.09%)';
     $filtros_html .= '</div>';
 
     // Hoja 1: cabecera + parámetros
@@ -751,11 +1109,11 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
 
         // Total general + pie + firmas
         if ($used + VERSAT_TOT + VERSAT_FOOTR + VERSAT_SIG > VERSAT_BUDGET) versat_next($sheets, $frag, $used, $header_html);
-        $total_html = '<div class="grupo-container"><table style="margin-top:1.25rem;"><tfoot><tr class="total-general-row">';
-        $total_html .= '<td colspan="5" class="text-center"><strong>TOTAL GENERAL DEL REPORTE:</strong> (' . $total_general_trabajadores . ' trabajadores)</td>';
-        $total_html .= '<td class="text-center"><strong>' . number_format($total_general_dias, 2) . ' días</strong></td>';
-        $total_html .= '<td class="text-center"><strong>$' . number_format($total_general_importe, 2, '.', ',') . '</strong></td>';
-        $total_html .= '</tr></tfoot></table></div>';
+		$total_html = '<div class="grupo-container"><table style="margin-top:1.25rem;"><tfoot><tr class="total-general-row">';
+		$total_html .= '<td colspan="5" class="text-center"><strong>TOTAL GENERAL DEL REPORTE:</strong> (' . $total_general_trabajadores . ' trabajadores)</td>';
+		$total_html .= '<td class="text-center"><strong>' . number_format($total_general_dias, 2) . ' días</strong></td>';
+		$total_html .= '<td class="text-right"><strong>$' . number_format($total_general_importe, 2, '.', ',') . '</strong></td>';
+		$total_html .= '</tr></tfoot></table></div>';
         versat_add($frag, $used, $total_html, VERSAT_TOT);
 
         $footer_html = '<div class="footer">';
@@ -1141,7 +1499,7 @@ try {
 <head>
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Submayor de Vacaciones | <?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
     
@@ -2045,6 +2403,197 @@ IMPRESIÓN ============ */
     .tab-pane-prof { display: block !important; }
 }
 
+/* ============================================================
+   FIX TOPBAR + BANNER — Submayor de Vacaciones en móvil
+   ============================================================ */
+
+/* ---------- TOPBAR: apilar por filas ---------- */
+.win-topbar {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 0.6rem !important;
+    padding: clamp(0.6rem, 2.5vw, 0.75rem) clamp(0.75rem, 3vw, 1.5rem) !important;
+}
+.win-topbar > div:first-child {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+}
+.win-topbar > div:last-child {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    justify-content: flex-end !important;
+}
+
+/* El título nunca debe forzar scroll horizontal */
+.win-topbar .page-title {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden;
+}
+.win-topbar .page-title h1 {
+    font-size: clamp(0.95rem, 3vw, 1.5rem) !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    margin: 0 !important;
+}
+.win-topbar .page-title p {
+    font-size: clamp(0.7rem, 2.2vw, 0.8rem) !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    margin: 0.15rem 0 0 !important;
+}
+.win-topbar .page-title i {
+    flex-shrink: 0;
+}
+
+/* ---------- BOTONES DEL TOPBAR ---------- */
+.win-topbar .btn-prof,
+.win-topbar .btn-win,
+.win-topbar .dropdown,
+.win-topbar .dropdown > button {
+    flex-shrink: 0 !important;
+    max-width: 100%;
+    white-space: nowrap;
+}
+.win-topbar .btn-prof,
+.win-topbar .btn-win {
+    font-size: clamp(0.72rem, 2.4vw, 0.85rem) !important;
+    padding: clamp(0.4rem, 1.8vw, 0.5rem) clamp(0.6rem, 2.4vw, 1rem) !important;
+}
+
+/* ---------- RELOJ + FECHA (si el user_menu lo incluye) ---------- */
+.win-topbar .date-badge,
+.win-topbar #liveClock,
+.win-topbar .user-menu {
+    flex-shrink: 0 !important;
+    max-width: 100%;
+}
+.win-topbar .user-menu {
+    flex-wrap: wrap;
+    gap: 0.4rem !important;
+    justify-content: flex-end;
+}
+
+/* ---------- MÓVIL: apilar todo en columna ---------- */
+@media (max-width: 768px) {
+    .win-topbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.65rem !important;
+    }
+    .win-topbar > div:first-child {
+        width: 100% !important;
+        justify-content: flex-start;
+    }
+    .win-topbar > div:last-child {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+    }
+    /* Los botones del topbar ocupan fila completa si hay varios */
+    .win-topbar > div:last-child > .btn-prof,
+    .win-topbar > div:last-child > .btn-win,
+    .win-topbar > div:last-child > .dropdown {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .win-topbar > div:last-child > .dropdown > button {
+        width: 100%;
+        justify-content: center;
+    }
+    /* El sidebar-toggle queda junto al título en su propia fila */
+    .win-topbar > div:first-child > .sidebar-toggle {
+        flex-shrink: 0;
+    }
+}
+@media (max-width: 480px) {
+    .win-topbar {
+        padding: 0.55rem 0.65rem !important;
+    }
+    .win-topbar .page-title h1 {
+        font-size: 1rem !important;
+    }
+    .win-topbar .page-title p {
+        font-size: 0.72rem !important;
+    }
+    .win-topbar .btn-prof,
+    .win-topbar .btn-win {
+        font-size: 0.76rem !important;
+        padding: 0.4rem 0.7rem !important;
+    }
+    /* Botones del topbar a fila completa si son muy anchos */
+    .win-topbar > div:last-child {
+        gap: 0.4rem !important;
+    }
+}
+@media (max-width: 360px) {
+    .win-topbar .page-title h1 { font-size: 0.92rem !important; }
+    .win-topbar .page-title p { font-size: 0.68rem !important; }
+    .win-topbar .btn-prof,
+    .win-topbar .btn-win { font-size: 0.72rem !important; padding: 0.35rem 0.6rem !important; }
+}
+
+/* ============================================================
+   BANNER "Bases de Auditoría Cubana"
+   ============================================================ */
+
+/* El banner usa <div class="glass-card mb-4 p-4 fade-in-up"> */
+.glass-card.mb-4.p-4 {
+    padding: clamp(0.85rem, 3vw, 1rem) clamp(0.85rem, 3vw, 1rem) !important;
+    margin-bottom: clamp(0.7rem, 2.5vw, 1rem) !important;
+}
+.glass-card.mb-4.p-4 > .d-flex {
+    flex-wrap: wrap !important;
+    gap: 0.6rem !important;
+    align-items: flex-start !important;
+}
+.glass-card.mb-4.p-4 .flex-grow-1 {
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+}
+.glass-card.mb-4.p-4 .d-flex.align-items-center {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+}
+.glass-card.mb-4.p-4 .d-flex.align-items-center > i {
+    flex-shrink: 0;
+}
+.glass-card.mb-4.p-4 strong {
+    font-size: clamp(0.9rem, 2.8vw, 1rem);
+    word-break: break-word;
+}
+.glass-card.mb-4.p-4 .badge-factor {
+    font-size: clamp(0.62rem, 1.9vw, 0.72rem);
+    white-space: nowrap;
+}
+.glass-card.mb-4.p-4 p {
+    font-size: clamp(0.78rem, 2.4vw, 0.85rem) !important;
+    line-height: 1.5 !important;
+    word-break: break-word !important;
+    margin-top: 0.4rem !important;
+    margin-bottom: 0 !important;
+}
+.glass-card.mb-4.p-4 p strong {
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* En móvil el banner se apila completamente */
+@media (max-width: 480px) {
+    .glass-card.mb-4.p-4 .d-flex.align-items-center {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    .glass-card.mb-4.p-4 .d-flex.align-items-center > i {
+        font-size: 1.5rem !important;
+    }
+}
 
 </style>
 
@@ -4948,6 +5497,41 @@ function limpiarFiltrosDiasVersat() {
 
 </script>
 
+<?php
+// ============================================================
+// AÑOS Y MESES REALES EXISTENTES EN EL SUBMAYOR DE VACACIONES
+// ============================================================
+$stmt_periodos_versat = $pdo->query(
+    "SELECT YEAR(periodo_desde) AS y, MONTH(periodo_desde) AS m FROM submayor_vacaciones
+     GROUP BY y, m
+     UNION SELECT YEAR(periodo_hasta), MONTH(periodo_hasta) FROM submayor_vacaciones GROUP BY 1, 2");
+$versat_meses_por_anio = [];
+while ($row_per = $stmt_periodos_versat->fetch(PDO::FETCH_ASSOC)) {
+    $versat_meses_por_anio[(int)$row_per['y']][(int)$row_per['m']] = true;
+}
+$versat_anios_reales = array_keys($versat_meses_por_anio);
+if (empty($versat_anios_reales)) {
+    $versat_anios_reales = [(int)date('Y')];
+    $versat_meses_por_anio[(int)date('Y')] = array_fill_keys(range(1, 12), true);
+}
+rsort($versat_anios_reales);
+
+$versat_anio_modal = $_GET['versat_anio'] ?? '';
+$versat_mes_modal  = $_GET['versat_mes'] ?? '';
+
+if ($versat_anio_modal !== '' && isset($versat_meses_por_anio[(int)$versat_anio_modal])) {
+    $versat_meses_modal = array_keys($versat_meses_por_anio[(int)$versat_anio_modal]);
+} else {
+    $versat_meses_modal = [];
+    foreach ($versat_meses_por_anio as $mm) {
+        foreach ($mm as $m => $v) $versat_meses_modal[$m] = true;
+    }
+    $versat_meses_modal = array_keys($versat_meses_modal);
+}
+sort($versat_meses_modal);
+$versat_json_meses_por_anio = json_encode($versat_meses_por_anio);
+?>
+
 <!-- ==========================================
      MODAL DE REPORTE VERSAT - FILTROS AVANZADOS
      ========================================== -->
@@ -4966,16 +5550,22 @@ function limpiarFiltrosDiasVersat() {
                     <div class="row g-3 mb-4">
                         <div class="col-md-12">
                             <label class="f-label fw-bold mb-2"><i class="fas fa-layer-group me-1" style="color:#818cf8;"></i> Agrupar por:</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="versat_agrupar" id="agruparArea" value="area" autocomplete="off" checked>
-                                <label class="btn btn-outline-primary" for="agruparArea"><i class="fas fa-building me-1"></i> Área</label>
-                                
-                                <input type="radio" class="btn-check" name="versat_agrupar" id="agruparCentroCosto" value="centro_costo" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="agruparCentroCosto"><i class="fas fa-chart-pie me-1"></i> Centro Costo</label>
-                                
-                                <input type="radio" class="btn-check" name="versat_agrupar" id="agruparContrato" value="contrato" autocomplete="off">
-                                <label class="btn btn-outline-primary" for="agruparContrato"><i class="fas fa-file-contract me-1"></i> Tipo Contrato</label>
-                            </div>
+							<div class="btn-group w-100" role="group">
+								<input type="radio" class="btn-check" name="versat_agrupar" id="agruparArea" value="area" autocomplete="off" checked>
+								<label class="btn btn-outline-primary" for="agruparArea"><i class="fas fa-building me-1"></i> Área</label>
+								
+								<input type="radio" class="btn-check" name="versat_agrupar" id="agruparCentroCosto" value="centro_costo" autocomplete="off">
+								<label class="btn btn-outline-primary" for="agruparCentroCosto"><i class="fas fa-chart-pie me-1"></i> Centro Costo</label>
+								
+								<input type="radio" class="btn-check" name="versat_agrupar" id="agruparContrato" value="contrato" autocomplete="off">
+								<label class="btn btn-outline-primary" for="agruparContrato"><i class="fas fa-file-contract me-1"></i> Tipo Contrato</label>
+
+								<input type="radio" class="btn-check" name="versat_agrupar" id="agruparEscalaVersat" value="escala" autocomplete="off">
+								<label class="btn btn-outline-primary" for="agruparEscalaVersat"><i class="fas fa-layer-group me-1"></i> Escala</label>
+
+								<input type="radio" class="btn-check" name="versat_agrupar" id="agruparCategoriaVersat" value="categoria" autocomplete="off">
+								<label class="btn btn-outline-primary" for="agruparCategoriaVersat"><i class="fas fa-tags me-1"></i> Categoría</label>
+							</div>
                         </div>
                     </div>
 
@@ -4985,18 +5575,18 @@ function limpiarFiltrosDiasVersat() {
                             <label class="f-label fw-bold mb-2"><i class="fas fa-calendar-alt me-1" style="color:#818cf8;"></i> Año:</label>
                             <select name="versat_anio" id="versatAnio" class="form-select-prof">
                                 <option value="">-- Todos (histórico) --</option>
-                                <?php for($y = date('Y')-2; $y <= date('Y')+5; $y++): ?>
-                                    <option value="<?php echo $y; ?>" <?php echo ($versat_anio ?? '') == $y ? 'selected' : ''; ?>><?php echo $y; ?></option>
-                                <?php endfor; ?>
+                                <?php foreach ($versat_anios_reales as $y): ?>
+                                    <option value="<?php echo $y; ?>" <?php echo ($versat_anio_modal == $y ? 'selected' : ''); ?>><?php echo $y; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="f-label fw-bold mb-2"><i class="fas fa-moon me-1" style="color:#818cf8;"></i> Mes:</label>
                             <select name="versat_mes" id="versatMes" class="form-select-prof">
                                 <option value="">-- Todos --</option>
-                                <?php for($m = 1; $m <= 12; $m++): $m_pad = str_pad($m, 2, '0', STR_PAD_LEFT); ?>
-                                    <option value="<?php echo $m_pad; ?>" <?php echo ($versat_mes ?? '') == $m_pad ? 'selected' : ''; ?>><?php echo nombreMesEspanol($m_pad); ?></option>
-                                <?php endfor; ?>
+                                <?php foreach ($versat_meses_modal as $m_opt): $m_pad = str_pad($m_opt, 2, '0', STR_PAD_LEFT); ?>
+                                    <option value="<?php echo $m_pad; ?>" <?php echo ($versat_mes_modal == $m_pad ? 'selected' : ''); ?>><?php echo nombreMesEspanol($m_pad); ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
@@ -5099,6 +5689,45 @@ function limpiarFiltrosDiasVersat() {
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    var mesesPorAnio = <?php echo $versat_json_meses_por_anio; ?>;
+    var labelsMes = <?php
+        $labelsMesJs = [];
+        for ($mi = 1; $mi <= 12; $mi++) { $labelsMesJs[] = nombreMesEspanol(str_pad($mi, 2, '0', STR_PAD_LEFT)); }
+        echo json_encode($labelsMesJs);
+    ?>;
+    var selAnio = document.getElementById('versatAnio');
+    var selMes = document.getElementById('versatMes');
+    if (!selAnio || !selMes) return;
+    function construirMeses(anio, conservar) {
+        var anterior = conservar ? selMes.value : '';
+        var meses = (anio && mesesPorAnio[anio]) ? mesesPorAnio[anio] : (function () {
+            var todas = {};
+            Object.keys(mesesPorAnio).forEach(function (a) {
+                Object.keys(mesesPorAnio[a]).forEach(function (m) { todas[m] = true; });
+            });
+            return todas;
+        })();
+        var claves = Object.keys(meses);
+        claves.sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
+        var html = '<option value="">-- Todos --</option>';
+        claves.forEach(function (m) {
+            var idx = parseInt(m, 10);
+            var num = (idx < 10 ? '0' : '') + idx;
+            html += '<option value="' + num + '">' + (labelsMes[idx - 1] || m) + '</option>';
+        });
+        selMes.innerHTML = html;
+        if (conservar && anterior !== '') {
+            var coincide = claves.some(function (m) { return parseInt(m, 10) === parseInt(anterior, 10); });
+            if (coincide) selMes.value = anterior;
+        }
+    }
+    construirMeses(selAnio.value, false);
+    selAnio.addEventListener('change', function () { construirMeses(this.value, true); });
+})();
+</script>
 
 <?php if (count($descuadres) > 0): ?>
 <!-- ==========================================

@@ -73,7 +73,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'probar_mail') {
     $htmlCorreo = '
     <!DOCTYPE html>
     <html lang="es">
-    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"></head>
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"></head>
     <body style="margin:0;padding:0;background:linear-gradient(145deg,#f6f9fc 0%,#e6f0f5 100%);font-family:Segoe UI, Roboto, Arial, sans-serif;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(145deg,#f6f9fc 0%,#e6f0f5 100%);padding:1.875rem 0.75rem;">
             <tr><td align="center">
@@ -403,7 +403,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
 <head>
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?> | Configuración</title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
     
@@ -925,6 +925,546 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         .form-usuario-status.create { background: rgba(var(--color-success-rgb), 0.1); border: 0.0625rem solid rgba(var(--color-success-rgb), 0.25); color: var(--color-success-soft); }
 
         .btn-guardar-loading { pointer-events: none; opacity: 0.7; }
+/* ============================================ */
+/* RESPONSIVE CONFIGURACIÓN (PC/TABLET/MÓVIL)   */
+/* Solo afecta a cada breakpoint; NO sobrescribe PC */
+/* ============================================ */
+
+/* ---------- SAFE AREA (Notch iPhone X+) ---------- */
+@supports (padding: env(safe-area-inset-top)) {
+    .main-container {
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+        padding-left: max(1.25rem, env(safe-area-inset-left));
+        padding-right: max(1.25rem, env(safe-area-inset-right));
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+    .scroll-quick-btns {
+        right: max(1.25rem, env(safe-area-inset-right));
+        bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* ---------- TABLET (≤ 1024px) ---------- */
+@media (max-width: 1024px) {
+    .main-container {
+        margin-left: 5rem !important;
+        padding: 1rem !important;
+    }
+    .main-container.expanded {
+        margin-left: 5rem !important;
+    }
+
+    .win-topbar {
+        padding: 0.75rem 1rem !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .page-title h1 { font-size: 1.15rem; }
+    .page-title p  { font-size: 0.72rem; }
+
+    /* Los col-lg-6 pasan a 1 columna en tablet */
+    .row.g-4 > .col-lg-6 {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    /* Botón "Expandir todo" más pequeño */
+    #btnToggleAllCards {
+        font-size: 0.75rem !important;
+        padding: 0.4rem 0.75rem !important;
+    }
+    #btnToggleAllCardsTexto { font-size: 0.75rem; }
+}
+
+/* ---------- MÓVIL (≤ 768px) ---------- */
+@media (max-width: 768px) {
+    /* ---------- BODY: prevenir scroll horizontal ---------- */
+    html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+
+    /* ---------- SIDEBAR + CONTENEDOR ---------- */
+    .win-sidebar {
+        transform: translateX(-100%);
+        width: 15rem;
+    }
+    .win-sidebar.mobile-open,
+    .win-sidebar.show {
+        transform: translateX(0);
+    }
+    .main-container {
+        margin-left: 0 !important;
+        padding: 0.625rem !important;
+        width: 100% !important;
+    }
+    .main-container.expanded {
+        margin-left: 0 !important;
+    }
+
+    /* ---------- TOPBAR: grid con reloj visible ---------- */
+    .win-topbar {
+        display: grid !important;
+        grid-template-columns: 1fr auto;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem 0.75rem !important;
+        border-radius: 0.75rem !important;
+    }
+    .win-topbar > div:first-child {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: end;
+        flex-shrink: 0;
+    }
+
+    .page-title {
+        min-width: 0;
+        flex: 1;
+    }
+    .page-title h1 {
+        font-size: 0.95rem !important;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .win-topbar .page-title > p {
+        display: none;
+    }
+
+    .sidebar-toggle {
+        width: 2.25rem;
+        height: 2.25rem;
+        flex-shrink: 0;
+    }
+
+    /* Botón "Expandir todo" a fila completa */
+    #btnToggleAllCards {
+        width: 100%;
+        justify-content: center;
+        margin-left: 0 !important;
+        font-size: 0.78rem !important;
+        padding: 0.4rem 0.75rem !important;
+        grid-column: 1 / -1;
+        order: 3;
+    }
+
+    /* ---------- GLASS CARD ---------- */
+    .glass-card {
+        border-radius: 0.625rem;
+    }
+    .glass-card .p-4 {
+        padding: 0.875rem !important;
+    }
+    .glass-card .p-3 {
+        padding: 0.75rem !important;
+    }
+
+    /* ---------- HEADERS DE CARD COLAPSABLES ---------- */
+    .card-collapse-title {
+        font-size: 0.85rem;
+        line-height: 1.35;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.375rem;
+    }
+    .card-collapse-title i:first-child {
+        flex-shrink: 0;
+    }
+    /* Los badges (ACTIVO/INACTIVO, CONFIGURADO) bajan de línea */
+    .card-collapse-title .badge {
+        font-size: 0.6rem !important;
+        padding: 0.15rem 0.5rem !important;
+        margin-left: 0 !important;
+    }
+
+    /* Header con botón al lado (Tasas → Agregar Tasa) */
+    .glass-card .p-3.border-bottom.d-flex.justify-content-between {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+    .glass-card .p-3.border-bottom.d-flex.justify-content-between .btn-win {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.78rem;
+    }
+
+    /* ---------- FORMULARIOS ---------- */
+    .row.g-4 > [class*="col-"],
+    form .row > [class*="col-"] {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+    .form-label {
+        font-size: 0.75rem;
+    }
+    .form-control,
+    .form-select {
+        font-size: 0.82rem !important;
+        padding: 0.55rem 0.75rem !important;
+    }
+    .input-group-text {
+        font-size: 0.82rem;
+        padding: 0.55rem 0.65rem;
+    }
+    small.text-secondary,
+    .text-secondary {
+        font-size: 0.68rem !important;
+    }
+
+    /* Botones de guardar/backup a fila completa */
+    form > .btn-win,
+    form > .btn-win-primary,
+    form .btn-win.w-100 {
+        width: 100% !important;
+        justify-content: center;
+        font-size: 0.82rem;
+        padding: 0.6rem 0.875rem;
+    }
+
+    /* Botones en fila (Guardar + Probar SMTP) */
+    form .d-flex.gap-2.flex-wrap {
+        flex-direction: column;
+    }
+    form .d-flex.gap-2.flex-wrap .btn-win {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.82rem;
+    }
+
+    /* ---------- SECCIÓN BACKUP/RESTORE ---------- */
+    .row.g-3 > .col-md-6 {
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+    }
+    .col-md-6 > .p-3.rounded {
+        padding: 0.875rem !important;
+    }
+    .col-md-6 > .p-3.rounded .d-flex {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+    .col-md-6 > .p-3.rounded .d-flex > div:first-child {
+        text-align: center;
+    }
+    .col-md-6 > .p-3.rounded .d-flex > .d-flex {
+        flex-direction: column;
+        width: 100%;
+    }
+    .col-md-6 > .p-3.rounded .btn-win {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.78rem;
+        padding: 0.55rem 0.875rem;
+    }
+
+    /* ---------- TABLAS (rangos, tasas) ---------- */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 0.5rem;
+        position: relative;
+        margin-bottom: 0.5rem;
+    }
+    #rangosTable,
+    #tasasTable {
+        font-size: 0.75rem;
+        min-width: 30rem;
+    }
+    #rangosTable thead th,
+    #tasasTable thead th {
+        font-size: 0.62rem !important;
+        padding: 0.5rem 0.4rem !important;
+        white-space: nowrap;
+    }
+    #rangosTable td,
+    #tasasTable td {
+        padding: 0.4rem 0.35rem !important;
+        font-size: 0.72rem !important;
+        white-space: nowrap;
+    }
+
+    /* Inputs dentro de la tabla de rangos */
+    #rangosTable .form-control-sm {
+        padding: 0.3rem 0.5rem !important;
+        font-size: 0.72rem !important;
+        min-width: 5rem;
+    }
+    #rangosTable .btn-win-danger,
+    #tasasTable .btn-win-danger {
+        padding: 0.25rem 0.4rem !important;
+    }
+
+    /* Indicador de scroll horizontal en tablas */
+    .table-responsive::after {
+        content: '⟷ Desliza para ver más';
+        display: block;
+        text-align: center;
+        font-size: 0.6rem;
+        color: rgba(255, 255, 255, 0.35);
+        padding: 0.25rem 0;
+        background: rgba(0, 0, 0, 0.2);
+        pointer-events: none;
+    }
+    /* Solo mostrar el indicador si hay scroll real */
+    .table-responsive:not(:has(table:only-child))::after {
+        display: none;
+    }
+
+    /* Footer de la tabla de rangos (botón Agregar Rango) */
+    #rangosTable tfoot td {
+        padding: 0.5rem 0.375rem !important;
+    }
+    #rangosTable tfoot .btn-win {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.78rem;
+    }
+
+    /* ---------- MODALES ---------- */
+    .modal-content-win {
+        border-radius: 0 !important;
+        min-height: 100vh;
+    }
+    .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        min-height: 100vh;
+    }
+    .modal-header-win {
+        border-radius: 0 !important;
+        padding: 0.75rem 0.875rem !important;
+    }
+    .modal-title {
+        font-size: 0.9rem;
+    }
+    .modal-body {
+        padding: 0.875rem !important;
+        max-height: calc(100vh - 10rem);
+        overflow-y: auto;
+    }
+    .modal-footer-win {
+        border-radius: 0 !important;
+        padding: 0.625rem 0.875rem !important;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+    }
+    .modal-footer-win .btn-win {
+        flex: 1 1 calc(50% - 0.25rem);
+        justify-content: center;
+        font-size: 0.82rem;
+    }
+
+    /* ---------- ALERTAS ---------- */
+    .alert {
+        padding: 0.75rem 0.875rem !important;
+        font-size: 0.82rem;
+    }
+    .alert strong {
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+    .alert .btn-close {
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+    /* Alerta de recomendación de backup: el icono y texto a columna */
+    #alertBackupRecomendacion .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+
+    /* ---------- CHECKBOX DE RESTORE ---------- */
+    #restoreModal .form-check {
+        font-size: 0.78rem;
+    }
+    #restoreModal .form-check ul {
+        margin-left: 0.5rem !important;
+    }
+    #restoreModal .form-check li {
+        font-size: 0.72rem;
+        line-height: 1.4;
+    }
+
+    /* ---------- BOTÓN DE ARCHIVO (Restore) ---------- */
+    #chooseFileLabel {
+        flex-wrap: wrap;
+        height: auto !important;
+        padding: 0.625rem 0.75rem !important;
+        gap: 0.5rem;
+    }
+    #chooseFileLabel .ms-auto.btn-win {
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.5rem;
+        margin-left: 0 !important;
+    }
+
+    /* ---------- RELOJ ---------- */
+    #liveClock {
+        min-width: 4.5rem;
+        font-size: 0.8rem;
+    }
+    .date-badge {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.78rem;
+    }
+
+    /* ---------- BOTONES FLOTANTES ---------- */
+    .scroll-quick-btns {
+        right: 0.75rem !important;
+        bottom: 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    .scroll-quick-btn {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* ---------- FOOTER ---------- */
+    footer, .footer {
+        font-size: 0.7rem !important;
+        padding: 0.75rem !important;
+    }
+
+    /* ---------- SELECTS CON CHEVRON (SMTP) ---------- */
+    .select-wrap::after {
+        right: 0.75rem;
+        width: 0.85rem;
+        height: 0.85rem;
+    }
+}
+
+/* ---------- MÓVIL PEQUEÑO (≤ 480px) ---------- */
+@media (max-width: 480px) {
+    .main-container {
+        padding: 0.4rem !important;
+    }
+    .glass-card .p-4 {
+        padding: 0.75rem !important;
+    }
+    .page-title h1 {
+        font-size: 0.85rem !important;
+        max-width: 55vw;
+    }
+    .win-topbar {
+        padding: 0.4rem 0.5rem !important;
+        grid-template-columns: 1fr;
+        row-gap: 0.5rem;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: center;
+        width: 100%;
+    }
+
+    /* Botones de guardar más compactos */
+    .btn-win,
+    .btn-win-primary,
+    .btn-win-success,
+    .btn-win-danger,
+    .btn-win-warning,
+    .btn-win-info {
+        font-size: 0.72rem !important;
+        padding: 0.4rem 0.7rem !important;
+    }
+
+    /* Formularios compactos */
+    .form-control,
+    .form-select {
+        font-size: 0.78rem !important;
+        padding: 0.5rem 0.65rem !important;
+    }
+    .form-label {
+        font-size: 0.7rem;
+    }
+
+    /* Tablas ultra compactas */
+    #rangosTable,
+    #tasasTable {
+        min-width: 26rem;
+        font-size: 0.7rem;
+    }
+    #rangosTable thead th,
+    #tasasTable thead th {
+        font-size: 0.58rem !important;
+        padding: 0.4rem 0.3rem !important;
+    }
+    #rangosTable td,
+    #tasasTable td {
+        padding: 0.35rem 0.3rem !important;
+        font-size: 0.68rem !important;
+    }
+    #rangosTable .form-control-sm {
+        font-size: 0.68rem !important;
+        padding: 0.25rem 0.4rem !important;
+        min-width: 4rem;
+    }
+
+    /* Reloj */
+    #liveClock {
+        font-size: 0.78rem;
+    }
+
+    /* Cards headers con badge */
+    .card-collapse-title {
+        font-size: 0.8rem;
+    }
+    .card-collapse-title .badge {
+        font-size: 0.55rem !important;
+    }
+}
+
+/* ---------- PANTALLAS GRANDES (≥ 1400px) ---------- */
+@media (min-width: 1400px) {
+    .main-container {
+        max-width: 1800px;
+        margin: 0 auto 0 16.25rem;
+    }
+    .main-container.expanded {
+        margin-left: 5rem;
+    }
+}
+
+/* ---------- ORIENTACIÓN HORIZONTAL EN MÓVIL ---------- */
+@media (max-width: 900px) and (orientation: landscape) {
+    .modal-dialog {
+        min-height: auto;
+        max-height: 96vh;
+    }
+    .modal-content-win {
+        min-height: auto;
+        max-height: 96vh;
+        border-radius: 1rem !important;
+    }
+    .modal-body {
+        max-height: calc(96vh - 10rem);
+    }
+    /* En horizontal, los formularios vuelven a 2 columnas */
+    form .row > .col-md-6 {
+        flex: 1 1 calc(50% - 0.5rem);
+        max-width: calc(50% - 0.5rem);
+    }
+    form .row > .col-md-4 {
+        flex: 1 1 calc(33.333% - 0.5rem);
+        max-width: calc(33.333% - 0.5rem);
+    }
+    .row.g-4 > .col-lg-6 {
+        flex: 1 1 calc(50% - 0.5rem);
+        max-width: calc(50% - 0.5rem);
+    }
+}
     </style>
 </head>
 <body>

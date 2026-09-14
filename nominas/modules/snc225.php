@@ -451,6 +451,324 @@ if (file_exists($ruta_logo)) {
         }
         .snc-modal-nota { margin-top:0.4rem; padding-top:0.4rem; border-top:0.0625rem solid rgba(251,191,36,0.2); font-size:1rem; font-style:italic; background:rgba(251,191,36,0.08); border:0.0625rem solid rgba(251,191,36,0.25); border-radius:0.375rem; padding:0.5rem 0.75rem; color:#d97706; }
         html[data-theme="light"] .snc-modal-nota { background:rgba(234,179,8,0.12); color:#92400e; border-color:rgba(234,179,8,0.3); border-top:none; }
+		
+/* ============================================ */
+/* RESPONSIVE SNC-225 (PC / TABLET / MÓVIL)     */
+/* ============================================ */
+
+/* ---------- TABLET (≤ 992px) ---------- */
+@media (max-width: 992px) {
+    .main-container {
+        margin-left: 5rem !important;
+        padding: 1rem !important;
+    }
+    .win-topbar {
+        padding: 0.75rem 1rem !important;
+    }
+    .page-title h1 { font-size: 1.15rem; }
+
+    /* Tarjetas stats: 3 por fila */
+    .snc-stat-card {
+        flex: 1 1 calc(33.333% - 0.75rem) !important;
+        min-width: calc(33.333% - 0.75rem) !important;
+    }
+
+    /* Filtros: 3 por fila */
+    #sncFiltrosBody .d-flex.align-items-end.gap-4 {
+        gap: 0.75rem !important;
+    }
+    #sncFiltrosBody .snc-filtro-divider {
+        display: none !important;
+    }
+}
+
+/* ---------- MÓVIL (≤ 768px) ---------- */
+@media (max-width: 768px) {
+
+    /* ---------- CONTENEDOR PRINCIPAL ---------- */
+    .main-container {
+        margin-left: 0 !important;
+        padding: 0.625rem !important;
+        width: 100% !important;
+    }
+    .main-container.expanded {
+        margin-left: 0 !important;
+    }
+
+    /* ---------- TOPBAR ---------- */
+    .win-topbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.625rem !important;
+        padding: 0.625rem 0.75rem !important;
+        border-radius: 0.75rem !important;
+    }
+    .win-topbar > .d-flex.align-items-center.gap-3 {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .page-title h1 {
+        font-size: 1rem !important;
+        line-height: 1.2;
+    }
+    .page-title p {
+        font-size: 0.7rem !important;
+        display: none;
+    }
+    .sidebar-toggle {
+        width: 2.25rem;
+        height: 2.25rem;
+    }
+
+    /* ---------- GLASS CARD PADDING ---------- */
+    .glass-card .card-content.p-4 {
+        padding: 1rem !important;
+    }
+
+    /* ---------- HEADER DEL CARD (título + botón imprimir) ---------- */
+    .glass-card .card-content > .d-flex.justify-content-between {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem;
+    }
+    .glass-card .card-content h5 {
+        font-size: 0.95rem !important;
+        line-height: 1.3;
+    }
+    .glass-card .card-content h5 p {
+        font-size: 0.72rem !important;
+        margin-top: 0.25rem !important;
+    }
+    .no-print .btn-group {
+        width: 100%;
+        display: flex;
+    }
+    .no-print .btn-group .btn-export-main {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* ---------- STATS CARDS: 2 por fila ---------- */
+    .d-flex.gap-3.mb-3.flex-wrap.no-print {
+        gap: 0.5rem !important;
+    }
+    .snc-stat-card {
+        flex: 1 1 calc(50% - 0.25rem) !important;
+        min-width: calc(50% - 0.25rem) !important;
+        padding: 0.625rem 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    .snc-stat-card .snc-icon-box {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+    }
+    .snc-stat-card .snc-icon-box i {
+        font-size: 0.95rem !important;
+    }
+    .snc-stat-card .snc-stat-value {
+        font-size: 1.05rem !important;
+    }
+    .snc-stat-card .snc-stat-label,
+    .snc-stat-card .snc-stat-sub {
+        font-size: 0.62rem !important;
+    }
+    .snc-stat-card .snc-stat-value[data-tooltip] {
+        font-size: 0.75rem !important;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ---------- FILTROS ---------- */
+    #sncFiltrosWrap {
+        padding: 0.625rem 0.75rem !important;
+    }
+    #sncFiltrosBody .d-flex.align-items-end.gap-4 {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.625rem !important;
+        padding-top: 0.5rem !important;
+    }
+    #sncFiltrosBody .d-flex.flex-column.gap-1 {
+        width: 100% !important;
+    }
+    #sncFiltrosBody .snc-filtro-divider {
+        display: none !important;
+    }
+    #sncFiltrosBody .snc-select-wrap,
+    #sncFiltrosBody .snc-select-wrap select {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    #sncFiltrosBody input[type="date"] {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    #btnLimpiarFiltrosSNC {
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.25rem;
+    }
+
+    /* ---------- TABLA DATATABLE ---------- */
+    table.dataTable thead th {
+        font-size: 0.65rem !important;
+        padding: 0.5rem 0.4rem !important;
+        letter-spacing: 0.02rem !important;
+    }
+    table.dataTable tbody td {
+        font-size: 0.72rem !important;
+        padding: 0.4rem 0.5rem !important;
+    }
+    .badge-codigo {
+        font-size: 0.65rem !important;
+        padding: 0.1rem 0.4rem !important;
+    }
+
+    /* Controles DataTable arriba */
+    .dataTables_wrapper .d-flex.justify-content-between.align-items-center.flex-wrap.mb-3 {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem;
+    }
+    .dt-search,
+    .dt-search .input-group {
+        width: 100% !important;
+    }
+    .dt-search .input-group {
+        max-width: 100% !important;
+    }
+    .dt-length {
+        width: 100%;
+        text-align: center;
+    }
+    .dt-length select {
+        display: inline-block;
+        width: auto;
+        margin-left: 0.5rem;
+    }
+
+    /* Paginación abajo */
+    .dataTables_wrapper .d-flex.justify-content-between.align-items-center.flex-wrap {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        width: 100%;
+        text-align: center !important;
+        font-size: 0.7rem !important;
+        padding-top: 0.5rem !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.3rem 0.55rem !important;
+        margin: 0 0.125rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* Indicador "desliza" para la tabla */
+    .dataTables_scrollBody {
+        position: relative;
+    }
+    .dataTables_scrollBody::after {
+        content: '⟷ Desliza para ver más';
+        position: sticky;
+        left: 0;
+        bottom: 0;
+        display: block;
+        text-align: center;
+        font-size: 0.6rem;
+        color: rgba(255,255,255,0.35);
+        padding: 0.25rem 0;
+        background: rgba(0,0,0,0.25);
+        pointer-events: none;
+    }
+
+    /* ---------- MODAL TARJETA ---------- */
+    #modalTarjeta .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    #modalTarjeta .modal-content {
+        border-radius: 0 !important;
+        min-height: 100vh;
+    }
+    #modalTarjeta .modal-header,
+    #modalTarjeta .modal-body,
+    #modalTarjeta .modal-footer {
+        padding: 0.875rem 1rem !important;
+    }
+    #modalTarjeta .modal-body {
+        font-size: 0.82rem;
+    }
+    /* Grid de 2 columnas → 1 columna */
+    #tarjetaBody > div[style*="grid-template-columns:1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+    }
+    /* Sección "Tiempo Trabajado" más compacta */
+    #tarjetaBody > div[style*="display:flex; gap:1.5rem"] {
+        gap: 1rem !important;
+        justify-content: space-around;
+    }
+}
+
+/* ---------- MÓVIL PEQUEÑO (≤ 480px) ---------- */
+@media (max-width: 480px) {
+    .main-container {
+        padding: 0.4rem !important;
+    }
+    .win-topbar {
+        padding: 0.5rem 0.625rem !important;
+    }
+    .page-title h1 {
+        font-size: 0.9rem !important;
+    }
+    .glass-card .card-content.p-4 {
+        padding: 0.75rem !important;
+    }
+
+    /* Tarjetas stats: 1 por fila */
+    .snc-stat-card {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }
+
+    /* Tabla ultra compacta */
+    table.dataTable thead th {
+        font-size: 0.6rem !important;
+        padding: 0.4rem 0.3rem !important;
+    }
+    table.dataTable tbody td {
+        font-size: 0.68rem !important;
+        padding: 0.35rem 0.4rem !important;
+    }
+
+    /* Paginación */
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.25rem 0.4rem !important;
+        font-size: 0.65rem !important;
+    }
+
+    /* Botones acción del header */
+    .no-print .btn-group .btn-export-main {
+        font-size: 0.78rem !important;
+        padding: 0.45rem 0.75rem !important;
+    }
+}
+
+/* ---------- PANTALLAS GRANDES (> 1400px) ---------- */
+@media (min-width: 1400px) {
+    .main-container {
+        max-width: 1800px;
+        margin: 0 auto 0 16.25rem;
+    }
+    .main-container.expanded {
+        margin-left: 5rem;
+    }
+}
     </style>
 </head>
 <body>

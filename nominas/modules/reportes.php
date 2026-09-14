@@ -458,7 +458,7 @@ $ultimas_bajas = $pdo->query("
 <head>
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?> | Reportes Estadísticos</title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
     
@@ -713,6 +713,426 @@ $ultimas_bajas = $pdo->query("
 .nombre-baja:hover {
     color: #a78bfa;
     text-decoration: underline;
+}
+/* ============================================ */
+/* RESPONSIVE REPORTES (PC / TABLET / MÓVIL)    */
+/* Solo afecta a cada breakpoint; NO sobrescribe PC */
+/* ============================================ */
+
+/* ---------- SAFE AREA (Notch iPhone X+) ---------- */
+@supports (padding: env(safe-area-inset-top)) {
+    .main-container {
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+        padding-left: max(1.25rem, env(safe-area-inset-left));
+        padding-right: max(1.25rem, env(safe-area-inset-right));
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+    .scroll-quick-btns {
+        right: max(1.25rem, env(safe-area-inset-right));
+        bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* ---------- TABLET (≤ 1024px) ---------- */
+@media (max-width: 1024px) {
+    .main-container {
+        margin-left: 5rem !important;
+        padding: 1rem !important;
+    }
+    .main-container.expanded {
+        margin-left: 5rem !important;
+    }
+
+    .win-topbar {
+        padding: 0.75rem 1rem !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .page-title h1 { font-size: 1.15rem; }
+    .page-title p  { font-size: 0.72rem; }
+
+    /* Grupo de botones de reporte: reducir */
+    #btnPrintReport {
+        font-size: 0.75rem !important;
+        padding: 0.4rem 0.75rem !important;
+    }
+
+    /* Tarjetas stats en 3 columnas */
+    .row.g-3 > .col {
+        flex: 1 1 calc(33.333% - 0.5rem) !important;
+        max-width: calc(33.333% - 0.5rem);
+    }
+    .stat-value { font-size: 1.5rem !important; }
+
+    /* Ajustar columnas md a algo intermedio */
+    .row.g-3 > .col-md-3 { flex: 1 1 calc(50% - 0.5rem); max-width: calc(50% - 0.5rem); }
+    .row.g-3 > .col-md-4 { flex: 1 1 calc(50% - 0.5rem); max-width: calc(50% - 0.5rem); }
+    .row.g-3 > .col-md-5 { flex: 1 1 100%; max-width: 100%; }
+    .row.g-3 > .col-md-6 { flex: 1 1 100%; max-width: 100%; }
+    .row.g-3 > .col-md-12 { flex: 1 1 100%; max-width: 100%; }
+
+    /* Tabs */
+    .nav-tabs-custom .nav-link {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.82rem;
+    }
+
+    /* Chart container */
+    .chart-container { height: 15rem; }
+
+    /* Donut */
+    .donut-container { width: 9.375rem; }
+}
+
+/* ---------- MÓVIL (≤ 768px) ---------- */
+@media (max-width: 768px) {
+    /* ---------- BODY: prevenir scroll horizontal ---------- */
+    html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+
+    /* ---------- CONTENEDOR PRINCIPAL ---------- */
+    .main-container {
+        margin-left: 0 !important;
+        padding: 0.625rem !important;
+        width: 100% !important;
+    }
+    .main-container.expanded {
+        margin-left: 0 !important;
+    }
+
+    /* ---------- TOPBAR: grid con reloj visible ---------- */
+    .win-topbar {
+        display: grid !important;
+        grid-template-columns: 1fr auto;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem 0.75rem !important;
+        border-radius: 0.75rem !important;
+    }
+    .win-topbar > div:first-child {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 0.5rem !important;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: end;
+        flex-shrink: 0;
+    }
+
+    .page-title {
+        min-width: 0;
+        flex: 1;
+    }
+    .page-title h1 {
+        font-size: 0.95rem !important;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .win-topbar .page-title > p {
+        display: none;
+    }
+
+    .sidebar-toggle {
+        width: 2.25rem;
+        height: 2.25rem;
+        flex-shrink: 0;
+    }
+
+    /* ---------- BOTONES DE EXPORTACIÓN DEL TOPBAR ---------- */
+    /* El botón "Imprimir Reporte General" se hace más compacto */
+    .win-topbar .btn-group {
+        width: 100%;
+        margin-left: 0 !important;
+        grid-column: 1 / -1;
+        justify-content: stretch;
+    }
+    .win-topbar .btn-group .btn-export-main,
+    #btnPrintReport {
+        flex: 1;
+        justify-content: center;
+        font-size: 0.78rem !important;
+        padding: 0.45rem 0.75rem !important;
+    }
+
+    /* ---------- TABS ---------- */
+    .nav-tabs-custom {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.25rem;
+    }
+    .nav-tabs-custom::-webkit-scrollbar { height: 0.25rem; }
+    .nav-tabs-custom .nav-item {
+        flex-shrink: 0;
+    }
+    .nav-tabs-custom .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+    }
+
+    /* ---------- TARJETAS STATS: 2 columnas ---------- */
+    .row.g-3 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    .row.g-3 > .col {
+        flex: 1 1 calc(50% - 0.25rem) !important;
+        max-width: calc(50% - 0.25rem);
+    }
+    .row.g-3 > .col-md-3,
+    .row.g-3 > .col-md-4,
+    .row.g-3 > .col-md-5,
+    .row.g-3 > .col-md-6,
+    .row.g-3 > .col-md-12 {
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+    }
+    .stat-card {
+        padding: 0.75rem !important;
+        border-radius: 0.75rem;
+    }
+    .stat-value { font-size: 1.35rem !important; }
+    .stat-label { font-size: 0.65rem !important; }
+    .stat-icon {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        font-size: 1.15rem !important;
+    }
+
+    /* ---------- GLASS CARD ---------- */
+    .glass-card {
+        padding: 0.875rem !important;
+        border-radius: 0.75rem;
+    }
+    .glass-card.p-4 {
+        padding: 0.875rem !important;
+    }
+    .glass-card h6 {
+        font-size: 0.85rem !important;
+    }
+    .glass-card h6 i { font-size: 0.85rem; }
+
+    /* ---------- DONUT ---------- */
+    .donut-container {
+        width: 8.75rem !important;
+        margin: 0 auto 0.75rem;
+    }
+    .donut-center .total { font-size: 1.5rem; }
+    .donut-center .label { font-size: 0.62rem; }
+
+    /* ---------- CHARTS ---------- */
+    .chart-container {
+        height: 13rem;
+        margin-bottom: 0.5rem;
+    }
+    canvas { max-height: 13rem; }
+
+    /* ---------- TABLAS ---------- */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        position: relative;
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .table-dark {
+        font-size: 0.72rem !important;
+    }
+    .table-dark th,
+    .table-dark td {
+        padding: 0.4rem 0.5rem !important;
+        white-space: nowrap;
+    }
+    .table-sm th,
+    .table-sm td {
+        padding: 0.35rem 0.4rem !important;
+    }
+
+    /* Indicador de scroll horizontal */
+    .table-responsive.has-scroll::after {
+        content: '⟷ Desliza';
+        position: absolute;
+        right: 0.5rem;
+        bottom: 0.25rem;
+        font-size: 0.6rem;
+        color: rgba(255, 255, 255, 0.35);
+        background: rgba(0, 0, 0, 0.35);
+        padding: 0.1rem 0.4rem;
+        border-radius: 0.75rem;
+        pointer-events: none;
+    }
+
+    /* ---------- BADGES ---------- */
+    .badge-custom {
+        font-size: 0.62rem;
+        padding: 0.1875rem 0.5rem;
+    }
+    .badge {
+        font-size: 0.65rem;
+    }
+
+    /* ---------- FORMULARIOS (filtros dentro de las tablas) ---------- */
+    .glass-card form.d-flex {
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 0.375rem !important;
+    }
+    .glass-card form.d-flex .form-select-sm {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.625rem;
+        padding-right: 2.25rem !important;
+    }
+
+    /* Header de las secciones de totales: título + filtros */
+    .glass-card > .d-flex.flex-wrap.align-items-center.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+
+    /* ---------- TABLA DE BAJAS: ajustar foto hover ---------- */
+    .foto-baja:hover,
+    .foto-baja-placeholder:hover {
+        transform: scale(2.2);
+    }
+
+    /* ---------- FOOTER ---------- */
+    footer, .footer {
+        font-size: 0.7rem !important;
+        padding: 0.75rem !important;
+    }
+
+    /* ---------- BOTONES FLOTANTES ---------- */
+    .scroll-quick-btns {
+        right: 0.75rem !important;
+        bottom: 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    .scroll-quick-btn {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* ---------- BOTÓN PNG de los gráficos ---------- */
+    .btn-win-sm {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.625rem;
+    }
+}
+
+/* ---------- MÓVIL PEQUEÑO (≤ 480px) ---------- */
+@media (max-width: 480px) {
+    .main-container {
+        padding: 0.4rem !important;
+    }
+    .glass-card {
+        padding: 0.75rem !important;
+    }
+    .page-title h1 {
+        font-size: 0.85rem !important;
+        max-width: 55vw;
+    }
+    .win-topbar {
+        padding: 0.4rem 0.5rem !important;
+    }
+
+    /* Stats en 1 columna si es necesario */
+    .row.g-3 > .col {
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+    }
+    .stat-value { font-size: 1.25rem !important; }
+
+    /* Tabs más compactos */
+    .nav-tabs-custom .nav-link {
+        padding: 0.4rem 0.625rem;
+        font-size: 0.72rem;
+    }
+
+    /* Charts más pequeños */
+    .chart-container { height: 11rem; }
+    canvas { max-height: 11rem; }
+
+    /* Donut más pequeño */
+    .donut-container { width: 7.5rem !important; }
+    .donut-center .total { font-size: 1.25rem; }
+
+    /* Tablas ultra compactas */
+    .table-dark {
+        font-size: 0.65rem !important;
+    }
+    .table-dark th,
+    .table-dark td {
+        padding: 0.3rem 0.35rem !important;
+    }
+
+    /* Badges */
+    .badge-custom {
+        font-size: 0.58rem;
+        padding: 0.125rem 0.375rem;
+    }
+
+    /* Botón PNG */
+    .btn-win-sm {
+        font-size: 0.65rem;
+        padding: 0.1875rem 0.5rem;
+    }
+}
+
+/* ---------- PANTALLAS GRANDES (≥ 1400px) ---------- */
+@media (min-width: 1400px) {
+    .main-container {
+        max-width: 1800px;
+        margin: 0 auto 0 16.25rem;
+    }
+    .main-container.expanded {
+        margin-left: 5rem;
+    }
+}
+
+/* ---------- ORIENTACIÓN HORIZONTAL EN MÓVIL ---------- */
+@media (max-width: 900px) and (orientation: landscape) {
+    .chart-container { height: 12rem; }
+    canvas { max-height: 12rem; }
+    .row.g-3 > .col {
+        flex: 1 1 calc(25% - 0.375rem) !important;
+        max-width: calc(25% - 0.375rem);
+    }
+}
+
+/* ---------- AJUSTE DEL RELOJ ---------- */
+@media (max-width: 768px) {
+    #liveClock {
+        min-width: 4.5rem;
+        font-size: 0.8rem;
+    }
+    .date-badge {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.78rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .win-topbar {
+        grid-template-columns: 1fr;
+        row-gap: 0.5rem;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: center;
+        width: 100%;
+    }
+    #liveClock {
+        font-size: 0.78rem;
+    }
 }
     </style>
 </head>
@@ -2724,6 +3144,7 @@ if (!function_exists('numeroRomano')) {
         if (t && t !== initialTheme) { window.location.reload(); }
     });
 })();
+
 </script>
 </body>
 </html>

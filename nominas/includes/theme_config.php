@@ -151,7 +151,7 @@ c+=H+'.nav-item.active:hover .nav-group-chevron{color:#fff!important;}';
 c+=H+'.sidebar-logo h3{background:linear-gradient(135deg,var(--accent),var(--accent-light));-webkit-background-clip:text;background-clip:text;color:transparent!important;}';
 c+=H+'.sidebar-toggle:hover{background:rgba(var(--accent-rgb),0.15)!important;color:var(--accent)!important;}';
 c+=H+'.nav-group:hover .nav-group-chevron{color:var(--accent)!important;}';
-c+=H+'.nav-group.open .nav-group-chevron{color:var(--accent)!important;}';
+c+=H+'.nav-group.open .nav-item:not(.active) .nav-group-chevron{color:var(--accent)!important;}';
 c+=H+'.sidebar-profile:hover{background:var(--accent-bg2)!important;border-color:var(--accent-bg)!important;}';
 c+=H+'.profile-avatar-link:hover .profile-avatar{border-color:var(--accent)!important;box-shadow:0 0 0 0.1875rem var(--accent-bg)!important;}';
 /* Page title */

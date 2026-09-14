@@ -454,18 +454,24 @@ if ($action === 'crear') {
                             $response['message'] = "Error: El expediente ya está registrado.";
                         } else {
                             // CONTINUAR CON LA INSERCIÓN...
+                            $nombres_norm       = mb_convert_case(trim($_POST['nombres']), MB_CASE_TITLE, 'UTF-8');
+                            $primer_apellido_norm = mb_convert_case(trim($_POST['primer_apellido']), MB_CASE_TITLE, 'UTF-8');
+                            $segundo_apellido_norm = mb_convert_case(trim($_POST['segundo_apellido']), MB_CASE_TITLE, 'UTF-8');
+                            
                             $stmt = $pdo->prepare("INSERT INTO trabajadores (codigo, ci, nombres, primer_apellido, segundo_apellido, 
                                              direccion_particular, telefono_contacto, email, cuentabanc, area_id, 
                                              centro_costo_id, categoria_ocupacional_id, escala_salarial_id, fecha_alta, cargo_id,
                                              tipo_contrato, vacaciones_acumuladas, no_acumular_vacaciones, fecha_baja, motivo_baja, activo)
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                             $stmt->execute([
-                                $expediente, $ci_limpio, $_POST['nombres'], $_POST['primer_apellido'], $_POST['segundo_apellido'],
+                                $expediente, $ci_limpio, $nombres_norm, $primer_apellido_norm, $segundo_apellido_norm,
                                 $_POST['direccion'], $_POST['telefono'], $_POST['email'], $cuenta_bancaria, $_POST['area_id'],
                                 $_POST['centro_costo_id'] ?: null, $_POST['categoria_id'], $_POST['escala_id'], $_POST['fecha_alta'], 
                                 $_POST['cargo_id'] ?: null,
-                                $_POST['tipo_contrato'] ?? 'Indeterminado', $_POST['fecha_baja'] ?: null, $_POST['motivo_baja'] ?: null, isset($_POST['activo']) ? 1 : 0,
-                                $_POST['vacaciones_acumuladas'] ?? 0, isset($_POST['no_acumular_vacaciones']) ? 1 : 0
+                                $_POST['tipo_contrato'] ?? 'Indeterminado',
+                                $_POST['vacaciones_acumuladas'] ?? 0, isset($_POST['no_acumular_vacaciones']) ? 1 : 0,
+                                !empty($_POST['fecha_baja']) ? $_POST['fecha_baja'] : null, !empty($_POST['motivo_baja']) ? $_POST['motivo_baja'] : null,
+                                isset($_POST['activo']) ? 1 : 0
                             ]);
                             $id_nuevo = $pdo->lastInsertId();
                             
@@ -576,6 +582,10 @@ $stmt->execute([$id_nuevo]);
                                 $foto_ruta = null;
                             }
                             
+                            $nombres_norm       = mb_convert_case(trim($_POST['nombres']), MB_CASE_TITLE, 'UTF-8');
+                            $primer_apellido_norm = mb_convert_case(trim($_POST['primer_apellido']), MB_CASE_TITLE, 'UTF-8');
+                            $segundo_apellido_norm = mb_convert_case(trim($_POST['segundo_apellido']), MB_CASE_TITLE, 'UTF-8');
+                            
                             $stmt = $pdo->prepare("
                                 UPDATE trabajadores SET 
                                     codigo = ?, ci = ?, nombres = ?, primer_apellido = ?, segundo_apellido = ?,
@@ -586,11 +596,11 @@ $stmt->execute([$id_nuevo]);
                                 WHERE id = ?
                             ");
                             $stmt->execute([
-                                $expediente, $ci_limpio, $_POST['nombres'], $_POST['primer_apellido'], $_POST['segundo_apellido'],
+                                $expediente, $ci_limpio, $nombres_norm, $primer_apellido_norm, $segundo_apellido_norm,
                                 $_POST['direccion'], $_POST['telefono'], $_POST['email'], $cuenta_bancaria, $_POST['area_id'],
                                 $_POST['centro_costo_id'] ?: null, $_POST['categoria_id'], $_POST['escala_id'], $_POST['fecha_alta'], 
                                 $_POST['cargo_id'] ?: null,
-                                $_POST['tipo_contrato'] ?? 'Indeterminado', $_POST['fecha_baja'] ?: null, $_POST['motivo_baja'] ?: null, isset($_POST['activo']) ? 1 : 0,
+                                $_POST['tipo_contrato'] ?? 'Indeterminado', !empty($_POST['fecha_baja']) ? $_POST['fecha_baja'] : null, !empty($_POST['motivo_baja']) ? $_POST['motivo_baja'] : null, isset($_POST['activo']) ? 1 : 0,
                                 $_POST['vacaciones_acumuladas'] ?? 0, isset($_POST['no_acumular_vacaciones']) ? 1 : 0, $foto_ruta, $id
                             ]);
                             
@@ -694,6 +704,19 @@ $empleados = $pdo->query("
     LEFT JOIN centros_costo cc ON t.centro_costo_id = cc.id
     JOIN escalas_salariales e ON t.escala_salarial_id = e.id
 ")->fetchAll();
+
+$fecha_hoy = date('Y-m-d');
+$fecha_mes = date('Y-m');
+$fecha_anio = date('Y');
+$cont_hoy = 0; $cont_mes = 0; $cont_anio = 0;
+foreach ($empleados as $_ee) {
+    $c = ($_ee['created_at'] ?? '') ? date('Y-m-d', strtotime($_ee['created_at'])) : '';
+    if ($c !== '') {
+        if (substr($c, 0, 4) === $fecha_anio) $cont_anio++;
+        if (substr($c, 0, 7) === $fecha_mes) $cont_mes++;
+        if ($c === $fecha_hoy) $cont_hoy++;
+    }
+}
 
 foreach ($empleados as &$_emp) {
     $_emp['pagos_adicionales'] = getPagosPorTrabajador($pdo, $_emp['id']);
@@ -837,7 +860,7 @@ foreach ($trabajadores_data as $t) {
 <head>
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?> | Listado de Empleados</title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
     
@@ -1871,6 +1894,381 @@ html[data-theme="light"] .badge.badge-estado-inactivo {
     color: #b91c1c !important;
     border-color: rgba(185, 28, 28, 0.35);
 }
+/* ============================================================
+   RESPONSIVE GLOBAL — Empleados.php
+   Refuerzos PC grande / tablet / móvil / móvil pequeño
+   ============================================================ */
+
+/* Evitar scroll horizontal */
+html, body { overflow-x: hidden; max-width: 100vw; }
+body { word-wrap: break-word; overflow-wrap: break-word; }
+
+/* ============ TOPBAR ============ */
+.win-topbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.win-topbar > div:first-child {
+    flex-wrap: wrap;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.win-topbar .page-title h1 {
+    font-size: clamp(1rem, 3vw, 1.5rem);
+    line-height: 1.25;
+    word-break: break-word;
+}
+.win-topbar .page-title p {
+    font-size: clamp(0.75rem, 2.2vw, 0.85rem);
+}
+.win-topbar .user-menu {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+/* ============ TABLA DE EMPLEADOS ============ */
+.data-table-wrapper {
+    max-height: clamp(22rem, 60vh, 40rem);
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+.data-table-wrapper::-webkit-scrollbar { height: 6px; }
+.data-table-wrapper::-webkit-scrollbar-thumb { background: rgba(96,165,250,0.5); border-radius: 3px; }
+
+/* Ancho mínimo progresivo, no fijo a 1750px */
+.data-table-wrapper table { min-width: 60rem !important; }
+
+@media (max-width: 64rem) {
+    .data-table-wrapper table { min-width: 55rem !important; }
+}
+@media (max-width: 48rem) {
+    .data-table-wrapper {
+        max-height: clamp(18rem, 55vh, 30rem);
+    }
+    .data-table-wrapper table { min-width: 50rem !important; }
+    .data-table-wrapper th,
+    .data-table-wrapper td {
+        padding: 0.5rem 0.55rem !important;
+        font-size: 0.75rem;
+    }
+}
+@media (max-width: 30rem) {
+    .data-table-wrapper table { min-width: 44rem !important; }
+    .data-table-wrapper th,
+    .data-table-wrapper td {
+        padding: 0.4rem 0.45rem !important;
+        font-size: 0.7rem;
+    }
+}
+
+/* ============ DATATABLES: layout responsivo ============ */
+.dataTables_wrapper .d-flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: stretch !important;
+}
+.dataTables_length,
+.dataTables_filter,
+.dataTables_info,
+.dataTables_paginate {
+    min-width: 0;
+}
+.dataTables_filter input { max-width: 100%; }
+.dataTables_paginate .paginate_button {
+    padding: 0.3rem 0.55rem !important;
+    margin: 0.1rem !important;
+}
+@media (max-width: 48rem) {
+    .dt-length, .dt-search, .dt-buttons, .dt-colvis { width: 100%; }
+    .dt-length label,
+    .dt-search,
+    .dt-buttons,
+    .dt-colvis {
+        justify-content: flex-start;
+    }
+    .dataTables_wrapper .input-group[style*="width:20rem"] {
+        width: 100% !important;
+    }
+    .dataTables_paginate {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .dataTables_info {
+        text-align: center;
+        width: 100%;
+    }
+}
+
+/* ============ MODAL EMPLEADO (XL) ============ */
+.modal-dialog { margin: 0.5rem auto; }
+.modal-content {
+    max-height: calc(100vh - 1rem);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.modal-body, .modal-body-win { overflow-y: auto; }
+
+@media (max-width: 48rem) {
+    .modal-dialog { margin: 0.25rem; }
+    .modal-dialog.modal-xl { max-width: 100%; }
+    .modal-content { border-radius: 0.75rem; }
+    .modal-body-win { padding: 0.75rem 0.9rem !important; }
+    .modal-header-win { padding: 0.5rem 0.7rem !important; gap: 0.4rem; }
+    .modal-footer-win { padding: 0.5rem 0.7rem !important; }
+    .modal-footer-win .row > div { width: 100%; }
+    .modal-footer-win .col-md-4 { text-align: left !important; margin-top: 0.4rem; }
+    .modal-footer-win .col-md-4 .btn-win { margin-top: 0.2rem; }
+}
+@media (max-width: 30rem) {
+    .modal-body-win { padding: 0.6rem 0.7rem !important; }
+    .modal-header-win { padding: 0.4rem 0.55rem !important; }
+    .modal-title { font-size: 0.9rem; }
+}
+
+/* ============ HEADER DEL MODAL: evitar apriete ============ */
+.modal-header-win {
+    flex-wrap: wrap !important;
+    row-gap: 0.35rem;
+}
+.modal-empleado-nombre-wrapper {
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+    order: 3;
+    width: 100%;
+    margin-top: 0.25rem;
+}
+.modal-empleado-nombre {
+    max-width: 100% !important;
+    font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+    padding: 0.35rem 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block !important;
+}
+@media (min-width: 48rem) {
+    .modal-empleado-nombre-wrapper {
+        order: 2;
+        width: auto;
+        max-width: 45% !important;
+        margin-top: 0;
+    }
+}
+@media (max-width: 30rem) {
+    .modal-empleado-nombre { font-size: 0.78rem; padding: 0.3rem 0.65rem; }
+    .modal-empleado-nombre i { font-size: 0.75rem; margin-right: 0.3rem; }
+}
+
+/* ============ CONTROLES DE NAVEGACIÓN DEL MODAL ============ */
+.nav-controls {
+    min-width: 0 !important;
+    flex-wrap: wrap;
+    padding: 0.25rem 0.4rem;
+    gap: 0.25rem;
+    row-gap: 0.25rem;
+}
+.nav-selector { flex: 1 1 100%; }
+.nav-selector select {
+    min-width: 0 !important;
+    width: 100%;
+}
+.nav-counter {
+    min-width: 3rem;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem;
+}
+.btn-nav { width: 1.9rem; height: 1.9rem; font-size: 0.75rem; }
+
+@media (min-width: 48rem) {
+    .nav-controls { flex-wrap: nowrap; }
+    .nav-selector { flex: 1 1 auto; }
+    .nav-selector select { min-width: 11rem; width: auto; }
+}
+@media (max-width: 30rem) {
+    .btn-nav { width: 1.7rem; height: 1.7rem; font-size: 0.7rem; }
+    .nav-counter { font-size: 0.68rem; }
+}
+
+/* ============ INFO CARDS LATERALES (dentro del modal) ============ */
+.info-sidebar .row { margin: 0; }
+.info-sidebar .col-6 { min-width: 0; }
+@media (max-width: 30rem) {
+    .info-sidebar .col-6 { width: 100% !important; }
+}
+
+/* ============ SOLAPÍN ============ */
+.solapin-card { padding: 0.5rem !important; }
+.solapin-nombre {
+    font-size: clamp(0.78rem, 2.2vw, 0.9rem);
+    word-break: break-word;
+    max-width: 100%;
+}
+.solapin-ci,
+.solapin-cargo {
+    font-size: clamp(0.6rem, 1.9vw, 0.7rem);
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* ============ AVATAR / PREVIEW DE FOTO ============ */
+.avatar-preview {
+    width: clamp(5rem, 18vw, 6.25rem) !important;
+    height: clamp(5rem, 18vw, 6.25rem) !important;
+}
+
+/* ============ CROPPER (RECORTE) ============ */
+.img-container {
+    min-height: clamp(14rem, 40vh, 25rem);
+    max-height: 60vh;
+}
+.preview-container {
+    width: clamp(7rem, 20vw, 11.25rem);
+    height: clamp(7rem, 20vw, 11.25rem);
+}
+#cropModal .modal-body { max-height: 75vh; overflow-y: auto; }
+
+/* ============ CUMPLEAÑEROS (carrusel) ============ */
+#cumpleContent img,
+#cumpleContent .rounded-circle[style*="width:9.375rem"] {
+    width: clamp(6.5rem, 22vw, 9.375rem) !important;
+    height: clamp(6.5rem, 22vw, 9.375rem) !important;
+}
+#cumpleContent .rounded-circle [style*="font-size:4.375rem"],
+#cumpleContent .rounded-circle[style*="font-size:4.375rem"] i {
+    font-size: clamp(2.5rem, 10vw, 4.375rem) !important;
+}
+#cumpleContent h4, #cumpleContent h5 {
+    font-size: clamp(0.95rem, 3vw, 1.25rem);
+    text-align: center;
+    word-break: break-word;
+}
+#listaCumpleaneros {
+    max-height: clamp(15rem, 40vh, 21.875rem);
+    overflow-y: auto;
+}
+#listaCumpleaneros > div { min-width: 0; }
+#listaCumpleaneros [style*="font-size:0.95rem"] { font-size: clamp(0.8rem, 2.4vw, 0.95rem) !important; }
+#listaCumpleaneros [style*="font-size:0.85rem"] { font-size: clamp(0.7rem, 2.2vw, 0.85rem) !important; }
+
+/* ============ STAT CARDS ============ */
+.stat-card { min-width: 0; }
+.stat-value {
+    font-size: clamp(1.1rem, 3.2vw, 1.6rem);
+    word-break: break-word;
+}
+.stat-label { font-size: clamp(0.65rem, 1.9vw, 0.75rem); }
+.stat-sub { font-size: clamp(0.65rem, 1.8vw, 0.75rem); }
+
+/* ============ DONUT GÉNERO ============ */
+.donut-custom {
+    width: clamp(7.5rem, 26vw, 10.625rem);
+    height: clamp(7.5rem, 26vw, 10.625rem);
+    margin: 0 auto;
+}
+.donut-hole {
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 78%;
+    height: 78%;
+}
+
+/* ============ MODALES INFO/CONFIRMACIÓN ============ */
+.foto-modal-win {
+    border-radius: 1rem !important;
+    max-width: 96vw !important;
+}
+.swal2-popup { max-width: 96vw !important; }
+
+/* ============ BOTONES FLOTANTES ============ */
+.scroll-quick-btns {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    gap: 0.4rem;
+}
+.scroll-quick-btn {
+    width: 2.4rem;
+    height: 2.4rem;
+    font-size: 0.85rem;
+    border-radius: 0.6rem;
+}
+@media (min-width: 48rem) {
+    .scroll-quick-btns { right: 1.25rem; bottom: 1.25rem; }
+    .scroll-quick-btn { width: 2.75rem; height: 2.75rem; font-size: 1rem; border-radius: 0.75rem; }
+}
+
+/* ============ DROPDOWNS (menú de opciones) ============ */
+.dropdown-menu-win { min-width: 14rem; max-width: min(20rem, 92vw); }
+.dropdown-menu-win .dropdown-item {
+    font-size: clamp(0.75rem, 2.4vw, 0.9rem);
+    padding: 0.5rem 0.75rem !important;
+    word-break: break-word;
+    white-space: normal;
+}
+@media (max-width: 30rem) {
+    .dropdown-menu-win { min-width: 12rem; }
+}
+
+/* ============ MODAL BAJA / MOTIVO ============ */
+select[name="motivo_baja"] {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+}
+.input-group input[type="date"] { min-width: 0; width: 100%; }
+@media (max-width: 48rem) {
+    .modal-footer-win .input-group { max-width: 100% !important; width: 100%; }
+}
+
+/* ============ BARRA RESET PENDIENTE ============ */
+@media (max-width: 48rem) {
+    .barra-reset-pendiente { padding: 0.5rem 0.75rem; flex-wrap: wrap; }
+    .brp-wrap { flex-wrap: wrap; gap: 0.5rem; }
+    .brp-icono { width: 2rem; height: 2rem; font-size: 0.85rem; flex: 0 0 2rem; }
+    .brp-titulo { font-size: 0.82rem; }
+    .brp-sub { font-size: 0.72rem; }
+    .brp-botones { width: 100%; justify-content: flex-end; flex-wrap: wrap; gap: 0.35rem; }
+    .brp-btn { padding: 0.4rem 0.7rem; font-size: 0.75rem; }
+}
+
+/* ============ ALERTA CUMPLEAÑOS DE HOY ============ */
+.alert.alert-win {
+    font-size: clamp(0.8rem, 2.2vw, 0.95rem);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+.alert.alert-win .btn-close { margin-left: auto; }
+
+/* ============ UTILITARIOS ============ */
+[style*="white-space: nowrap"] { white-space: normal !important; }
+.text-truncate { max-width: 100%; }
+img, canvas, table { max-width: 100%; }
+
+/* ============ ACCESIBILIDAD ============ */
+@media (prefers-reduced-motion: reduce) {
+    .fade-in-up, .badge-baja, .card-collapse-chevron { animation: none !important; transition: none !important; }
+}
+
+/* Touch targets */
+@media (hover: none) and (pointer: coarse) {
+    .btn-win, .btn-win-sm, .btn-nav, .sidebar-toggle, .scroll-quick-btn, .brp-btn { min-height: 2.4rem; }
+    .form-select, .form-control { min-height: 2.4rem; }
+}
+
+/* ============ MÓVIL MUY PEQUEÑO ============ */
+@media (max-width: 22.5rem) {
+    .kpi-grid, .stats-grid { grid-template-columns: 1fr !important; }
+    .win-topbar .page-title h1 { font-size: 0.95rem; }
+    .win-topbar .user-menu .btn-win { font-size: 0.72rem; padding: 0.4rem 0.65rem; }
+    .modal-title { font-size: 0.85rem; }
+    .scroll-quick-btn { width: 2.1rem; height: 2.1rem; font-size: 0.75rem; }
+}
     </style>
 
 
@@ -2229,6 +2627,15 @@ html[data-theme="light"] .badge.badge-estado-inactivo {
         <option value="mayor20">⬛ Mayor a 20 días</option>
     </select>
 </div>
+<div class="col-md-3">
+    <label class="form-label"><i class="fas fa-calendar-plus text-muted me-1"></i> Fecha Creado</label>
+    <select id="filtroCreado" class="form-select" title="Filtrar por fecha de creación del registro" data-tooltip="Filtrar por fecha de creación del registro" data-tooltip-theme="secondary">
+        <option value="">-- Todos --</option>
+        <option value="hoy">🗓️ Hoy (<?php echo $cont_hoy; ?>)</option>
+        <option value="mes">📅 Este mes (<?php echo $cont_mes; ?>)</option>
+        <option value="anio">📅 Este año (<?php echo $cont_anio; ?>)</option>
+    </select>
+</div>
             </div>
             <div class="mt-3 text-end">
                 <button class="btn-win btn-win-sm" id="btnLimpiarFiltros"><i class="fas fa-eraser me-1"></i> Limpiar filtros</button>
@@ -2278,7 +2685,7 @@ html[data-theme="light"] .badge.badge-estado-inactivo {
                     $fila_roja = (($emp['vacaciones_acumuladas'] ?? 0) > 20);
                     if (($emp['no_acumular_vacaciones'] ?? 0) == 1) $valor_a_pagar = $emp['valor_vacaciones'];
                     ?>
-                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>">
+                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>" data-creado="<?php echo date('Y-m-d', strtotime($emp['created_at'] ?? '')); ?>">
                         <td class="text-center">
                             <?php if ($puede_eliminar_empleados): ?>
                             <button class="btn-win btn-win-danger btn-win-sm" onclick="eliminarTrabajador(<?php echo $emp['id']; ?>, '<?php echo addslashes($emp['nombre_completo'] ?? ''); ?>')" title="Eliminar Empleado" data-tooltip="Eliminar Empleado" data-tooltip-theme="danger">
@@ -4886,7 +5293,8 @@ function reporteEmp_alcanceFiltros() {
         ['#filtroCuentaBancaria', 'Cuenta Bancaria'],
         ['#filtroFoto', 'Foto Perfil'],
         ['#filtroEstadoLaboral', 'Estado Laboral'],
-        ['#filtroVacacionesExcedidas', 'Días de Vacaciones']
+        ['#filtroVacacionesExcedidas', 'Días de Vacaciones'],
+        ['#filtroCreado', 'Fecha Creado']
     ];
     mapa.forEach(function(par) {
         var $el = $(par[0]);
@@ -5952,16 +6360,39 @@ $('#filtroVacacionesExcedidas').on('change', function() {
     }
     table.draw();
 });
+// Filtro por fecha de creación del registro (hoy / este mes / este año)
+$('#filtroCreado').on('change', function() {
+    var table = $('#empleadosTable').DataTable();
+    $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function(fn) {
+        return fn.name !== 'filtroCreado';
+    });
+    var valor = this.value;
+    if (valor !== '') {
+        var now = new Date();
+        var hoy = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        var mesActual = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        var anioActual = String(now.getFullYear());
+        $.fn.dataTable.ext.search.push(function filtroCreado(settings, data, dataIndex) {
+            var node = table.row(dataIndex).node();
+            var creado = (node && node.getAttribute('data-creado')) || '';
+            if (valor === 'hoy') return creado === hoy;
+            if (valor === 'mes') return creado.indexOf(mesActual) === 0;
+            if (valor === 'anio') return creado.indexOf(anioActual) === 0;
+            return true;
+        });
+    }
+    table.draw();
+});
 $('#btnLimpiarFiltros').on('click', function() {
     // 1. Restablecer todos los selects a su valor por defecto
-    $('#filtroEmpleado, #filtroTipoContrato, #filtroPagoVacaciones, #filtroArea, #filtroCentroCosto, #filtroCargo, #filtroCuentaBancaria, #filtroFoto, #filtroEstadoLaboral, #filtroVacacionesExcedidas').val('');
+    $('#filtroEmpleado, #filtroTipoContrato, #filtroPagoVacaciones, #filtroArea, #filtroCentroCosto, #filtroCargo, #filtroCuentaBancaria, #filtroFoto, #filtroEstadoLaboral, #filtroVacacionesExcedidas, #filtroCreado').val('');
     $('#filtroEmpleado').trigger('change.select2');
     
     // 2. Eliminar TODOS los filtros personalizados de DataTables
-    // (Esto incluye foto, estado laboral y vacaciones excedidas)
+    // (Esto incluye foto, estado laboral, vacaciones excedidas y creado)
     $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function(fn) {
         // Conservar solo filtros nativos, eliminar los personalizados
-        return fn.name !== 'filtroFotoCustom' && fn.name !== 'filtroEstadoLaboral' && fn.name !== 'filtroVacacionesExcedidas';
+        return fn.name !== 'filtroFotoCustom' && fn.name !== 'filtroEstadoLaboral' && fn.name !== 'filtroVacacionesExcedidas' && fn.name !== 'filtroCreado';
     });
     
     // 3. Limpiar todas las búsquedas por columna
@@ -5977,6 +6408,24 @@ $('#btnLimpiarFiltros').on('click', function() {
 });
 	
 	inicializarSelectorEmpleados();
+	
+	// ==========================================
+	// DISPARADOR POR HASH (submenú del sidebar)
+	// ==========================================
+	var hashAccionesEmpleados = {
+	    'solapines_zip':     '#menuExportTodosSolapines',
+	    'solapines_lote':    '#menuImprimirTodosSolapines',
+	    'cumple_completo':   '#menuExportCumpleCompleto',
+	    'cumple_30':         '#menuExportCumple30'
+	};
+	function dispararAccionHashEmpleados() {
+	    var h = window.location.hash ? window.location.hash.substring(1) : '';
+	    if (!h || !hashAccionesEmpleados.hasOwnProperty(h)) return;
+	    var el = document.querySelector(hashAccionesEmpleados[h]);
+	    if (el) el.click();
+	}
+	dispararAccionHashEmpleados();
+	window.addEventListener('hashchange', dispararAccionHashEmpleados);
 });
 
 // Conectar menú de TopBar a Datatables

@@ -622,7 +622,226 @@ header('Expires: 0');
             .corp-info strong { font-size: 0.68rem; }
             .iso-cuerpo { padding: 1.1rem 1.1rem 1.2rem; }
         }
+/* ============================================================
+   RESPONSIVE GLOBAL — Consulta de Salario (solic_userinfo)
+   Ajustes finos para PC grande, tablet, móvil y móvil pequeño
+   ============================================================ */
+
+/* Fijar desbordes horizontales */
+html, body { overflow-x: hidden; }
+
+/* ---------- PC grande y tablet horizontal (>1024px): sin cambios ---------- */
+
+/* ---------- Tablet (≤64rem / 1024px) ---------- */
+@media (max-width: 64rem) {
+    body { padding-bottom: clamp(13rem, 20vw, 15.5rem); }
+    .su-reloj-analog { width: clamp(3.8rem, 8vw, 5rem); height: clamp(3.8rem, 8vw, 5rem); }
+    .su-reloj-hora { font-size: clamp(1.05rem, 2.4vw, 1.32rem); }
+    .su-ventana {
+        width: min(64rem, 96vw);
+        height: min(48rem, 90vh);
+    }
+    .corp-grid { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+}
+
+/* ---------- Tablet vertical (≤48rem / 768px) ---------- */
+@media (max-width: 48rem) {
+    /* El padding-bottom de 27rem es demasiado: se calcula según alto real */
+    body {
+        padding-bottom: 12rem;
+        padding-top: 4.3rem;
+    }
+    /* Reloj: más chico, se mantiene horizontal en el header apilado */
+    .su-reloj {
+        margin: 0.6rem auto 0;
+        padding-left: 0;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+    .su-reloj-analog { width: 3.6rem; height: 3.6rem; }
+    .su-reloj-hora { font-size: 1.05rem; }
+    .su-reloj-fecha { font-size: 0.72rem; }
+
+    /* Logo central: menos ancho, no choca con footer */
+    .su-logo-central img { width: min(12rem, 60vw); }
+
+    /* Cabecera más compacta */
+    .su-cabecera { padding: 0.85rem 1rem; }
+    .su-cabecera h1 { font-size: 1.02rem; line-height: 1.3; }
+    .su-cabecera p { font-size: 0.78rem; }
+    .su-cabecera-icono { width: 2.6rem; height: 2.6rem; }
+
+    /* Tarjeta del formulario */
+    .su-tarjeta { padding: 1rem; }
+
+    /* Ventana modal: borde redondeado también en móvil (mejor visual) */
+    .su-ventana {
+        width: 98vw;
+        height: 92vh;
+        border-radius: 0.75rem;
+        top: 4vh; left: 1vw;
+        transform: none;
+    }
+    .su-ventana-cuerpo { padding: 0.85rem; }
+    .su-barra-titulos { padding: 0.45rem 0.7rem; gap: 0.5rem; }
+    .su-titulo-icono { width: 1.9rem; height: 1.9rem; }
+    .su-titulos h5 { font-size: 0.9rem; }
+    .su-titulos p { font-size: 0.68rem; }
+    .su-btn-x { width: 1.6rem; height: 1.6rem; font-size: 0.78rem; }
+
+    /* Tabla: scroll horizontal + tipografía ajustada */
+    .su-tabla-scroll {
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+    .su-tabla-scroll::-webkit-scrollbar { height: 6px; }
+    .su-tabla-scroll::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb), 0.5); border-radius: 3px; }
+    table.su-tabla { font-size: 0.8rem; min-width: 32rem; }
+    table.su-tabla thead th,
+    table.su-tabla td { padding: 0.42rem 0.55rem; }
+
+    /* Pie de la ventana */
+    .su-pie { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+    .su-pie-grupo { justify-content: center; flex-wrap: wrap; }
+    .su-btn { justify-content: center; }
+
+    /* Menú lateral: más compacto */
+    .su-sidebar { width: min(14rem, 84vw); }
+    .su-side-nav a { padding: 0.5rem 0.65rem; font-size: 0.78rem; }
+    .su-side-salir { font-size: 0.78rem; padding: 0.5rem 0.65rem; }
+
+    /* Footer corporativo: barra y bottom más compactas */
+    .corp-bar { padding: 0.65rem 0.85rem; }
+    .corp-bottom { padding: 0.6rem 0.85rem; gap: 0.5rem; }
+    .corp-copy { padding: 0.5rem 0.85rem; }
+    .corp-info strong { font-size: 0.68rem; }
+    .corp-info span { font-size: 0.62rem; }
+    .corp-icono { width: 2.1rem; height: 2.1rem; font-size: 0.95rem; }
+
+    /* Portal de acceso por clave: cabecera y campos más compactos */
+    .gate-caja { padding: 1.6rem 1.35rem 1.35rem; }
+    .gate-icono { width: 3rem; height: 3rem; font-size: 1.15rem; margin-bottom: 0.75rem; }
+    .gate-caja h1 { font-size: 1.05rem; }
+    .gate-caja h2 { font-size: 0.85rem; }
+    .gate-caja .gate-slogan { font-size: 0.72rem; margin-bottom: 1rem; }
+    .gate-alerta { font-size: 0.68rem; }
+    .gate-campo input { padding: 0.6rem 2.5rem 0.6rem 0.75rem; font-size: 0.9rem; }
+    .gate-botones { flex-direction: column; }
+    .gate-btn { padding: 0.62rem 0.9rem; font-size: 0.88rem; }
+
+    /* Modal ISO */
+    .iso-caja { border-radius: 0.6rem; }
+    .iso-cuerpo { padding: 1.15rem 1.15rem 1.25rem; }
+    .iso-scroll { max-height: 60vh; }
+}
+
+/* ---------- Móvil estándar (≤30rem / 480px) ---------- */
+@media (max-width: 30rem) {
+    body {
+        padding-bottom: 10rem;
+        padding-top: 4rem;
+    }
+    .su-btn-menu { width: 2.4rem; height: 2.4rem; top: 0.6rem; left: 0.6rem; font-size: 1rem; }
+
+    /* Cabecera aún más compacta */
+    .su-cabecera { padding: 0.7rem 0.85rem; gap: 0.5rem; }
+    .su-cabecera h1 { font-size: 0.95rem; }
+    .su-cabecera-empresa { font-size: 0.85rem; }
+    .su-cabecera-slogan { font-size: 0.72rem; }
+    .su-cabecera-icono { width: 2.2rem; height: 2.2rem; }
+
+    /* Reloj apilado en móvil pequeño */
+    .su-reloj { flex-direction: row; justify-content: center; gap: 0.5rem; }
+    .su-reloj-analog { width: 3rem; height: 3rem; }
+    .su-reloj-hora { font-size: 0.98rem; }
+    .su-reloj-fecha { font-size: 0.68rem; }
+
+    /* Logo central más chico */
+    .su-logo-central img { width: min(10rem, 65vw); }
+
+    /* Formulario */
+    .su-fila { gap: 0.55rem; }
+    .su-campo { flex: 1 1 100%; min-width: 0; }
+    .su-btn-generar { padding: 0.55rem 0.85rem; font-size: 0.82rem; }
+
+    /* Tabla aún más compacta */
+    table.su-tabla { font-size: 0.75rem; }
+    table.su-tabla thead th,
+    table.su-tabla td { padding: 0.35rem 0.45rem; }
+    .su-meta { gap: 0.5rem; font-size: 0.78rem; }
+
+    /* Pie del modal: botones en fila, más pequeños */
+    .su-btn { padding: 0.45rem 0.75rem; font-size: 0.76rem; }
+    .su-dropdown-menu { min-width: 11rem; }
+    .su-dropdown-menu a { font-size: 0.78rem; padding: 0.4rem 0.75rem; }
+
+    /* Portal de acceso */
+    .gate-caja { padding: 1.4rem 1.1rem 1.2rem; }
+    .gate-icono { width: 2.7rem; height: 2.7rem; font-size: 1rem; margin-bottom: 0.6rem; }
+    .gate-caja h1 { font-size: 1rem; }
+    .gate-caja h2 { font-size: 0.8rem; }
+    .gate-caja .gate-slogan { font-size: 0.7rem; margin-bottom: 0.85rem; }
+    .gate-alerta { font-size: 0.65rem; margin-bottom: 0.9rem; }
+    .gate-btn { padding: 0.6rem 0.85rem; font-size: 0.85rem; }
+    .gate-nota { font-size: 0.72rem; margin-top: 0.9rem; }
+
+    /* Modal ISO */
+    .iso-barra .tt-texto { font-size: 0.85rem; }
+    .iso-cuerpo { padding: 1rem 1rem 1.1rem; }
+    .iso-cuerpo .iso-empresa { font-size: 0.95rem; }
+    .iso-cuerpo .iso-sub { font-size: 0.75rem; }
+    .iso-scroll h4 { font-size: 0.85rem; }
+    .iso-scroll p { font-size: 0.76rem; }
+    .iso-btn-ok { padding: 0.55rem 1.2rem; font-size: 0.8rem; }
+
+    /* Footer corporativo aún más compacto */
+    .corp-info strong { font-size: 0.64rem; }
+    .corp-info span { font-size: 0.58rem; }
+    .corp-persona strong { font-size: 0.75rem; }
+    .corp-persona small { font-size: 0.62rem; }
+    .corp-insignia { font-size: 0.65rem; padding: 0.25rem 0.65rem; }
+    .corp-copy { font-size: 0.64rem; }
+    .corp-link { font-size: 0.64rem; }
+}
+
+/* ---------- Móvil muy pequeño (≤22.5rem / 360px) ---------- */
+@media (max-width: 22.5rem) {
+    body { padding-bottom: 9rem; padding-top: 3.8rem; }
+    .su-btn-menu { width: 2.2rem; height: 2.2rem; font-size: 0.92rem; }
+    .su-cabecera h1 { font-size: 0.88rem; }
+    .su-reloj-analog { width: 2.6rem; height: 2.6rem; }
+    .su-reloj-hora { font-size: 0.9rem; }
+    .su-logo-central img { width: min(8.5rem, 70vw); }
+    table.su-tabla { font-size: 0.7rem; }
+    table.su-tabla thead th,
+    table.su-tabla td { padding: 0.3rem 0.4rem; }
+    .su-btn { font-size: 0.72rem; padding: 0.4rem 0.65rem; }
+    .gate-caja { padding: 1.2rem 0.9rem 1rem; }
+    .gate-caja h1 { font-size: 0.92rem; }
+    .gate-caja h2 { font-size: 0.75rem; }
+    .gate-btn { font-size: 0.8rem; }
+    .corp-info strong { font-size: 0.6rem; }
+    .corp-info span { font-size: 0.55rem; }
+    .corp-icono { width: 1.9rem; height: 1.9rem; font-size: 0.85rem; }
+}
+
+/* ---------- Accesibilidad: reducir animaciones ---------- */
+@media (prefers-reduced-motion: reduce) {
+    .gate-alerta { animation: none !important; }
+    .su-sidebar, .su-side-nav a, .su-side-salir,
+    .corp-icono, .gate-btn, .su-btn, .su-btn-generar { transition: none !important; }
+}
+
+/* ---------- Touch targets en dispositivos táctiles ---------- */
+@media (hover: none) and (pointer: coarse) {
+    .su-btn, .su-btn-generar, .su-side-nav a, .su-side-salir,
+    .gate-btn, .iso-btn-ok, .iso-cerrar, .corp-item { min-height: 2.4rem; }
+    .su-btn-x, .gate-ojo, .corp-min-btn { min-width: 2rem; min-height: 2rem; }
+    .su-side-nav a { padding: 0.65rem 0.75rem; }
+}
     </style>
+
 </head>
 <body>
 

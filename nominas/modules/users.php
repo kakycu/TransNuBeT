@@ -195,7 +195,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
 <head>
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title><?php echo defined('SITE_NAME') ? htmlspecialchars(SITE_NAME) : 'SisGesNom'; ?> | Perfil de Usuario</title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
 
@@ -639,6 +639,530 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
             text-decoration: none;
             color: inherit;
         }
+/* ============================================ */
+/* RESPONSIVE PERFIL USUARIO (PC/TABLET/MÓVIL)  */
+/* Solo afecta a cada breakpoint; NO sobrescribe PC */
+/* ============================================ */
+
+/* ---------- SAFE AREA (Notch iPhone X+) ---------- */
+@supports (padding: env(safe-area-inset-top)) {
+    .main-container {
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+        padding-left: max(1.25rem, env(safe-area-inset-left));
+        padding-right: max(1.25rem, env(safe-area-inset-right));
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* ---------- TABLET (≤ 1024px) ---------- */
+@media (max-width: 1024px) {
+    .main-container {
+        margin-left: 5rem !important;
+        padding: 1rem !important;
+    }
+    .main-container.expanded {
+        margin-left: 5rem !important;
+    }
+
+    .win-topbar {
+        padding: 0.75rem 1rem !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .page-title h1 { font-size: 1.15rem; }
+    .page-title p  { font-size: 0.72rem; }
+
+    /* Fila de 4 tarjetas con col-3 fijo → 2 columnas */
+    .row.g-3 > .col-3 {
+        flex: 1 1 calc(50% - 0.375rem) !important;
+        max-width: calc(50% - 0.375rem);
+    }
+
+    /* Info de contacto (col-md-6 col-xl-3): mantener 2 columnas */
+    .row.g-3 > .col-md-6.col-xl-3 {
+        flex: 1 1 calc(50% - 0.375rem);
+        max-width: calc(50% - 0.375rem);
+    }
+
+    /* Profile cover y avatar más ajustados */
+    .profile-cover { height: 6.875rem; }
+    .profile-cover-text { font-size: 1.2rem; letter-spacing: 0.125rem; }
+    .profile-cover-text small { font-size: 1rem; }
+    .profile-avatar-large {
+        width: 6.25rem;
+        height: 6.25rem;
+        margin-top: -3.125rem;
+    }
+    .profile-avatar-large .iniciales { font-size: 2rem; }
+    .profile-name-lg { font-size: 1.35rem; }
+}
+
+/* ---------- MÓVIL (≤ 768px) ---------- */
+@media (max-width: 768px) {
+    /* ---------- BODY: prevenir scroll horizontal ---------- */
+    html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+
+    /* ---------- CONTENEDOR PRINCIPAL ---------- */
+    .main-container {
+        margin-left: 0 !important;
+        padding: 0.625rem !important;
+        width: 100% !important;
+    }
+    .main-container.expanded {
+        margin-left: 0 !important;
+    }
+
+    /* ---------- TOPBAR: grid con reloj visible ---------- */
+    .win-topbar {
+        display: grid !important;
+        grid-template-columns: 1fr auto;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem 0.75rem !important;
+        border-radius: 0.75rem !important;
+    }
+    .win-topbar > div:first-child {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 0.5rem !important;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: end;
+        flex-shrink: 0;
+    }
+
+    .page-title {
+        min-width: 0;
+        flex: 1;
+    }
+    .page-title h1 {
+        font-size: 0.95rem !important;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .win-topbar .page-title > p {
+        display: none;
+    }
+
+    .sidebar-toggle {
+        width: 2.25rem;
+        height: 2.25rem;
+        flex-shrink: 0;
+    }
+
+    /* ---------- BOTÓN VOLVER ---------- */
+    .mb-3.fade-in-up .btn-win {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.78rem;
+    }
+
+    /* ---------- PROFILE COVER ---------- */
+    .profile-cover {
+        height: 5.5rem;
+        border-radius: 0.625rem 0.625rem 0 0;
+    }
+    .profile-cover-text {
+        font-size: 0.85rem;
+        letter-spacing: 0.0625rem;
+        padding: 0 0.625rem;
+        text-align: center;
+        flex-wrap: wrap;
+        line-height: 1.3;
+    }
+    .profile-cover-text small {
+        font-size: 0.78rem;
+        letter-spacing: 0.0312rem;
+        padding: 0.15rem 0.5rem;
+    }
+    .profile-cover-logo {
+        background-size: 3.75rem 3.75rem;
+        opacity: 0.1;
+    }
+
+    /* ---------- PROFILE HEADER ---------- */
+    .profile-header {
+        padding: 0 1rem 1rem !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center;
+    }
+    .profile-avatar-large {
+        width: 5.5rem;
+        height: 5.5rem;
+        margin-top: -2.75rem;
+        border-width: 0.1875rem;
+    }
+    .profile-avatar-large .iniciales { font-size: 1.75rem; }
+    .profile-name-lg {
+        font-size: 1.2rem;
+        line-height: 1.25;
+        margin-top: 0.5rem;
+    }
+    .profile-username {
+        font-size: 0.78rem;
+        line-height: 1.7;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0.25rem 0.5rem;
+    }
+    /* Los separadores | del perfil se ocultan en móvil y se reemplazan por saltos */
+    .profile-username > span.mx-2 {
+        display: none;
+    }
+    /* Los badges del usuario (Google/BD, Cambiar contraseña) */
+    .profile-username > span.badge,
+    .profile-username > a.badge {
+        font-size: 0.68rem;
+        padding: 0.2rem 0.5rem;
+    }
+
+    /* Botones/badges de rol y estado a fila completa */
+    .profile-header > .d-flex.flex-wrap.align-items-center.gap-2.pb-1 {
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.625rem;
+    }
+    .profile-header > .d-flex.flex-wrap.align-items-center.gap-2.pb-1 .badge-rol {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.7rem;
+    }
+    .profile-header > .d-flex.flex-wrap.align-items-center.gap-2.pb-1 .dropdown {
+        flex: 1 1 auto;
+    }
+    .profile-header > .d-flex.flex-wrap.align-items-center.gap-2.pb-1 .btn-win {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.78rem;
+    }
+
+    /* ---------- DROPDOWN DE ACCIONES ---------- */
+    .perfil-acciones .dropdown-menu {
+        right: 0 !important;
+        left: auto !important;
+        min-width: 12rem !important;
+        max-width: calc(100vw - 2rem) !important;
+    }
+    .perfil-acciones .dropdown-item {
+        font-size: 0.82rem;
+        padding: 0.55rem 0.75rem;
+    }
+
+    /* ---------- INFO ITEMS (fila de 4) ---------- */
+    .row.g-3 > .col-md-6.col-xl-3 {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+    .info-item {
+        padding: 0.75rem 0.875rem;
+    }
+    .info-icon {
+        width: 2.25rem;
+        height: 2.25rem;
+        font-size: 0.9rem;
+    }
+    .info-label { font-size: 0.62rem; }
+    .info-value { font-size: 0.85rem; }
+    .info-item .card-icon-bg {
+        font-size: 3rem;
+    }
+
+    /* ---------- FILA DE 4 TARJETAS (Dirección/Registro/Nacimiento/Cumpleaños) ---------- */
+    .row.g-3 > .col-3 {
+        flex: 1 1 100% !important;
+        max-width: 100%;
+    }
+    .glass-card.p-3 {
+        padding: 0.875rem !important;
+    }
+    .glass-card.p-3 h6 {
+        font-size: 0.78rem !important;
+    }
+    .glass-card.p-3 .info-label { font-size: 0.6rem !important; }
+    .glass-card.p-3 .info-value { font-size: 0.78rem !important; }
+    .glass-card .card-icon-bg {
+        font-size: 4rem;
+        opacity: 0.06;
+    }
+
+    /* ---------- ROW general: apilar todo ---------- */
+    .row.g-3 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    .row.g-3 > .col-md-6,
+    .row.g-3 > .col-xl-3,
+    .row.g-3 > .col-3 {
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* ---------- MODAL DE CAMBIAR CONTRASEÑA ---------- */
+    #modalCambiarPassword .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        min-height: 100vh;
+    }
+    #modalCambiarPassword .modal-content {
+        border-radius: 0 !important;
+        min-height: 100vh;
+    }
+    #modalCambiarPassword .modal-header,
+    #modalCambiarPassword .modal-footer {
+        padding: 0.75rem 0.875rem !important;
+    }
+    #modalCambiarPassword .modal-body {
+        padding: 0.875rem !important;
+    }
+    #modalCambiarPassword .modal-footer .btn {
+        flex: 1 1 calc(50% - 0.25rem);
+        justify-content: center;
+    }
+    #modalCambiarPassword .form-label { font-size: 0.78rem; }
+    #modalCambiarPassword .form-control { font-size: 0.85rem; }
+
+    /* ---------- MODAL DE USUARIO ---------- */
+    #modalUsuario .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        min-height: 100vh;
+    }
+    #modalUsuario .modal-content {
+        border-radius: 0 !important;
+        min-height: 100vh;
+    }
+    #modalUsuario .modal-header {
+        padding: 0.75rem 0.875rem !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    #modalUsuario .modal-title {
+        font-size: 0.9rem;
+    }
+    #modalUsuario .modal-body {
+        padding: 0.875rem !important;
+        max-height: calc(100vh - 11rem);
+    }
+    #modalUsuario .modal-footer {
+        padding: 0.625rem 0.875rem !important;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+    }
+    #modalUsuario .modal-footer .btn-win {
+        flex: 1 1 calc(50% - 0.25rem);
+        justify-content: center;
+        font-size: 0.8rem;
+        padding: 0.5rem 0.75rem;
+    }
+    #modalUsuario .modal-avatar-header {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+    #modalUsuario .modal-avatar-header .avatar-iniciales-lg {
+        font-size: 0.95rem;
+    }
+    #modalUsuario .avatar-preview {
+        width: 6.25rem !important;
+        height: 6.25rem !important;
+    }
+
+    /* ---------- GRID DEL FORMULARIO DEL MODAL ---------- */
+    #modalUsuario .row.g-4 > .col-md-3,
+    #modalUsuario .row.g-4 > .col-md-9,
+    #modalUsuario .row.g-3 > .col-md-4,
+    #modalUsuario .row.g-3 > .col-md-6,
+    #modalUsuario .row.g-3 > .col-md-12 {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+    #modalUsuario .row.g-4 > .col-md-3 {
+        text-align: center;
+    }
+    #modalUsuario .row.g-3 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    #modalUsuario .d-grid.gap-1 {
+        grid-template-columns: 1fr 1fr;
+        max-width: 15rem;
+        margin: 0 auto;
+    }
+
+    /* ---------- MODAL DE CROPPER ---------- */
+    #cropModalUsuario .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        min-height: 100vh;
+    }
+    #cropModalUsuario .modal-content {
+        border-radius: 0 !important;
+        min-height: 100vh;
+    }
+    #cropModalUsuario .modal-header {
+        padding: 0.75rem 0.875rem !important;
+    }
+    #cropModalUsuario .modal-title {
+        font-size: 0.9rem;
+    }
+    #cropModalUsuario .modal-body {
+        padding: 0.75rem !important;
+    }
+    #cropModalUsuario .modal-footer {
+        padding: 0.625rem 0.875rem !important;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+    }
+    #cropModalUsuario .modal-footer .btn {
+        flex: 1 1 calc(50% - 0.25rem);
+        font-size: 0.8rem;
+    }
+    #cropModalUsuario .row > .col-md-8,
+    #cropModalUsuario .row > .col-md-4 {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+    #cropModalUsuario .img-container {
+        min-height: 15rem;
+        max-height: 20rem;
+    }
+    #cropModalUsuario .preview-container {
+        width: 6.25rem;
+        height: 6.25rem;
+    }
+    #cropModalUsuario .crop-controls .btn {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.5rem;
+    }
+
+    /* ---------- FOOTER ---------- */
+    footer, .footer {
+        font-size: 0.7rem !important;
+        padding: 0.75rem !important;
+    }
+}
+
+/* ---------- MÓVIL PEQUEÑO (≤ 480px) ---------- */
+@media (max-width: 480px) {
+    .main-container {
+        padding: 0.4rem !important;
+    }
+    .glass-card {
+        border-radius: 0.625rem;
+    }
+    .page-title h1 {
+        font-size: 0.85rem !important;
+        max-width: 55vw;
+    }
+    .win-topbar {
+        padding: 0.4rem 0.5rem !important;
+        grid-template-columns: 1fr;
+        row-gap: 0.5rem;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: center;
+        width: 100%;
+    }
+
+    /* Perfil aún más compacto */
+    .profile-cover { height: 4.75rem; }
+    .profile-cover-text { font-size: 0.72rem; letter-spacing: 0.0312rem; }
+    .profile-cover-text small { font-size: 0.7rem; }
+    .profile-avatar-large {
+        width: 4.75rem;
+        height: 4.75rem;
+        margin-top: -2.375rem;
+    }
+    .profile-avatar-large .iniciales { font-size: 1.5rem; }
+    .profile-name-lg { font-size: 1.05rem; }
+    .profile-username { font-size: 0.72rem; }
+
+    /* Tarjetas info aún más compactas */
+    .info-item {
+        padding: 0.625rem 0.75rem;
+        gap: 0.625rem;
+    }
+    .info-icon {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.8rem;
+    }
+    .info-value { font-size: 0.8rem; }
+    .info-label { font-size: 0.58rem; }
+
+    /* Reloj */
+    #liveClock {
+        font-size: 0.78rem;
+        min-width: 4.5rem;
+    }
+    .date-badge {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.78rem;
+    }
+
+    /* Modales aún más compactos */
+    #modalCambiarPassword .modal-body,
+    #modalUsuario .modal-body,
+    #cropModalUsuario .modal-body {
+        padding: 0.75rem !important;
+    }
+    #modalCambiarPassword .form-control,
+    #modalUsuario .form-control,
+    #modalUsuario .form-select {
+        font-size: 0.8rem !important;
+    }
+}
+
+/* ---------- PANTALLAS GRANDES (≥ 1400px) ---------- */
+@media (min-width: 1400px) {
+    .main-container {
+        max-width: 1800px;
+        margin: 0 auto 0 16.25rem;
+    }
+    .main-container.expanded {
+        margin-left: 5rem;
+    }
+}
+
+/* ---------- ORIENTACIÓN HORIZONTAL EN MÓVIL ---------- */
+@media (max-width: 900px) and (orientation: landscape) {
+    #modalUsuario .modal-dialog,
+    #cropModalUsuario .modal-dialog,
+    #modalCambiarPassword .modal-dialog {
+        min-height: auto;
+        max-height: 96vh;
+    }
+    #modalUsuario .modal-content,
+    #cropModalUsuario .modal-content,
+    #modalCambiarPassword .modal-content {
+        min-height: auto;
+        max-height: 96vh;
+        border-radius: 1rem !important;
+    }
+    #modalUsuario .modal-body {
+        max-height: calc(96vh - 10rem);
+    }
+    #cropModalUsuario .img-container {
+        min-height: 12rem;
+        max-height: 16rem;
+    }
+    /* En horizontal, las tarjetas col-3 vuelven a 2 columnas */
+    .row.g-3 > .col-3 {
+        flex: 1 1 calc(25% - 0.375rem) !important;
+        max-width: calc(25% - 0.375rem);
+    }
+}
     </style>
 </head>
 <body>
@@ -844,7 +1368,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
     <!-- Dirección + Registro + Datos Personales en una sola fila con iconos de fondo -->
     <div class="row g-3 mb-4">
         <!-- Dirección Particular - col-2 -->
-        <div class="col-3 fade-in-up" style="animation-delay: 0.26s;">
+        <div class="col-6 col-md-6 col-lg-3 fade-in-up" style="animation-delay: 0.26s;">
             <div class="glass-card p-3 h-100">
                 <i class="fas fa-map-marker-alt card-icon-bg address"></i>
                 <div class="card-content">
@@ -857,7 +1381,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         </div>
         
         <!-- Registro del Usuario - col-2 -->
-        <div class="col-3 fade-in-up" style="animation-delay: 0.3s;">
+        <div class="col-6 col-md-6 col-lg-3 fade-in-up" style="animation-delay: 0.3s;">
             <div class="glass-card p-3 h-100">
                 <i class="fas fa-history card-icon-bg register"></i>
                 <div class="card-content">
@@ -877,7 +1401,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         </div>
         
         <!-- Datos Personales - Nacimiento - col-2 -->
-        <div class="col-3 fade-in-up" style="animation-delay: 0.34s;">
+        <div class="col-6 col-md-6 col-lg-3 fade-in-up" style="animation-delay: 0.34s;">
             <div class="glass-card p-3 h-100">
                 <i class="fas fa-calendar-alt card-icon-bg birthday"></i>
                 <div class="card-content">
@@ -903,7 +1427,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         </div>
         
 <!-- Datos Personales - Cumpleaños - col-2 -->
-<div class="col-3 fade-in-up" style="animation-delay: 0.38s;">
+<div class="col-6 col-md-6 col-lg-3 fade-in-up" style="animation-delay: 0.38s;">
     <div class="glass-card p-3 h-100">
         <i class="fas fa-birthday-cake card-icon-bg cake"></i>
         <div class="card-content">

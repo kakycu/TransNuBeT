@@ -7,7 +7,7 @@ if (!file_exists(__DIR__ . '/config.php')) {
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <title>Sistema sin configurar</title>
         <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
         <script src="js/sweetalert2.all.min.js"></script>
@@ -22,6 +22,7 @@ if (!file_exists(__DIR__ . '/config.php')) {
                 align-items: center;
                 justify-content: center;
             }
+			
         </style>
     </head>
     <body>
@@ -1139,7 +1140,7 @@ rsort($anios_cierres_meses);
 <head>
     <?php include 'includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?> | Dashboard</title>
     <link rel="icon" type="image/x-icon" href="../images/favicons/nominas.ico">
     
@@ -1192,6 +1193,404 @@ rsort($anios_cierres_meses);
         #tablaCierresMeses .cierre-contrib { color: var(--muted, #97a5bb); }
         #tablaCierresMeses .cierre-neto { color: var(--txt, #ffffff); font-weight:600; }
         #tablaCierresMeses .cierre-fecha { color: var(--faint, rgba(255,255,255,0.6)); font-size:0.75rem; }
+
+/* ============================================ */
+/* RESPONSIVE DASHBOARD — Refuerzo complementario */
+/* (Complementa el bloque RESPONSIVE GLOBAL ya existente) */
+/* ============================================ */
+
+/* ---------- SAFE AREA (Notch iPhone X+) ---------- */
+@supports (padding: env(safe-area-inset-top)) {
+    .main-container {
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+        padding-left: max(1.25rem, env(safe-area-inset-left));
+        padding-right: max(1.25rem, env(safe-area-inset-right));
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+    .scroll-quick-btns {
+        right: max(1.25rem, env(safe-area-inset-right));
+        bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+    .barra-reset-pendiente {
+        padding-top: max(0.625rem, env(safe-area-inset-top));
+    }
+}
+
+/* ---------- ASEGURAR QUE EL GRID DEL DASHBOARD SEA RESPONSIVE ---------- */
+.kpi-grid,
+.stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)) !important;
+    gap: 1rem !important;
+}
+
+/* Cuando hay muchos KPI, permitir 2 columnas en tablet */
+@media (max-width: 1200px) {
+    .kpi-grid,
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)) !important;
+    }
+}
+
+/* En móvil, 1 columna solo si no cabe más */
+@media (max-width: 640px) {
+    .kpi-grid,
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem !important;
+    }
+}
+
+/* En móvil muy chico, 1 columna */
+@media (max-width: 360px) {
+    .kpi-grid,
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ---------- TOPBAR CON WRAP REAL ---------- */
+.win-topbar {
+    flex-wrap: wrap !important;
+}
+.win-topbar > .d-flex.align-items-center.gap-3 {
+    flex-wrap: wrap;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+/* En móvil el topbar se reorganiza */
+@media (max-width: 768px) {
+    .win-topbar {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+    .win-topbar > .d-flex.align-items-center.gap-3 {
+        justify-content: space-between;
+        width: 100%;
+    }
+    .page-title h1 {
+        font-size: 0.95rem !important;
+        line-height: 1.25;
+    }
+    .win-topbar .page-title > p {
+        display: none;
+    }
+}
+
+/* ---------- CUMPLEAÑOS: LA COLUMNA IZQUIERDA EN TABLET ---------- */
+@media (max-width: 992px) {
+    #collapseCumpleanios .col-lg-5,
+    #collapseCumpleanios .col-lg-7 {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+    #cumpleContent img,
+    #cumpleContent .rounded-circle {
+        max-width: 100%;
+    }
+    #listaCumpleaneros {
+        max-height: 20rem !important;
+    }
+}
+
+/* ---------- GRÁFICOS: GARANTIZAR RESPONSIVE ---------- */
+canvas[id$="Chart"] {
+    display: block;
+    max-width: 100%;
+    height: auto !important;
+}
+.chart-container,
+.chart-wrap {
+    position: relative;
+    width: 100%;
+    height: clamp(15rem, 40vw, 22rem) !important;
+    min-height: 15rem !important;
+}
+
+/* Contenedores con altura inline en HTML */
+.glass-card > .collapse > div[style*="height"],
+.glass-card > .collapse.show > div[style*="height"] {
+    height: auto !important;
+    min-height: 15rem !important;
+}
+
+/* En móvil los gráficos se achican un poco */
+@media (max-width: 768px) {
+    .chart-container,
+    .chart-wrap {
+        height: 14rem !important;
+    }
+    canvas[id$="Chart"] {
+        max-height: 14rem;
+    }
+}
+@media (max-width: 480px) {
+    .chart-container,
+    .chart-wrap {
+        height: 12rem !important;
+    }
+    canvas[id$="Chart"] {
+        max-height: 12rem;
+    }
+}
+
+/* ---------- TABLAS DE TOTALES POR TIPO ---------- */
+.table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+}
+
+.table-responsive > .table-dark {
+    font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+}
+
+/* Indicador de scroll en móvil */
+@media (max-width: 768px) {
+    .table-responsive > .table-dark {
+        min-width: 36rem;
+    }
+    .table-responsive::after {
+        content: '⟷ Desliza para ver más';
+        display: block;
+        text-align: center;
+        font-size: 0.6rem;
+        color: rgba(255,255,255,0.35);
+        padding: 0.25rem 0;
+        background: rgba(0,0,0,0.2);
+        pointer-events: none;
+    }
+}
+
+/* ---------- VISOR DE CUADRES: BLOQUES DE MES ---------- */
+@media (max-width: 768px) {
+    .cierres-bloque-mes > div:first-child {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    .cierres-bloque-mes > div:first-child > .d-flex:last-child {
+        width: 100%;
+        justify-content: space-between;
+    }
+    #tablaCierresMeses {
+        min-width: 36rem;
+        font-size: 0.72rem;
+    }
+}
+
+/* ---------- ACCIONES RÁPIDAS: 2 COLUMNAS EN MÓVIL ---------- */
+@media (max-width: 768px) {
+    #collapseAccionesRapidas .row > [class*="col-"] {
+        flex: 1 1 calc(50% - 0.5rem);
+        max-width: calc(50% - 0.5rem);
+    }
+    #collapseAccionesRapidas .btn-win {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.5rem;
+    }
+    #collapseAccionesRapidas .btn-win i {
+        font-size: 1.3rem !important;
+    }
+}
+
+/* ---------- FILTROS DE ÚLTIMAS NÓMINAS ---------- */
+@media (max-width: 768px) {
+    #collapseUltimasNominas .row > [class*="col-"] {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+    #collapseUltimasNominas .d-flex.justify-content-between.align-items-center.flex-wrap {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+    #collapseUltimasNominas .d-flex.justify-content-between.align-items-center.flex-wrap .btn-group,
+    #collapseUltimasNominas .d-flex.justify-content-between.align-items-center.flex-wrap .form-select-sm {
+        width: 100% !important;
+    }
+}
+
+/* ---------- MODALES ---------- */
+@media (max-width: 768px) {
+    .modal-dialog.modal-lg,
+    .modal-dialog.modal-xl {
+        max-width: 100% !important;
+        margin: 0.5rem !important;
+    }
+    .modal-content {
+        border-radius: 0.75rem !important;
+    }
+    .modal-header,
+    .modal-footer {
+        padding: 0.625rem 0.875rem !important;
+    }
+    .modal-title {
+        font-size: 0.92rem;
+    }
+    .modal-body {
+        padding: 0.875rem !important;
+        max-height: calc(100vh - 8rem);
+    }
+    .modal-footer .btn-win {
+        flex: 1 1 calc(50% - 0.25rem);
+        justify-content: center;
+        font-size: 0.8rem;
+    }
+    #modalVacacionesExcedidas table,
+    #modalNominasBorrador table,
+    #modalCumpleanerosProximos table {
+        font-size: 0.7rem;
+    }
+    #modalVacacionesExcedidas th,
+    #modalVacacionesExcedidas td,
+    #modalNominasBorrador th,
+    #modalNominasBorrador td,
+    #modalCumpleanerosProximos th,
+    #modalCumpleanerosProximos td {
+        padding: 0.4rem 0.5rem !important;
+        white-space: nowrap;
+    }
+}
+
+/* ---------- BARRA RESET PENDIENTE EN MÓVIL ---------- */
+@media (max-width: 768px) {
+    .barra-reset-pendiente {
+        padding: 0.5rem 0.75rem;
+    }
+    .brp-wrap {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .brp-botones {
+        width: 100%;
+        justify-content: flex-end;
+        gap: 0.375rem;
+    }
+    .brp-btn {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .brp-btn {
+        flex: 1 1 45%;
+    }
+    .brp-titulo {
+        font-size: 0.8rem;
+    }
+    .brp-sub {
+        font-size: 0.68rem;
+    }
+    .brp-icono {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* ---------- CARDS: TÍTULOS E ICONOS ---------- */
+@media (max-width: 768px) {
+    .glass-card .p-3 h6 {
+        font-size: 0.85rem;
+        line-height: 1.3;
+    }
+    .glass-card .p-3 > .d-flex {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+    .glass-card .p-3 > .d-flex > div:last-child {
+        width: 100%;
+    }
+    .glass-card .p-3 > .d-flex .form-select-sm,
+    .glass-card .p-3 > .d-flex form {
+        width: 100%;
+    }
+}
+
+/* ---------- FOOTER DASHBOARD ---------- */
+@media (max-width: 768px) {
+    .main-container {
+        padding: 0.75rem !important;
+    }
+}
+
+/* ---------- AJUSTE PARA EL GRID DE CUMPLEAÑOS ---------- */
+@media (max-width: 992px) {
+    #collapseCumpleanios > .row.g-3 > div[class*="col-lg-"] {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+}
+
+/* ---------- STAT CARDS DEL DASHBOARD ---------- */
+@media (max-width: 640px) {
+    .stat-card {
+        padding: 0.75rem !important;
+    }
+    .stat-value {
+        font-size: 1.25rem !important;
+    }
+    .stat-label {
+        font-size: 0.68rem !important;
+    }
+    .stat-icon {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        font-size: 1rem !important;
+    }
+}
+
+/* ---------- CHART.JS: GARANTIZAR CANVAS EN CONTENEDOR ---------- */
+.chart-container canvas,
+.chart-wrap canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+}
+
+/* ---------- MODO SOLO LECTURA (por si acaso) ---------- */
+body.solo-lectura .btn-win-danger,
+body.solo-lectura .btn-win-warning,
+body.solo-lectura .btn-win-success {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* ---------- LANDSCAPE EN MÓVIL ---------- */
+@media (max-width: 900px) and (orientation: landscape) {
+    .modal-dialog {
+        min-height: auto;
+        max-height: 96vh;
+    }
+    .modal-content {
+        min-height: auto;
+        max-height: 96vh;
+    }
+    .chart-container,
+    .chart-wrap {
+        height: 14rem !important;
+    }
+    .kpi-grid,
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)) !important;
+    }
+}
+
+/* ---------- PANTALLAS GRANDES (> 1400px) ---------- */
+@media (min-width: 1400px) {
+    .main-container {
+        max-width: 1800px;
+        margin: 0 auto 0 16.25rem;
+    }
+    .main-container.expanded {
+        margin-left: 5rem;
+    }
+}
     </style>
 </head>
 <body>
@@ -1722,7 +2121,7 @@ rsort($anios_cierres_meses);
                 </div>
             </div>
             <div class="p-3 collapse" id="collapseAreaTrabajo">
-                <div style="height:25rem; display: flex; align-items: center; justify-content: center;">
+                <div class="chart-wrap" style="display:flex; align-items:center; justify-content:center;">
                 <?php if (!empty($areas_datos)): ?>
                     <canvas id="areaChart"></canvas>
                 <?php else: ?>
@@ -2674,7 +3073,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             animation: { duration: 1500, easing: 'easeOutQuart' },
             plugins: {
                 valoresEnGrafico: {
@@ -5531,6 +5930,8 @@ document.addEventListener('DOMContentLoaded', function () {
 .scroll-quick-btn:hover { transform: translateY(-0.125rem); filter: brightness(1.15); }
 .scroll-quick-btn.hidden { opacity: 0; pointer-events: none; transform: translateY(0.5rem); }
 @media print { .scroll-quick-btns { display: none !important; } }
+
+
 </style>
 <div class="scroll-quick-btns">
     <button type="button" class="scroll-quick-btn" id="btnCollapseAll" title="Expandir todas las tarjetas" data-tooltip="Expandir todas las tarjetas" data-tooltip-theme="primary">

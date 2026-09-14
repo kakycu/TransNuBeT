@@ -664,7 +664,7 @@ if (file_exists($ruta_logo)) {
 <head>
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Clasificadores - <?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
     
@@ -955,6 +955,522 @@ if (file_exists($ruta_logo)) {
     transform: translateY(-0.125rem);
     box-shadow: 0 0.25rem 0.9375rem rgba(var(--color-success-rgb), 0.3);
 }		
+/* ============================================ */
+/* RESPONSIVE CLASIFICADORES (PC/TABLET/MÓVIL)  */
+/* Solo afecta a cada breakpoint; NO sobrescribe PC */
+/* ============================================ */
+
+/* ---------- SAFE AREA (Notch iPhone X+) ---------- */
+@supports (padding: env(safe-area-inset-top)) {
+    .main-container {
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+        padding-left: max(1.25rem, env(safe-area-inset-left));
+        padding-right: max(1.25rem, env(safe-area-inset-right));
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+    .scroll-quick-btns {
+        right: max(1.25rem, env(safe-area-inset-right));
+        bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* ---------- TABLET (≤ 1024px) ---------- */
+@media (max-width: 1024px) {
+    .main-container {
+        margin-left: 5rem !important;
+        padding: 1rem !important;
+    }
+    .main-container.expanded {
+        margin-left: 5rem !important;
+    }
+
+    .win-topbar {
+        padding: 0.75rem 1rem !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .page-title h1 { font-size: 1.15rem; }
+    .page-title p  { font-size: 0.72rem; }
+
+    /* Grupo de imprimir/exportar más compacto */
+    #btnImprimirClasificador {
+        font-size: 0.78rem !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    /* Botones selectores: 3-4 por fila */
+    .clasificador-selector {
+        gap: 0.375rem;
+    }
+    .clasificador-btn {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.82rem;
+    }
+
+    /* Filtros: 2 por fila en tablet */
+    .filters-bar {
+        gap: 0.625rem;
+    }
+    .filter-group {
+        flex: 1 1 calc(50% - 0.3125rem);
+        min-width: calc(50% - 0.3125rem);
+    }
+
+    /* Permisos: 2 tarjetas por fila */
+    .perm-grid {
+        grid-template-columns: repeat(auto-fill, minmax(16.25rem, 1fr));
+    }
+}
+
+/* ---------- MÓVIL (≤ 768px) ---------- */
+@media (max-width: 768px) {
+    /* ---------- BODY: prevenir scroll horizontal ---------- */
+    html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+
+    /* ---------- SIDEBAR + CONTENEDOR ---------- */
+    .win-sidebar {
+        transform: translateX(-100%);
+        width: 15rem;
+    }
+    .win-sidebar.mobile-open,
+    .win-sidebar.show {
+        transform: translateX(0);
+    }
+    .main-container {
+        margin-left: 0 !important;
+        padding: 0.625rem !important;
+        width: 100% !important;
+    }
+    .main-container.expanded {
+        margin-left: 0 !important;
+    }
+
+    /* ---------- TOPBAR: grid con reloj visible ---------- */
+    .win-topbar {
+        display: grid !important;
+        grid-template-columns: 1fr auto;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem 0.75rem !important;
+        border-radius: 0.75rem !important;
+    }
+    .win-topbar > div:first-child {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 0.5rem !important;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: end;
+        flex-shrink: 0;
+    }
+
+    .page-title {
+        min-width: 0;
+        flex: 1;
+    }
+    .page-title h1 {
+        font-size: 0.95rem !important;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .win-topbar .page-title > p {
+        display: none;
+    }
+
+    .sidebar-toggle {
+        width: 2.25rem;
+        height: 2.25rem;
+        flex-shrink: 0;
+    }
+
+    /* ---------- BOTÓN IMPRIMIR/EXPORTAR ---------- */
+    /* Pasa a fila completa debajo del título */
+    .win-topbar .btn-group {
+        width: 100%;
+        margin-left: 0 !important;
+        grid-column: 1 / -1;
+        justify-content: stretch;
+        order: 3;
+    }
+    .win-topbar .btn-group .btn-export-main {
+        flex: 1;
+        justify-content: center;
+        font-size: 0.78rem !important;
+        padding: 0.45rem 0.75rem !important;
+    }
+    .win-topbar .btn-group .btn-export-toggle {
+        padding: 0.45rem 0.625rem !important;
+    }
+
+    /* ---------- GLASS CARD ---------- */
+    .glass-card {
+        padding: 0.875rem !important;
+        border-radius: 0.625rem;
+    }
+
+    /* ---------- SELECTOR DE CLASIFICADORES ---------- */
+    .clasificador-selector {
+        display: flex;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+        gap: 0.375rem;
+        width: 100%;
+        scrollbar-width: thin;
+    }
+    .clasificador-selector::-webkit-scrollbar {
+        height: 0.25rem;
+    }
+    .clasificador-selector::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 0.625rem;
+    }
+    .clasificador-btn {
+        flex-shrink: 0;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.78rem;
+        border-radius: 0.5rem;
+    }
+    .clasificador-btn i {
+        font-size: 0.85rem;
+    }
+
+    /* Indicador de scroll horizontal */
+    .clasificador-selector::after {
+        content: '⟷';
+        position: sticky;
+        right: 0;
+        align-self: center;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.3);
+        pointer-events: none;
+        padding: 0 0.25rem;
+    }
+
+    /* ---------- FILTROS ---------- */
+    .filters-bar {
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 0.875rem;
+    }
+    .filter-group {
+        flex: 1 1 100%;
+        min-width: 0;
+        width: 100%;
+    }
+    .dark-input,
+    .dark-select,
+    .dark-textarea {
+        font-size: 0.82rem;
+        padding: 0.55rem 0.75rem;
+    }
+    .filter-label {
+        font-size: 0.65rem;
+    }
+    /* Botones "Limpiar" y "Nuevo" a fila completa */
+    #btnLimpiarFiltros,
+    #btnNuevo {
+        font-size: 0.82rem;
+        padding: 0.55rem 0.875rem !important;
+    }
+
+    /* ---------- TABLA DE DATOS ---------- */
+    .data-table-wrapper {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 0.5rem;
+        position: relative;
+    }
+    .table-custom {
+        font-size: 0.78rem;
+        min-width: 42rem;
+    }
+    .table-custom th {
+        font-size: 0.68rem;
+        padding: 0.5rem 0.5rem;
+        white-space: nowrap;
+    }
+    .table-custom td {
+        font-size: 0.78rem;
+        padding: 0.5rem 0.5rem;
+        white-space: nowrap;
+    }
+
+    /* Indicador "desliza" para la tabla */
+    .data-table-wrapper::after {
+        content: '⟷ Desliza para ver más';
+        display: block;
+        text-align: center;
+        font-size: 0.6rem;
+        color: rgba(255, 255, 255, 0.35);
+        padding: 0.25rem 0;
+        background: rgba(0, 0, 0, 0.2);
+        pointer-events: none;
+        border-radius: 0 0 0.5rem 0.5rem;
+    }
+
+    /* ---------- BOTONES DE ACCIÓN POR FILA ---------- */
+    .action-buttons {
+        gap: 0.25rem;
+        flex-wrap: nowrap;
+    }
+    .action-btn {
+        padding: 0.3rem 0.4rem;
+        font-size: 0.72rem;
+    }
+    .action-btn i {
+        font-size: 0.75rem;
+    }
+
+    /* ---------- DATATABLE CONTROLS ---------- */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        text-align: center !important;
+        width: 100% !important;
+        font-size: 0.72rem;
+        margin-bottom: 0.5rem;
+    }
+    .dataTables_wrapper .dataTables_length select,
+    .dataTables_wrapper .dataTables_filter input {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.6rem;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.3rem 0.55rem !important;
+        margin: 0 0.125rem !important;
+        font-size: 0.72rem !important;
+    }
+
+    /* ---------- VISTA DE PERMISOS ---------- */
+    .perm-grid {
+        grid-template-columns: 1fr;
+        gap: 0.625rem;
+    }
+    .perm-card {
+        border-radius: 0.75rem;
+    }
+    .perm-card-head {
+        padding: 0.625rem 0.875rem;
+    }
+    .perm-card-rol {
+        font-size: 0.85rem;
+    }
+    .perm-card-body {
+        padding: 0.375rem 0.75rem 0.5rem;
+    }
+    .perm-row {
+        padding: 0.375rem 0;
+    }
+    .perm-row-nombre {
+        font-size: 0.72rem;
+        max-width: 55%;
+    }
+    .perm-chip {
+        width: 1.375rem;
+        height: 1.375rem;
+        font-size: 0.62rem;
+    }
+    .permisos-leyenda {
+        gap: 0.5rem;
+        padding: 0.5rem 0.625rem;
+        font-size: 0.68rem;
+    }
+
+    /* ---------- MODAL DE CREAR/EDITAR ---------- */
+    #modalRegistro .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        min-height: 100vh;
+    }
+    #modalRegistro .modal-content {
+        border-radius: 0 !important;
+        min-height: 100vh;
+    }
+    #modalRegistro .modal-header {
+        padding: 0.75rem 0.875rem !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    #modalRegistro .modal-title {
+        font-size: 0.9rem;
+    }
+    #modalRegistro .modal-body {
+        padding: 0.875rem !important;
+        max-height: calc(100vh - 11rem);
+    }
+    #modalRegistro .modal-footer {
+        padding: 0.625rem 0.875rem !important;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+    }
+    #modalRegistro .modal-footer .btn {
+        flex: 1 1 calc(50% - 0.25rem);
+        justify-content: center;
+        font-size: 0.82rem;
+        padding: 0.55rem 0.875rem;
+    }
+
+    /* Campos del formulario dinámico */
+    #formularioDinamico .mb-3 {
+        margin-bottom: 0.75rem !important;
+    }
+    #formularioDinamico .form-label {
+        font-size: 0.75rem;
+    }
+    #formularioDinamico .dark-input,
+    #formularioDinamico .dark-select,
+    #formularioDinamico .dark-textarea {
+        font-size: 0.85rem;
+        padding: 0.55rem 0.75rem;
+    }
+
+    /* ---------- BOTONES FLOTANTES ---------- */
+    .scroll-quick-btns {
+        right: 0.75rem !important;
+        bottom: 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    .scroll-quick-btn {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* ---------- FOOTER ---------- */
+    footer, .footer {
+        font-size: 0.7rem !important;
+        padding: 0.75rem !important;
+    }
+
+    /* ---------- RELOJ ---------- */
+    #liveClock {
+        min-width: 4.5rem;
+        font-size: 0.8rem;
+    }
+    .date-badge {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.78rem;
+    }
+}
+
+/* ---------- MÓVIL PEQUEÑO (≤ 480px) ---------- */
+@media (max-width: 480px) {
+    .main-container {
+        padding: 0.4rem !important;
+    }
+    .glass-card {
+        padding: 0.625rem !important;
+    }
+    .page-title h1 {
+        font-size: 0.85rem !important;
+        max-width: 55vw;
+    }
+    .win-topbar {
+        padding: 0.4rem 0.5rem !important;
+        grid-template-columns: 1fr;
+        row-gap: 0.5rem;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: center;
+        width: 100%;
+    }
+
+    /* Selector de clasificadores aún más compacto */
+    .clasificador-btn {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.72rem;
+    }
+    .clasificador-btn i {
+        font-size: 0.78rem;
+    }
+
+    /* Tabla ultra compacta */
+    .table-custom {
+        min-width: 36rem;
+        font-size: 0.72rem;
+    }
+    .table-custom th {
+        font-size: 0.62rem;
+        padding: 0.4rem 0.4rem;
+    }
+    .table-custom td {
+        font-size: 0.72rem;
+        padding: 0.4rem 0.4rem;
+    }
+
+    /* Botones de fila más pequeños */
+    .action-btn {
+        padding: 0.25rem 0.35rem;
+        font-size: 0.68rem;
+    }
+
+    /* Paginación compacta */
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.25rem 0.4rem !important;
+        font-size: 0.68rem !important;
+    }
+
+    /* Perm chips aún más pequeños */
+    .perm-chip {
+        width: 1.25rem;
+        height: 1.25rem;
+        font-size: 0.58rem;
+    }
+
+    /* Reloj a línea completa */
+    #liveClock {
+        font-size: 0.78rem;
+    }
+}
+
+/* ---------- PANTALLAS GRANDES (≥ 1400px) ---------- */
+@media (min-width: 1400px) {
+    .main-container {
+        max-width: 1800px;
+        margin: 0 auto 0 16.25rem;
+    }
+    .main-container.expanded {
+        margin-left: 5rem;
+    }
+}
+
+/* ---------- ORIENTACIÓN HORIZONTAL EN MÓVIL ---------- */
+@media (max-width: 900px) and (orientation: landscape) {
+    #modalRegistro .modal-dialog {
+        min-height: auto;
+        max-height: 96vh;
+    }
+    #modalRegistro .modal-content {
+        min-height: auto;
+        max-height: 96vh;
+        border-radius: 1rem !important;
+    }
+    #modalRegistro .modal-body {
+        max-height: calc(96vh - 10rem);
+    }
+    .perm-grid {
+        grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    }
+    .filters-bar {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .filter-group {
+        flex: 1 1 calc(33.333% - 0.5rem);
+        min-width: calc(33.333% - 0.5rem);
+    }
+}
     </style>
 
 

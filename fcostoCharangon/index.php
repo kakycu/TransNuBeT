@@ -1577,7 +1577,7 @@ if ((isset($_POST['action']) && $_POST['action'] == 'excel') || (isset($_GET['ac
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sistema Ficha de Costo - Transporte</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link href="../nominas/css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -2169,6 +2169,248 @@ if ((isset($_POST['action']) && $_POST['action'] == 'excel') || (isset($_GET['ac
 }
 .btn-success i {
     margin-right: 6px;
+}
+/* ============================================================
+   RESPONSIVE GLOBAL — Ficha de Costo TransNuBet
+   ============================================================ */
+html, body { overflow-x: hidden; }
+body {
+    padding: clamp(10px, 2.5vw, 20px);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+#pantallaBienvenida {
+    max-width: min(850px, 96vw);
+    padding: clamp(1.5rem, 5vw, 3rem) clamp(1rem, 4vw, 2.5rem);
+    min-height: auto;
+    margin: clamp(8px, 2vw, 20px);
+}
+#pantallaBienvenida h1 {
+    font-size: clamp(1.15rem, 5vw, 2.2rem);
+    line-height: 1.25;
+    word-break: break-word;
+}
+#pantallaBienvenida .subtitle {
+    font-size: clamp(11px, 2.8vw, 1rem);
+    margin: clamp(0.8rem, 2.5vw, 1.5rem) 0;
+    padding: clamp(0.6rem, 2vw, 1rem) 0;
+}
+#pantallaBienvenida .version {
+    font-size: clamp(10px, 2.4vw, 0.85rem);
+    margin-top: clamp(0.8rem, 2.5vw, 1.5rem);
+}
+.btn-w11-primary {
+    padding: clamp(0.6rem, 2.5vw, 0.85rem) clamp(1.2rem, 5vw, 3rem);
+    font-size: clamp(0.85rem, 3vw, 1.1rem);
+    width: auto;
+    max-width: 100%;
+}
+/* Los dos logos de la pantalla de bienvenida */
+#pantallaBienvenida > .contenido-bienvenida > div[style*="display:flex"][style*="justify-content:center"] {
+    gap: clamp(8px, 2.5vw, 20px) !important;
+    flex-wrap: wrap;
+}
+#pantallaBienvenida > .contenido-bienvenida > div[style*="display:flex"][style*="justify-content:center"] img {
+    height: clamp(60px, 16vw, 120px) !important;
+    max-width: 45vw;
+    object-fit: contain;
+}
+#pantallaBienvenida .subtitle b { word-break: break-word; }
+/* Reducir logos de fondo rotando (puede laggear en móvil) */
+.logo-fondo-animado { opacity: 0.04; }
+.logo-fondo-rotacion img,
+.logo-fondo-rotacion .logo-duplicado,
+.logo-fondo-rotacion-inversa img,
+.logo-fondo-rotacion-inversa .logo-duplicado { width: clamp(120px, 30vw, 280px); }
+
+/* Contenido principal */
+#contenidoPrincipal { max-width: min(1200px, 100%); }
+.card-main {
+    padding: clamp(14px, 3vw, 30px);
+    border-radius: clamp(12px, 3vw, 16px);
+}
+
+/* Header */
+.header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-bottom: clamp(10px, 2.5vw, 15px);
+    margin-bottom: clamp(12px, 3vw, 20px);
+}
+.header h2 {
+    font-size: clamp(1rem, 3.5vw, 1.6rem);
+    line-height: 1.3;
+    word-break: break-word;
+}
+.header p { font-size: clamp(11px, 2.6vw, 0.9rem); }
+.header .no-print {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+    justify-content: center;
+}
+.header .btn-accion-header,
+.header .btn-metodologia,
+.header .btn-success,
+.header .dropdown {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 0;
+}
+.header .dropdown { display: inline-block; flex: 1 1 130px; }
+.header .dropdown .btn { width: 100%; justify-content: center; }
+
+/* Ficha (tabla) */
+.ficha-container {
+    padding: clamp(10px, 2.5vw, 20px);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+table.ficha {
+    font-size: clamp(8px, 2vw, 9.5pt);
+    min-width: 520px;
+}
+table.ficha th, table.ficha td {
+    padding: clamp(3px, 1vw, 4px);
+    word-break: break-word;
+}
+table.ficha .indent { padding-left: clamp(10px, 2.5vw, 20px) !important; }
+table.ficha .indent2 { padding-left: clamp(14px, 3.5vw, 35px) !important; font-size: clamp(7.5px, 1.9vw, 8.5pt); }
+
+/* Resumen de rentabilidad */
+.resumen-box-separado {
+    padding: clamp(14px, 3vw, 25px);
+    margin-top: clamp(16px, 3vw, 30px);
+    border-radius: clamp(10px, 2.5vw, 12px);
+}
+.resumen-box-separado h4 {
+    font-size: clamp(14px, 3.5vw, 1.5rem);
+    padding-bottom: clamp(6px, 1.5vw, 10px);
+    margin-bottom: clamp(10px, 2.5vw, 20px);
+}
+.resumen-box-separado .label { font-size: clamp(11px, 2.6vw, 0.9rem); }
+.resumen-box-separado .value { font-size: clamp(12px, 3vw, 13pt); word-break: break-word; }
+.resumen-box-separado .badge { font-size: clamp(11px, 2.8vw, 14px) !important; }
+.resumen-box-separado .row { gap: 4px 0; }
+
+/* Footer */
+.footer {
+    font-size: clamp(9px, 2.2vw, 9pt);
+    margin-top: clamp(16px, 3vw, 30px);
+    padding-top: clamp(10px, 2.5vw, 15px);
+    word-break: break-word;
+}
+
+/* Modales */
+.modal-body { padding: clamp(10px, 2.5vw, 0.5rem) clamp(12px, 3vw, 1.8rem) clamp(12px, 3vw, 1rem) !important; }
+.modal-header { padding: clamp(0.7rem, 2vw, 1rem) clamp(1rem, 3vw, 1.8rem) !important; }
+.modal-header .modal-title { font-size: clamp(1rem, 3.5vw, 1.3rem) !important; }
+.modal-body .form-control-sm, .modal-body .form-select-sm { font-size: clamp(0.7rem, 2.4vw, 0.8rem) !important; }
+.modal-body .form-label-detalle { font-size: clamp(0.55rem, 2vw, 0.65rem) !important; }
+
+/* Tabs */
+.nav-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+.nav-tabs::-webkit-scrollbar { height: 4px; }
+.nav-tabs::-webkit-scrollbar-thumb { background: #2b7fff; border-radius: 3px; }
+.nav-tabs .nav-link {
+    font-size: clamp(0.6rem, 2vw, 0.8rem) !important;
+    padding: clamp(0.4rem, 1.5vw, 0.6rem) clamp(0.5rem, 2vw, 1rem) !important;
+    white-space: nowrap;
+}
+
+/* Botones generales */
+.btn-generar-modal { padding: clamp(0.4rem, 2vw, 0.5rem) clamp(1rem, 4vw, 2.5rem) !important; font-size: clamp(0.75rem, 2.6vw, 0.9rem) !important; }
+.btn-outline-secondary { padding: clamp(0.3rem, 1.5vw, 0.4rem) clamp(0.8rem, 3vw, 1.5rem); font-size: clamp(0.7rem, 2.4vw, 0.8rem); }
+
+/* Dropdown de exportar */
+.dropdown-menu { min-width: clamp(160px, 60vw, 200px) !important; }
+.dropdown-menu .dropdown-item { font-size: clamp(0.75rem, 2.6vw, 0.85rem) !important; padding: clamp(0.4rem, 2vw, 0.5rem) clamp(0.8rem, 3vw, 1.2rem) !important; }
+
+/* ===== Ajustes específicos por ancho ===== */
+@media (max-width: 768px) {
+    .header { flex-direction: column; align-items: stretch; }
+    .header > div:first-child { text-align: center; }
+    .header .no-print > * { flex: 1 1 calc(50% - 6px); min-width: 130px; }
+    .resumen-box-separado .col-md-4 { margin-bottom: 8px; }
+    .footer { font-size: 9px; }
+}
+@media (max-width: 600px) {
+    #pantallaBienvenida { margin: 8px; padding: 1.5rem 1rem; }
+    #pantallaBienvenida h1 { font-size: 1.2rem; }
+    #pantallaBienvenida .subtitle { font-size: 11px; }
+    #pantallaBienvenida > .contenido-bienvenida > div[style*="display:flex"] img { height: 70px !important; }
+    .card-main { padding: 14px 12px; border-radius: 12px; }
+    .header .no-print > * { flex: 1 1 100%; min-width: 100%; }
+    .resumen-box-separado { padding: 14px; }
+    .resumen-box-separado .value { font-size: 12px; }
+    .ficha-container { padding: 8px; }
+    .modal-body { padding: 10px 12px !important; max-height: 70vh; }
+    .modal-footer { padding: 0.6rem 1rem !important; }
+    .modal-footer .btn { width: 100%; }
+    .nav-tabs .nav-link { font-size: 0.65rem !important; padding: 0.4rem 0.5rem !important; }
+    .nav-tabs .nav-link i { margin-right: 3px; }
+    .table-metodologia { font-size: 0.75rem !important; }
+    .table-metodologia th, .table-metodologia td { padding: 5px 6px !important; }
+    .table-metodologia .formula { font-size: 0.7rem !important; word-break: break-word; }
+}
+@media (max-width: 480px) {
+    body::before { background-size: 50px 50px !important; }
+    body::after { background-size: 70px 70px !important; }
+    #pantallaBienvenida { padding: 1.2rem 0.9rem; margin: 6px; border-radius: 16px; }
+    #pantallaBienvenida h1 { font-size: 1.05rem; }
+    #pantallaBienvenida .subtitle { font-size: 10.5px; }
+    #pantallaBienvenida .subtitle b { display: inline; }
+    #pantallaBienvenida > .contenido-bienvenida > div[style*="display:flex"] img { height: 60px !important; max-width: 42vw; }
+    .btn-w11-primary { padding: 0.55rem 1.5rem; font-size: 0.85rem; width: 100%; justify-content: center; }
+    .btn-outline-success { width: 100%; margin-top: 6px; }
+    .card-main { padding: 12px 10px; }
+    .header h2 { font-size: 0.95rem; }
+    .header .btn-accion-header,
+    .header .btn-metodologia,
+    .header .btn-success,
+    .header .dropdown .btn { font-size: 0.72rem; padding: 0.35rem 0.7rem; }
+    .ficha-container { padding: 6px; border-radius: 8px; }
+    table.ficha { font-size: 8px; min-width: 460px; }
+    .resumen-box-separado { padding: 12px 10px; border-width: 2px; }
+    .resumen-box-separado h4 { font-size: 13px; }
+    .resumen-box-separado .label { font-size: 10.5px; }
+    .resumen-box-separado .value { font-size: 11.5px; }
+    .modal-header { padding: 0.5rem 0.8rem !important; }
+    .modal-header .modal-title { font-size: 0.95rem !important; }
+    .modal-body { padding: 8px 10px !important; }
+    .modal-body .form-label-detalle { font-size: 0.55rem !important; }
+    .modal-body .form-control-sm, .modal-body .form-select-sm { font-size: 0.7rem !important; height: 30px !important; }
+    .nav-tabs .nav-link { font-size: 0.58rem !important; padding: 0.3rem 0.35rem !important; }
+    .footer { font-size: 8.5px; }
+}
+@media (max-width: 360px) {
+    #pantallaBienvenida h1 { font-size: 1rem; }
+    #pantallaBienvenida > .contenido-bienvenida > div[style*="display:flex"] img { height: 54px !important; }
+    .btn-w11-primary { font-size: 0.8rem; padding: 0.5rem 1rem; }
+    .header h2 { font-size: 0.9rem; }
+    table.ficha { font-size: 7.5px; min-width: 420px; }
+    .resumen-box-separado h4 { font-size: 12px; }
+}
+
+/* Menos animación en móvil para no lagear */
+@media (prefers-reduced-motion: reduce) {
+    body::before, body::after,
+    #pantallaBienvenida::before,
+    .logo-fondo-rotacion, .logo-fondo-rotacion-inversa { animation: none !important; }
+}
+@media (max-width: 640px) {
+    body::before, body::after { animation: none !important; }
+    .logo-fondo-rotacion, .logo-fondo-rotacion-inversa {
+        animation-duration: 120s;
+        opacity: 0.03;
+    }
+    #pantallaBienvenida::before { animation: none !important; }
 }
 </style>
 </head>

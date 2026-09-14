@@ -1022,52 +1022,100 @@ html.focus-mode .fluid-container {
         </a>
         <?php endif; ?>
 
-        <?php if (permiso_puede('empleados', 'ver')): ?>
+        <?php if (permiso_puede('empleados', 'ver') || permiso_puede('submayor', 'ver')): ?>
         <span class="nav-category">Personal</span>
-        <div class="nav-group <?php echo (in_array($current_file, ['empleados.php', 'snc225.php'])) ? 'open' : ''; ?>" id="empleadosNavGroup">
+        <div class="nav-group <?php echo (in_array($current_file, ['empleados.php', 'snc225.php', 'submayor_vacaciones.php'])) ? 'open' : ''; ?>" id="empleadosNavGroup">
+            <?php if (permiso_puede('empleados', 'ver')): ?>
             <a href="<?php echo $base_prefix; ?>modules/empleados.php" class="nav-item <?php echo ($current_file == 'empleados.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Empleados" data-tooltip-theme="primary">
                 <i class="fas fa-users"></i>
                 <span class="sidebar-text">Empleados</span>
                 <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="empleadosChevron"></i>
             </a>
             <div class="nav-submenu" id="empleadosSubmenu">
+                <a href="<?php echo $base_prefix; ?>modules/empleados.php#solapines_zip" class="nav-item" data-tooltip="Exportar Todos los Solapines (ZIP)" data-tooltip-theme="primary">
+                    <i class="fas fa-file-archive"></i>
+                    <span class="sidebar-text">Exportar Solapines (ZIP)</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/empleados.php#solapines_lote" class="nav-item" data-tooltip="Imprimir Todos los Solapines (Lote)" data-tooltip-theme="primary">
+                    <i class="fas fa-print"></i>
+                    <span class="sidebar-text">Imprimir Solapines (Lote)</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/empleados.php#cumple_completo" class="nav-item" data-tooltip="Exportar Listado Completo de Cumpleaños" data-tooltip-theme="primary">
+                    <i class="fas fa-birthday-cake"></i>
+                    <span class="sidebar-text">Cumpleaños Completo</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/empleados.php#cumple_30" class="nav-item" data-tooltip="Exportar Cumpleaños Próximos 30 días" data-tooltip-theme="primary">
+                    <i class="fas fa-calendar-day"></i>
+                    <span class="sidebar-text">Cumpleaños 30 Días</span>
+                </a>
                 <a href="<?php echo $base_prefix; ?>modules/snc225.php" class="nav-item <?php echo ($current_file == 'snc225.php') ? 'active' : ''; ?>" data-tooltip="Tarjeta SNC-225" data-tooltip-theme="primary">
                     <i class="fas fa-id-card"></i>
                     <span class="sidebar-text">SNC - 225</span>
+                </a>
+                <?php if (permiso_puede('submayor', 'ver')): ?>
+                <a href="<?php echo $base_prefix; ?>modules/submayor_vacaciones.php" class="nav-item <?php echo ($current_file == 'submayor_vacaciones.php') ? 'active' : ''; ?>" data-tooltip="Submayor de Vacaciones" data-tooltip-theme="primary">
+                    <i class="fas fa-book"></i>
+                    <span class="sidebar-text">Submayor Vacaciones</span>
+                </a>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <?php if (permiso_puede('nominas', 'ver')): ?>
+        <span class="nav-category">Nóminas y Procesos</span>
+        <div class="nav-group <?php echo ($current_file == 'nominas.php') ? 'open' : ''; ?>" id="nominasNavGroup">
+            <a href="<?php echo $base_prefix; ?>modules/nominas.php" class="nav-item <?php echo ($current_file == 'nominas.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Nóminas" data-tooltip-theme="primary">
+                <i class="fas fa-calculator"></i>
+                <span class="sidebar-text">Nóminas</span>
+                <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="nominasChevron"></i>
+            </a>
+            <div class="nav-submenu" id="nominasSubmenu">
+                <a href="<?php echo $base_prefix; ?>modules/nominas.php#verificar_cuadres" class="nav-item" data-tooltip="Cuadre de nóminas contabilizadas" data-tooltip-theme="primary">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span class="sidebar-text">Verificar Cuadres</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/nominas.php#historial_montos" class="nav-item" data-tooltip="Historial Montos Redistribuidos" data-tooltip-theme="primary">
+                    <i class="fas fa-history"></i>
+                    <span class="sidebar-text">Historial Montos</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/nominas.php#resumen_salarial" class="nav-item" data-tooltip="Resumen por trabajador o por cuenta bancaria" data-tooltip-theme="primary">
+                    <i class="fas fa-user-tie"></i>
+                    <span class="sidebar-text">Resumen Salarial</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/nominas.php#sin_nomina" class="nav-item" data-tooltip="Alta en el período sin nómina en ese mes" data-tooltip-theme="primary">
+                    <i class="fas fa-user-slash"></i>
+                    <span class="sidebar-text">Trabajadores Sin Nómina</span>
                 </a>
             </div>
         </div>
         <?php endif; ?>
 
-        <?php if (permiso_puede('nominas', 'ver') || permiso_puede('submayor', 'ver')): ?>
-        <span class="nav-category">Nóminas y Procesos</span>
-        <?php if (permiso_puede('nominas', 'ver')): ?>
-        <a href="<?php echo $base_prefix; ?>modules/nominas.php" class="nav-item <?php echo ($current_file == 'nominas.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Nóminas" data-tooltip-theme="primary">
-            <i class="fas fa-calculator"></i>
-            <span class="sidebar-text">Nóminas</span>
-        </a>
-        <?php endif; ?>
-        <?php if (permiso_puede('submayor', 'ver')): ?>
-        <a href="<?php echo $base_prefix; ?>modules/submayor_vacaciones.php" class="nav-item <?php echo ($current_file == 'submayor_vacaciones.php') ? 'active' : ''; ?>" data-tooltip="Submayor de Vacaciones" data-tooltip-theme="primary">
-            <i class="fas fa-book"></i>
-            <span class="sidebar-text">Submayor Vac.</span>
-        </a>
-        <?php endif; ?>
+        <?php if (permiso_puede('bandecnom', 'ver')): ?>
+        <span class="nav-category">Banco</span>
+        <div class="nav-group <?php echo ($current_file == 'bandecnom.php') ? 'open' : ''; ?>" id="bancoNavGroup">
+            <a href="<?php echo $base_prefix; ?>modules/bandecnom.php" class="nav-item <?php echo ($current_file == 'bandecnom.php') ? 'active' : ''; ?>" data-tooltip="Exportar al Banco" data-tooltip-theme="primary">
+                <i class="fas fa-university"></i>
+                <span class="sidebar-text">Banco</span>
+                <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="bancoChevron"></i>
+            </a>
+            <div class="nav-submenu" id="bancoSubmenu">
+                <a href="<?php echo $base_prefix; ?>modules/bandecnom.php" class="nav-item" data-tooltip="Exportar al Banco" data-tooltip-theme="primary">
+                    <i class="fas fa-file-export"></i>
+                    <span class="sidebar-text">Exportar al Banco</span>
+                    <span class="nav-badge sidebar-text">BETA</span>
+                </a>
+            </div>
+        </div>
         <?php endif; ?>
 
-        <?php if (permiso_puede('reportes', 'ver') || permiso_puede('bandecnom', 'ver') || permiso_puede('clasificadores', 'ver')): ?>
+        <?php if (permiso_puede('reportes', 'ver') || permiso_puede('clasificadores', 'ver')): ?>
         <span class="nav-category">Análisis e Informes</span>
         <?php if (permiso_puede('reportes', 'ver')): ?>
         <a href="<?php echo $base_prefix; ?>modules/reportes.php" class="nav-item <?php echo ($current_file == 'reportes.php') ? 'active' : ''; ?>" data-tooltip="Reportes y Estadísticas" data-tooltip-theme="primary">
             <i class="fas fa-chart-bar"></i>
             <span class="sidebar-text">Reportes</span>
-        </a>
-        <?php endif; ?>
-        <?php if (permiso_puede('bandecnom', 'ver')): ?>
-        <a href="<?php echo $base_prefix; ?>modules/bandecnom.php" class="nav-item <?php echo ($current_file == 'bandecnom.php') ? 'active' : ''; ?>" data-tooltip="Exportar al Banco" data-tooltip-theme="primary">
-            <i class="fas fa-file-export"></i>
-            <span class="sidebar-text">Exportar Banco</span>
-            <span class="nav-badge sidebar-text">BETA</span>
         </a>
         <?php endif; ?>
         <?php if (permiso_puede('clasificadores', 'ver')): ?>
@@ -1236,6 +1284,42 @@ html.focus-mode .fluid-container {
                 empleadosNavGroup.classList.toggle('open');
             });
         }
+        const nominasNavGroup = document.getElementById('nominasNavGroup');
+        const nominasChevron = document.getElementById('nominasChevron');
+        if (nominasNavGroup && nominasChevron) {
+            nominasChevron.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                nominasNavGroup.classList.toggle('open');
+            });
+        }
+        const bancoNavGroup = document.getElementById('bancoNavGroup');
+        const bancoChevron = document.getElementById('bancoChevron');
+        if (bancoNavGroup && bancoChevron) {
+            bancoChevron.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                bancoNavGroup.classList.toggle('open');
+            });
+        }
+        function syncHashNav() {
+            var h = window.location.hash || '';
+            ['nominasSubmenu', 'empleadosSubmenu'].forEach(function(submenuId) {
+                var submenu = document.getElementById(submenuId);
+                var group = submenu ? submenu.closest('.nav-group') : null;
+                if (!submenu || !group) return;
+                submenu.querySelectorAll('a').forEach(function(a) {
+                    a.classList.remove('active');
+                });
+                var hashLink = h ? submenu.querySelector('a[href$="' + h + '"]') : null;
+                if (hashLink) {
+                    hashLink.classList.add('active');
+                    group.classList.add('open');
+                }
+            });
+        }
+        syncHashNav();
+        window.addEventListener('hashchange', syncHashNav);
     }
 
     function onReady() {

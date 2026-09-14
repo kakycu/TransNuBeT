@@ -1169,6 +1169,328 @@ $valor = fn(string $k): string => htmlspecialchars(trim((string)($_POST[$k] ?? '
     .log-entrada.log-error .log-msg{color:#f87171;}
     .log-entrada.log-send .log-icono{color:#5eead4;}
     .log-entrada.log-send .log-msg{color:#cbd5e1;}
+	
+/* ============================================================
+   RESPONSIVE GLOBAL — contacto.php
+   Cubre PC grande, tablet, móvil y móvil pequeño
+   ============================================================ */
+
+/* ---------- Tablet horizontal / PC pequeño ---------- */
+@media (max-width: 1024px) {
+    .pagina { max-width: min(62rem, 96vw); padding: 0 4px; }
+    .sello-prioridad { width: 108px; height: 80px; }
+    .sello-ico { font-size: 23px; }
+    .sello-valor { font-size: 16px; }
+    .panel-adjuntos { width: 14rem; }
+}
+
+/* ---------- Tablet vertical ---------- */
+@media (max-width: 900px) {
+    .fila-principal { gap: 12px; }
+    .win-body { padding: 18px 16px 20px; }
+    .enc-titulo { font-size: clamp(1.1rem, 3.4vw, 1.45rem); }
+    .enc-sub { font-size: clamp(12px, 2.6vw, 0.95rem); }
+    .sello-prioridad { width: 100px; height: 76px; transform: rotate(-4deg); }
+    .sello-ico { font-size: 21px; margin-bottom: 5px; }
+    .sello-valor { font-size: 15px; }
+    .panel-adjuntos { width: 13rem; }
+    .pa-body { max-height: 400px; }
+}
+
+/* ---------- Móvil horizontal / tablet pequeña ---------- */
+@media (max-width: 768px) {
+    .pagina { padding: 0 6px; gap: 14px; }
+    .encabezado { padding: 0 6px; }
+    .enc-titulo {
+        font-size: clamp(1.05rem, 4vw, 1.35rem);
+        line-height: 1.3;
+        word-break: break-word;
+    }
+    .enc-titulo i { margin-right: 0.3rem; }
+    .enc-sub { font-size: clamp(12px, 2.8vw, 0.95rem); word-break: break-word; }
+
+    /* Win titlebar: botones en fila aparte */
+    .win-titlebar {
+        padding: 10px 12px;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .win-titlebar .tb-text {
+        font-size: clamp(12px, 2.8vw, 14px);
+        flex: 1 1 100%;
+        text-align: left;
+        word-break: break-word;
+    }
+    .win-caption {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .cap-btn {
+        width: 28px;
+        height: 28px;
+        margin-left: 4px;
+        font-size: 13px;
+    }
+
+    /* Win body */
+    .win-body { padding: clamp(12px, 3vw, 18px) clamp(10px, 3vw, 16px); }
+    .win-h1 { font-size: clamp(1rem, 3vw, 1.15rem); }
+    .win-sub { font-size: clamp(12px, 2.5vw, 13.5px); }
+    .win-label { font-size: 12px; }
+    .win-input, .win-textarea {
+        padding: 7px 10px !important;
+        font-size: 13px !important;
+    }
+
+    /* Sello postal: más chico */
+    .sello-prioridad {
+        width: 92px;
+        height: 70px;
+        transform: rotate(-3deg);
+        margin: 8px auto 0 !important;
+    }
+    .sello-ico { font-size: 19px; margin-bottom: 4px; }
+    .sello-valor { font-size: 14px; letter-spacing: .3px; }
+
+    /* Fila principal: apilar panel adjuntos debajo */
+    .fila-principal { flex-direction: column; gap: 12px; }
+    .panel-adjuntos { width: 100%; }
+    .pa-body { max-height: 300px; }
+
+    /* Botones */
+    .btn-adjuntar { padding: 0.5rem 0.75rem; font-size: 12px; }
+    .wbtn { font-size: 12.5px; padding: 8px 14px; }
+    .btn-quitar-todos { font-size: 10.5px; padding: 4px 8px; }
+
+    /* Toolbar Quill: botones un poco más compactos */
+    .ql-toolbar button,
+    .ql-toolbar .ql-emoji-btn,
+    .ql-toolbar .ql-attach-btn,
+    .ql-toolbar .ql-html-btn,
+    .ql-toolbar .ql-print-btn,
+    .ql-toolbar .ql-pdf-btn,
+    .ql-toolbar .ql-size-custom,
+    .ql-toolbar .ql-sym-btn,
+    .ql-toolbar .ql-table-btn,
+    .ql-toolbar .ql-img-btn {
+        width: 22px;
+        height: 24px;
+    }
+    .ql-toolbar button svg { width: 13px; height: 13px !important; }
+    .ql-editor { font-size: 13px !important; }
+
+    /* Log */
+    .log-body { font-size: 11px; }
+    .log-entrada .log-hora { min-width: 58px; font-size: 10.5px; }
+    .log-entrada .log-msg { font-size: 11px; }
+
+    /* Nota adjuntos */
+    .nota-adjuntos { font-size: 11.5px; padding: 7px 10px; line-height: 1.5; }
+}
+
+/* ---------- Móvil estándar ---------- */
+@media (max-width: 640px) {
+    .pagina { gap: 12px; }
+    .encabezado { padding: 0 4px; }
+    .enc-titulo { font-size: 1.1rem; }
+    .enc-titulo i { display: block; margin: 0 0 4px 0; }
+    .enc-sub { font-size: 12.5px; }
+
+    /* Sello: centrado y aún más chico */
+    .sello-prioridad {
+        width: 84px;
+        height: 64px;
+        transform: rotate(-2deg);
+        margin: 10px auto 0 !important;
+    }
+    .sello-ico { font-size: 17px; margin-bottom: 3px; }
+    .sello-valor { font-size: 12.5px; }
+
+    /* Inputs: fila completa */
+    .win-body > form > div[style*="flex:1 1 340px"],
+    .win-body > form > div[style*="flex:1 1 340px"] > div[style*="flex:1"] {
+        min-width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+    .win-body > form > div[style*="flex:0.35"] {
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
+    }
+    .prio-dd-btn { width: 100%; }
+    .prio-dd-list { min-width: 100%; }
+
+    /* Fila de adjuntos + botón enviar: apilado */
+    .form-adj-send { flex-direction: column !important; gap: 10px !important; }
+    .form-adj-col, .form-send-col {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+    }
+    .form-enviar-fila { flex-direction: column !important; gap: 8px !important; }
+    .form-enviar-fila .wbtn { width: 100%; }
+
+    /* Nota adjuntos: quitar <br> para que fluya */
+    .nota-adjuntos { font-size: 11px; padding: 6px 8px; line-height: 1.5; }
+    .nota-adjuntos br { display: none; }
+
+    /* Panel adjuntos más compacto */
+    .panel-adjuntos { width: 100% !important; }
+    .pa-body { max-height: 260px; }
+    .adj-nombre { font-size: 11.5px; }
+    .adj-tamano { font-size: 10px; }
+    .adj-thumb { width: 34px; height: 34px; min-width: 34px; }
+    .adj-icono i { font-size: 17px; width: 20px; }
+
+    /* Botones flotantes del log */
+    .log-fab-stack { bottom: 12px !important; right: 12px !important; }
+    .log-fab { width: 40px !important; height: 40px !important; }
+    .log-fab i { font-size: 15px; }
+    .log-nav-btn { width: 28px !important; height: 28px !important; }
+    .log-nav-btn i { font-size: 11px; }
+
+    /* Toolbar Quill: cada grupo en línea completa */
+    .ql-toolbar { padding: 3px 2px !important; }
+    .ql-toolbar .ql-formats { flex: 1 1 100% !important; }
+    .ql-toolbar.ql-snow .ql-picker { font-size: 11px !important; }
+    .ql-toolbar .ql-font-btn,
+    .ql-toolbar .ql-case-btn { width: 80px !important; }
+    .ql-toolbar .ql-header-select { max-width: 78px; margin-right: 6px !important; }
+    .ql-toolbar .ql-border-select { max-width: 90px; }
+}
+
+/* ---------- Móvil pequeño ---------- */
+@media (max-width: 420px) {
+    .enc-titulo { font-size: 1rem; }
+    .win-titlebar .tb-text { font-size: 11.5px; }
+    .cap-btn { width: 26px; height: 26px; font-size: 12px; }
+
+    /* Sello: ocultar para ganar espacio */
+    .sello-prioridad { display: none; }
+
+    /* Quill más compacto */
+    .ql-editor { font-size: 12.5px !important; padding: 8px !important; }
+    .ql-toolbar button,
+    .ql-toolbar .ql-emoji-btn,
+    .ql-toolbar .ql-attach-btn,
+    .ql-toolbar .ql-html-btn,
+    .ql-toolbar .ql-print-btn,
+    .ql-toolbar .ql-pdf-btn,
+    .ql-toolbar .ql-size-custom,
+    .ql-toolbar .ql-sym-btn,
+    .ql-toolbar .ql-table-btn,
+    .ql-toolbar .ql-img-btn {
+        width: 20px;
+        height: 22px;
+    }
+    .ql-toolbar button svg { width: 12px; height: 12px !important; }
+    .ql-toolbar.ql-snow .ql-picker-label { padding: 1px 3px !important; }
+
+    /* Adjuntos */
+    .adj-item { padding: 7px 8px; gap: 7px; }
+    .adj-thumb { width: 30px; height: 30px; min-width: 30px; }
+    .adj-icono i { font-size: 15px; width: 18px; }
+    .pa-titlebar { padding: 9px 11px; font-size: 11.5px; }
+    .pa-footer { padding: 9px 11px; font-size: 11px; }
+
+    /* Toolbar del editor: selectores aún más pequeños */
+    .ql-toolbar .ql-font-btn { width: 72px !important; }
+    .ql-toolbar .ql-case-btn { width: 68px !important; }
+    .ql-toolbar .ql-header-select { max-width: 70px; }
+    .ql-toolbar .ql-border-select { max-width: 78px; }
+    .ql-snow .ql-picker.ql-font .ql-picker-label { min-width: 40px !important; }
+
+    /* Menú contextual */
+    .ctx-menu { min-width: 190px; max-width: 92vw; }
+    .ctx-menu .ctx-hd { max-width: 90vw; }
+    .ctx-item { font-size: 12px; padding: 7px 9px; }
+
+    /* Log */
+    .log-header { padding: 7px 9px; gap: 6px; }
+    .log-header span { font-size: 11px; }
+    .log-entrada { padding: 2px 9px; }
+    .log-entrada .log-hora { min-width: 52px; font-size: 10px; }
+    .log-entrada .log-msg { font-size: 10.5px; }
+}
+
+/* ---------- Móvil muy pequeño ---------- */
+@media (max-width: 360px) {
+    .pagina { padding: 0 3px; }
+    .enc-titulo { font-size: 0.9rem; }
+    .enc-titulo i { display: none; }
+    .enc-sub { font-size: 11px; }
+
+    /* Ocultar sello y greeting para ganar espacio */
+    .sello-prioridad { display: none; }
+    .greeting-badge { font-size: 11px; padding: 4px 10px; }
+
+    /* Formulario más compacto */
+    .win-h1 { font-size: 0.95rem; }
+    .win-sub { font-size: 11px; }
+    .win-label { font-size: 11px; }
+    .win-input, .win-textarea {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+    }
+
+    /* Ocultar nota de adjuntos para ahorrar espacio */
+    .nota-adjuntos { display: none; }
+
+    /* Botones */
+    .wbtn { font-size: 11px; padding: 7px 10px; }
+    .btn-adjuntar { padding: 0.4rem 0.6rem; font-size: 11px; }
+    .cap-btn { width: 24px; height: 24px; font-size: 11px; margin-left: 3px; }
+
+    /* Toolbar Quill: compactar al mínimo */
+    .ql-toolbar .ql-font-btn { width: 64px !important; }
+    .ql-toolbar .ql-case-btn { width: 60px !important; }
+    .ql-editor { font-size: 12px !important; }
+
+    /* Panel adjuntos */
+    .adj-nombre { font-size: 11px; }
+    .adj-item button { font-size: 11px; padding: 2px 4px; }
+
+    /* Log fab */
+    .log-fab { width: 36px !important; height: 36px !important; }
+    .log-fab i { font-size: 13px; }
+    .log-nav-btn { width: 24px !important; height: 24px !important; }
+    .log-nav-btn i { font-size: 10px; }
+}
+
+/* ---------- Accesibilidad: reducir animaciones ---------- */
+@media (prefers-reduced-motion: reduce) {
+    .bg, .bg2, .bg3, .pie, .log-fab, .cap-btn, .wbtn { animation: none; transition: none; }
+    .gear-grande, .gear-peque { animation: none; }
+}
+
+/* ---------- Fixes de desbordamiento ---------- */
+html, body { overflow-x: hidden; }
+.pagina { min-width: 0; }
+.fila-principal { min-width: 0; }
+.win-window { min-width: 0; }
+.win-window.wide { max-width: 100%; }
+.panel-adjuntos { min-width: 0; }
+.pa-body { overflow-wrap: break-word; }
+.adj-nombre, .ctx-hd, .log-msg, .enc-titulo, .tb-text, .win-h1 {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+/* Quill: evitar que el contenido desborde */
+.ql-container, .ql-editor { max-width: 100%; overflow-wrap: break-word; }
+.ql-editor img { max-width: 100%; height: auto; }
+.ql-editor table { max-width: 100%; overflow-x: auto; display: block; }
+.ql-editor pre { white-space: pre-wrap; word-break: break-word; }
+
+/* Mejora táctil en móvil */
+@media (hover: none) and (pointer: coarse) {
+    .btn, .wbtn, .cap-btn, .prio-dd-btn, .log-fab, .log-nav-btn,
+    .adj-item button, .btn-quitar-todos, .ctx-item { min-height: 34px; }
+    .cap-btn { min-height: 30px; min-width: 30px; }
+    .ql-toolbar button { min-height: 26px; }
+}
 </style>
 </head>
 <body class="win-page">
@@ -1386,8 +1708,8 @@ $valor = fn(string $k): string => htmlspecialchars(trim((string)($_POST[$k] ?? '
     <script src="js/sweetalert211.js"></script>
 <script src="/assets/winui.js"></script>
 <script src="js/quill.js"></script>
-<script src="NOMINAS/js/html2canvas.min.js"></script>
-<script src="NOMINAS/js/jspdf.umd.min.js"></script>
+<script src="nominas/js/html2canvas.min.js"></script>
+<script src="nominas/js/jspdf.umd.min.js"></script>
 <script>
 /* ===== Registrar formatos personalizados en Quill 2.0.3 ===== */
 (function(){

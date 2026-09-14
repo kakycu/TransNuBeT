@@ -3238,7 +3238,7 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
 <head>
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Gestión de Nóminas - <?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></title>
     
 	    <!-- Fonts & Icons -->
@@ -3253,7 +3253,294 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
     <link rel="stylesheet" type="text/css" href="../css/bootstrap5.3.0/buttons.dataTables.min.css">  
 	
 	<link href="CSS/nominas.css" rel="stylesheet">
+<!-- ============================================ -->
+<!-- CSS RESPONSIVE COMPLETO (PC / TABLET / MÓVIL) -->
+<!-- Solo afecta a cada breakpoint; NO sobrescribe PC -->
+<!-- ============================================ -->
+<style>
+/* ---------- BASE: solo lo seguro para todos los tamaños ---------- */
+* { -webkit-tap-highlight-color: transparent; }
 
+/* El wrapper de la tabla siempre permite scroll horizontal (útil en PC y móvil) */
+.data-table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Evitar desbordes de modales muy anchos en pantallas medianas */
+@media (max-width: 1200px) {
+    .modal-dialog.modal-xl {
+        max-width: calc(100% - 2rem);
+    }
+}
+
+/* ============================================ */
+/* TABLET (≤ 992px)                             */
+/* ============================================ */
+@media (max-width: 992px) {
+    .page-title h1 { font-size: 1rem; }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .win-topbar {
+        flex-wrap: wrap;
+        gap: 0.625rem;
+    }
+    .win-topbar > div {
+        flex-wrap: wrap;
+    }
+
+    #tablaNominas th,
+    #tablaNominas td {
+        font-size: 0.72rem;
+        padding: 0.35rem 0.4rem;
+    }
+}
+
+/* ============================================ */
+/* MÓVIL (≤ 768px)                              */
+/* ============================================ */
+@media (max-width: 768px) {
+
+    /* ---------- TOPBAR ---------- */
+    .win-topbar {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem;
+        padding: 0.625rem !important;
+    }
+    .win-topbar > div {
+        justify-content: space-between;
+        width: 100%;
+    }
+    .page-title h1 {
+        font-size: 0.95rem;
+        line-height: 1.2;
+    }
+    .page-title p { display: none; }
+
+    /* ---------- SELECTOR TIPO NÓMINA: solo en móvil ---------- */
+    .tipo-nomina-selector-custom {
+        width: 100% !important;
+        max-width: 100%;
+    }
+    .tipo-nomina-preview {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    /* ---------- STATS ---------- */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem;
+    }
+    .stat-card h3 { font-size: 1rem !important; }
+    .stat-card h6 { font-size: 0.68rem !important; }
+
+    /* ---------- FILTROS DEL CARD CONSULTA RÁPIDA ---------- */
+    .glass-card .row.g-2 > [class*="col-md-"] {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    /* ---------- BOTONES DE OPCIONES EN FILA COMPLETA ---------- */
+    #btnActualizarPagina,
+    #btnRegresarInicio,
+    #btnFullHistorialBonos,
+    #btnListadoDevengado {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* ---------- TABLA PRINCIPAL ---------- */
+    .data-table-wrapper {
+        border-radius: 0.5rem;
+        position: relative;
+    }
+    .data-table-wrapper::after {
+        content: '⟷ Desliza para ver más';
+        display: block;
+        text-align: center;
+        font-size: 0.65rem;
+        color: rgba(255,255,255,0.4);
+        padding: 0.25rem 0;
+        background: rgba(0,0,0,0.2);
+    }
+    #tablaNominas th,
+    #tablaNominas td {
+        font-size: 0.68rem;
+        padding: 0.3rem 0.35rem;
+        white-space: nowrap;
+    }
+
+    /* ---------- DATATABLE CONTROLS ---------- */
+    .dt-length,
+    .dt-search,
+    .dt-buttons,
+    .dt-colvis {
+        width: 100% !important;
+        text-align: center !important;
+        margin-bottom: 0.5rem;
+    }
+    .dt-buttons .btn-win {
+        margin: 0.125rem !important;
+        padding: 0.3rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+    .dt-search .input-group {
+        width: 100% !important;
+    }
+
+    /* ---------- FILTROS DE LA TABLA ---------- */
+    #nomFiltrosBody .col-md-3,
+    #nomFiltrosBody .col-md-4 {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    /* ---------- MODALES A PANTALLA COMPLETA ---------- */
+    .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    .modal-dialog.modal-lg,
+    .modal-dialog.modal-xl {
+        max-width: 100% !important;
+    }
+    .modal-content {
+        border-radius: 0 !important;
+        min-height: 100vh;
+    }
+    .modal-body {
+        max-height: calc(100vh - 10rem);
+        padding: 0.875rem !important;
+        overflow-y: auto;
+    }
+    .modal-header,
+    .modal-footer {
+        padding: 0.625rem 0.875rem !important;
+    }
+    .modal-footer button {
+        flex: 1 1 100%;
+    }
+
+    /* ---------- NAVEGACIÓN DE REGISTROS DEL MODAL ---------- */
+    #btnModalPrimero, #btnModalAnterior,
+    #btnModalSiguiente, #btnModalUltimo {
+        flex: 1 1 45% !important;
+        font-size: 0.7rem !important;
+        padding: 0.4rem 0.5rem !important;
+    }
+    #btnModalActualizar, #btnModalReset {
+        flex: 1 1 100% !important;
+    }
+
+    /* ---------- BUSCADOR EN MODAL ---------- */
+    .buscador-trabajador-modal {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    /* ---------- CARDS DE IMPRESIÓN ---------- */
+    .print-option-card {
+        padding: 0.75rem !important;
+    }
+    .print-option-card .card-title { font-size: 0.8rem !important; }
+    .print-option-card .card-desc  { font-size: 0.68rem !important; }
+
+    /* ---------- PANEL DE CUADRE ---------- */
+    .glass-card .d-flex.align-items-center.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.75rem;
+    }
+
+    /* ---------- BOTONES FLOTANTES ---------- */
+    .scroll-quick-btns {
+        right: 0.75rem !important;
+        bottom: 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    .scroll-quick-btn {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* ---------- HEADER DE AJUSTE ---------- */
+    #accionesBorradorAjuste {
+        flex-wrap: wrap;
+    }
+    #accionesBorradorAjuste .btn-win-success,
+    #accionesBorradorAjuste .btn-win-info,
+    #accionesBorradorAjuste .btn-win-warning,
+    #accionesBorradorAjuste .btn-win-danger {
+        flex: 1 1 45%;
+        font-size: 0.72rem;
+    }
+
+    /* ---------- PAGINACIÓN DATATABLES ---------- */
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        font-size: 0.7rem !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.2rem 0.4rem !important;
+        font-size: 0.7rem !important;
+    }
+}
+
+/* ============================================ */
+/* MÓVIL PEQUEÑO (≤ 480px)                      */
+/* ============================================ */
+@media (max-width: 480px) {
+    .page-title h1 { font-size: 0.85rem; }
+
+    .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.375rem;
+    }
+    .stat-card h3 { font-size: 0.9rem !important; }
+    .stat-card h6 { font-size: 0.6rem !important; }
+    .stat-card .stat-icon { font-size: 1.2rem !important; }
+
+    .tipo-nomina-preview span { font-size: 0.72rem; }
+    .tipo-nomina-preview { padding: 0.4rem 0.6rem; }
+
+    #tablaNominas th,
+    #tablaNominas td {
+        font-size: 0.62rem;
+        padding: 0.25rem 0.3rem;
+    }
+
+    .btn-win, .btn-win-primary, .btn-win-success,
+    .btn-win-info, .btn-win-warning, .btn-win-danger {
+        font-size: 0.7rem !important;
+        padding: 0.35rem 0.55rem !important;
+    }
+
+    #btnModalPrimero, #btnModalAnterior,
+    #btnModalSiguiente, #btnModalUltimo {
+        font-size: 0.62rem !important;
+        padding: 0.35rem 0.3rem !important;
+        flex: 1 1 48% !important;
+    }
+}
+
+/* ============================================ */
+/* PANTALLAS GRANDES (≥ 1400px) — NO sobrescribe */
+/* ============================================ */
+@media (min-width: 1400px) {
+    .stats-grid { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
 
 </head>
 <body class="<?php echo trim((!$puede_editar_nomina ? 'solo-lectura' : '') . (!$puede_eliminar_nomina ? ' solo-eliminar' : '')); ?>">
@@ -10018,34 +10305,32 @@ function cargarModalEdicion($row) {
         
         html += '<div class="row">';
         if (tipo === 'extraordinaria') {
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-sun me-1 text-warning"></i>HE Diurnas (x' + recargoExtraDiurna + ')</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-sun me-1 text-warning"></i>HE Diurnas (x' + recargoExtraDiurna + ')</label>';
         } else {
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-clock me-1 text-info"></i>Horas Laboradas</label>';
+            html += '<div class="col-md-3 mb-3"><label class="form-label"><i class="fas fa-clock me-1 text-info"></i>Horas Laboradas</label>';
         }
         html += '<input type="number" step="0.5" class="form-control edit-field" id="editHoras" value="' + horas.toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
         
         if (tipo === 'extraordinaria') {
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-moon me-1 text-info"></i>Nt 7-23h (x' + recargoExtraNocturna + ')</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1 text-info"></i>Nt 7-23h (x' + recargoExtraNocturna + ')</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctT" value="' + (originalValues.noctT || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nt 23-7h (x' + recargoExtraNocturna + ')</label>';
+            html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctD" value="' + (originalValues.noctD || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
             html += '</div>';
             
             html += '<div class="row">';
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nt 23-7h (x' + recargoExtraNocturna + ')</label>';
-            html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctD" value="' + (originalValues.noctD || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (x' + recargoDobleturno + ')</label>';
+            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (x' + recargoDobleturno + ')</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editDT" value="' + (originalValues.dt || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Descuentos</label>';
+            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Descuentos</label>';
             html += '<input type="number" step="0.01" class="form-control edit-field" id="editDescuentos" value="' + descuentos.toFixed(2) + '" ' + isReadOnlyAttr + ' ' + disabledAttr + '></div>';
             html += '</div>';
         } else {
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-calendar-day me-1"></i>Días feriados</label>';
+            html += '<div class="col-md-3 mb-3"><label class="form-label"><i class="fas fa-calendar-day me-1"></i>Días feriados</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editFeriados" value="' + feriados.toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
-            html += '</div>';
             
-            html += '<div class="row">';
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-coins me-1"></i>Otros pagos</label>';
+            html += '<div class="col-md-3 mb-3"><label class="form-label"><i class="fas fa-coins me-1"></i>Otros pagos</label>';
             html += '<input type="number" step="0.01" class="form-control edit-field" id="editOtrosPagos" value="' + otrosPagos.toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Descuentos</label>';
+            html += '<div class="col-md-3 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Descuentos</label>';
             html += '<input type="number" step="0.01" class="form-control edit-field" id="editDescuentos" value="' + descuentos.toFixed(2) + '" ' + isReadOnlyAttr + ' ' + disabledAttr + '></div>';
             html += '</div>';
 
@@ -10055,10 +10340,11 @@ function cargarModalEdicion($row) {
                 html += '<div class="rounded p-2" style="background: rgba(96,165,250,0.08); border: 0.0625rem solid rgba(96,165,250,0.2);">';
                 pagosMn.forEach(function(pm, i) {
                     var tipoLbl = (pm.tipo_calculo === 'porcentaje') ? ' <span class="text-warning">(%)</span>' : '';
-                    html += '<div class="d-flex justify-content-between align-items-center py-1" style="border-bottom: 0.0625rem solid rgba(255,255,255,0.06);">';
+                    html += '<div class="d-flex justify-content-between align-items-center py-1 pago-adic-item" style="border-bottom: 0.0625rem solid rgba(255,255,255,0.06);">';
                     html += '<span class="small text-white"><i class="fas fa-circle me-2" style="font-size:0.4rem; color:#60a5fa;"></i>' + escapeHtml(pm.nombre) + tipoLbl + '</span>';
-                    html += '<span class="small text-info fw-bold">$' + Number(pm.importe_aplicado || 0).toFixed(2) + '</span>';
-                    html += '</div>';
+                    html += '<div class="d-flex align-items-center gap-2"><span class="small text-info fw-bold">$' + Number(pm.importe_aplicado || 0).toFixed(2) + '</span>';
+                    html += (!esContabilizada) ? '<button type="button" class="btn btn-link btn-sm p-0 text-danger ms-2 btn-toggle-pago-adic" data-importe="' + Number(pm.importe_aplicado || 0).toFixed(2) + '" data-aplicado="1" title="Quitar este pago"><i class="fas fa-times"></i></button>' : '';
+                    html += '</div></div>';
                 });
                 html += '</div>';
                 html += '<small class="text-white-50 d-block mt-1" style="font-size:0.7rem;"><i class="fas fa-info-circle me-1 text-info"></i>Importes calculados y persistidos en la generación; se reflejan en "Otros pagos".</small></div>';
@@ -10135,15 +10421,13 @@ function cargarModalEdicion($row) {
                 <input type="number" step="0.01" min="0" class="form-control edit-field" id="editMontoBono" value="${montoValido.toFixed(2)}" ${isReadOnlyAttr}>
                 <small class="text-white-50">Monto directo a devengar</small>
             </div>
-            <div class="col-md-4 mb-3">
+            <div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1 text-warning"></i>Otros Descuentos</label>
+            <input type="number" step="0.01" class="form-control edit-field" id="editDescuentosBono" value="${descuentos.toFixed(2)}" ${isReadOnlyAttr}></div>            <div class="col-md-12 mb-3">
                 <label class="form-label"><i class="fas fa-pen me-1"></i>Concepto del Bono</label>
                 <input type="text" class="form-control edit-field" id="editDescripcionBono" value="${escapeHtml(descripcionBono)}" ${isReadOnlyAttr} placeholder="Ej: Productividad...">
             </div>
         `;
         html += '</div>';
-        
-        html += `<div class="mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Otros Descuentos</label>`;
-        html += '<input type="number" step="0.01" class="form-control edit-field" id="editDescuentosBono" value="' + descuentos.toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
         
         html += '<div class="card mt-3 text-success" style="background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.05);"><div class="card-body"><h6 class="card-title" style="font-size:0.85rem;"><i class="fas fa-chart-line me-1"></i>Previsualización en tiempo real</h6>';
         html += '<div class="row text-center mt-2"><div class="col-4"><small class="text-white-50">Total Devengado</small><h5 id="previewDevengado" class="text-info mt-1">$' + montoValido.toFixed(2) + '</h5></div>';
@@ -10217,7 +10501,7 @@ function cargarModalEdicion($row) {
                     <input type="number" step="0.01" class="form-control edit-field" id="editOtrosPagos" value="${otrosPagosVal.toFixed(2)}" ${isReadOnlyAttr}>
                 </div>
                 <div class="col-md-4 mb-3">
-                    <label class="form-label"><i class="fas fa-minus-circle me-1 text-danger"></i>Otras Ret.</label>
+                    <label class="form-label"><i class="fas fa-minus-circle me-1 text-danger"></i>Otras Retenciones</label>
                     <input type="number" step="0.01" class="form-control edit-field" id="editDescuentos" value="${descuentos.toFixed(2)}" ${isReadOnlyAttr}>
                 </div>
                 <div class="col-md-12 mb-3">
@@ -10246,6 +10530,35 @@ function cargarModalEdicion($row) {
     if (tipo === 'automatica') {
         $('#editHoras, #editFeriados, #editOtrosPagos, #editDescuentos').off('input').on('input', function() {
             recalcularPreviewAuto();
+        });
+        // Pago adicional aplicado: toggle (x) quitar / (+) volver a incluir.
+        // Solo rebaja o restaura el importe en "Otros pagos" de esta nómina; la fila en la tabla se
+        // conserva para futuros pagos (no se elimina del módulo).
+        $('#modalEdicionBody').off('click', '.btn-toggle-pago-adic').on('click', '.btn-toggle-pago-adic', function() {
+            var $btn = $(this);
+            var importe = parseFloat($btn.data('importe')) || 0;
+            var aplicado = ($btn.data('aplicado') === 1);
+            var $editOtros = $('#editOtrosPagos');
+            var actual = parseFloat($editOtros.val()) || 0;
+            var nuevo;
+            if (aplicado) {
+                // Quitar: resta el importe y cambia el botón a "+"
+                nuevo = Math.max(0, actual - importe);
+                $btn.data('aplicado', 0)
+                    .html('<i class="fas fa-plus"></i>')
+                    .attr('title', 'Volver a incluir este pago')
+                    .addClass('text-success').removeClass('text-danger');
+                $btn.closest('.d-flex').css('opacity', '0.55');
+            } else {
+                // Volver a incluir: suma el importe y cambia el botón a "x"
+                nuevo = actual + importe;
+                $btn.data('aplicado', 1)
+                    .html('<i class="fas fa-times"></i>')
+                    .attr('title', 'Quitar este pago')
+                    .addClass('text-danger').removeClass('text-success');
+                $btn.closest('.d-flex').css('opacity', '1');
+            }
+            $editOtros.val(nuevo.toFixed(2)).trigger('input');
         });
         recalcularPreviewAuto();
     } else if (tipo === 'extraordinaria') {
@@ -10601,6 +10914,35 @@ $('#modalAjuste').on('show.bs.modal', function() {
             $('#buscadorTrabajadorModal').focus();
         }, 200);
     });
+	
+// ==========================================
+// RESPONSIVE: Ajustar DataTable al rotar pantalla
+// ==========================================
+var ultimoAncho = window.innerWidth;
+var resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+        var anchoActual = window.innerWidth;
+        var cambioSignificativo = Math.abs(anchoActual - ultimoAncho) > 100;
+        var cambioOrientacion = (ultimoAncho < 768 && anchoActual >= 768) ||
+                                (ultimoAncho >= 768 && anchoActual < 768);
+        
+        if (cambioSignificativo || cambioOrientacion) {
+            ultimoAncho = anchoActual;
+            if (nominasTable) {
+                nominasTable.columns.adjust();
+                if (typeof nominasTable.responsive !== 'undefined') {
+                    nominasTable.responsive.recalc();
+                }
+            }
+            // Ajustar DataTables FixedColumns
+            if (nominasTable && typeof nominasTable.fixedColumns === 'function') {
+                nominasTable.fixedColumns().update();
+            }
+        }
+    }, 250);
+});
 });
 
 
@@ -11562,6 +11904,16 @@ $(document).on('closed.bs.alert', '#modalEdicionBody .alert', function () {
             $('#editFeriados').val(original.feriados);
             $('#editOtrosPagos').val(original.otrosPagos);
             $('#editDescuentos').val(original.descuentos);
+            // Reincorporar todo pago adicional que se hubiera quitado: restaurar su botón "x"
+            // y su contribución visual, sin borrar la fila (queda para futuros pagos).
+            $('#modalEdicionBody').find('.btn-toggle-pago-adic').each(function() {
+                var $b = $(this);
+                $b.data('aplicado', 1)
+                    .html('<i class="fas fa-times"></i>')
+                    .attr('title', 'Quitar este pago')
+                    .addClass('text-danger').removeClass('text-success');
+                $b.closest('.d-flex').css('opacity', '1');
+            });
             recalcularPreviewAuto();
         } else if (tipoNomina === 'extraordinaria') {
             $('#editHoras').val(original.horas);
@@ -11998,7 +12350,12 @@ if ($tabla.length && $tabla.find('tbody tr').length > 0) {
                 { orderable: false, targets: -1 },
                 { width: '1.875rem', targets: [3, 4] }
             ],
-            responsive: false,
+responsive: {
+    details: {
+        type: 'inline',
+        target: 'tr'
+    }
+},
             order: [[2, 'asc']],
             lengthMenu: [[5, 10, 15, 20, 25, 50, 100, -1], [5, 10, 15, 20, 25, 50, 100, "Todos"]],
             dom: '<"d-flex justify-content-between align-items-center flex-wrap mb-3"<"dt-length"l><"dt-buttons"B><"dt-colvis"c><"dt-search"f>>rt<"d-flex justify-content-between align-items-center flex-wrap"<"dt-info"i><"dt-pagination"p>>',
@@ -13569,6 +13926,53 @@ backdrop: 'rgba(0,0,0,0.6)'
         var modal = new bootstrap.Modal(document.getElementById('modalSinNomina'), { backdrop: 'static' });
         modal.show();
         cargarSinNomina();
+    });
+
+    function dispararAccionHashNominas() {
+        var h = window.location.hash || '';
+        if (h === '#verificar_cuadres') { $('#btnVerificarCuadre').trigger('click'); }
+        else if (h === '#historial_montos') { $('#menuHistorialMontos').trigger('click'); }
+        else if (h === '#resumen_salarial') { $('#menuResumenSalarial').trigger('click'); }
+        else if (h === '#sin_nomina') { $('#menuSinNomina').trigger('click'); }
+    }
+    dispararAccionHashNominas();
+    window.addEventListener('hashchange', dispararAccionHashNominas);
+
+    var modalesSubmenuNominas = [
+        { modal: 'modalCuadre', enlace: 'verificar_cuadres' },
+        { modal: 'modalFullHistorial', enlace: 'historial_montos' },
+        { modal: 'modalSeleccionResumenSalarial', enlace: 'resumen_salarial' },
+        { modal: 'modalListadoDevengadoTrabajador', enlace: 'resumen_salarial' },
+        { modal: 'modalSinCuenta', enlace: 'resumen_salarial' },
+        { modal: 'modalSinNomina', enlace: 'sin_nomina' }
+    ];
+
+    function actualizarActivoSubmenuNominas() {
+        var hayAbierto = false;
+        document.querySelectorAll('#nominasSubmenu a').forEach(function(a) {
+            a.classList.remove('active');
+        });
+        modalesSubmenuNominas.forEach(function(m) {
+            var el = document.getElementById(m.modal);
+            if (el && el.classList.contains('show')) {
+                var link = document.querySelector('#nominasSubmenu a[href$="#' + m.enlace + '"]');
+                if (link) link.classList.add('active');
+                hayAbierto = true;
+            }
+        });
+        return hayAbierto;
+    }
+    modalesSubmenuNominas.forEach(function(m) {
+        var el = document.getElementById(m.modal);
+        if (el) {
+            el.addEventListener('shown.bs.modal', actualizarActivoSubmenuNominas);
+            el.addEventListener('hidden.bs.modal', function() {
+                var quedaAbierto = actualizarActivoSubmenuNominas();
+                if (!quedaAbierto && window.history && window.history.replaceState) {
+                    history.replaceState(null, '', window.location.pathname + window.location.search);
+                }
+            });
+        }
     });
 
     $('#btnBuscarSinNomina').on('click', function() {

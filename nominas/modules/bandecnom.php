@@ -100,7 +100,7 @@ if (file_exists($ruta_logo)) {
 <head>
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Exportador de Banco (BANDEC) - <?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
     
@@ -1151,6 +1151,484 @@ if (file_exists($ruta_logo)) {
     color: #ffd966;
     background-color: rgba(255, 193, 7, 0.07);
     border-left-color: #ffd966;
+}
+/* ============================================ */
+/* RESPONSIVE BANDEC (PC / TABLET / MÓVIL)      */
+/* ============================================ */
+
+/* ---------- SAFE AREA (Notch iPhone X+) ---------- */
+@supports (padding: env(safe-area-inset-top)) {
+    .main-container {
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+        padding-left: max(1.25rem, env(safe-area-inset-left));
+        padding-right: max(1.25rem, env(safe-area-inset-right));
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+    .scroll-quick-btns {
+        right: max(1.25rem, env(safe-area-inset-right));
+        bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* ---------- TABLET (≤ 1024px) ---------- */
+@media (max-width: 1024px) {
+    .main-container {
+        margin-left: 5rem !important;
+        padding: 1rem !important;
+    }
+    .main-container.expanded {
+        margin-left: 5rem !important;
+    }
+
+    .win-topbar {
+        padding: 0.75rem 1rem !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .page-title h1 { font-size: 1.15rem; }
+
+    /* Tarjetas de formato: 2 en fila */
+    .cards-row {
+        gap: 0.75rem;
+        padding-right: 0;
+    }
+    .card-option {
+        flex: 1 1 calc(50% - 0.375rem);
+        min-width: calc(50% - 0.375rem);
+    }
+
+    /* Filtros: 2 por fila */
+    .filters-container {
+        gap: 0.75rem;
+    }
+    .filter-group {
+        flex: 1 1 calc(50% - 0.375rem);
+        min-width: calc(50% - 0.375rem);
+    }
+
+    /* Totales: 2 por fila */
+    .totals-row {
+        gap: 0.625rem;
+    }
+    .total-item, .total-item-acreditar, .total-item-stats {
+        flex: 1 1 calc(50% - 0.3125rem);
+        min-width: calc(50% - 0.3125rem);
+    }
+    .total-divider {
+        display: none;
+    }
+
+    /* Guía: 2 pasos por fila */
+    .guide-steps {
+        gap: 0.75rem;
+    }
+    .step {
+        flex: 1 1 calc(50% - 0.375rem);
+        min-width: calc(50% - 0.375rem);
+    }
+}
+
+/* ---------- MÓVIL (≤ 768px) ---------- */
+@media (max-width: 768px) {
+    /* ---------- BODY: prevenir scroll horizontal ---------- */
+    html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+
+    /* ---------- CONTENEDOR PRINCIPAL ---------- */
+    .main-container {
+        margin-left: 0 !important;
+        padding: 0.625rem !important;
+        width: 100% !important;
+    }
+    .main-container.expanded {
+        margin-left: 0 !important;
+    }
+
+    /* ---------- TOPBAR: 2 columnas con reloj visible ---------- */
+    .win-topbar {
+        display: grid !important;
+        grid-template-columns: 1fr auto;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem 0.75rem !important;
+        border-radius: 0.75rem !important;
+    }
+    .win-topbar > div:first-child {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 0.5rem !important;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: end;
+        flex-shrink: 0;
+    }
+
+    .page-title {
+        min-width: 0;
+        flex: 1;
+    }
+    .page-title h1 {
+        font-size: 0.95rem !important;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    /* Solo oculta el subtítulo, NO el reloj */
+    .win-topbar .page-title > p {
+        display: none;
+    }
+
+    .sidebar-toggle {
+        width: 2.25rem;
+        height: 2.25rem;
+        flex-shrink: 0;
+    }
+
+    /* ---------- GLASS CARD ---------- */
+    .glass-card {
+        padding: 1rem !important;
+    }
+
+    /* ---------- GUÍA DE USO ---------- */
+    .guide-body {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0.75rem !important;
+    }
+    .guide-steps {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .step {
+        flex: 1 1 100%;
+        min-width: 100%;
+        padding: 0.5rem 0.75rem;
+    }
+    .step:hover {
+        transform: none;
+    }
+    .guide-requirements {
+        min-width: 0;
+        width: 100%;
+    }
+    .guide-header {
+        padding: 0.625rem 0.875rem !important;
+        font-size: 0.82rem;
+    }
+
+    /* ---------- FILTROS ---------- */
+    .filters-container {
+        flex-direction: column;
+        gap: 0.625rem;
+    }
+    .filter-group {
+        flex: 1 1 100%;
+        min-width: 0;
+        width: 100%;
+    }
+    .dark-select {
+        font-size: 0.82rem;
+        padding: 0.625rem 0.75rem;
+    }
+    .filter-label {
+        font-size: 0.7rem;
+    }
+
+    /* ---------- TARJETAS DE FORMATO ---------- */
+    .cards-row {
+        flex-direction: column;
+        gap: 0.625rem;
+        padding-right: 0;
+    }
+    .card-option {
+        flex: 1 1 100%;
+        min-width: 0;
+        padding: 0.875rem 0.75rem;
+    }
+    .card-option .icon-option {
+        font-size: 2.25rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    .card-option h5 {
+        font-size: 1rem !important;
+    }
+    .card-option p {
+        font-size: 0.7rem !important;
+    }
+    .badge-format {
+        font-size: 0.6rem;
+        padding: 0.1875rem 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .card-checkbox {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        font-size: 0.72rem;
+    }
+    .card-checkbox input {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    /* ---------- BOTÓN EXPORTAR ---------- */
+    .btn-exportar {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.88rem;
+        border-radius: 1.25rem;
+    }
+
+    /* ---------- PLANTILLAS ---------- */
+    .plantilla-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem;
+    }
+    .btn-plantilla {
+        padding: 0.625rem 0.5rem;
+    }
+    .btn-plantilla i {
+        font-size: 1.1rem;
+    }
+    .btn-plantilla span {
+        font-size: 0.78rem;
+    }
+    .btn-plantilla small {
+        font-size: 0.6rem;
+    }
+
+    /* ---------- PANEL DE TOTALES ---------- */
+    .totals-panel {
+        padding: 0.75rem 0.875rem;
+    }
+    .totals-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .total-item,
+    .total-item-acreditar,
+    .total-item-stats {
+        flex: 1 1 100%;
+        min-width: 0;
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+    }
+    .total-divider {
+        display: none;
+    }
+    .total-label,
+    .total-label-acreditar {
+        font-size: 0.65rem;
+    }
+    .total-value,
+    .total-value-acreditar {
+        font-size: 1rem;
+    }
+    .stats-group {
+        gap: 0.375rem;
+    }
+    .stat-badge {
+        font-size: 0.65rem;
+        padding: 0.1875rem 0.5rem;
+    }
+
+    /* ---------- ADVERTENCIA ---------- */
+    .note-advertencia {
+        padding: 0.5rem 0.75rem;
+        gap: 0.5rem;
+    }
+    .note-advertencia strong {
+        font-size: 0.78rem;
+    }
+    .note-advertencia p {
+        font-size: 0.72rem;
+    }
+    .note-advertencia i {
+        font-size: 1rem !important;
+    }
+
+    /* ---------- MODAL DE PREVISUALIZACIÓN ---------- */
+    #modalPreview .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        min-height: 100vh;
+        max-height: 100vh;
+    }
+    #modalPreview .modal-content {
+        border-radius: 0 !important;
+        min-height: 100vh;
+        max-height: 100vh;
+    }
+    #modalPreview .modal-header {
+        padding: 0.75rem 0.875rem !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    #modalPreview .modal-title {
+        font-size: 0.9rem;
+    }
+    #modalPreview .modal-body {
+        padding: 0.75rem !important;
+        max-height: calc(100vh - 12rem);
+    }
+    #modalPreview .modal-footer {
+        padding: 0.625rem 0.75rem !important;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+    }
+    #modalPreview .modal-footer .btn {
+        flex: 1 1 100%;
+        font-size: 0.8rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* Tabla de preview: más compacta */
+    .modal-preview-table {
+        max-height: 45vh;
+    }
+    .modal-preview-table table {
+        font-size: 0.72rem;
+    }
+    .modal-preview-table th,
+    .modal-preview-table td {
+        padding: 0.375rem 0.5rem !important;
+    }
+
+    /* ---------- DROPDOWN DE EXPORTACIÓN (dentro del modal) ---------- */
+    #exportDropdownMenu {
+        right: 0 !important;
+        left: auto !important;
+        min-width: 10rem !important;
+        max-width: calc(100vw - 2rem) !important;
+    }
+
+    /* ---------- BOTÓN FLOTANTE ---------- */
+    .scroll-quick-btns {
+        right: 0.75rem !important;
+        bottom: 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    .scroll-quick-btn {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* ---------- FOOTER ---------- */
+    .footer-card {
+        padding: 1rem !important;
+        font-size: 0.72rem;
+    }
+}
+
+/* ---------- MÓVIL PEQUEÑO (≤ 480px) ---------- */
+@media (max-width: 480px) {
+    .main-container {
+        padding: 0.4rem !important;
+    }
+    .glass-card {
+        padding: 0.75rem !important;
+    }
+    .page-title h1 {
+        font-size: 0.85rem !important;
+        max-width: 55vw;
+    }
+    .win-topbar {
+        padding: 0.5rem 0.625rem !important;
+    }
+
+    /* Stat badges: texto más pequeño */
+    .stat-badge {
+        font-size: 0.6rem;
+        padding: 0.125rem 0.375rem;
+    }
+    .stat-badge i {
+        font-size: 0.55rem;
+    }
+
+    /* Totales aún más compactos */
+    .total-value,
+    .total-value-acreditar {
+        font-size: 0.95rem;
+    }
+    .total-label,
+    .total-label-acreditar {
+        font-size: 0.6rem;
+    }
+
+    /* Tarjetas formato muy compactas */
+    .card-option .icon-option {
+        font-size: 2rem !important;
+    }
+    .card-option h5 {
+        font-size: 0.92rem !important;
+    }
+    .btn-exportar {
+        font-size: 0.82rem;
+        padding: 0.625rem 1rem;
+    }
+}
+
+/* ---------- PANTALLAS GRANDES (≥ 1400px) ---------- */
+@media (min-width: 1400px) {
+    .main-container {
+        max-width: 1800px;
+        margin: 0 auto 0 16.25rem;
+    }
+    .main-container.expanded {
+        margin-left: 5rem;
+    }
+}
+
+/* ---------- ORIENTACIÓN HORIZONTAL EN MÓVIL ---------- */
+@media (max-width: 900px) and (orientation: landscape) {
+    #modalPreview .modal-dialog {
+        min-height: auto;
+        max-height: 96vh;
+    }
+    #modalPreview .modal-content {
+        min-height: auto;
+        max-height: 96vh;
+        border-radius: 1rem !important;
+    }
+    #modalPreview .modal-body {
+        max-height: calc(96vh - 10rem);
+    }
+    .modal-preview-table {
+        max-height: 55vh;
+    }
+}
+
+/* ---------- AJUSTE PARA EL RELOJ (asegurar visibilidad) ---------- */
+@media (max-width: 768px) {
+    #liveClock {
+        min-width: 4.5rem;
+        font-size: 0.8rem;
+    }
+    .date-badge {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.78rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* En móviles muy pequeños, el reloj baja a la línea de abajo del título */
+    .win-topbar {
+        grid-template-columns: 1fr;
+        row-gap: 0.5rem;
+    }
+    .win-topbar > :last-child:not(:first-child) {
+        justify-self: center;
+        width: 100%;
+    }
+    #liveClock {
+        font-size: 0.78rem;
+    }
 }
 </style>
 
