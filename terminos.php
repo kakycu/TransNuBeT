@@ -146,6 +146,15 @@ header.top .badges span {
     min-width: 0;
     word-break: break-word;
 }
+.modal-titlebar .win-caption { display: flex; align-items: center; gap: 6px; }
+.cap-btn {
+    width: 30px; height: 30px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; color: #fff; text-decoration: none;
+    font-size: 13px; flex-shrink: 0; transition: background .2s, color .2s;
+}
+.cap-btn:hover { background: rgba(255, 255, 255, .25); color: #fff; }
+.cap-btn.close:hover { background: #ef4444; color: #fff; }
 .step-body { padding: clamp(16px, 3vw, 24px) clamp(14px, 3vw, 28px) clamp(18px, 3vw, 26px); }
 
 .section-title {
@@ -330,6 +339,11 @@ footer {
         <div class="modal-titlebar">
             <i class="fa-solid fa-file-contract tt-icon"></i>
             <span class="tt-text"><?php echo $SITE_NAME; ?></span>
+            <div class="win-caption">
+                <a class="cap-btn" href="javascript:history.back()" title="Regresar Atr&aacute;s"><i class="fas fa-arrow-left"></i></a>
+                <a class="cap-btn" href="nominas/" title="Entrar al Sistema"><i class="fas fa-key"></i></a>
+                <a class="cap-btn close" href="index.php" title="Cerrar"><i class="fas fa-xmark"></i></a>
+            </div>
         </div>
         <div class="step-body">
             <div class="legal">

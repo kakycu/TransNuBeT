@@ -360,6 +360,11 @@
                 <span class="tp-row-label">Tooltips</span>
                 <label class="tp-toggle"><input type="checkbox" id="tpTooltips" checked><span class="tp-toggle-track"></span><span class="tp-toggle-knob"></span></label>
             </div>
+
+            <div class="tp-row">
+                <span class="tp-row-label">Mantener encabezado fijo</span>
+                <label class="tp-toggle"><input type="checkbox" id="tpStickyHeader" checked><span class="tp-toggle-track"></span><span class="tp-toggle-knob"></span></label>
+            </div>
         </div>
     </div>
 
@@ -374,7 +379,7 @@
 /* ===== CONSTANTS ===== */
 var STORAGE_KEY='transnubet_theme';
 var ACCENTS={blue:{c:'#3b82f6',r:'59,130,246'},purple:{c:'#8b5cf6',r:'139,92,246'},green:{c:'#10b981',r:'16,185,129'},amber:{c:'#f59e0b',r:'245,158,11'},red:{c:'#ef4444',r:'239,68,68'},cyan:{c:'#06b6d4',r:'6,182,212'},teal:{c:'#14b8a6',r:'20,184,166'},pink:{c:'#ec4899',r:'236,72,153'},indigo:{c:'#6366f1',r:'99,102,241'},rose:{c:'#f43f5e',r:'244,63,94'},orange:{c:'#f97316',r:'249,115,22'},lime:{c:'#84cc16',r:'132,204,22'},fuchsia:{c:'#d946ef',r:'217,70,239'},slate:{c:'#64748b',r:'100,116,139'},forest:{c:'#228b22',r:'34,139,34'},navy:{c:'#1e3a8a',r:'30,58,138'}};
-var DEFAULTS={theme:'dark',radius:'10',font_size:'1.0',density:'normal',sidebar_compact:'false',sidebar_opacity:'95',content_width:'100',animations:'true',focus_mode:'false',tooltips:'true',per_device:'true'};
+var DEFAULTS={theme:'dark',radius:'10',font_size:'1.0',density:'normal',sidebar_compact:'false',sidebar_opacity:'95',content_width:'100',animations:'true',focus_mode:'false',tooltips:'true',sticky_header:'true',per_device:'true'};
 var ACCDEF={dark:'blue',light:'blue',blue:'cyan',verde:'green',orgullo:'purple'};
 
 /* ===== HELPERS ===== */
@@ -472,6 +477,8 @@ function loadCurrentValues(){
     document.getElementById('tpFocusMode').checked=(g('transnubet_focus_mode','false')==='true');
     /* Tooltips */
     document.getElementById('tpTooltips').checked=(g('transnubet_tooltips','true')==='true');
+    /* Sticky header */
+    document.getElementById('tpStickyHeader').checked=(g('transnubet_sticky_header','true')==='true');
     /* Vista de dispositivo */
     var pd=pdev();
     var eff=effDev();
@@ -547,6 +554,13 @@ document.getElementById('tpTooltips').addEventListener('change',function(){
     updateCustomBadge();
 });
 
+/* Sticky header en vivo */
+document.getElementById('tpStickyHeader').addEventListener('change',function(){
+    document.documentElement.classList.toggle('sticky-header',this.checked);
+    s('transnubet_sticky_header',this.checked?'true':'false');
+    updateCustomBadge();
+});
+
 /* Vista de dispositivo: selección manual (desactiva el modo automático) */
 document.querySelectorAll('#tpDeviceGroup .tp-radio').forEach(function(btn){
     btn.addEventListener('click',function(){
@@ -593,6 +607,7 @@ saveBtn.addEventListener('click',function(){
     var animations=document.getElementById('tpAnimations').checked?'true':'false';
     var focus_mode=document.getElementById('tpFocusMode').checked?'true':'false';
     var tooltips=document.getElementById('tpTooltips').checked?'true':'false';
+    var sticky_header=document.getElementById('tpStickyHeader').checked?'true':'false';
 
     /* Persist */
     s(STORAGE_KEY,theme);
@@ -606,6 +621,7 @@ saveBtn.addEventListener('click',function(){
     s('transnubet_animations',animations);
     s('transnubet_focus_mode',focus_mode);
     s('transnubet_tooltips',tooltips);
+    s('transnubet_sticky_header',sticky_header);
 
     /* Apply all */
     applyTheme(theme);

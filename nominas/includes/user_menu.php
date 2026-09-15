@@ -411,6 +411,14 @@ if (count($nombre_parts_menu) >= 2) {
     flex-shrink: 0 !important;
 }
 
+/* ===== HEADER FIJO (sticky) al hacer scroll ===== */
+html.sticky-header body .win-topbar {
+    position: sticky !important;
+    top: 0.5rem !important;
+    z-index: 1005 !important;
+    backdrop-filter: blur(1.25rem) saturate(140%) !important;
+}
+
 /* Utilidades Bootstrap de éxito dependientes del tema */
 .text-success { color: var(--color-success) !important; }
 .bg-success, .badge.bg-success { background-color: rgba(var(--color-success-rgb), var(--bs-bg-opacity, 1)) !important; }

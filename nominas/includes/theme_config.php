@@ -47,6 +47,7 @@ var contentWidth=gd('transnubet_content_width','100');
 var animations=gd('transnubet_animations','true');
 var focusMode=gd('transnubet_focus_mode','false');
 var tooltips=gd('transnubet_tooltips','true');
+var stickyHeader=gd('transnubet_sticky_header','true');
 
 var accents={
   blue:{c:'#3b82f6',r:'59,130,246',d:'#2563eb',l:'#93c5fd',bg:'rgba(59,130,246,0.12)',bg2:'rgba(59,130,246,0.06)'},
@@ -84,6 +85,7 @@ if(theme==='dark'||theme==='blue'||theme==='verde'||theme==='orgullo'){d.classLi
 if(fm){d.classList.add('focus-mode');}else{d.classList.remove('focus-mode');}
 if(!anim){d.classList.add('no-animations');}else{d.classList.remove('no-animations');}
 if(tooltips!=='true'){d.classList.add('no-tooltips');}else{d.classList.remove('no-tooltips');}
+if(stickyHeader==='true'){d.classList.add('sticky-header');}else{d.classList.remove('sticky-header');}
 
 var c=':root{'
 +'--accent:'+ac.c+';'
