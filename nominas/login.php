@@ -90,6 +90,7 @@ $pdo = null;
 if ($db_ok) {
     // Incluir el archivo que define $pdo (asumiendo que está correctamente configurado)
     require_once 'config/database.php';
+    require_once 'includes/historico.php';
     
     // Cargar configuración desde la base de datos
     try {
@@ -336,24 +337,13 @@ if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action
     $_SESSION['logged_in']        = true;
     $_SESSION['login_time']       = time();
 
-    try {
-        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $log_stmt = $pdo->prepare("
-            INSERT INTO sys_log_accesos (usuario_id, ip_address, user_agent, fecha_acceso) 
-            VALUES (?, ?, ?, NOW())
-        ");
-        $log_stmt->execute([$user_data['id'], $ip_address, $user_agent]);
-    } catch (PDOException $e) {}
+    registrarOperacion('LOGIN', 'Inicio de sesión en el sistema (proveedor: Google).', $pdo, $user_data['id']);
 
     if (!empty($_SESSION['google_popup'])) {
         unset($_SESSION['google_popup']);
         $ultimo_google = null;
         try {
-            $ulg = $pdo->prepare("SELECT fecha_acceso FROM sys_log_accesos WHERE usuario_id = ? ORDER BY fecha_acceso DESC LIMIT 1 OFFSET 1");
-            $ulg->execute([$user_data['id']]);
-            $rowG = $ulg->fetch(PDO::FETCH_ASSOC);
-            if ($rowG) $ultimo_google = $rowG['fecha_acceso'];
+            $ultimo_google = obtenerUltimoAcceso($pdo, $user_data['id']);
         } catch (PDOException $e) {}
         $perfil_js = json_encode([
             'nombre' => trim(($user_data['nombre'] ?? '') . ' ' . ($user_data['apellidos'] ?? '')),
@@ -511,23 +501,12 @@ if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action
     $_SESSION['logged_in']        = true;
     $_SESSION['login_time']       = time();
 
-    try {
-        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $log_stmt = $pdo->prepare("
-            INSERT INTO sys_log_accesos (usuario_id, ip_address, user_agent, fecha_acceso) 
-            VALUES (?, ?, ?, NOW())
-        ");
-        $log_stmt->execute([$user_data['id'], $ip_address, $user_agent]);
-    } catch (PDOException $e) {}
+    registrarOperacion('LOGIN', 'Inicio de sesión en el sistema (proveedor: Google, vía popup).', $pdo, $user_data['id']);
 
     // Último acceso (para el aviso de bienvenida del login AJAX)
     $ultimo_acceso = null;
     try {
-        $ul_stmt = $pdo->prepare("SELECT fecha_acceso FROM sys_log_accesos WHERE usuario_id = ? ORDER BY fecha_acceso DESC LIMIT 1 OFFSET 1");
-        $ul_stmt->execute([$user_data['id']]);
-        $ul_row = $ul_stmt->fetch(PDO::FETCH_ASSOC);
-        if ($ul_row) $ultimo_acceso = $ul_row['fecha_acceso'];
+        $ultimo_acceso = obtenerUltimoAcceso($pdo, $user_data['id']);
     } catch (PDOException $e) {}
 
     header('Content-Type: application/json; charset=utf-8');
@@ -1244,25 +1223,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
                     $_SESSION['logged_in'] = true;
                     $_SESSION['login_time'] = time();
                     
-                    try {
-                        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-                        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                        $log_stmt = $pdo->prepare("
-                            INSERT INTO sys_log_accesos (usuario_id, ip_address, user_agent, fecha_acceso) 
-                            VALUES (?, ?, ?, NOW())
-                        ");
-                        $log_stmt->execute([$user_data['id'], $ip_address, $user_agent]);
-                    } catch (PDOException $e) {}
+                    registrarOperacion('LOGIN', 'Inicio de sesión en el sistema.', $pdo, $user_data['id']);
                     
                     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
                     if ($isAjax) {
                         $ultimo_acceso = null;
                         try {
-                            $ul_stmt = $pdo->prepare("SELECT fecha_acceso FROM sys_log_accesos WHERE usuario_id = ? ORDER BY fecha_acceso DESC LIMIT 1 OFFSET 1");
-                            $ul_stmt->execute([$user_data['id']]);
-                            $ul_row = $ul_stmt->fetch(PDO::FETCH_ASSOC);
-                            if ($ul_row) $ultimo_acceso = $ul_row['fecha_acceso'];
+                            $ultimo_acceso = obtenerUltimoAcceso($pdo, $user_data['id']);
                         } catch (PDOException $e) {}
 
                         header('Content-Type: application/json; charset=utf-8');

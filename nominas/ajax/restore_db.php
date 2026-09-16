@@ -28,6 +28,7 @@ header('Content-Type: application/json');
 
 // Configuración de la base de datos
 require_once '../config/database.php';
+require_once '../includes/historico.php';
 
 // Verificar permisos: la restauración es solo para (Admin, Soft, Editor)
 if (!in_array(permiso_rol_codigo(), ['Admin', 'Soft', 'Editor'], true)) {
@@ -314,6 +315,8 @@ try {
             'errors' => $errors
         ]
     ]);
+    
+    registrarOperacion('RESTAURAR_DB', 'Se restauró la base de datos desde el archivo "' . ($originalName ?? 'backup') . '".', $pdo);
     
 } catch (PDOException $e) {
     // Intentar restaurar foreign keys

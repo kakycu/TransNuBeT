@@ -6,13 +6,22 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-
 // Obtener nombre del sistema desde config/database.php
 $SITE_NAME = defined('SITE_NAME') ? SITE_NAME : 'SisGesNom';
 
-
-// Capturar nombre del usuario antes de destruir la sesión
+// Capturar datos del usuario antes de destruir la sesión
 $user_nombre_logout = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? '';
+$user_id_logout = $_SESSION['user_id'] ?? $_SESSION['usuario_id'] ?? null;
+
+// Registrar el cierre de sesión en el histórico de actividades
+if (file_exists(__DIR__ . '/includes/historico.php')) {
+    try {
+        require_once 'includes/historico.php';
+        registrarOperacion('LOGOUT', 'Cierre de sesión en el sistema.', $pdo, $user_id_logout ?: null);
+    } catch (Exception $e) {
+        // No debe impedir el logout
+    }
+}
 
 // Destruir todas las variables de sesión
 $_SESSION = array();

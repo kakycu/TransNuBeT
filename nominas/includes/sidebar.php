@@ -1122,6 +1122,12 @@ html.focus-mode .fluid-container {
             <span class="sidebar-text">Reportes</span>
         </a>
         <?php endif; ?>
+        <?php if (permiso_puede('historico', 'ver')): ?>
+        <a href="<?php echo $base_prefix; ?>modules/historico.php" class="nav-item <?php echo ($current_file == 'historico.php') ? 'active' : ''; ?>" data-tooltip="Histórico de Operaciones del Sistema" data-tooltip-theme="primary">
+            <i class="fas fa-clock-rotate-left"></i>
+            <span class="sidebar-text">Histórico</span>
+        </a>
+        <?php endif; ?>
         <?php if (permiso_puede('clasificadores', 'ver')): ?>
         <span class="nav-category">Clasificadores</span>
         <a href="<?php echo $base_prefix; ?>modules/clasificadores.php" class="nav-item <?php echo ($current_file == 'clasificadores.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Clasificadores" data-tooltip-theme="primary">

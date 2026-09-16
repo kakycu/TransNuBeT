@@ -1,5 +1,6 @@
 ﻿<?php
 require_once '../config/database.php';
+require_once '../includes/historico.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -27,7 +28,13 @@ if ($id == $_SESSION['user_id']) {
     exit;
 }
 
+$stmt = $pdo->prepare("SELECT CONCAT(nombre, ' ', apellidos) AS nombre_completo, usuario FROM clasif_usuarios WHERE id = ?");
+$stmt->execute([$id]);
+$eliminado = $stmt->fetch(PDO::FETCH_ASSOC);
+
 $stmt = $pdo->prepare("DELETE FROM clasif_usuarios WHERE id = ?");
 $stmt->execute([$id]);
+
+registrarOperacion('ELIMINAR_USUARIO', 'Se eliminó el usuario "' . ($eliminado['usuario'] ?? 'ID ' . $id) . '" (' . ($eliminado['nombre_completo'] ?? '') . ').', $pdo);
 
 echo json_encode(['success' => true, 'message' => 'Usuario eliminado correctamente']);

@@ -30,7 +30,7 @@ header('Content-Type: application/json');
 
 // Configuración de la base de datos (desde database.php)
 require_once '../config/database.php';
-
+require_once '../includes/historico.php';
 // Directorio de backups
 $backup_dir = '../backups/';
 
@@ -405,6 +405,8 @@ try {
         'download_url' => $download_url,
         'message' => 'Backup generado exitosamente'
     ]);
+    
+    registrarOperacion('BACKUP', 'Se generó un backup de la base de datos: "' . basename($zip_filepath) . '".', $pdo);
     
 } catch (PDOException $e) {
     error_log("Error PDO en backup_db.php: " . $e->getMessage());

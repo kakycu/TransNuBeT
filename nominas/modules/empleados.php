@@ -2,6 +2,7 @@
 // modules/empleados.php - Refactorizado con diseño Windows 11 y Correcciones
 require_once '../config/database.php';
 require_once '../includes/funciones.php';
+require_once '../includes/historico.php';
 
 // Iniciar sesión
 if (session_status() === PHP_SESSION_NONE) {
@@ -492,6 +493,9 @@ if ($action === 'crear') {
                             
                             $response['success'] = true;
                             $response['message'] = "Trabajador agregado satisfactoriamente";
+
+        // Registrar operación en el histórico
+        registrarOperacion('CREAR_EMPLEADO', 'Se agregó el trabajador "' . trim(($nombre ?? '') . ' ' . ($prefijo_nombre ?? '') . ' ' . ($primer_apellido ?? '') . ' ' . ($segundo_apellido ?? '')) . '" (' . trim(($no_expediente ?? '') . ' ' . ($ci ?? '')) . ').', $pdo);
                             $response['id'] = $id_nuevo;
                             
                             $stmt = $pdo->prepare("
@@ -614,6 +618,9 @@ $stmt->execute([$id_nuevo]);
                             $response['success'] = true;
                             $response['message'] = "Cambios actualizados correctamente";
                             $response['id'] = $id;
+                            
+                            // Registrar operación en el histórico
+                            registrarOperacion('EDITAR_EMPLEADO', 'Se actualizó el trabajador "' . trim(($nombre ?? '') . ' ' . ($primer_apellido ?? '') . ' ' . ($segundo_apellido ?? '')) . '" (' . ($no_expediente ?? $ci ?? '') . ').', $pdo);
                             
                             $stmt = $pdo->prepare("
                                 SELECT t.*, a.nombre_area, c.nombre as categoria_nombre, c.factor_incidencia, 
