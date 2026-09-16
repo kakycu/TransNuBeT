@@ -1,7 +1,6 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/mail.php';
-require_once '../includes/historico.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -334,7 +333,6 @@ try {
 
     echo json_encode($respuesta);
     
-    registrarOperacion('RESET_PASSWORD', 'Se restableció la contraseña del usuario "' . $usr['usuario'] . '".', $pdo);
 
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);

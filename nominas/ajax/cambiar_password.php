@@ -2,7 +2,6 @@
 // ajax/cambiar_password.php - Cambio de contraseña del usuario autenticado
 require_once '../config/database.php';
 require_once '../config/mail.php';
-require_once '../includes/historico.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -51,7 +50,6 @@ $stmt->execute([$hashed, $id_actual]);
 $correo = notificarPasswordCambiada($pdo, $id_actual);
 
 $respuesta = ['success' => true, 'message' => 'Contraseña actualizada correctamente'];
-registrarOperacion('CAMBIO_PASSWORD', 'El usuario cambió su propia contraseña.', $pdo, $id_actual);
 if ($correo['success']) {
     $respuesta['correo'] = 'enviado';
 } elseif ($correo['error'] === 'sin_email') {

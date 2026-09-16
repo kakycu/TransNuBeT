@@ -1,6 +1,5 @@
 <?php
 require_once '../config/database.php';
-require_once '../includes/historico.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -100,7 +99,6 @@ try {
             }
         }
         
-        registrarOperacion('CREAR_USUARIO', 'Se creó el usuario "' . $usuario . '" (' . $nombre . ' ' . $apellidos . ') con rol ' . $rol_id . '.', $pdo);
         
         echo json_encode(['success' => true, 'message' => 'Usuario creado correctamente']);
     } 
@@ -204,7 +202,6 @@ try {
             $_SESSION['usuario_rol'] = $rol_info['codigo'];
         }
         
-        registrarOperacion('EDITAR_USUARIO', 'Se editó el usuario "' . $usuario . '" (ID ' . $id . ').', $pdo);
         
         echo json_encode(['success' => true, 'message' => 'Usuario actualizado correctamente']);
     }

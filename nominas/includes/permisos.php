@@ -44,7 +44,7 @@ function permiso_matriz() {
     $SOLO_LECTURA = ['ver' => true, 'crear' => false, 'editar' => false, 'eliminar' => false, 'exportar' => true];
     $NADA = ['ver' => false, 'crear' => false, 'editar' => false, 'eliminar' => false, 'exportar' => false];
 
-    $modulos = ['dashboard', 'empleados', 'nominas', 'reportes', 'clasificadores', 'configuracion', 'usuarios', 'bandecnom', 'submayor', 'solapines', 'historico'];
+    $modulos = ['dashboard', 'empleados', 'nominas', 'reportes', 'clasificadores', 'configuracion', 'usuarios', 'bandecnom', 'submayor', 'solapines'];
 
     foreach ($modulos as $m) {
         $matriz['Admin'][$m] = $TODO;

@@ -2,7 +2,6 @@
 // modules/empleados.php - Refactorizado con diseño Windows 11 y Correcciones
 require_once '../config/database.php';
 require_once '../includes/funciones.php';
-require_once '../includes/historico.php';
 
 // Iniciar sesión
 if (session_status() === PHP_SESSION_NONE) {
@@ -494,8 +493,6 @@ if ($action === 'crear') {
                             $response['success'] = true;
                             $response['message'] = "Trabajador agregado satisfactoriamente";
 
-        // Registrar operación en el histórico
-        registrarOperacion('CREAR_EMPLEADO', 'Se agregó el trabajador "' . trim(($nombre ?? '') . ' ' . ($prefijo_nombre ?? '') . ' ' . ($primer_apellido ?? '') . ' ' . ($segundo_apellido ?? '')) . '" (' . trim(($no_expediente ?? '') . ' ' . ($ci ?? '')) . ').', $pdo);
                             $response['id'] = $id_nuevo;
                             
                             $stmt = $pdo->prepare("
@@ -618,9 +615,6 @@ $stmt->execute([$id_nuevo]);
                             $response['success'] = true;
                             $response['message'] = "Cambios actualizados correctamente";
                             $response['id'] = $id;
-                            
-                            // Registrar operación en el histórico
-                            registrarOperacion('EDITAR_EMPLEADO', 'Se actualizó el trabajador "' . trim(($nombre ?? '') . ' ' . ($primer_apellido ?? '') . ' ' . ($segundo_apellido ?? '')) . '" (' . ($no_expediente ?? $ci ?? '') . ').', $pdo);
                             
                             $stmt = $pdo->prepare("
                                 SELECT t.*, a.nombre_area, c.nombre as categoria_nombre, c.factor_incidencia, 
@@ -882,7 +876,7 @@ foreach ($trabajadores_data as $t) {
     <link rel="stylesheet" type="text/css" href="../css/bootstrap5.3.0/buttons.dataTables.min.css">    
 <style>
         * { margin:0; padding:0; box-sizing: border-box; }
-        body { font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); overflow-x: hidden; color: #ffffff; }
+        body { font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); overflow-x: hidden; overflow-x: clip; color: #ffffff; }
 
         /* Windows 11 Acrylic Background */
         .win11-bg {
@@ -1907,7 +1901,7 @@ html[data-theme="light"] .badge.badge-estado-inactivo {
    ============================================================ */
 
 /* Evitar scroll horizontal */
-html, body { overflow-x: hidden; max-width: 100vw; }
+html, body { overflow-x: hidden; overflow-x: clip; max-width: 100vw; }
 body { word-wrap: break-word; overflow-wrap: break-word; }
 
 /* ============ TOPBAR ============ */
@@ -3694,86 +3688,22 @@ var PRINT_TOOLBAR_HTML = '<style>#auto-hide-toolbar{transition:transform 0.3s ea
     + '</div><div style="height:3.4375rem;"></div>'
     + '<script>(function(){var tb=document.getElementById("auto-hide-toolbar");if(!tb)return;var lastY=window.scrollY||window.pageYOffset,ticking=false;function ch(){if(!ticking){window.requestAnimationFrame(function(){var curY=window.scrollY||document.documentElement.scrollTop||window.pageYOffset||0;if(curY>lastY&&curY>60)tb.classList.add("hidden");else tb.classList.remove("hidden");lastY=curY;ticking=false;});ticking=true;}}window.addEventListener("scroll",ch);document.addEventListener("scroll",ch);})();<\/script>';
 
-// ==================== FUNCIÓN PARA CARGAR MESES CON NÓMINAS AUTOMÁTICAS ====================
 function cargarMesesConNominas(trabajadorId) {
     const selectMes = document.getElementById('mes_dias_trabajados');
     const detalleDiv = document.getElementById('detalle_dias_trabajados');
     
     if (!selectMes) return;
     
-    // Limpiar opciones (mantener solo la primera)
-    while (selectMes.options.length > 1) {
-        selectMes.remove(1);
-    }
-    
-    // Ocultar detalle
-    if (detalleDiv) detalleDiv.style.display = 'none';
-    
-    if (!trabajadorId) {
-        // Mantener el mensaje por defecto
-        return;
-    }
-    
-    // Mostrar loading en el select
-    const loadingOpt = document.createElement('option');
-    loadingOpt.value = '';
-    loadingOpt.textContent = '⏳ Cargando...';
-    selectMes.appendChild(loadingOpt);
-    
-    fetch('../ajax/obtener_meses_nominas.php?trabajador_id=' + trabajadorId + '&t=' + Date.now())
-        .then(response => response.json())
-        .then(data => {
-            // Limpiar select (mantener solo el primer option)
-            while (selectMes.options.length > 1) {
-                selectMes.remove(1);
-            }
-            
-            if (data.success && data.meses.length > 0) {
-                // Agregar opción por defecto
-                const defaultOpt = document.createElement('option');
-                defaultOpt.value = '';
-                defaultOpt.textContent = '-- Seleccionar mes --';
-                selectMes.appendChild(defaultOpt);
-                
-                // Agregar los meses con formato: "Mes Año - X días (X horas)"
-                data.meses.forEach(mes => {
-                    const opt = document.createElement('option');
-                    opt.value = mes.periodo_id;
-                    // Formato: "Mayo 2026 - 22.5 días (180h)"
-                    const dias = parseFloat(mes.dias_trabajados).toFixed(1);
-                    const horas = parseFloat(mes.horas_laboradas).toFixed(0);
-                    opt.textContent = `${mes.periodo_texto} - ${dias} días (${horas}h)`;
-                    opt.dataset.dias = dias;
-                    opt.dataset.horas = horas;
-                    opt.dataset.periodo = mes.periodo_texto;
-                    opt.dataset.nomina_id = mes.nomina_id;
-                    selectMes.appendChild(opt);
-                });
-            } else {
-                const noDataOpt = document.createElement('option');
-                noDataOpt.value = '';
-                noDataOpt.textContent = '-- Sin nóminas automáticas --';
-                selectMes.appendChild(noDataOpt);
-            }
-        })
-        .catch(error => {
-            console.error('Error al cargar meses:', error);
-            const errorOpt = document.createElement('option');
-            errorOpt.value = '';
-            errorOpt.textContent = '⚠️ Error al cargar';
-            selectMes.appendChild(errorOpt);
-        });
-}
-
-function cargarMesesConNominas(trabajadorId) {
-    const selectMes = document.getElementById('mes_dias_trabajados');
-    const detalleDiv = document.getElementById('detalle_dias_trabajados');
-    
-    if (!selectMes) return;
-    
-    while (selectMes.options.length > 1) {
-        selectMes.remove(1);
-    }
+    // Reset: placeholder por defecto mientras carga o sin trabajador
+    selectMes.innerHTML = '';
+    const placeholderHtml = function(texto) {
+        selectMes.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = texto;
+        selectMes.appendChild(opt);
+    };
+    placeholderHtml('-- Sin nóminas --');
     
     if (detalleDiv) detalleDiv.style.display = 'none';
     
@@ -3802,15 +3732,9 @@ function cargarMesesConNominas(trabajadorId) {
             return response.json();
         })
         .then(data => {
-            while (selectMes.options.length > 1) {
-                selectMes.remove(1);
-            }
-            
             if (data.success && data.meses.length > 0) {
-                const defaultOpt = document.createElement('option');
-                defaultOpt.value = '';
-                defaultOpt.textContent = '-- Seleccionar mes --';
-                selectMes.appendChild(defaultOpt);
+                // Trabajador con nóminas: placeholder "Seleccionar mes" + meses
+                placeholderHtml('-- Seleccionar mes --');
                 
                 data.meses.forEach(mes => {
                     const opt = document.createElement('option');
@@ -3835,21 +3759,13 @@ function cargarMesesConNominas(trabajadorId) {
                     selectMes.appendChild(opt);
                 });
             } else {
-                const noDataOpt = document.createElement('option');
-                noDataOpt.value = '';
-                noDataOpt.textContent = '-- Sin nóminas automáticas --';
-                selectMes.appendChild(noDataOpt);
+                // Trabajador sin nóminas: placeholder por defecto
+                placeholderHtml('-- Sin nóminas --');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            while (selectMes.options.length > 1) {
-                selectMes.remove(1);
-            }
-            const errorOpt = document.createElement('option');
-            errorOpt.value = '';
-            errorOpt.textContent = '⚠️ Error al cargar datos';
-            selectMes.appendChild(errorOpt);
+            placeholderHtml('-- Sin nóminas --');
         });
 }
 

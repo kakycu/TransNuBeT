@@ -1,6 +1,5 @@
 ﻿<?php
 require_once '../config/database.php';
-require_once '../includes/historico.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -38,6 +37,5 @@ $blanco = $stmt->fetch(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("UPDATE clasif_usuarios SET activo = ? WHERE id = ?");
 $stmt->execute([$estado, $id]);
 
-registrarOperacion($estado ? 'ACTIVAR_USUARIO' : 'DESACTIVAR_USUARIO', 'Se ' . ($estado ? 'activó' : 'desactivó') . ' el usuario "' . ($blanco['usuario'] ?? 'ID ' . $id) . '" (' . ($blanco['nombre_completo'] ?? '') . ').', $pdo);
 
 echo json_encode(['success' => true, 'message' => $estado ? 'Usuario activado' : 'Usuario desactivado']);
