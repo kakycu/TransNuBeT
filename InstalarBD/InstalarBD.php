@@ -351,7 +351,8 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (33, 'recargo_extra_diurna', '1.50', 'decimal', 'Recargo hora extra diurna (multiplicador, 1.5 = 150%)', NULL, NULL),
 (34, 'recargo_extra_nocturna', '2.00', 'decimal', 'Recargo hora extra nocturna Nt 7-23h y Nt 23-7h (multiplicador, 2.0 = 200%)', NULL, NULL),
 (35, 'recargo_doble_turno', '2.00', 'decimal', 'Recargo doble turno (multiplicador, 2.0 = 200%)', NULL, NULL),
-(36, 'googleoauth', 'true', 'booleano', 'Habilita o deshabilita el login con Google (OAuth 2.0) en el login', '2026-09-12 19:23:46', NULL);
+(36, 'googleoauth', 'true', 'booleano', 'Habilita o deshabilita el login con Google (OAuth 2.0) en el login', '2026-09-12 19:23:46', NULL),
+(37, 'especialista_nominas', 'Especialista de Nóminas', 'texto', 'Nombre del Especialista de Nóminas', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1848,7 +1849,7 @@ function readEmpresaFromDb(mysqli $m): array {
     $keys = [
         'nombre_empresa', 'direccion_empresa', 'reeup_empresa', 'nit_empresa', 'slogan',
         'telefono_empresa', 'email_empresa', 'jefe_proyecto', 'especialista_gestion',
-        'especialista_gestionRRHH', 'intendente', 'telefono_soporte', 'email_soporte',
+        'especialista_gestionRRHH', 'especialista_nominas', 'intendente', 'telefono_soporte', 'email_soporte',
     ];
     $res = $m->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('" . implode("','", array_map(function ($k) use ($m) { return $m->real_escape_string($k); }, $keys)) . "')");
     $out = [];
@@ -2030,6 +2031,7 @@ function saveCompanyConfigHandler(): void {
         'jefe_proyecto'         => trim($_POST['jefe_proyecto'] ?? ''),
         'especialista_gestion'  => trim($_POST['especialista_gestion'] ?? ''),
         'especialista_gestionRRHH' => trim($_POST['especialista_gestionRRHH'] ?? ''),
+        'especialista_nominas'  => trim($_POST['especialista_nominas'] ?? ''),
         'intendente'            => trim($_POST['intendente'] ?? ''),
     ];
     foreach ($company as $param => $valor) {
@@ -3700,6 +3702,7 @@ function renderCompany(el, actions) {
         '<div class="form-group full"><label>Slogan</label><input class="form-control" id="slogan_empresa" value="' + esc(v('slogan', '')) + '"></div>' +
         '<div class="form-group col-2"><label>Jefe de Proyecto</label><input class="form-control" id="jefe_proyecto" value="' + esc(v('jefe_proyecto', '')) + '"></div>' +
         '<div class="form-group col-2"><label>Especialista en Gestión Económica</label><input class="form-control" id="especialista_gestion" value="' + esc(v('especialista_gestion', '')) + '"></div>' +
+        '<div class="form-group col-2"><label>Especialista de Nóminas</label><input class="form-control" id="especialista_nominas" value="' + esc(v('especialista_nominas', '')) + '"></div>' +
         '<div class="form-group col-2"><label>Especialista de Gestión de Rec. Humanos</label><input class="form-control" id="especialista_gestionRRHH" value="' + esc(v('especialista_gestionRRHH', '')) + '"></div>' +
         '<div class="form-group col-2"><label>Intendente</label><input class="form-control" id="intendente" value="' + esc(v('intendente', '')) + '"></div>' +
         '<div class="form-group col-2"><label>Teléfono de Soporte</label><input class="form-control" id="telefono_soporte" value="' + esc(v('telefono_soporte', '')) + '"></div>' +
@@ -3737,6 +3740,7 @@ function saveCompany() {
     body.email_empresa = document.getElementById('email_empresa').value;
     body.jefe_proyecto = document.getElementById('jefe_proyecto').value;
     body.especialista_gestion = document.getElementById('especialista_gestion').value;
+    body.especialista_nominas = document.getElementById('especialista_nominas').value;
     body.especialista_gestionRRHH = document.getElementById('especialista_gestionRRHH').value;
     body.intendente = document.getElementById('intendente').value;
     notify('Guardando datos de la empresa...', 'warning', true);
@@ -3761,8 +3765,8 @@ function renderConfig(el, actions) {
         '<div class="form-group"><label>Puerto</label><input class="form-control" id="mail_port" value="25"></div>' +
         '<div class="form-group"><label>Seguridad</label><select class="form-control" id="mail_encryption">' +
         '<option value="tls">TLS</option><option value="ssl">SSL</option><option value="none" selected>Ninguna</option></select></div>' +
-        '<div class="form-group"><label>Usuario</label><input class="form-control" id="mail_usuario" value="kakycu@nauta.cu"></div>' +
-        '<div class="form-group"><label>Contraseña / App Password</label><div class="password-wrapper"><input class="form-control" type="password" id="mail_password" value="lrf8110">' +
+        '<div class="form-group"><label>Usuario</label><input class="form-control" id="mail_usuario" value="usuario@nauta.cu"></div>' +
+        '<div class="form-group"><label>Contraseña / App Password</label><div class="password-wrapper"><input class="form-control" type="password" id="mail_password" value="12345">' +
         '<button type="button" class="password-toggle" onclick="togglePass(\'mail_password\', this)" tabindex="-1"><i class="fa-solid fa-eye"></i></button></div></div>' +
         '<div class="form-group"><label>Correo remitente</label><input class="form-control" id="mail_from" value="noreply_SisGesNom@gmail.com"></div>' +
         '<div class="form-group"><label>Nombre del remitente</label><input class="form-control" id="mail_from_name" value="Soporte ' + esc(state.empresa) + '"></div>' +
