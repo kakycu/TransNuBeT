@@ -1,0 +1,606 @@
+/* windows11.css - Estilos principales Windows 11 */
+
+:root {
+    --win-bg-primary: #0d0d0d;
+    --win-bg-secondary: #1f1f1f;
+    --win-bg-tertiary: #2d2d2d;
+    --win-text-primary: #ffffff;
+    --win-text-secondary: #a6a6a6;
+    --win-border-color: #3d3d3d;
+    --win-accent: #0078d4;
+    --win-accent-light: rgba(0, 120, 212, 0.2);
+    --win-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --win-radius: 8px;
+    --win-radius-sm: 6px;
+    --win-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --sidebar-width: 260px;
+    --sidebar-mini-width: 68px;
+}
+
+[data-theme="light"] {
+    --win-bg-primary: #f5f9ff;
+    --win-bg-secondary: #ffffff;
+    --win-bg-tertiary: #edf4ff;
+    --win-text-primary: #1a365d;
+    --win-text-secondary: #2d5282;
+    --win-border-color: #c3dafe;
+    --win-shadow: 0 2px 8px rgba(26, 54, 93, 0.1);
+    --win-accent: #2563eb;
+    --win-accent-light: rgba(37, 99, 235, 0.1);
+}
+
+/* Body base */
+body {
+    background-color: var(--win-bg-primary);
+    color: var(--win-text-primary);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+    transition: var(--win-transition);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* Efecto Mica */
+.mica-effect {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .mica-effect {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Navbar */
+.win-navbar {
+    height: 48px;
+    background: var(--win-bg-secondary);
+    border-bottom: 1px solid var(--win-border-color);
+    padding: 0 16px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.win-navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.win-navbar-brand i {
+    color: var(--win-accent);
+}
+
+        .win-nav-search {
+            flex: 1;
+            max-width: 400px;
+            position: relative;
+            margin-bottom: 5px;
+            padding: 0 5px;
+        }
+
+        .win-nav-search input {
+            background: var(--win-bg-tertiary);
+            border: 1px solid var(--win-border-color);
+            color: var(--win-text-primary);
+            border-radius: var(--win-radius-sm);
+            padding: 8px 12px 8px 30px;
+            font-size: 13px;
+            width: 100%;
+            transition: var(--win-transition);
+        }
+
+        .win-nav-search input:focus {
+            outline: none;
+            border-color: var(--win-accent);
+            box-shadow: 0 0 0 2px var(--win-accent-light);
+        }
+
+        .win-nav-search i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 14px;
+		}
+
+/* Sidebar */
+.win-sidebar {
+    width: var(--sidebar-width);
+    background: var(--win-bg-secondary);
+    border-right: 1px solid var(--win-border-color);
+    height: calc(100vh - 48px);
+    position: fixed;
+    left: 0;
+    top: 48px;
+    z-index: 999;
+    transition: var(--win-transition);
+    overflow-y: auto;
+    padding: 16px 0;
+}
+
+.win-sidebar.mini {
+    width: var(--sidebar-mini-width);
+}
+
+.win-sidebar-header {
+    padding: 0 16px 16px;
+    border-bottom: 1px solid var(--win-border-color);
+    margin-bottom: 16px;
+}
+
+.win-sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: var(--win-radius-sm);
+    transition: var(--win-transition);
+}
+
+.win-sidebar-user:hover {
+    background: var(--win-bg-tertiary);
+}
+
+.win-sidebar-user-avatar {
+    width: 36px;
+    height: 36px;
+    background: var(--win-accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+}
+
+.win-sidebar-user-info h6 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.win-sidebar-user-info small {
+    color: var(--win-text-secondary);
+    font-size: 12px;
+}
+
+.win-sidebar.mini .win-sidebar-user-info {
+    display: none;
+}
+
+/* Menú lateral */
+.win-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.win-nav-item {
+    margin: 2px 8px;
+}
+
+.win-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    color: var(--win-text-secondary);
+    text-decoration: none;
+    border-radius: var(--win-radius-sm);
+    transition: var(--win-transition);
+    font-size: 14px;
+    position: relative;
+}
+
+.win-nav-link:hover {
+    background: var(--win-bg-tertiary);
+    color: var(--win-text-primary);
+}
+
+.win-nav-link.active {
+    background: var(--win-accent-light);
+    color: var(--win-accent);
+    font-weight: 500;
+}
+
+.win-nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    background: var(--win-accent);
+    border-radius: 0 2px 2px 0;
+}
+
+.win-nav-icon {
+    width: 20px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.win-sidebar.mini .win-nav-text {
+    display: none;
+}
+
+.win-nav-badge {
+    margin-left: auto;
+    background: var(--win-accent);
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* Contenido principal */
+.win-main-content {
+    margin-left: var(--sidebar-width);
+    margin-top: 48px;
+    padding: 24px;
+    transition: var(--win-transition);
+    min-height: calc(100vh - 48px);
+    padding-bottom: 100px; /* ESPACIO PARA FOOTER Y QUICK ACTIONS */
+}
+
+.win-main-content.sidebar-mini {
+    margin-left: var(--sidebar-mini-width);
+}
+
+/* FOOTER ARREGLADO */
+.win-footer {
+    position: fixed;
+    bottom: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    height: 60px;
+    background: var(--win-bg-secondary);
+    border-top: 1px solid var(--win-border-color);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    transition: var(--win-transition);
+}
+
+.win-main-content.sidebar-mini + .win-footer {
+    left: var(--sidebar-mini-width);
+}
+
+.win-footer .container-fluid {
+    padding: 0;
+}
+
+.win-footer .row {
+    margin: 0;
+}
+
+.win-footer .border-end {
+    border-right-color: var(--win-border-color) !important;
+}
+
+.win-footer .win-icon {
+    color: var(--win-accent);
+}
+
+/* QUICK ACTIONS FUNCIONALES */
+.win-quick-actions {
+    position: fixed;
+    bottom: 70px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1000;
+}
+
+.win-quick-action {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--win-accent);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: var(--win-transition);
+    box-shadow: var(--win-shadow);
+}
+
+.win-quick-action:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.win-quick-actions-expanded {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.win-quick-actions-expanded.show {
+    display: flex;
+    animation: slideUp 0.3s ease;
+}
+
+.win-quick-actions-expanded .win-quick-action {
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+}
+
+.win-quick-actions-expanded .action-factura {
+    background: #0078d4;
+}
+
+.win-quick-actions-expanded .action-cliente {
+    background: #107c10;
+}
+
+.win-quick-actions-expanded .action-servicio {
+    background: #5c2d91;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Panel de temas */
+.win-theme-panel {
+    position: fixed;
+    top: 48px;
+    right: 0;
+    width: 300px;
+    background: var(--win-bg-secondary);
+    border-left: 1px solid var(--win-border-color);
+    height: calc(100vh - 48px);
+    z-index: 1001;
+    transform: translateX(100%);
+    transition: var(--win-transition);
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.win-theme-panel.open {
+    transform: translateX(0);
+}
+
+.win-theme-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none;
+}
+
+.win-theme-overlay.open {
+    display: block;
+}
+
+.win-theme-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.win-theme-option {
+    padding: 16px;
+    border: 2px solid var(--win-border-color);
+    border-radius: var(--win-radius);
+    cursor: pointer;
+    transition: var(--win-transition);
+    text-align: center;
+}
+
+.win-theme-option:hover {
+    border-color: var(--win-accent);
+}
+
+.win-theme-option.active {
+    border-color: var(--win-accent);
+    background: var(--win-accent-light);
+}
+
+.win-color-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.win-color-option {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: var(--win-transition);
+}
+
+.win-color-option:hover {
+    transform: scale(1.1);
+}
+
+.win-color-option.active {
+    border-color: white;
+    box-shadow: 0 0 0 2px var(--win-bg-secondary);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .win-sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .win-sidebar.open {
+        transform: translateX(0);
+    }
+    
+    .win-main-content {
+        margin-left: 0 !important;
+    }
+    
+    .win-footer {
+        left: 0 !important;
+    }
+    
+    .win-quick-actions {
+        bottom: 16px;
+        right: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .win-main-content {
+        padding: 16px;
+        padding-bottom: 120px;
+    }
+    
+    .win-nav-search {
+        display: none;
+    }
+    
+    .win-footer {
+        padding: 10px;
+        height: auto;
+    }
+    
+    .win-footer .row > div {
+        padding: 8px !important;
+        border: none !important;
+    }
+}
+        /* ============================================= */
+        /* SOLUCIÓN DEFINITIVA PARA COLOR DE TABLAS      */
+        /* ============================================= */
+        
+        /* 1. Reset de variables Bootstrap */
+        .win-main-content table {
+            --bs-table-color: var(--win-text-primary) !important;
+            --bs-table-bg: var(--win-bg-secondary) !important;
+            --bs-table-border-color: var(--win-border-color) !important;
+            --bs-table-striped-color: var(--win-text-primary) !important;
+            --bs-table-striped-bg: var(--win-bg-tertiary) !important;
+            --bs-table-active-color: var(--win-text-primary) !important;
+            --bs-table-active-bg: var(--win-bg-tertiary) !important;
+            --bs-table-hover-color: var(--win-text-primary) !important;
+            --bs-table-hover-bg: var(--win-bg-tertiary) !important;
+        }
+        
+        /* 2. Forzar color en todas las celdas */
+        .win-main-content table td,
+        .win-main-content table td span:not(.badge),
+        .win-main-content table td div:not(.btn-group),
+        .win-main-content table td p,
+        .win-main-content table td strong,
+        .win-main-content table td em,
+        .win-main-content table td small {
+            color: var(--win-text-primary) !important;
+        }
+        
+        /* 3. Para tablas específicas del dashboard */
+        .win-main-content .card .table td {
+            color: var(--win-text-primary) !important;
+        }
+        
+        /* 4. Usar !important para asegurar prioridad */
+        body[data-theme="dark"] .win-main-content table td {
+            color: #ffffff !important;
+        }
+        
+        body[data-theme="light"] .win-main-content table td {
+            color: #000000 !important;
+        }
+        /* Placeholders personalizados para tema dark */
+        [data-theme="dark"] ::placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        [data-theme="dark"] :-ms-input-placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        [data-theme="dark"] ::-ms-input-placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        /* Placeholders personalizados para tema light */
+        [data-theme="light"] ::placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        [data-theme="light"] :-ms-input-placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        [data-theme="light"] ::-ms-input-placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        /* Placeholders para formularios específicos */
+        [data-theme="dark"] .form-control::placeholder,
+        [data-theme="dark"] .form-select::placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        [data-theme="light"] .form-control::placeholder,
+        [data-theme="light"] .form-select::placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        /* Placeholders para el buscador de navbar */
+        [data-theme="dark"] .win-nav-search input::placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        [data-theme="light"] .win-nav-search input::placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        /* Placeholders para search-box en tarjetas */
+        [data-theme="dark"] .search-box input::placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }
+        
+        [data-theme="light"] .search-box input::placeholder {
+            color: var(--win-text-secondary) !important;
+            opacity: 0.7 !important;
+        }

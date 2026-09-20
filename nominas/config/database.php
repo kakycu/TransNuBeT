@@ -64,6 +64,22 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // ============================================
+// GUARDIA ANTI-RETROCESO: si la sesión está bloqueada,
+// redirigir a la pantalla de bloqueo (excepto en las páginas de desbloqueo)
+// ============================================
+if (!empty($_SESSION['sesion_bloqueada']) && !defined('BLOQUEO_SESION_PERMITIDO')) {
+    $pagina_actual = basename($_SERVER['SCRIPT_NAME'] ?? '', '?*');
+    $permitidas = ['bloquear_sesion.php', 'logout.php', 'login.php', 'verificar_contrasena_bloqueo.php', 'limpiar_bloqueo.php'];
+    if (!in_array($pagina_actual, $permitidas)) {
+        $dir_script  = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+        $niveles     = max(0, substr_count($dir_script, '/') - 1);
+        $destino     = str_repeat('../', $niveles) . 'bloquear_sesion.php';
+        header('Location: ' . $destino);
+        exit;
+    }
+}
+
+// ============================================
 // FUNCIÓN PARA MOSTRAR SWEETALERT DE ERROR
 // ============================================
 function mostrarErrorMySQL($error_message) {
@@ -272,6 +288,7 @@ if (!defined('NIT'))           define('NIT', $configs['nit_empresa'] ?? '319-1-0
 if (!defined('JEFE_PROYECTO')) define('JEFE_PROYECTO', $configs['jefe_proyecto'] ?? 'Nombre Director');
 if (!defined('ESPECIALISTA'))  define('ESPECIALISTA', $configs['especialista_gestion'] ?? 'Nombre Esp. Contab y Finanzas.');
 if (!defined('ESPECIALISTA_RRHH')) define('ESPECIALISTA_RRHH', $configs['especialista_gestionRRHH'] ?? 'Esp. RRHH');
+if (!defined('ESPECIALISTA_NOMINAS')) define('ESPECIALISTA_NOMINAS', $configs['especialista_nominas'] ?? '');
 if (!defined('REEUP_EMPRESA')) define('REEUP_EMPRESA', $configs['reeup_empresa'] ?? 'S/R');
 if (!defined('INTENDENTE'))    define('INTENDENTE', $configs['intendente'] ?? 'S/N');
 if (!defined('TELEFONO_EMPRESA')) define('TELEFONO_EMPRESA', $configs['telefono_empresa'] ?? '');

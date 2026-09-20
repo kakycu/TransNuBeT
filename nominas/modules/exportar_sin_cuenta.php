@@ -6,6 +6,7 @@
 header('Content-Type: application/json');
 
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 require_once '../includes/funciones.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -735,6 +736,7 @@ if ($formato === 'excel') {
 // RESPUESTA FINAL
 // ========================
 if ($success) {
+    logAction('exportar_trabajadores_sin_cuenta', 'exportar_sin_cuenta', 'Exportación de trabajadores sin cuenta bancaria', ['periodo' => $periodo, 'cuenta' => $cuenta, 'estado' => $estado, 'formato' => $formato, 'registros' => count($trabajadores)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     echo json_encode([
         'success' => true,
         'archivo' => pathinfo(basename($archivoSalida), PATHINFO_FILENAME),

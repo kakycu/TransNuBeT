@@ -2,6 +2,7 @@
 // modules/empleados.php - Refactorizado con diseño Windows 11 y Correcciones
 require_once '../config/database.php';
 require_once '../includes/funciones.php';
+require_once __DIR__ . '/../logger.php';
 
 // Iniciar sesión
 if (session_status() === PHP_SESSION_NONE) {
@@ -354,6 +355,8 @@ function exportar_anexo_14($pdo) {
     header('Content-Disposition: attachment;filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
     
+    logAction('exportar_anexo14', 'empleados', 'Exportación del Anexo 14 (XLSX)', ['archivo' => $filename], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+    
     $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
     $writer->save('php://output');
     exit;
@@ -474,6 +477,18 @@ if ($action === 'crear') {
                                 isset($_POST['activo']) ? 1 : 0
                             ]);
                             $id_nuevo = $pdo->lastInsertId();
+
+                            // ===== AUDITORÍA: creación de trabajador =====
+                            logAction(
+                                'crear_trabajador',
+                                'empleados',
+                                'Creación de trabajador',
+                                ['trabajador_id' => (int)$id_nuevo, 'expediente' => $expediente],
+                                null,
+                                'success',
+                                null,
+                                $_SESSION['auth_provider'] ?? 'local'
+                            );
                             
                             if (isset($_POST['pagos_adicionales']) && is_array($_POST['pagos_adicionales'])) {
                                 foreach ($_POST['pagos_adicionales'] as $pid) {
@@ -569,9 +584,10 @@ $stmt->execute([$id_nuevo]);
                             $response['message'] = "Error: El expediente ya existe en otro empleado.";
                         } else {
                             // CONTINUAR CON LA ACTUALIZACIÓN...
-                            $stmt = $pdo->prepare("SELECT foto_ruta FROM trabajadores WHERE id = ?");
+                            $stmt = $pdo->prepare("SELECT foto_ruta, activo, fecha_baja FROM trabajadores WHERE id = ?");
                             $stmt->execute([$id]);
-                            $foto_actual = $stmt->fetchColumn();
+                            $prev = $stmt->fetch(PDO::FETCH_ASSOC);
+                            $foto_actual = $prev['foto_ruta'] ?? null;
                             
                             $foto_ruta = $foto_actual;
                             if (isset($_POST['imagen_recortada']) && !empty($_POST['imagen_recortada'])) {
@@ -615,6 +631,45 @@ $stmt->execute([$id_nuevo]);
                             $response['success'] = true;
                             $response['message'] = "Cambios actualizados correctamente";
                             $response['id'] = $id;
+
+                            // ===== AUDITORÍA: edición / baja / reactivación de trabajador =====
+                            $nuevo_activo = isset($_POST['activo']) ? 1 : 0;
+                            $nueva_fecha_baja = !empty($_POST['fecha_baja']) ? $_POST['fecha_baja'] : null;
+                            $detalles_edicion = ['trabajador_id' => (int)$id, 'expediente' => $expediente];
+                            if (((int)($prev['activo'] ?? 1)) === 1 && ($nueva_fecha_baja || $nuevo_activo === 0)) {
+                                logAction(
+                                    'dar_baja_trabajador',
+                                    'empleados',
+                                    'Dar de baja trabajador',
+                                    $detalles_edicion,
+                                    null,
+                                    'success',
+                                    null,
+                                    $_SESSION['auth_provider'] ?? 'local'
+                                );
+                            } elseif (((int)($prev['activo'] ?? 0)) === 0 && $nuevo_activo === 1 && !$nueva_fecha_baja) {
+                                logAction(
+                                    'reactivar_trabajador',
+                                    'empleados',
+                                    'Reactivación de trabajador',
+                                    $detalles_edicion,
+                                    null,
+                                    'success',
+                                    null,
+                                    $_SESSION['auth_provider'] ?? 'local'
+                                );
+                            } else {
+                                logAction(
+                                    'editar_trabajador',
+                                    'empleados',
+                                    'Edición de trabajador',
+                                    $detalles_edicion,
+                                    null,
+                                    'success',
+                                    null,
+                                    $_SESSION['auth_provider'] ?? 'local'
+                                );
+                            }
                             
                             $stmt = $pdo->prepare("
                                 SELECT t.*, a.nombre_area, c.nombre as categoria_nombre, c.factor_incidencia, 
@@ -653,6 +708,19 @@ $stmt->execute([$id]);
             }
             $stmt = $pdo->prepare("DELETE FROM trabajadores WHERE id = ?");
             $stmt->execute([$id]);
+
+            // ===== AUDITORÍA: eliminación de trabajador =====
+            logAction(
+                'eliminar_trabajador',
+                'empleados',
+                'Eliminación de trabajador',
+                ['trabajador_id' => (int)$id],
+                null,
+                'success',
+                null,
+                $_SESSION['auth_provider'] ?? 'local'
+            );
+
             $response['success'] = true;
             $response['message'] = "Empleado eliminado correctamente";
         }
@@ -706,9 +774,36 @@ $empleados = $pdo->query("
     JOIN escalas_salariales e ON t.escala_salarial_id = e.id
 ")->fetchAll();
 
+// Trabajadores que tienen al menos una nómina asociada
+$tiene_nomina_set = array_flip(array_map('intval', $pdo->query("SELECT DISTINCT trabajador_id FROM nominas")->fetchAll(PDO::FETCH_COLUMN)));
+
 $fecha_hoy = date('Y-m-d');
 $fecha_mes = date('Y-m');
 $fecha_anio = date('Y');
+$fechas_alta = $pdo->query("SELECT DISTINCT YEAR(fecha_alta) AS anio, MONTH(fecha_alta) AS mes FROM trabajadores WHERE fecha_alta IS NOT NULL AND fecha_alta <> '0000-00-00'")->fetchAll();
+$fechas_baja = $pdo->query("SELECT DISTINCT YEAR(fecha_baja) AS anio, MONTH(fecha_baja) AS mes FROM trabajadores WHERE fecha_baja IS NOT NULL AND fecha_baja <> '0000-00-00'")->fetchAll();
+
+function transnubet_fechas_para_js($rows) {
+    $anios = array(); $meses = array(); $mesesPorAnio = array(); $aniosPorMes = array();
+    foreach ($rows as $r) {
+        $a = (int)$r['anio']; $m = (int)$r['mes'];
+        if (!in_array($a, $anios, true)) $anios[] = $a;
+        if (!in_array($m, $meses, true)) $meses[] = $m;
+        if (!isset($mesesPorAnio[$a])) $mesesPorAnio[$a] = array();
+        if (!in_array($m, $mesesPorAnio[$a], true)) $mesesPorAnio[$a][] = $m;
+        if (!isset($aniosPorMes[$m])) $aniosPorMes[$m] = array();
+        if (!in_array($a, $aniosPorMes[$m], true)) $aniosPorMes[$m][] = $a;
+    }
+    rsort($anios); sort($meses);
+    foreach ($mesesPorAnio as &$mm) sort($mm);
+    unset($mm);
+    foreach ($aniosPorMes as &$aa) rsort($aa);
+    unset($aa);
+    return array('anios' => $anios, 'meses' => $meses, 'mesesPorAnio' => $mesesPorAnio, 'aniosPorMes' => $aniosPorMes);
+}
+$jsAlta = transnubet_fechas_para_js($fechas_alta);
+$jsBaja = transnubet_fechas_para_js($fechas_baja);
+$nombres_meses = array('1'=>'Enero','2'=>'Febrero','3'=>'Marzo','4'=>'Abril','5'=>'Mayo','6'=>'Junio','7'=>'Julio','8'=>'Agosto','9'=>'Septiembre','10'=>'Octubre','11'=>'Noviembre','12'=>'Diciembre');
 $cont_hoy = 0; $cont_mes = 0; $cont_anio = 0;
 foreach ($empleados as $_ee) {
     $c = ($_ee['created_at'] ?? '') ? date('Y-m-d', strtotime($_ee['created_at'])) : '';
@@ -1119,7 +1214,7 @@ foreach ($trabajadores_data as $t) {
 .btn-nav {
     background: rgba(96, 165, 250, 0.2);
     border: none;
-    color: #ffffff;
+    color: var(--txt);
     padding:0.375rem 0.625rem;
     border-radius: 50%;
     transition: all 0.2s ease;
@@ -1131,6 +1226,11 @@ foreach ($trabajadores_data as $t) {
     cursor: pointer;
     font-size:0.85rem;
 }
+html[data-theme="light"] .btn-nav,
+html[data-theme="orgullo"] .btn-nav {
+    background: rgba(37, 99, 235, 0.15);
+    color: #1e3a8a;
+}
 
 .btn-nav:hover:not(:disabled) {
     background: #60a5fa;
@@ -1140,9 +1240,17 @@ foreach ($trabajadores_data as $t) {
 }
 
 .btn-nav:disabled {
-    opacity: 0.4;
+    opacity: 1;
     cursor: not-allowed;
-    background: rgba(96, 165, 250, 0.1);
+    color: var(--txt);
+    background: rgba(148, 163, 184, 0.18);
+    border: 0.0625rem solid rgba(148, 163, 184, 0.25);
+}
+html[data-theme="light"] .btn-nav:disabled,
+html[data-theme="orgullo"] .btn-nav:disabled {
+    color: rgba(30, 41, 59, 0.45);
+    background: rgba(100, 116, 139, 0.12);
+    border: 0.0625rem solid rgba(100, 116, 139, 0.2);
 }
 
 /* Selector de navegación */
@@ -1226,7 +1334,8 @@ foreach ($trabajadores_data as $t) {
 
 @media (max-width: 480px) {
     .nav-selector {
-        display: none;
+        display: block;
+        flex: 1 1 100%;
     }
 }
         
@@ -2006,13 +2115,21 @@ body { word-wrap: break-word; overflow-wrap: break-word; }
 
 /* ============ MODAL EMPLEADO (XL) ============ */
 .modal-dialog { margin: 0.5rem auto; }
-.modal-content {
-    max-height: calc(100vh - 1rem);
+#empleadoModal .modal-dialog { max-height: 96vh; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+#empleadoModal .modal-content {
+    max-height: 96vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
 }
-.modal-body, .modal-body-win { overflow-y: auto; }
+#empleadoModal form { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#empleadoModal .modal-body, #empleadoModal .modal-body-win {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+#empleadoModal .modal-header-win { flex-shrink: 0; }
+#empleadoModal .modal-footer-win { flex-shrink: 0; }
 
 @media (max-width: 48rem) {
     .modal-dialog { margin: 0.25rem; }
@@ -2029,6 +2146,43 @@ body { word-wrap: break-word; overflow-wrap: break-word; }
     .modal-body-win { padding: 0.6rem 0.7rem !important; }
     .modal-header-win { padding: 0.4rem 0.55rem !important; }
     .modal-title { font-size: 0.9rem; }
+}
+
+/* ===== HEADER MODAL EN MÓVIL: rejilla compacta y ordenada ===== */
+@media (max-width: 48rem) {
+    #empleadoModal .modal-header-win {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            "titulo guardar cerrar"
+            "nombre nombre nombre"
+            "nav    nav    nav";
+        align-items: center;
+        row-gap: 0.3rem;
+    }
+    /* título a la izquierda de la primera fila */
+    #empleadoModal .modal-header-win > .d-flex:not(.nav-controls):not(.modal-empleado-nombre-wrapper) {
+        grid-area: titulo;
+        order: 0 !important;
+        flex: 0 1 auto !important;
+        min-width: 0;
+    }
+    /* nombre completo en la segunda fila */
+    #empleadoModal .modal-header-win > .modal-empleado-nombre-wrapper {
+        grid-area: nombre;
+        order: palat 0;
+        width: 100% !important;
+        margin-top: 0;
+    }
+    /* búsqueda + botones subir/bajar en la tercera fila */
+    #empleadoModal .modal-header-win > .nav-controls {
+        grid-area: nav;
+        order: 0 !important;
+        width: 100% !important;
+    }
+    /* Guardar y X juntos a la derecha de la primera fila */
+    #empleadoModal .modal-header-win > .btn-close-save { grid-area: guardar; order: 0 !important; }
+    #empleadoModal .modal-header-win > .btn-close:not(.btn-close-save) { grid-area: cerrar; order: 0 !important; }
 }
 
 /* ============ HEADER DEL MODAL: evitar apriete ============ */
@@ -2064,6 +2218,40 @@ body { word-wrap: break-word; overflow-wrap: break-word; }
     .modal-empleado-nombre { font-size: 0.78rem; padding: 0.3rem 0.65rem; }
     .modal-empleado-nombre i { font-size: 0.75rem; margin-right: 0.3rem; }
 }
+.modal-empleado-nombre-wrapper { min-width: 0 !important; overflow: hidden; }
+.modal-empleado-nombre { flex-shrink: 1; }
+
+#empleadoModal .modal-header-win > .nav-controls { order: 3; }
+#empleadoModal .modal-header-win > .btn-close-save { order: 4; }
+#empleadoModal .modal-header-win > .btn-close:not(.btn-close-save) { order: 5; }
+
+/* Botón Guardar (solo icono, estilo del botón de cerrar) */
+.btn-close-save {
+    position: relative;
+    background: transparent !important;
+    opacity: 0.55;
+    color: var(--txt);
+    filter: none !important;
+    transition: opacity 0.15s, color 0.15s, background 0.2s, transform 0.2s;
+}
+.btn-close-save::before {
+    content: "\f0c7";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.8rem;
+    color: var(--txt);
+}
+.btn-close-save:hover {
+    opacity: 1;
+    color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.14) !important;
+    border-radius: 0.375rem;
+    transform: rotate(-8deg) scale(1.05);
+}
+.btn-close-save:hover::before { content: "\f058"; color: var(--accent); }
 
 /* ============ CONTROLES DE NAVEGACIÓN DEL MODAL ============ */
 .nav-controls {
@@ -2073,11 +2261,82 @@ body { word-wrap: break-word; overflow-wrap: break-word; }
     gap: 0.25rem;
     row-gap: 0.25rem;
 }
-.nav-selector { flex: 1 1 100%; }
+
+/* ====== MODAL HEADER: REJILLA ORDENADA EN MÓVIL ======
+   fila 1: título .... [Guardar][X]
+   fila 2: nombre del empleado
+   fila 3: nav (buscador + botones subir/bajar)      */
+@media (max-width: 48rem) {
+    #empleadoModal .modal-header-win {
+        display: grid !important;
+        flex-direction: row !important;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            "titulo   guardar cerrar"
+            "nombre   nombre  nombre"
+            "nav      nav     nav";
+        row-gap: 0.35rem;
+    }
+    #empleadoModal .modal-header-win > .d-flex.flex-shrink-0 { grid-area: titulo;   order: 0 !important; min-width: 0; }
+    #empleadoModal .modal-header-win > .modal-empleado-nombre-wrapper { grid-area: nombre; order: 0 !important; width: 100%; margin-top: 0; }
+    #empleadoModal .modal-header-win > .nav-controls { grid-area: nav; order: 0 !important; width: 100%; }
+    #empleadoModal .modal-header-win > .btn-close-save { grid-area: guardar; order: 0 !important; }
+    #empleadoModal .modal-header-win > .btn-close:not(.btn-close-save) { grid-area: cerrar; order: 0 !important; }
+    #empleadoModal .modal-header-win > .btn-close { align-self: center; }
+}
+.nav-selector { flex: 1 1 100%; position: relative; }
 .nav-selector select {
     min-width: 0 !important;
     width: 100%;
 }
+#navEmpleadoBuscar { width: 100%; padding-right: 1.75rem !important; }
+.nav-buscar-clear {
+    position: absolute;
+    right: 0.15rem; top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: 0;
+    color: var(--txt);
+    opacity: 0.6;
+    width: 1.5rem; height: 1.5rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 2;
+    font-size: 0.7rem;
+    transition: opacity 0.15s, color 0.15s, background 0.2s;
+}
+.nav-buscar-clear:hover { opacity: 1; color: var(--accent); background: rgba(var(--accent-rgb), 0.14); }
+.nav-empleado-dropdown {
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    z-index: 1062;
+    max-height: 18.75rem;
+    overflow-y: auto;
+    display: none;
+    background: var(--card);
+    backdrop-filter: blur(0.5rem);
+    border: 0.0625rem solid var(--border);
+    border-radius: 0.5rem;
+    margin-top: 0.25rem;
+    box-shadow: var(--shadow);
+}
+.nav-empleado-dropdown .dropdown-item-win {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+    color: var(--txt);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nav-empleado-dropdown .dropdown-item-win:hover,
+.nav-empleado-dropdown .dropdown-item-win.active { background: rgba(var(--accent-rgb), 0.18); color: var(--txt); }
 .nav-counter {
     min-width: 3rem;
     font-size: 0.75rem;
@@ -2637,6 +2896,41 @@ img, canvas, table { max-width: 100%; }
         <option value="anio">📅 Este año (<?php echo $cont_anio; ?>)</option>
     </select>
 </div>
+<div class="col-md-3">
+    <label class="form-label"><i class="fas fa-user-plus text-muted me-1"></i> Fecha Alta</label>
+    <div class="d-flex gap-2">
+        <select id="filtroFechaAltaMes" class="form-select form-select-sm" data-ph="Mes" title="Mes (fecha de alta)" data-tooltip="Mes (fecha de alta)" data-tooltip-theme="secondary">
+            <option value="">Mes</option>
+            <?php foreach ($jsAlta['meses'] as $m) { echo '<option value="' . str_pad($m, 2, '0', STR_PAD_LEFT) . '">' . $nombres_meses[$m] . '</option>'; } ?>
+        </select>
+        <select id="filtroFechaAltaAnio" class="form-select form-select-sm" data-ph="Año" title="Año (fecha de alta)" data-tooltip="Año (fecha de alta)" data-tooltip-theme="secondary">
+            <option value="">Año</option>
+            <?php foreach ($jsAlta['anios'] as $a) { echo '<option value="' . $a . '">' . $a . '</option>'; } ?>
+        </select>
+    </div>
+</div>
+<div class="col-md-3">
+    <label class="form-label"><i class="fas fa-user-minus text-muted me-1"></i> Fecha Baja</label>
+    <div class="d-flex gap-2">
+        <select id="filtroFechaBajaMes" class="form-select form-select-sm" data-ph="Mes" title="Mes (fecha de baja)" data-tooltip="Mes (fecha de baja)" data-tooltip-theme="secondary">
+            <option value="">Mes</option>
+            <?php foreach ($jsBaja['meses'] as $m) { echo '<option value="' . str_pad($m, 2, '0', STR_PAD_LEFT) . '">' . $nombres_meses[$m] . '</option>'; } ?>
+        </select>
+        <select id="filtroFechaBajaAnio" class="form-select form-select-sm" data-ph="Año" title="Año (fecha de baja)" data-tooltip="Año (fecha de baja)" data-tooltip-theme="secondary">
+            <option value="">Año</option>
+            <?php foreach ($jsBaja['anios'] as $a) { echo '<option value="' . $a . '">' . $a . '</option>'; } ?>
+        </select>
+    </div>
+</div>
+<div class="col-md-3">
+    <label class="form-label"><i class="fas fa-file-invoice text-muted me-1"></i> Nómina</label>
+    <div class="form-check form-switch pt-2">
+        <input class="form-check-input" type="checkbox" id="filtroSinNomina">
+        <label class="form-check-label text-light" for="filtroSinNomina" title="Mostrar solo trabajadores que no están en ninguna nómina" data-tooltip="Mostrar solo trabajadores que no están en ninguna nómina" data-tooltip-theme="secondary">
+            🚫 Solo sin nómina
+        </label>
+    </div>
+</div>
             </div>
             <div class="mt-3 text-end">
                 <button class="btn-win btn-win-sm" id="btnLimpiarFiltros"><i class="fas fa-eraser me-1"></i> Limpiar filtros</button>
@@ -2686,7 +2980,7 @@ img, canvas, table { max-width: 100%; }
                     $fila_roja = (($emp['vacaciones_acumuladas'] ?? 0) > 20);
                     if (($emp['no_acumular_vacaciones'] ?? 0) == 1) $valor_a_pagar = $emp['valor_vacaciones'];
                     ?>
-                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>" data-creado="<?php echo date('Y-m-d', strtotime($emp['created_at'] ?? '')); ?>">
+                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>" data-creado="<?php echo date('Y-m-d', strtotime($emp['created_at'] ?? '')); ?>" data-fecha-alta="<?php echo (!empty($emp['fecha_alta']) && $emp['fecha_alta'] !== '0000-00-00') ? date('Y-m-d', strtotime($emp['fecha_alta'])) : ''; ?>" data-fecha-baja="<?php echo (!empty($emp['fecha_baja']) && $emp['fecha_baja'] !== '0000-00-00') ? date('Y-m-d', strtotime($emp['fecha_baja'])) : ''; ?>" data-tiene-nomina="<?php echo isset($tiene_nomina_set[(int)$emp['id']]) ? '1' : '0'; ?>">
                         <td class="text-center">
                             <?php if ($puede_eliminar_empleados): ?>
                             <button class="btn-win btn-win-danger btn-win-sm" onclick="eliminarTrabajador(<?php echo $emp['id']; ?>, '<?php echo addslashes($emp['nombre_completo'] ?? ''); ?>')" title="Eliminar Empleado" data-tooltip="Eliminar Empleado" data-tooltip-theme="danger">
@@ -2967,32 +3261,33 @@ function exportarRangosEdadPNG() {
     
     <!-- Controles de navegación -->
     <div class="nav-controls" id="navControls" style="display: none;">
-        <button type="button" class="btn-nav" id="btnPrimero" onclick="navegarRegistro('primero')" title="Primer registro" data-tooltip="Primer registro" data-tooltip-theme="primary">
+        <button type="button" class="btn-nav" id="btnPrimero" onclick="navegarRegistro('primero')" title="Primer registro" data-tooltip="Primer registro" data-tooltip-theme="primary" data-tooltip-position="bottom">
             <i class="fas fa-angle-double-left"></i>
         </button>
-        <button type="button" class="btn-nav" id="btnAnterior" onclick="navegarRegistro('anterior')" title="Anterior" data-tooltip="Anterior" data-tooltip-theme="primary">
+        <button type="button" class="btn-nav" id="btnAnterior" onclick="navegarRegistro('anterior')" title="Anterior" data-tooltip="Anterior" data-tooltip-theme="primary" data-tooltip-position="bottom">
             <i class="fas fa-angle-left"></i>
         </button>
         
         <div class="nav-selector">
-            <select id="navEmpleadoSelect" class="form-select form-select-sm" style="min-width:8.75rem; font-size:0.7rem; padding:0.25rem 0.5rem; background-color: var(--panel); color: var(--txt);" onchange="irAEmpleadoPorSelect(this.value)" title="Seleccionar empleado" data-tooltip="Seleccionar empleado" data-tooltip-theme="secondary">
-                <option value="">🔍 Buscar...</option>
-            </select>
+            <input type="text" id="navEmpleadoBuscar" class="form-control form-control-sm" style="min-width:11.25rem; max-width:15.625rem; font-size:0.7rem; padding:0.25rem 0.5rem; background-color: var(--panel); color: var(--txt);" placeholder="🔍 Buscar..." autocomplete="off" title="Buscar empleado" data-tooltip="Buscar empleado" data-tooltip-theme="secondary" data-tooltip-position="bottom" oninput="renderEmpleadoDropdown(this.value)" onfocus="renderEmpleadoDropdown(this.value)" onkeydown="manejarTeclaBusqueda(event)">
+            <button type="button" class="nav-buscar-clear" id="navBuscarClear" onclick="limpiarBusquedaEmpleado()" title="Limpiar búsqueda" data-tooltip="Limpiar búsqueda" data-tooltip-theme="secondary" data-tooltip-position="bottom" style="display:none;"><i class="fas fa-xmark"></i></button>
+            <div class="nav-empleado-dropdown" id="navEmpleadoDropdown"></div>
         </div>
         
         <span class="nav-counter">
             <strong id="registroActual">0</strong> / <strong id="totalRegistros">0</strong>
         </span>
         
-        <button type="button" class="btn-nav" id="btnSiguiente" onclick="navegarRegistro('siguiente')" title="Siguiente" data-tooltip="Siguiente" data-tooltip-theme="primary">
+        <button type="button" class="btn-nav" id="btnSiguiente" onclick="navegarRegistro('siguiente')" title="Siguiente" data-tooltip="Siguiente" data-tooltip-theme="primary" data-tooltip-position="bottom">
             <i class="fas fa-angle-right"></i>
         </button>
-        <button type="button" class="btn-nav" id="btnUltimo" onclick="navegarRegistro('ultimo')" title="Último registro" data-tooltip="Último registro" data-tooltip-theme="primary">
+        <button type="button" class="btn-nav" id="btnUltimo" onclick="navegarRegistro('ultimo')" title="Último registro" data-tooltip="Último registro" data-tooltip-theme="primary" data-tooltip-position="bottom">
             <i class="fas fa-angle-double-right"></i>
         </button>
     </div>
     
-    <button type="button" class="btn-close btn-close-white flex-shrink-0" data-bs-dismiss="modal" onclick="cancelarNavegacion()" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger"></button>
+    <button type="button" class="btn-close btn-close-white btn-close-save flex-shrink-0" onclick="document.getElementById('empleadoForm').requestSubmit()" title="Guardar" data-tooltip="Guardar" data-tooltip-theme="success" data-tooltip-position="bottom"></button>
+                    <button type="button" class="btn-close btn-close-white flex-shrink-0" data-bs-dismiss="modal" onclick="cancelarNavegacion()" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger" data-tooltip-position="bottom"></button>
 </div>
 			
             <form method="POST" id="empleadoForm" enctype="multipart/form-data">
@@ -3419,41 +3714,104 @@ function exportarRangosEdadPNG() {
                             </div>
                             
                             <!-- Vacaciones -->
-                            <div class="glass-card mt-2 p-2">
-                                <div class="card-collapse-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseVacaciones" aria-expanded="true" aria-controls="collapseVacaciones">
-                                    <h6 class="text-light mb-0 fs-6 card-collapse-title"><i class="fas fa-umbrella-beach text-info me-1"></i>Vacaciones</h6>
-                                    <i class="fas fa-chevron-down card-collapse-chevron"></i>
-                                </div>
-                                <div class="collapse show" id="collapseVacaciones">
-                                <div class="mt-2">
-                                <div class="row g-2 align-items-center">
-                                    <div class="col-md-3">
-                                        <label class="form-label small mb-0">
-                                            <i class="fas fa-umbrella-beach text-info me-1"></i>Vac. Acum. (días)
-                                            <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Días de vacaciones acumulados según Ley 116 (máximo 22-24 días)" style="cursor: help; font-size:0.65rem;"></i>
-                                        </label>
-                                        <input type="number" step="0.01" class="form-control form-control-sm" name="vacaciones_acumuladas" id="vacaciones_acumuladas" value="0" oninput="actualizarValoresVacaciones()"
-                                               data-bs-toggle="tooltip" title="Ingrese la cantidad de días acumulados">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small mb-0">
-                                            <i class="fas fa-coins text-warning me-1"></i>Importe Vac. Acum.
-                                            <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Valor monetario de las vacaciones acumuladas (Días × Valor por día)" style="cursor: help; font-size:0.65rem;"></i>
-                                        </label>
-                                        <input type="text" class="form-control form-control-sm text-end" id="valor_vacaciones_calculado" readonly style="background-color: var(--panel); font-weight: bold;"
-                                               data-bs-toggle="tooltip" title="Valor calculado automáticamente">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-check form-switch mt-2">
-                                            <input type="checkbox" class="form-check-input" style="width:2em; height:1em;" name="no_acumular_vacaciones" id="no_acumular_vacaciones" onchange="actualizarInfoDesdeFormulario()"
-                                                   data-bs-toggle="tooltip" title="Marque para que las vacaciones se paguen en nómina en lugar de acumularse">
-                                            <label class="form-check-label small" for="no_acumular_vacaciones" style="color: #fbbf24;">
-                                                <i class="fas fa-money-bill-wave me-1"></i> No acumular (Pagar en nómina)
-                                            </label>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <div class="glass-card mt-2 p-2">
+                                        <div class="card-collapse-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseVacaciones" aria-expanded="true" aria-controls="collapseVacaciones">
+                                            <h6 class="text-light mb-0 fs-6 card-collapse-title"><i class="fas fa-umbrella-beach text-info me-1"></i>Vacaciones</h6>
+                                            <i class="fas fa-chevron-down card-collapse-chevron"></i>
+                                        </div>
+                                        <div class="collapse show" id="collapseVacaciones">
+                                        <div class="mt-2">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0">
+                                                    <i class="fas fa-umbrella-beach text-info me-1"></i>Vac. Acum. (días)
+                                                    <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Días de vacaciones acumulados según Ley 116 (máximo 22-24 días)" style="cursor: help; font-size:0.65rem;"></i>
+                                                </label>
+                                                <input type="number" step="0.01" class="form-control form-control-sm" name="vacaciones_acumuladas" id="vacaciones_acumuladas" value="0" oninput="actualizarValoresVacaciones()"
+                                                       data-bs-toggle="tooltip" title="Ingrese la cantidad de días acumulados">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0">
+                                                    <i class="fas fa-coins text-warning me-1"></i>Importe Vac. Acum.
+                                                    <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Valor monetario de las vacaciones acumuladas (Días × Valor por día)" style="cursor: help; font-size:0.65rem;"></i>
+                                                </label>
+                                                <input type="text" class="form-control form-control-sm text-end" id="valor_vacaciones_calculado" readonly style="background-color: var(--panel); font-weight: bold;"
+                                                       data-bs-toggle="tooltip" title="Valor calculado automáticamente">
+                                            </div>
+                                            <div class="col-12">
+                                                <div class="form-check form-switch mt-1">
+                                                    <input type="checkbox" class="form-check-input" style="width:2em; height:1em;" name="no_acumular_vacaciones" id="no_acumular_vacaciones" onchange="actualizarInfoDesdeFormulario()"
+                                                           data-bs-toggle="tooltip" title="Marque para que las vacaciones se paguen en nómina en lugar de acumularse">
+                                                    <label class="form-check-label small" for="no_acumular_vacaciones" style="color: #fbbf24;">
+                                                        <i class="fas fa-money-bill-wave me-1"></i> No acumular (Pagar en nómina)
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        </div>
                                         </div>
                                     </div>
                                 </div>
-                                </div>
+                                <div class="col-md-6">
+                                    <!-- Situación Laboral -->
+                                    <div class="glass-card mt-2 p-2">
+                                        <div class="card-collapse-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseSituacionLaboral" aria-expanded="true" aria-controls="collapseSituacionLaboral">
+                                            <h6 class="text-light mb-0 fs-6 card-collapse-title"><i class="fas fa-user-check text-muted me-1"></i>Situación Laboral</h6>
+                                            <i class="fas fa-chevron-down card-collapse-chevron"></i>
+                                        </div>
+                                        <div class="collapse show" id="collapseSituacionLaboral">
+                                        <div class="mt-2">
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-6">
+                                                <div class="form-check d-flex align-items-center gap-1">
+                                                    <input type="checkbox" class="form-check-input mt-0" name="activo" id="activo" checked onchange="actualizarInfoDesdeFormulario()">
+                                                    <label class="form-check-label small" style="color: var(--color-success-soft);"><i class="fas fa-check-circle me-1"></i> Activo</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small mb-0"><i class="fas fa-calendar-times me-1"></i>Fecha Baja</label>
+                                                <input type="date" class="form-control border-secondary" name="fecha_baja" id="fecha_baja" onchange="actualizarInfoDesdeFormulario()" style="font-size:0.7rem;">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label small mb-0"><i class="fas fa-user-slash me-1"></i>Motivo Baja</label>
+                                                <select class="form-select form-select-sm border-secondary" name="motivo_baja" id="motivo_baja" style="font-size:0.7rem;" disabled title="Motivo de baja" data-tooltip="Motivo de baja" data-tooltip-theme="danger">
+                                                    <option value="">--MOTIVO DE LA RESCISIÓN LABORAL--</option>
+                                                    <?php 
+                                                    $motivos_por_categoria = [];
+                                                    foreach ($motivos_baja as $motivo) {
+                                                        $categoria = $motivo['categoria'] ?? 'Otros';
+                                                        if (!isset($motivos_por_categoria[$categoria])) {
+                                                            $motivos_por_categoria[$categoria] = [];
+                                                        }
+                                                        $motivos_por_categoria[$categoria][] = $motivo;
+                                                    }
+                                                    foreach ($motivos_por_categoria as $categoria => $motivos_cat): 
+                                                    ?>
+                                                        <optgroup label="<?php echo htmlspecialchars($categoria); ?>">
+                                                            <?php foreach ($motivos_cat as $motivo): ?>
+                                                                <option value="<?php echo $motivo['codigo']; ?>">
+                                                                    <?php 
+                                                                    echo '[' . str_pad($motivo['codigo'], 2, '0', STR_PAD_LEFT) . '] '; 
+                                                                    echo htmlspecialchars($motivo['nombre']); 
+                                                                    if (!empty($motivo['base_legal'])): 
+                                                                        echo ' (' . htmlspecialchars($motivo['base_legal']) . ')';
+                                                                    endif; 
+                                                                    ?>
+                                                                </option>
+                                                            <?php endforeach; ?>
+                                                        </optgroup>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 text-start">
+                                                <span id="badgeBaja" class="badge-baja"><i class="fas fa-user-slash"></i>BAJA</span>
+                                            </div>
+                                        </div>
+                                        </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3462,58 +3820,13 @@ function exportarRangosEdadPNG() {
                 
                 <!-- FOOTER MODAL COMPACTO -->
                 <div class="modal-footer modal-footer-win py-2">
-                    <div class="row w-100 align-items-center m-0 g-1">
-                        <div class="col-md-8 p-0">
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <div class="form-check d-flex align-items-center gap-1">
-                                    <input type="checkbox" class="form-check-input mt-0" name="activo" id="activo" checked onchange="actualizarInfoDesdeFormulario()">
-                                    <label class="form-check-label small" style="color: var(--color-success-soft);"><i class="fas fa-check-circle me-1"></i> Activo</label>
-                                </div>
-                                
-                                <div class="input-group input-group-sm" style="max-width:9.375rem;">
-                                    <span class="input-group-text bg-dark border-secondary text-light" style="font-size:0.65rem;"><i class="fas fa-calendar-times"></i></span>
-                                    <input type="date" class="form-control border-secondary" name="fecha_baja" id="fecha_baja" onchange="actualizarInfoDesdeFormulario()" style="font-size:0.7rem;">
-                                </div>
-                                
-                                <select class="form-select form-select-sm border-secondary" name="motivo_baja" id="motivo_baja" style="min-width:10rem; max-width:25rem; font-size:0.7rem; width:auto;" disabled title="Motivo de baja" data-tooltip="Motivo de baja" data-tooltip-theme="danger">
-                                    <option value="">--MOTIVO DE LA RESCISIÓN LABORAL--</option>
-                                    <?php 
-                                    $motivos_por_categoria = [];
-                                    foreach ($motivos_baja as $motivo) {
-                                        $categoria = $motivo['categoria'] ?? 'Otros';
-                                        if (!isset($motivos_por_categoria[$categoria])) {
-                                            $motivos_por_categoria[$categoria] = [];
-                                        }
-                                        $motivos_por_categoria[$categoria][] = $motivo;
-                                    }
-                                    foreach ($motivos_por_categoria as $categoria => $motivos_cat): 
-                                    ?>
-                                        <optgroup label="<?php echo htmlspecialchars($categoria); ?>">
-                                            <?php foreach ($motivos_cat as $motivo): ?>
-                                                <option value="<?php echo $motivo['codigo']; ?>">
-                                                    <?php 
-                                                    echo '[' . str_pad($motivo['codigo'], 2, '0', STR_PAD_LEFT) . '] '; 
-                                                    echo htmlspecialchars($motivo['nombre']); 
-                                                    if (!empty($motivo['base_legal'])): 
-                                                        echo ' (' . htmlspecialchars($motivo['base_legal']) . ')';
-                                                    endif; 
-                                                    ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </optgroup>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-4 p-0 text-end">
-                            <span id="badgeBaja" class="badge-baja"><i class="fas fa-user-slash"></i>BAJA</span>
-                            <button type="button" class="btn-win btn-sm py-1" data-bs-dismiss="modal" onclick="cancelarNavegacion()" style="font-size:0.7rem;" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger">
-                                <i class="fas fa-times me-1"></i> Cancelar
-                            </button>
-                            <button type="submit" id="btnGuardarEmpleado" class="btn-win btn-win-primary btn-sm py-1 ms-1" style="font-size:0.7rem;" title="Guardar" data-tooltip="Guardar" data-tooltip-theme="success">
-                                <i class="fas fa-save me-1"></i> Guardar
-                            </button>
-                        </div>
+                    <div class="d-flex justify-content-end align-items-center gap-2 flex-wrap w-100">
+                        <button type="button" class="btn-win btn-sm py-1" data-bs-dismiss="modal" onclick="cancelarNavegacion()" style="font-size:0.7rem;" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger">
+                            <i class="fas fa-times me-1"></i> Cancelar
+                        </button>
+                        <button type="submit" id="btnGuardarEmpleado" class="btn-win btn-win-primary btn-sm py-1 ms-1" style="font-size:0.7rem;" title="Guardar" data-tooltip="Guardar" data-tooltip-theme="success">
+                            <i class="fas fa-save me-1"></i> Guardar
+                        </button>
                     </div>
                 </div>
             </form>
@@ -5206,7 +5519,7 @@ function reporteEmp_alcanceFiltros() {
     if ($search.length && String($search.val() || '').trim() !== '') {
         partes.push('Búsqueda: ' + String($search.val()).trim());
     }
-    var mapa = [
+var mapa = [
         ['#filtroEmpleado', 'Empleado'],
         ['#filtroTipoContrato', 'Tipo Contrato'],
         ['#filtroPagoVacaciones', 'Pago Vacaciones'],
@@ -5217,12 +5530,16 @@ function reporteEmp_alcanceFiltros() {
         ['#filtroFoto', 'Foto Perfil'],
         ['#filtroEstadoLaboral', 'Estado Laboral'],
         ['#filtroVacacionesExcedidas', 'Días de Vacaciones'],
-        ['#filtroCreado', 'Fecha Creado']
+        ['#filtroCreado', 'Fecha Creado'],
+        ['#filtroFechaAltaMes', 'Mes Alta'],
+        ['#filtroFechaAltaAnio', 'Año Alta'],
+        ['#filtroFechaBajaMes', 'Mes Baja'],
+        ['#filtroFechaBajaAnio', 'Año Baja']
     ];
     mapa.forEach(function(par) {
         var $el = $(par[0]);
         if ($el.length && String($el.val() || '') !== '') {
-            var texto = $el.find('option:selected').text().replace(/^[\s\W_]+/, '').trim();
+            var texto = ($el.find('option:selected').text() || String($el.val())).replace(/^[\s\W_]+/, '').trim();
             partes.push(par[1] + ': ' + (texto || 'Seleccionado'));
         }
     });
@@ -5663,7 +5980,7 @@ $(document).ready(function() {
                 colvisRestore: 'Restaurar columnas'
             },
         },
-        pageLength: 5,
+        pageLength: -1,
         pagingType: 'full_numbers',
         responsive: true, 
         order: [[4, 'asc']],
@@ -6306,16 +6623,102 @@ $('#filtroCreado').on('change', function() {
     }
     table.draw();
 });
+// Filtro por Fecha Alta / Fecha Baja (selector de mes y año reales desde la BD)
+var MESES_NOMBRES = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
+
+function rellenarOpciones($sel, valores, sonMeses) {
+    var previo = $sel.val();
+    $sel.empty();
+    $sel.append('<option value="">' + ($sel.data('ph') || '') + '</option>');
+    var lista = valores.map(function(v) { return sonMeses ? String(v).padStart(2, '0') : String(v); });
+    lista.forEach(function(v) {
+        var etiq = sonMeses ? (MESES_NOMBRES[v] || v) : v;
+        $sel.append('<option value="' + v + '">' + etiq + '</option>');
+    });
+    if (lista.indexOf(previo) !== -1) $sel.val(previo);
+}
+
+function configurarFiltroMesAnio(mesId, anioId, nombreFiltro, attrFecha, datos) {
+    var $mes = $('#' + mesId);
+    var $anio = $('#' + anioId);
+
+    function limpiar() {
+        $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function(f) {
+            return !f || f.filtroNombre !== nombreFiltro;
+        });
+    }
+
+    function dibujar() {
+        var table = $('#empleadosTable').DataTable();
+        limpiar();
+        var m = $mes.val();
+        var a = $anio.val();
+        if (!m && !a) {
+            table.draw();
+            return;
+        }
+        var fnFiltro = function(settings, data, dataIndex) {
+            var node = table.row(dataIndex).node();
+            var fecha = (node && node.getAttribute(attrFecha)) || '';
+            if (!fecha) return false;
+            if (m && fecha.slice(5, 7) !== m) return false;
+            if (a && fecha.indexOf(a) !== 0) return false;
+            return true;
+        };
+        fnFiltro.filtroNombre = nombreFiltro;
+        $.fn.dataTable.ext.search.push(fnFiltro);
+        table.draw();
+    }
+
+    $mes.on('change', function() {
+        var m = this.value;
+        rellenarOpciones($anio, m ? (datos.aniosPorMes[m] || []) : datos.anios, false);
+        dibujar();
+    });
+    $anio.on('change', function() {
+        var a = this.value;
+        rellenarOpciones($mes, a ? (datos.mesesPorAnio[a] || []) : datos.meses, true);
+        dibujar();
+    });
+}
+
+var FECHAS_ALTA_DATOS = <?php echo json_encode($jsAlta); ?>;
+var FECHAS_BAJA_DATOS = <?php echo json_encode($jsBaja); ?>;
+configurarFiltroMesAnio('filtroFechaAltaMes', 'filtroFechaAltaAnio', 'filtroFechaAlta', 'data-fecha-alta', FECHAS_ALTA_DATOS);
+configurarFiltroMesAnio('filtroFechaBajaMes', 'filtroFechaBajaAnio', 'filtroFechaBaja', 'data-fecha-baja', FECHAS_BAJA_DATOS);
+$('#filtroSinNomina').on('change', function() {
+    var table = $('#empleadosTable').DataTable();
+    $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function(fn) {
+        return fn.name !== 'filtroSinNomina';
+    });
+    if (this.checked) {
+        $.fn.dataTable.ext.search.push(function filtroSinNomina(settings, data, dataIndex) {
+            var node = table.row(dataIndex).node();
+            return node && node.getAttribute('data-tiene-nomina') === '0';
+        });
+    }
+    table.draw();
+});
 $('#btnLimpiarFiltros').on('click', function() {
     // 1. Restablecer todos los selects a su valor por defecto
     $('#filtroEmpleado, #filtroTipoContrato, #filtroPagoVacaciones, #filtroArea, #filtroCentroCosto, #filtroCargo, #filtroCuentaBancaria, #filtroFoto, #filtroEstadoLaboral, #filtroVacacionesExcedidas, #filtroCreado').val('');
+    $('#filtroFechaAltaMes, #filtroFechaAltaAnio, #filtroFechaBajaMes, #filtroFechaBajaAnio').val('');
+    rellenarOpciones($('#filtroFechaAltaMes'), FECHAS_ALTA_DATOS.meses, true);
+    rellenarOpciones($('#filtroFechaAltaAnio'), FECHAS_ALTA_DATOS.anios, false);
+    rellenarOpciones($('#filtroFechaBajaMes'), FECHAS_BAJA_DATOS.meses, true);
+    rellenarOpciones($('#filtroFechaBajaAnio'), FECHAS_BAJA_DATOS.anios, false);
     $('#filtroEmpleado').trigger('change.select2');
+    $('#filtroSinNomina').prop('checked', false);
     
     // 2. Eliminar TODOS los filtros personalizados de DataTables
     // (Esto incluye foto, estado laboral, vacaciones excedidas y creado)
     $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function(fn) {
         // Conservar solo filtros nativos, eliminar los personalizados
-        return fn.name !== 'filtroFotoCustom' && fn.name !== 'filtroEstadoLaboral' && fn.name !== 'filtroVacacionesExcedidas' && fn.name !== 'filtroCreado';
+        return fn.name !== 'filtroFotoCustom' && fn.name !== 'filtroEstadoLaboral' && fn.name !== 'filtroVacacionesExcedidas' && fn.name !== 'filtroCreado' && fn.name !== 'filtroSinNomina' && !fn.filtroNombre;
+    });
+    // Eliminar filtros de fecha (Alta/Baja) marcados con filtroNombre
+    $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function(f) {
+        return f.filtroNombre !== 'filtroFechaAlta' && f.filtroNombre !== 'filtroFechaBaja';
     });
     
     // 3. Limpiar todas las búsquedas por columna
@@ -7037,19 +7440,12 @@ function actualizarSolapinFoto() {
 }
 // Variables para el selector de empleados
 let empleadosListaSelect = [];
+let empleadoDropdownIndex = -1;
 
 // Inicializar el selector de empleados
 function inicializarSelectorEmpleados() {
-    const select = document.getElementById('navEmpleadoSelect');
-    if (!select) return;
-    
-    // Limpiar opciones existentes (excepto la primera)
-    while (select.options.length > 1) {
-        select.remove(1);
-    }
-    
-    // Construir lista de empleados para el select
-    empleadosListaSelect = empleadosData.map(emp => ({
+    // Construir lista de empleados para el buscador
+    empleadosListaSelect = (empleadosData || []).map(emp => ({
         id: emp.id,
         nombre: emp.nombre_completo,
         codigo: emp.codigo,
@@ -7058,15 +7454,103 @@ function inicializarSelectorEmpleados() {
     
     // Ordenar por nombre
     empleadosListaSelect.sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+function renderEmpleadoDropdown(texto) {
+    const dd = document.getElementById('navEmpleadoDropdown');
+    if (!dd) return;
     
-    // Agregar opciones al select
-    empleadosListaSelect.forEach(emp => {
-        const option = document.createElement('option');
-        option.value = emp.id;
-        // Formato: "Nombre completo (Expediente - CI)"
-        option.textContent = `${emp.nombre} (${emp.codigo} - ${emp.ci})`;
-        select.appendChild(option);
+    const inp = document.getElementById('navEmpleadoBuscar');
+    const clearBtn = document.getElementById('navBuscarClear');
+    if (clearBtn) clearBtn.style.display = (inp && inp.value.trim()) ? 'inline-flex' : 'none';
+    
+    const t = (texto || '').trim().toLowerCase();
+    let items = empleadosListaSelect;
+    if (t) {
+        items = items.filter(e => {
+            const txt = `${e.nombre} (${e.codigo} - ${e.ci})`.toLowerCase();
+            return txt.includes(t) || String(e.ci).includes(t) || String(e.codigo).toLowerCase().includes(t);
+        });
+    }
+    
+    if (!items.length) { dd.style.display = 'none'; return; }
+    
+    dd.innerHTML = '';
+    items.forEach((emp, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dropdown-item-win';
+        btn.textContent = `${emp.nombre} (${emp.codigo} - ${emp.ci})`;
+        btn.onmousedown = (ev) => ev.preventDefault();
+        btn.onclick = () => { irAEmpleadoPorSelect(emp.id); cerrarEmpleadoDropdown(); };
+        btn.onmouseenter = () => setDropdownActive(idx);
+        dd.appendChild(btn);
     });
+    
+    empleadoDropdownIndex = 0;
+    setDropdownActive(0);
+    dd.style.display = 'block';
+}
+
+function setDropdownActive(idx) {
+    const dd = document.getElementById('navEmpleadoDropdown');
+    if (!dd || !dd.children.length) return;
+    empleadoDropdownIndex = Math.max(0, Math.min(idx, dd.children.length - 1));
+    for (let i = 0; i < dd.children.length; i++) {
+        dd.children[i].classList.toggle('active', i === empleadoDropdownIndex);
+    }
+    const el = dd.children[empleadoDropdownIndex];
+    if (el) el.scrollIntoView({ block: 'nearest' });
+}
+
+function cerrarEmpleadoDropdown() {
+    const dd = document.getElementById('navEmpleadoDropdown');
+    if (dd) dd.style.display = 'none';
+}
+
+function limpiarBusquedaEmpleado() {
+    const input = document.getElementById('navEmpleadoBuscar');
+    const clearBtn = document.getElementById('navBuscarClear');
+    if (input) input.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    renderEmpleadoDropdown('');
+    cerrarEmpleadoDropdown();
+    if (input) input.focus();
+}
+
+function manejarTeclaBusqueda(ev) {
+    const dd = document.getElementById('navEmpleadoDropdown');
+    if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        if (dd && dd.style.display !== 'none') setDropdownActive(empleadoDropdownIndex + 1);
+        else if (dd) renderEmpleadoDropdown(ev.target.value);
+    } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        setDropdownActive(empleadoDropdownIndex - 1);
+    } else if (ev.key === 'Enter') {
+        ev.preventDefault();
+        if (dd && dd.style.display !== 'none' && dd.children[empleadoDropdownIndex]) {
+            dd.children[empleadoDropdownIndex].click();
+        } else {
+            buscarEmpleadoPorTexto(ev.target.value);
+        }
+    } else if (ev.key === 'Escape') {
+        cerrarEmpleadoDropdown();
+        ev.target.blur();
+    }
+}
+
+document.addEventListener('click', (e) => {
+    const sel = document.querySelector('.nav-selector');
+    if (sel && !sel.contains(e.target)) cerrarEmpleadoDropdown();
+});
+
+function buscarEmpleadoPorTexto(texto) {
+    const t = (texto || '').trim();
+    if (!t) return;
+    let emp = empleadosListaSelect.find(e => `${e.nombre} (${e.codigo} - ${e.ci})` === t);
+    if (!emp) emp = empleadosListaSelect.find(e => e.ci == t || e.codigo == t);
+    if (emp) irAEmpleadoPorSelect(emp.id);
 }
 
 function irAEmpleadoPorSelect(empleadoId) {
@@ -7118,29 +7602,25 @@ function irAEmpleadoPorSelect(empleadoId) {
         }
     }
     
-    // Resetear el select después de la navegación
+    // Actualizar el buscador tras la navegación
     setTimeout(() => {
-        const select = document.getElementById('navEmpleadoSelect');
-        if (select) select.value = '';
+        if (typeof actualizarSelectorEmpleado === 'function') {
+            actualizarSelectorEmpleado();
+        }
     }, 100);
 }
 
 
-// Actualizar la opción seleccionada en el selector según el empleado actual
+// Actualizar el valor del buscador según el empleado actual
 function actualizarSelectorEmpleado() {
-    const select = document.getElementById('navEmpleadoSelect');
-    if (!select) return;
+    const input = document.getElementById('navEmpleadoBuscar');
+    if (!input) return;
     
     if (currentIndex >= 0 && empleadosData[currentIndex]) {
-        // Buscar la opción que coincide con el ID actual
-        for (let i = 0; i < select.options.length; i++) {
-            if (select.options[i].value == empleadosData[currentIndex].id) {
-                select.selectedIndex = i;
-                break;
-            }
-        }
+        const emp = empleadosData[currentIndex];
+        input.value = `${emp.nombre_completo} (${emp.codigo} - ${emp.ci})`;
     } else {
-        select.selectedIndex = 0;
+        input.value = '';
     }
 }
 // Función para ver solapín (con prevención de caché)

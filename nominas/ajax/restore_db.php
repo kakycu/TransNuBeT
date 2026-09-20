@@ -28,6 +28,7 @@ header('Content-Type: application/json');
 
 // Configuración de la base de datos
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 
 // Verificar permisos: la restauración es solo para (Admin, Soft, Editor)
 if (!in_array(permiso_rol_codigo(), ['Admin', 'Soft', 'Editor'], true)) {
@@ -47,6 +48,9 @@ if (!file_exists($temp_dir)) {
 
 // Archivo de progreso para que el cliente sondee el avance de la importación
 $progressFile = $temp_dir . 'restore_progress_' . session_id() . '.json';
+
+// Reiniciar el progreso para no arrastrar datos de una restauración previa
+@unlink($progressFile);
 
 try {
     global $pdo;
@@ -217,12 +221,12 @@ try {
             } else {
                 $failed++;
                 $errorInfo = $pdo->errorInfo();
-                $errors[] = "Error en consulta: " . $errorInfo[2] . " | " . substr($query, 0, 100) . "...";
+                $errors[] = "Error en consulta: " . restore_clean_error($errorInfo[2]) . "\nSQL: " . $query;
             }
             
         } catch (PDOException $e) {
             $failed++;
-            $errors[] = "Error SQL: " . $e->getMessage() . " | " . substr($query, 0, 100) . "...";
+            $errors[] = "Error SQL: " . restore_clean_error($e->getMessage()) . "\nSQL: " . $query;
             
             // Si el error es por paquete muy grande, abortar
             if (stripos($e->getMessage(), 'packet') !== false || 
@@ -247,30 +251,40 @@ try {
     // Restaurar foreign keys
     $pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
     
-    // Registrar en log
-    $logEntry = [
-        'date' => date('Y-m-d H:i:s'),
-        'filename' => $originalName,
-        'successful' => $successful,
-        'failed' => $failed,
-        'imported_rows' => $importedRows,
+    // Registrar en log (incluye los errores detectados durante la importación)
+    restore_append_log([
+        'date'           => date('Y-m-d H:i:s'),
+        'filename'       => $originalName,
+        'status'         => $failed > 0 ? 'partial' : 'success',
+        'successful'     => $successful,
+        'failed'         => $failed,
+        'imported_rows'  => $importedRows,
         'insert_queries' => $insertQueries,
-        'user' => $_SESSION['user_nombre'] ?? $_SESSION['username'] ?? 'sistema'
-    ];
-    
-    $logs = [];
-    $logFile = '../logs/restore_log.json';
-    if (file_exists($logFile)) {
-        $logs = json_decode(file_get_contents($logFile), true) ?: [];
-    }
-    array_unshift($logs, $logEntry);
-    if (count($logs) > 20) {
-        $logs = array_slice($logs, 0, 20);
-    }
-    if (!is_dir('../logs')) {
-        mkdir('../logs', 0755, true);
-    }
-    file_put_contents($logFile, json_encode($logs, JSON_PRETTY_PRINT));
+        'user'           => $_SESSION['user_nombre'] ?? $_SESSION['username'] ?? 'sistema',
+        'errors_total'   => count($errors),
+        'errors'         => array_slice($errors, 0, 50),
+    ]);
+
+    // ============================================
+    // AUDITORÍA DE LA RESTAURACIÓN
+    // ============================================
+    $uid_restore = (int)($_SESSION['user_id'] ?? $_SESSION['usuario_id'] ?? 0);
+    logAction(
+        'restaurar_base_datos',
+        'sistema',
+        'Se restauró la base de datos desde un archivo de respaldo',
+        [
+            'archivo'          => $originalName,
+            'usuario'          => $_SESSION['username'] ?? $_SESSION['user_nombre'] ?? '',
+            'consultas_ok'     => $successful,
+            'consultas_fallo'  => $failed,
+            'filas_importadas' => $importedRows,
+        ],
+        $uid_restore > 0 ? $uid_restore : null,
+        'success',
+        null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
     
     // ============================================
     // RESPUESTA
@@ -294,8 +308,13 @@ try {
     if ($failed > 0) {
         $message .= "\n⚠️ Consultas fallidas: $failed\n";
         if (count($errors) > 0) {
+            // En el modal/UI se muestran los errores recortados; el archivo
+            // logs/restore_log.json conserva los errores completos.
+            $errors_resumen = array_map(function ($err) {
+                return mb_strlen($err) > 300 ? mb_substr($err, 0, 300) . '...' : $err;
+            }, array_slice($errors, 0, 10));
             $message .= "\n❌ Errores:\n";
-            $message .= implode("\n", array_slice($errors, 0, 10));
+            $message .= implode("\n", $errors_resumen);
             if (count($errors) > 10) {
                 $message .= "\n... y " . (count($errors) - 10) . " errores más";
             }
@@ -323,23 +342,89 @@ try {
     } catch (Exception $ex) {}
     
     if (isset($progressFile)) {
-        restore_write_progress($progressFile, 0, null, 'Error: ' . $e->getMessage());
+        restore_write_progress($progressFile, 0, null, 'Error: ' . restore_clean_error($e->getMessage()));
     }
+    
+    // Registrar el error crítico en el log de restauraciones
+    restore_append_log([
+        'date'         => date('Y-m-d H:i:s'),
+        'filename'     => $originalName ?? null,
+        'status'       => 'error',
+        'message'      => restore_clean_error($e->getMessage()),
+        'successful'   => $successful ?? null,
+        'failed'       => $failed ?? null,
+        'user'         => $_SESSION['user_nombre'] ?? $_SESSION['username'] ?? 'sistema',
+        'errors_total' => isset($errors) ? count($errors) : 1,
+        'errors'       => (isset($errors) && count($errors) > 0) ? array_slice($errors, 0, 50) : [restore_clean_error($e->getMessage())],
+    ]);
     
     echo json_encode([
         'success' => false,
-        'message' => 'Error de base de datos: ' . $e->getMessage()
+        'message' => 'Error de base de datos: ' . restore_clean_error($e->getMessage())
     ]);
     
 } catch (Exception $e) {
     if (isset($progressFile)) {
-        restore_write_progress($progressFile, 0, null, 'Error: ' . $e->getMessage());
+        restore_write_progress($progressFile, 0, null, 'Error: ' . restore_clean_error($e->getMessage()));
     }
+    
+    // Registrar el error crítico en el log de restauraciones
+    restore_append_log([
+        'date'         => date('Y-m-d H:i:s'),
+        'filename'     => $originalName ?? null,
+        'status'       => 'error',
+        'message'      => restore_clean_error($e->getMessage()),
+        'successful'   => $successful ?? null,
+        'failed'       => $failed ?? null,
+        'user'         => $_SESSION['user_nombre'] ?? $_SESSION['username'] ?? 'sistema',
+        'errors_total' => isset($errors) ? count($errors) : 1,
+        'errors'       => (isset($errors) && count($errors) > 0) ? array_slice($errors, 0, 50) : [restore_clean_error($e->getMessage())],
+    ]);
     
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage()
+        'message' => restore_clean_error($e->getMessage())
     ]);
+}
+
+/**
+ * Normaliza el mensaje de error de PDO/MySQL.
+ * PDO suele formatear los SQLSTATE desconocidos como
+ * "SQLSTATE[22032]: <<Unknown error>>: 3140 <mensaje real>".
+ * Se elimina el bloque <<...>> (que además rompe el HTML del modal)
+ * para dejar "SQLSTATE[22032]: 3140 <mensaje real>".
+ */
+function restore_clean_error($message) {
+    if (!is_string($message) || $message === '') {
+        return (string)$message;
+    }
+    return preg_replace('/:\s*<<[^>]*>>:\s*/', ': ', $message);
+}
+
+/**
+ * Agrega una entrada al log de restauraciones (logs/restore_log.json).
+ * Mantiene las 20 entradas más recientes e incluye los errores detectados.
+ */
+function restore_append_log(array $entry, $logFile = '../logs/restore_log.json') {
+    $logs = [];
+    if (file_exists($logFile)) {
+        $decoded = json_decode(file_get_contents($logFile), true);
+        if (is_array($decoded)) {
+            $logs = $decoded;
+        }
+    }
+    array_unshift($logs, $entry);
+    if (count($logs) > 20) {
+        $logs = array_slice($logs, 0, 20);
+    }
+    $dir = dirname($logFile);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    file_put_contents(
+        $logFile,
+        json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)
+    );
 }
 
 /**
@@ -460,7 +545,6 @@ function removeSQLComments($sql) {
     $len = strlen($sql);
     $inString = false;
     $stringChar = '';
-    $escaped = false;
     $inLineComment = false;
     $inBlockComment = false;
     $i = 0;
@@ -468,16 +552,16 @@ function removeSQLComments($sql) {
     while ($i < $len) {
         $char = $sql[$i];
         
-        // Manejar caracteres escapados
-        if ($escaped) {
-            $escaped = false;
-            $i++;
-            continue;
-        }
-        
+        // Manejar caracteres escapados: se conservan tal cual (barra + carácter),
+        // si no se perderían los escapes de las cadenas (p. ej. JSON: {\"clave\":...})
         if ($char === '\\') {
-            $escaped = true;
-            $i++;
+            $result .= $char;
+            if ($i + 1 < $len) {
+                $result .= $sql[$i + 1];
+                $i += 2;
+            } else {
+                $i++;
+            }
             continue;
         }
         

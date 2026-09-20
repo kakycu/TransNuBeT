@@ -1,6 +1,7 @@
 <?php
 // modules/configuracion.php - Configuraciones del Sistema
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 require_once '../config/mail.php';
 require_once '../includes/funciones.php';
 
@@ -149,20 +150,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'probar_mail') {
     </html>';
 
     $res = enviarCorreoConConfig($cfg, $to, $cfg['from_name'], '✅ Prueba SMTP - ' . $empresa, $htmlCorreo, '');
+    logAction('probar_configuracion_correo', 'configuracion', 'Prueba de configuración de correo', ['host' => $cfg['host'], 'puerto' => $cfg['port'], 'usuario' => $cfg['usuario'], 'destinatario' => $to], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     echo json_encode(['success' => $res['success'], 'message' => $res['success'] ? 'Correo de prueba enviado a ' . $to : 'Error SMTP: ' . $res['error']]);
     exit;
 }
 
 
 // Configuración empresa
-$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas', 'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH'];
+$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas', 'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH', 'especialista_nominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : ''];
 try {
-    $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_gestionRRHH')");
+    $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_gestionRRHH', 'especialista_nominas')");
     while ($row = $stmt->fetch()) {
         if ($row['parametro'] == 'nombre_empresa') $config_empresa['nombre_empresa'] = $row['valor'];
         if ($row['parametro'] == 'jefe_proyecto') $config_empresa['jefe_proyecto'] = $row['valor'];
         if ($row['parametro'] == 'especialista_gestion') $config_empresa['especialista_gestion'] = $row['valor'];
         if ($row['parametro'] == 'especialista_gestionRRHH') $config_empresa['especialista_gestionRRHH'] = $row['valor'];
+        if ($row['parametro'] == 'especialista_nominas') $config_empresa['especialista_nominas'] = $row['valor'];
     }
 } catch (PDOException $e) {}
 
@@ -185,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $params = [
             'horas_mensuales', 'dias_mensuales', 'horas_jornada_diaria',
             'tasa_contribucion_especial', 'nombre_empresa', 'direccion_empresa',
-            'reeup_empresa', 'nit_empresa', 'jefe_proyecto', 'especialista_gestion', 
+            'reeup_empresa', 'nit_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_nominas',
             'salario_minimo', 'intendente', 'recargo_nocturno', 'especialista_gestionRRHH',
             'tarifa_nocturnidad_temprana', 'tarifa_nocturnidad_tardia',
             'recargo_extra_diurna', 'recargo_extra_nocturna', 'recargo_doble_turno'
@@ -198,6 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([$_POST[$param], $param]);
                 }
             }
+            logAction('guardar_configuracion_general', 'configuracion', 'Configuración general guardada', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Configuración general guardada correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -209,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['guardar_datos_entidad'])) {
         $params = [
             'nombre_empresa', 'direccion_empresa',
-            'reeup_empresa', 'nit_empresa', 'jefe_proyecto', 'especialista_gestion', 
+            'reeup_empresa', 'nit_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_nominas',
             'intendente', 'especialista_gestionRRHH',
             'slogan', 'telefono_empresa', 'email_empresa', 'telefono_soporte', 'email_soporte'
         ];
@@ -221,6 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([$_POST[$param], $param]);
                 }
             }
+            logAction('guardar_datos_entidad', 'configuracion', 'Datos de la entidad guardados', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Datos de la entidad guardados correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -251,6 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                 }
             }
+            logAction('guardar_rangos_impuesto', 'configuracion', 'Actualización de rangos de impuesto', ['fecha_vigencia' => $_POST['fecha_vigencia'], 'cantidad_rangos' => count($rangos)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Rangos de impuesto actualizados correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -263,6 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare("DELETE FROM configuracion_tasas WHERE id = ?");
             $stmt->execute([$_POST['tasa_id']]);
+            logAction('eliminar_tasa_contribucion', 'configuracion', 'Eliminación de tasa de contribución', ['tasa_id' => (int)$_POST['tasa_id']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Tasa eliminada correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -283,6 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['fecha_vigencia_tasa'],
                 $_POST['descripcion_tasa']
             ]);
+            logAction('agregar_tasa_contribucion', 'configuracion', 'Alta de tasa de contribución', ['nombre_tasa' => $_POST['nombre_tasa']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Tasa agregada correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -311,6 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
                 $stmt->execute([$valor, $param]);
             }
+            logAction('guardar_configuracion_correo', 'configuracion', 'Configuración SMTP/correo guardada', ['proveedor' => $params['mail_proveedor']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Configuración de correo guardada correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -335,6 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
                 $stmt->execute([$valor, $param]);
             }
+            logAction('guardar_configuracion_google', 'configuracion', 'Configuración de Google OAuth guardada', ['googleoauth' => $params_google['googleoauth']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Configuración de Google guardada correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -544,7 +554,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         .btn-win-warning { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.5); }
         .btn-win-warning:hover { background: rgba(245, 158, 11, 0.4); border-color: #f59e0b; }
 
-        .form-label { color: rgba(255, 255, 255, 0.85); font-size:0.8rem; font-weight: 500; margin-bottom:0.375rem; }
+        .form-label { color: rgba(255, 255, 255, 0.85); font-size:0.8rem; font-weight: 700; margin-bottom:0.375rem; }
         
         .form-control, .form-select, input.form-control, textarea.form-control, select.form-select {
             background: var(--panel) !important;
@@ -869,7 +879,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
 
         .section-title {
             display: flex; align-items: center; gap:0.5rem;
-            font-size:0.78rem; font-weight: 600; text-transform: uppercase;
+            font-size:0.78rem; font-weight: 700; text-transform: uppercase;
             letter-spacing:0.05rem; color: rgba(255, 255, 255, 0.75);
             padding-bottom:0.5rem; margin-bottom:1rem;
             border-bottom: 0.0625rem solid rgba(255, 255, 255, 0.08);
@@ -882,6 +892,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
             display: inline-flex;
             align-items: center;
             gap:0.5rem;
+            font-weight: 700;
             transition: color 0.2s ease;
         }
         .card-collapse-title:hover {
@@ -1767,24 +1778,28 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Jefe de Proyecto</label>
                                 <input type="text" class="form-control" name="jefe_proyecto" value="<?php echo htmlspecialchars($config['jefe_proyecto'] ?? JEFE_PROYECTO); ?>">
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Especialista en Gestión Económica</label>
                                 <input type="text" class="form-control" name="especialista_gestion" value="<?php echo htmlspecialchars($config['especialista_gestion'] ?? ESPECIALISTA); ?>">
                             </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Especialista de Nóminas</label>
+                                <input type="text" class="form-control" name="especialista_nominas" value="<?php echo htmlspecialchars($config['especialista_nominas'] ?? ''); ?>">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Especialista de Gestión de los Recursos Humanos</label>
+                                <input type="text" class="form-control" name="especialista_gestionRRHH" value="<?php echo htmlspecialchars($config['especialista_gestionRRHH'] ?? ''); ?>">
+                            </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-3 mb-3">
                                 <label class="form-label">Intendente Local del CAM</label>
                                 <input type="text" class="form-control" name="intendente" value="<?php echo htmlspecialchars($config['intendente'] ?? 'Eladio Francisco Ávalos'); ?>">
                                 <small class="text-secondary">Aprueba la plantilla de cargos</small>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Especialista de Gestión de los Recursos Humanos</label>
-                                <input type="text" class="form-control" name="especialista_gestionRRHH" value="<?php echo htmlspecialchars($config['especialista_gestionRRHH'] ?? ''); ?>">
                             </div>
                         </div>
                         <button type="submit" name="guardar_datos_entidad" class="btn-win btn-win-primary w-100" title="Guardar datos de la entidad" data-tooltip="Guardar datos de la entidad" data-tooltip-theme="success">
@@ -2495,7 +2510,7 @@ document.getElementById('restoreFile')?.addEventListener('change', function() {
         document.getElementById('chooseFileLabel')?.classList.remove('border-success');
     }
 });
-document.getElementById('restoreForm')?.addEventListener('submit', function(e) {
+document.getElementById('restoreForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const fileInput = document.getElementById('restoreFile');
     if (!fileInput.files || fileInput.files.length === 0) { Swal.fire({ title: 'Error', text: 'Seleccione un archivo', icon: 'error', background: 'var(--panel)', color: 'var(--txt)' }); return; }
@@ -2505,6 +2520,12 @@ document.getElementById('restoreForm')?.addEventListener('submit', function(e) {
     if (restoreModalInstance) {
         restoreModalInstance.hide();
     }
+
+    // Reiniciar el progreso para que el modal arranque siempre desde cero
+    // y no muestre el estado de la restauración anterior.
+    try {
+        await fetch('../ajax/restore_progress.php?reset=1', { cache: 'no-store' });
+    } catch (err) { /* continuar igualmente */ }
 	
     Swal.fire({
         title: 'Restaurando...',
@@ -2544,11 +2565,82 @@ document.getElementById('restoreForm')?.addEventListener('submit', function(e) {
         clearInterval(restorePoll);
         const bar = document.getElementById('restoreProgressBar');
         if (bar) { bar.style.width = '100%'; bar.textContent = '100%'; }
-        if (data.success) { Swal.fire({ title: 'Restauración Completada', html: `<pre style="background:#2d2d3a; padding:0.75rem; border-radius:0.5rem;">${data.message}</pre>`, icon: 'success', confirmButtonText: '<i class="fas fa-check me-2"></i> Recargar', background: 'var(--panel)', color: 'var(--txt)',  }).then(() => location.reload()); }
-        else { Swal.fire({ title: 'Error', html: `<pre style="background:#2d2d3a; padding:0.75rem; border-radius:0.5rem; color:#fca5a5;">${data.message}</pre>`, icon: 'error', background: 'var(--panel)', color: 'var(--txt)' }); }
+        if (data.success) {
+            Swal.fire({
+                title: 'Restauración Completada',
+                html: `<pre style="background:#2d2d3a; color:#e2e8f0 !important; padding:0.75rem; border-radius:0.5rem; white-space:pre-wrap; word-break:break-word;">${data.message}</pre>`,
+                icon: 'success',
+                showDenyButton: true,
+                confirmButtonText: '<i class="fas fa-check me-2"></i> Recargar',
+                denyButtonText: '<i class="fas fa-file-lines me-2"></i> Ver log',
+                background: 'var(--panel)', color: 'var(--txt)',
+            }).then((result) => {
+                if (result.isDenied) { verLogRestauracion(); }
+                else { location.reload(); }
+            });
+        }
+        else { Swal.fire({ title: 'Error', html: `<pre style="background:#2d2d3a; padding:0.75rem; border-radius:0.5rem; color:#fca5a5 !important; white-space:pre-wrap; word-break:break-word;">${data.message}</pre>`, icon: 'error', background: 'var(--panel)', color: 'var(--txt)' }); }
     })
     .catch(() => { clearInterval(restorePoll); Swal.fire({ title: 'Error de Conexión', text: 'No se pudo conectar', icon: 'error', background: 'var(--panel)', color: 'var(--txt)' }); });
 });
+
+// Escapa HTML para inyectar texto de forma segura dentro de un <pre> de SweetAlert
+function escaparHTML(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Abre una ventana de impresión con el texto indicado
+function imprimirTexto(titulo, texto) {
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) {
+        Swal.fire({ title: 'Impresión bloqueada', text: 'Permita las ventanas emergentes para imprimir el log.', icon: 'warning', background: 'var(--panel)', color: 'var(--txt)' });
+        return;
+    }
+    win.document.write(
+        '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>' + escaparHTML(titulo) + '</title>' +
+        '<style>' +
+        'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;}' +
+        'h1{font-size:1rem;margin:0 0 0.75rem;}' +
+        'pre{font-family:Consolas,"Courier New",monospace;font-size:0.75rem;line-height:1.35;white-space:pre-wrap;word-break:break-word;border:1px solid #ccc;border-radius:6px;padding:12px;}' +
+        '</style></head><body>' +
+        '<h1>' + escaparHTML(titulo) + '</h1>' +
+        '<pre>' + escaparHTML(texto) + '</pre>' +
+        '</body></html>'
+    );
+    win.document.close();
+    win.focus();
+    win.print();
+}
+
+// Muestra el log de restauraciones (logs/restore_log.json) en un modal
+function verLogRestauracion() {
+    fetch('../ajax/restore_log.php?t=' + Date.now(), { cache: 'no-store' })
+        .then(r => r.json())
+        .then(resp => {
+            if (!resp.success) { throw new Error(resp.message || 'No se pudo leer el log'); }
+            const logs = Array.isArray(resp.logs) ? resp.logs : [];
+            const entrada = logs.length ? logs[0] : null;
+            const texto = entrada ? JSON.stringify(entrada, null, 2) : 'No hay registros de restauración.';
+            Swal.fire({
+                title: 'Log de restauración',
+                html: '<pre style="text-align:left; max-height:55vh; overflow:auto; background:#2d2d3a; color:#e2e8f0 !important; padding:0.75rem; border-radius:0.5rem; font-size:0.8rem; white-space:pre-wrap; word-break:break-word;">' + escaparHTML(texto) + '</pre>',
+                icon: 'info',
+                width: '52rem',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: '<i class="fas fa-check me-2"></i> Recargar',
+                denyButtonText: '<i class="fas fa-print me-2"></i> Imprimir',
+                cancelButtonText: '<i class="fas fa-times me-2"></i> Cerrar',
+                preDeny: () => { imprimirTexto('Log de restauración', texto); return false; },
+                background: 'var(--panel)', color: 'var(--txt)'
+            }).then((res) => {
+                if (res.isConfirmed) { location.reload(); }
+            });
+        })
+        .catch(err => {
+            Swal.fire({ title: 'Error', text: err.message || 'No se pudo leer el log', icon: 'error', background: 'var(--panel)', color: 'var(--txt)' });
+        });
+}
 
 // Funciones para rangos y tasas
 function agregarFila() {

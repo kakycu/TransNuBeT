@@ -42,6 +42,7 @@ if (!isset($_SESSION['usuario_id']) && !isset($_SESSION['logged_in'])) {
 // CONEXIÓN GLOBAL A LA BASE DE DATOS Y OBTENCIÓN DE CONFIGURACIÓN GENÉRICA
 // =========================================================================
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 require_once '../includes/funciones.php';
 
 // Control de acceso por rol
@@ -594,6 +595,9 @@ if (isset($_POST['actualizar_nomina'])) {
             ]);
         }
         
+        if ($result) {
+            logAction('actualizar_nomina_borrador', 'nominas', 'Actualización de nómina en borrador (ID ' . $id . ', tipo ' . $tipo . ')', ['nomina_id' => (int)$id, 'tipo_nomina' => $tipo, 'total_devengado' => $total_devengado, 'importe_neto' => $neto_final], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+        }
         echo json_encode(['success' => $result, 'neto_maximo' => $neto_antes_descuentos]);
         
     } elseif ($tipo == 'bono') {
@@ -620,6 +624,9 @@ if (isset($_POST['actualizar_nomina'])) {
         
         $update = $pdo->prepare("UPDATE nominas SET pago_resultado=?, total_salario_devengado=?, contribucion_especial=?, ingresos_personales=?, descuentos=?, importe_neto=?, total_deducciones=?, descripcion=? WHERE id=?");
         $result = $update->execute([$monto, $total_devengado, $contribucion, $impuesto, $descuentos, $neto, roundExcel($contribucion + $impuesto + $descuentos, 2), $descripcion, $id]);
+        if ($result) {
+            logAction('actualizar_nomina_borrador', 'nominas', 'Actualización de bono en nómina en borrador (ID ' . $id . ')', ['nomina_id' => (int)$id, 'tipo_nomina' => $tipo, 'monto' => $monto, 'importe_neto' => $neto], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+        }
         echo json_encode(['success' => $result, 'neto_maximo' => $neto_antes_descuentos]);
         
     } elseif ($tipo == 'ajuste') {
@@ -677,6 +684,9 @@ if (isset($_POST['actualizar_nomina'])) {
         
         $update = $pdo->prepare("UPDATE nominas SET pago_resultado=?, total_salario_devengado=?, horas_laboradas=?, importe_salario_laboral=?, vacaciones_acumuladas_mes=?, importe_vacaciones_acumulado_mes=?, otros_salarios=?, contribucion_especial=?, ingresos_personales=?, descuentos=?, importe_neto=?, total_deducciones=?, descripcion=? WHERE id=?");
         $result = $update->execute([$monto, $total_devengado, $horas_ajuste_edit, $importe_laboral_edit, $dias_vac_edit, $importe_vac_edit, $otros_pagos_aj, $contribucion, $impuesto, $descuentos, $neto, roundExcel($contribucion + $impuesto + $descuentos, 2), $descripcion, $id]);
+        if ($result) {
+            logAction('actualizar_nomina_borrador', 'nominas', 'Actualización de ajuste en nómina en borrador (ID ' . $id . ')', ['nomina_id' => (int)$id, 'tipo_nomina' => $tipo, 'total_devengado' => $total_devengado, 'importe_neto' => $neto], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+        }
         echo json_encode(['success' => $result, 'neto_maximo' => $neto_antes_descuentos]);
         
     } elseif ($tipo == 'vacaciones') {
@@ -720,6 +730,9 @@ if (isset($_POST['actualizar_nomina'])) {
         
         $update = $pdo->prepare("UPDATE nominas SET dias_vacaciones_tomados=?, importe_vacaciones=?, total_salario_devengado=?, contribucion_especial=?, ingresos_personales=?, descuentos=?, importe_neto=?, total_deducciones=? WHERE id=?");
         $result = $update->execute([$dias, $importe, $importe, $contribucion, $impuesto, $descuentos_vac, $neto, $total_deducciones_vac, $id]);
+        if ($result) {
+            logAction('actualizar_nomina_borrador', 'nominas', 'Actualización de vacaciones en nómina en borrador (ID ' . $id . ')', ['nomina_id' => (int)$id, 'tipo_nomina' => $tipo, 'dias' => $dias, 'importe' => $importe, 'importe_neto' => $neto], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+        }
         echo json_encode(['success' => $result, 'neto_maximo' => $neto_antes_descuentos]);
     }
     exit;
@@ -728,10 +741,10 @@ if (isset($_POST['actualizar_nomina'])) {
 // ============================================
 // CONFIGURACIÓN Y LÓGICA NO AJAX
 // ============================================
-$config_empresa = ['nombre_empresa' => COMPANY_NAME, 'jefe_proyecto' => JEFE_PROYECTO, 'especialista_gestion' => ESPECIALISTA, 'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH'];
+$config_empresa = ['nombre_empresa' => COMPANY_NAME, 'jefe_proyecto' => JEFE_PROYECTO, 'especialista_gestion' => ESPECIALISTA, 'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH', 'especialista_nominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : ''];
 try {
     // Se agregan 'reeup' y 'reeup_empresa' a la consulta SQL
-    $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_gestionRRHH', 'reeup_empresa', 'nit_empresa')");
+    $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_gestionRRHH', 'especialista_nominas', 'reeup_empresa', 'nit_empresa')");
     while ($row = $stmt->fetch()) {
         $config_empresa[$row['parametro']] = $row['valor'];
     }
@@ -1129,6 +1142,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'corregir_cuadre' && isset($_G
             $actualizadas++;
         }
         $nuevo = verificarCuadreValores($pdo);
+        logAction('corregir_cuadre_nominas', 'nominas', 'Corrección de cuadre de nóminas contabilizadas', ['filas_corregidas' => $actualizadas, 'filas_con_error' => $nuevo['filas_con_error']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         echo json_encode([
             'success' => true,
             'filas_corregidas' => $actualizadas,
@@ -1184,6 +1198,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'corregir_pendientes' && isset
             'periodo_hasta' => $ph,
             'tipo' => $tp,
         ]);
+        logAction('corregir_cuadre_pendientes', 'nominas', 'Corrección de cuadre de borradores pendientes de contabilizar', ['periodo_desde' => $pd, 'periodo_hasta' => $ph, 'tipo' => $tp, 'filas_corregidas' => $actualizadas, 'filas_con_error' => $nuevo['filas_con_error']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         echo json_encode([
             'success' => true,
             'filas_corregidas' => $actualizadas,
@@ -1251,6 +1266,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'corregir_cierres' && isset($_
             }
         }
         $nuevo = verificarCuadreCierres($pdo);
+        logAction('corregir_cierres_nomina', 'nominas', 'Corrección de cierres de nómina descuadrados', ['cierres_corregidos' => $actualizados, 'cierres_con_error' => $nuevo['cierres_con_error']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         echo json_encode([
             'success' => true,
             'cierres_corregidos' => $actualizados,
@@ -1360,6 +1376,7 @@ if (isset($_POST['eliminar_nomina_completa'])) {
         $pdo->prepare("DELETE FROM nominas WHERE periodo_desde = ? AND periodo_hasta = ? AND tipo_nomina = ?")->execute([$periodo_desde, $periodo_hasta, $tipo_eliminar]);
         $pdo->prepare("DELETE FROM cierres_nomina WHERE periodo_desde = ? AND periodo_hasta = ? AND tipo_nomina = ?")->execute([$periodo_desde, $periodo_hasta, $tipo_eliminar]);
     }
+    logAction('eliminar_nomina_completa', 'nominas', 'Eliminación completa de nóminas del período', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'tipo' => $tipo_eliminar], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     header("Location: nominas.php?periodo=$periodo&tipo=$tipo_eliminar&msg=deleted");
     exit;
 }
@@ -1376,6 +1393,7 @@ if (isset($_POST['eliminar_borrador_por_ids'])) {
         $stmt_eb = $pdo->prepare("DELETE FROM nominas WHERE id IN ($placeholders) AND estado = 'borrador'");
         $stmt_eb->execute($ids_borrador);
     }
+    logAction('eliminar_nomina_borradores', 'nominas', 'Eliminación de nóminas en borrador', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'tipo' => $tipo_eliminar, 'cantidad' => count($ids_borrador)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     header("Location: nominas.php?periodo=$periodo&tipo=$tipo_eliminar&msg=deleted");
     exit;
 }
@@ -1389,6 +1407,7 @@ if (isset($_POST['eliminar_nomina_individual'])) {
         revertirDisfrutesLiquidacion($pdo, [$id]);
         $pdo->prepare("DELETE FROM nominas WHERE id = ?")->execute([$id]);
     }
+    logAction('eliminar_nomina_individual', 'nominas', 'Eliminación de nómina individual', ['id' => (int)$id], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     header("Location: nominas.php?periodo=$periodo&tipo=$tipo_nomina_activa&msg=deleted");
     exit;
 }
@@ -1459,8 +1478,10 @@ if (isset($_POST['regenerar_nomina'])) {
                     ->execute([$nomina_id_insertado, $trabajador['id'], $pa['id'], roundExcel($importe, 2)]);
             }
         }
+        logAction('regenerar_nomina', 'nominas', 'Regeneración de nómina', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'tipo' => $tipo_regenerar], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         header("Location: nominas.php?periodo=$periodo&tipo=$tipo_regenerar&msg=generated");
     } elseif ($tipo_regenerar == 'extraordinaria') {
+        logAction('regenerar_nomina', 'nominas', 'Regeneración de nómina', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'tipo' => $tipo_regenerar], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         header("Location: nominas.php?periodo=$periodo&tipo=$tipo_regenerar&msg=regenerado_listo");
     }
     exit;
@@ -1568,6 +1589,7 @@ if (isset($_POST['generar_nomina_automatica'])) {
         }
     }
     
+    logAction('generar_nomina_automatica', 'nominas', 'Generación de nómina automática', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'tipo_descuento' => $tipo_descuento], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     header("Location: nominas.php?periodo=$periodo&tipo=$tipo&msg=generated");
     exit;
 }
@@ -1706,6 +1728,7 @@ $importe_he_diurnas = roundExcel($salario_hora * $recargo_extra_diurna * $horas_
     }
 
     if ($agregados > 0) {
+        logAction('generar_nomina_extraordinaria', 'nominas', 'Generación de nómina extraordinaria', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'trabajadores' => $agregados], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         header("Location: nominas.php?periodo=$periodo&tipo=$tipo&msg=extraordinaria_added&count=$agregados");
     } else {
         header("Location: nominas.php?periodo=$periodo&tipo=$tipo&error=no_trabajadores");
@@ -1762,6 +1785,9 @@ if (isset($_POST['generar_nomina_bono']) && isset($_POST['confirmar_bono'])) {
                 ->execute([$trabajador_id, $periodo_desde, $periodo_hasta, $monto_bono, $monto_bono, $contribucion, $impuesto, $neto, roundExcel($contribucion + $impuesto, 2), $tipo, 'borrador', "$concepto", $tipo_descuento_bono]);
             $agregados++;
         }
+    }
+    if ($agregados > 0 || $actualizados > 0) {
+        logAction('generar_nomina_bono', 'nominas', 'Generación de nómina de bono', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'trabajadores' => ($agregados + $actualizados)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     }
     header("Location: nominas.php?periodo=$periodo&tipo=$tipo&" . (($agregados > 0 || $actualizados > 0) ? "msg=bono_added&count=" . ($agregados + $actualizados) : "error=no_bonos"));
     exit;
@@ -1973,6 +1999,7 @@ if (isset($_POST['generar_nomina_ajuste']) && isset($_POST['confirmar_ajuste']))
     // Redirección con mensaje adecuado
     if ($agregados > 0 || $actualizados > 0) {
         $total = $agregados + $actualizados;
+        logAction('generar_nomina_ajuste', 'nominas', 'Generación de nómina de ajuste' . ($modo_ajuste == 'liquidacion' ? ' (liquidación final)' : ''), ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'modo' => $modo_ajuste, 'trabajadores' => $total, 'nuevos' => $agregados, 'actualizados' => $actualizados], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         if ($modo_ajuste == 'liquidacion') {
             header("Location: nominas.php?periodo=$periodo&tipo=$tipo&msg=liquidacion_procesada&count=$total&nuevos=$agregados&actualizados=$actualizados");
         } else {
@@ -2084,6 +2111,7 @@ if (isset($_POST['agregar_vacaciones'])) {
     }
     
     if ($agregados > 0) {
+        logAction('agregar_vacaciones_nomina', 'nominas', 'Agregado de vacaciones a nómina', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'trabajadores' => $agregados], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         $url = "Location: nominas.php?periodo=$periodo&tipo=$tipo&msg=vacaciones_added&count=" . $agregados;
         if (!empty($errores)) {
             $url .= "&errores=" . urlencode(implode('; ', $errores));
@@ -2139,6 +2167,7 @@ if (isset($_POST['agregar_bono_existente'])) {
         $pdo->prepare("INSERT INTO nominas (trabajador_id, periodo_desde, periodo_hasta, pago_resultado, total_salario_devengado, contribucion_especial, ingresos_personales, importe_neto, total_deducciones, tipo_nomina, estado, descripcion, tipo_descuento) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
             ->execute([$trabajador_id, $periodo_desde, $periodo_hasta, $monto_bono, $monto_bono, $contribucion, $impuesto, $neto, roundExcel($contribucion + $impuesto, 2), $tipo, 'borrador', "$concepto", $tipo_descuento]);
     }
+    logAction('agregar_bono_trabajador', 'nominas', 'Adición de bono a trabajador en nómina en borrador', ['trabajador_id' => (int)$trabajador_id, 'monto_bono' => $monto_bono, 'concepto' => $concepto], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     header("Location: nominas.php?periodo=$periodo&tipo=$tipo&msg=bono_added&count=1");
     exit;
 }
@@ -2568,6 +2597,7 @@ if (isset($_POST['contabilizar_nomina'])) {
             // Consolidar todos los cambios si no hubo errores
             $pdo->commit();
             
+            logAction('contabilizar_nomina', 'nominas', 'Contabilización de nómina', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'tipo' => $tipo_contabilizar, 'numero_nomina' => $numero_nomina], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             header("Location: nominas.php?periodo=$periodo&tipo=$tipo_contabilizar&msg=contabilized&code=$numero_nomina");
             
         } catch (Exception $e) {
@@ -2717,6 +2747,7 @@ if (isset($_POST['revertir_nomina'])) {
 
         $pdo->commit();
 
+        logAction('revertir_nomina', 'nominas', 'Reversión de nómina contabilizada', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'tipo' => $tipo_revertir, 'numero_nomina' => $numero_revertir], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         header("Location: nominas.php?periodo=$periodo&tipo=$tipo_revertir&msg=reverted&code=$numero_revertir");
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
@@ -2809,6 +2840,7 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
 
         $pdo->prepare("UPDATE nominas SET contribucion_especial = ?, ingresos_personales = ?, importe_neto = ?, total_deducciones = ? WHERE id = ?")
             ->execute([$contribucion, $impuesto, $neto, roundExcel($contribucion + $impuesto, 2), $existente['id']]);
+        logAction('agregar_extraordinaria_trabajador', 'nominas', 'Adición de horas extraordinarias a trabajador (nómina existente)', ['trabajador_id' => (int)$trabajador_id, 'horas_extra' => $horas_extra, 'total_devengado' => $total_devengado_final], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         header("Location: nominas.php?periodo=$periodo&tipo=$tipo&msg=extra_added_existing");
     } else {
         if ($tipo_descuento == 'solo_cess') {
@@ -2843,6 +2875,7 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
             "HE:{$horas_extra}h Nt7-23:{$noct_temprana}h Nt23-7:{$noct_tardia}h DT:{$doble_turno}h",
             $tipo_descuento
         ]);
+        logAction('agregar_extraordinaria_trabajador', 'nominas', 'Adición de horas extraordinarias a trabajador (nómina nueva)', ['trabajador_id' => (int)$trabajador_id, 'horas_extra' => $horas_extra, 'total_devengado' => $total_devengado_nuevo], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         header("Location: nominas.php?periodo=$periodo&tipo=$tipo&msg=extra_added_new");
     }
     exit;
@@ -2947,6 +2980,9 @@ if (isset($_POST['agregar_trabajadores_auto']) && isset($_SERVER['HTTP_X_REQUEST
         }
     }
     
+    if ($agregados > 0) {
+        logAction('agregar_trabajador_nomina_automatica', 'nominas', 'Adición de trabajadores a nómina automática existente', ['trabajadores_agregados' => $agregados, 'con_errores' => count($errores)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+    }
     echo json_encode(['success' => true, 'agregados' => $agregados, 'errores' => $errores]);
     exit;
 }
@@ -6857,6 +6893,7 @@ var tarifaNoctTardia = parseFloat('<?php echo $tarifa_nocturnidad_tardia; ?>') |
 
 var jefeProyecto = '<?php echo addslashes($config_empresa['jefe_proyecto'] ?? JEFE_PROYECTO); ?>';
 var especialistaGestion = '<?php echo addslashes($config_empresa['especialista_gestion'] ?? ESPECIALISTA); ?>';
+var especialistaNominas = '<?php echo addslashes($config_empresa['especialista_nominas'] ?? ''); ?>';
 
 
 var cargosDisponibles = <?php 
@@ -7430,6 +7467,7 @@ $('#btnImprimirFull').on('click', function() {
                         <td>
                             <p><b>Elaborado por:</b></p>
                             <div class="sig-line"></div>
+                            <span class="sig-name">${especialistaNominas}</span>
                             <span class="sig-label">Especialista de Nóminas</span>
                         </td>
                         <td>
@@ -7603,13 +7641,13 @@ $('#btnExportPDFFull').on('click', function() {
                             { text: '\n\n______________________', alignment: 'center' }
                         ],
                         [
-                            { text: 'Especialista de Nóminas', style: 'sigRole' },
+                            { text: especialistaNominas, style: 'sigName' },
                             { text: especialistaGestion, style: 'sigName' },
                             { text: jefeProyecto, style: 'sigName' },
                             { text: 'Área Contable y Financiera', style: 'sigRole' }
                         ],
                         [
-                            { text: '', style: 'sigRole' },
+                            { text: 'Especialista de Nóminas', style: 'sigRole' },
                             { text: 'Especialista en Gestión Económica', style: 'sigRole' },
                             { text: 'Director de Proyecto', style: 'sigRole' },
                             { text: '', style: 'sigRole' }
@@ -9383,7 +9421,7 @@ function generarHtmlCompletoConPaginacion(cuerpoHtml, alcance, filtroNombre, nom
             <div style="margin-bottom:0.375rem;">
                 <b>APROBADA POR:</b> <span style="text-decoration: underline; font-weight: bold; font-size:13pt; color: #000;">${escapeHtml(jefeProyecto)}</span>
             </div>
-            <div style="margin-bottom:0.375rem; font-size:8.5pt; color: #222;"><b>ELABORADA POR:</b> <span>______________________________________</span></div>
+            <div style="margin-bottom:0.375rem; font-size:8.5pt; color: #222;"><b>ELABORADA POR:</b> <span style="text-decoration: underline; font-weight: bold; font-size:13pt; color: #000;">${escapeHtml(especialistaNominas)}</span></div>
             <div style="font-size:8.5pt; color: #222;"><b>CONTABILIZADA POR:</b> <span>__________________________________</span></div>
         </td>
     </tr>
@@ -9513,7 +9551,7 @@ function generarHtmlCompleto(cuerpoHtml, duplicadaRows, duplicadaTotales, alcanc
                     <div style="margin-bottom:0.375rem;">
                         <b>APROBADA POR:</b> <span style="text-decoration: underline; font-weight: bold; font-size:13pt; color: #000;"><?php echo htmlspecialchars($config_empresa['jefe_proyecto'] ?? JEFE_PROYECTO, ENT_QUOTES, 'UTF-8'); ?></span>
                     </div>
-                    <div style="margin-bottom:0.375rem; font-size:8.5pt; color: #222;"><b>ELABORADA POR:</b> <span>______________________________________</span></div>
+                    <div style="margin-bottom:0.375rem; font-size:8.5pt; color: #222;"><b>ELABORADA POR:</b> <span style="text-decoration: underline; font-weight: bold; font-size:13pt; color: #000;"><?php echo htmlspecialchars($config_empresa['especialista_nominas'] ?? '', ENT_QUOTES, 'UTF-8'); ?></span></div>
                     <div style="font-size:8.5pt; color: #222;"><b>CONTABILIZADA POR:</b> <span>______________________________________</span></div>
                 </td>
             </tr>
@@ -13184,7 +13222,7 @@ customize: function(win) {
                 <tr style="border: none !important;">
                     <td style="width:25%; text-align: center; border: none !important; padding:0.625rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.4;">
                         <p style="margin-bottom:3.125rem;"><b>Elaborado por:</b></p>
-                        <p style="border-top: 0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;">Firma del Elaborador</p>
+                        <p style="border-top: 0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${especialistaNominas}</b></p>
                         <p style="font-size:7.5pt; color: #555; margin-top:0.125rem;">Especialista de Nóminas</p>
                     </td>
                     <td style="width:25%; text-align: center; border: none !important; padding:0.625rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.4;">
@@ -15998,7 +16036,7 @@ window.imprimirCuadrePendiente = function(rep, tituloReporte) {
         var firmas = '';
         if (pg === paginas.length - 1) {
             firmas = '<div class="firmas">'
-                + '<div class="firma"><p class="fl">&nbsp;</p><p><b>Elaborado por:</b></p><span class="sig-label">Especialista de N&oacute;minas</span></div>'
+                + '<div class="firma"><p class="fl">&nbsp;</p><p><b>Elaborado por:</b></p><b>' + escapeHtml(especialistaNominas || '') + '</b><br><span class="sig-label">Especialista de N&oacute;minas</span></div>'
                 + '<div class="firma"><p class="fl">&nbsp;</p><p><b>Revisado por:</b></p><b>' + escapeHtml(especialistaGestion || '') + '</b><br><span class="sig-label">Especialista en Gesti&oacute;n Econ&oacute;mica</span></div>'
                 + '<div class="firma"><p class="fl">&nbsp;</p><p><b>Aprobado por:</b></p><b>' + escapeHtml(jefeProyecto || '') + '</b><br><span class="sig-label">Jefe de Proyecto</span></div>'
                 + '</div>';
@@ -16309,7 +16347,7 @@ window.cuadreExportarPdf = function(rep, titulo) {
         table: {
             widths: ['*', '*', '*'],
             body: [[
-                { stack: [{ text: 'Especialista de N\u00f3minas', fontSize: 7.5, bold: true, alignment: 'center' }, { text: 'Elaborado por', fontSize: 7, color: '#555', alignment: 'center' }], border: [false, true, false, false] },
+                { stack: [{ text: (especialistaNominas || '').toUpperCase(), fontSize: 7.5, bold: true, alignment: 'center' }, { text: 'Elaborado por', fontSize: 7, color: '#555', alignment: 'center' }], border: [false, true, false, false] },
                 { stack: [{ text: (especialistaGestion || '').toUpperCase(), fontSize: 7.5, bold: true, alignment: 'center' }, { text: 'Revisado por \u2014 Especialista en Gesti\u00f3n Econ\u00f3mica', fontSize: 7, color: '#555', alignment: 'center' }], border: [false, true, false, false] },
                 { stack: [{ text: (jefeProyecto || '').toUpperCase(), fontSize: 7.5, bold: true, alignment: 'center' }, { text: 'Aprobado por \u2014 Jefe de Proyecto', fontSize: 7, color: '#555', alignment: 'center' }], border: [false, true, false, false] }
             ]]
@@ -16362,7 +16400,7 @@ window.cuadreExportarDocx = function(rep, titulo) {
     }
     html += '</table>'
         + '<table style="width:100%;margin-top:2.25rem;border-collapse:collapse;"><tr style="text-align:center;font-size:8pt;">'
-        + '<td style="border-top:0.0625rem solid #000;padding:0.375rem;width:33%;">Especialista de N\u00f3minas<br><span style="font-size:7pt;">Elaborado por</span></td>'
+        + '<td style="border-top:0.0625rem solid #000;padding:0.375rem;width:33%;">' + escapeHtml(especialistaNominas || '') + '<br><span style="font-size:7pt;">Elaborado por \u2014 Especialista de N\u00f3minas</span></td>'
         + '<td style="border-top:0.0625rem solid #000;padding:0.375rem;width:33%;">' + escapeHtml(especialistaGestion || '') + '<br><span style="font-size:7pt;">Revisado por \u2014 Especialista en Gesti\u00f3n Econ\u00f3mica</span></td>'
         + '<td style="border-top:0.0625rem solid #000;padding:0.375rem;width:33%;">' + escapeHtml(jefeProyecto || '') + '<br><span style="font-size:7pt;">Aprobado por \u2014 Jefe de Proyecto</span></td>'
         + '</tr></table></body></html>';
@@ -18570,6 +18608,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
 
         let nombreRevisado = window.escapeHtml((typeof especialistaGestion !== 'undefined' ? especialistaGestion : '').toUpperCase());
         let nombreAprobado = window.escapeHtml((typeof jefeProyecto !== 'undefined' ? jefeProyecto : '').toUpperCase());
+        let nombreElaborado = window.escapeHtml((typeof especialistaNominas !== 'undefined' ? especialistaNominas : '').toUpperCase());
 
         const esBono = (tipoNomina === 'bono');
         const esAjuste = (tipoNomina === 'ajuste');
@@ -18840,7 +18879,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                     <td colspan="${esBono ? 3 : (esAjuste ? 5 : 7)}" rowspan="2" style="vertical-align:top; border:0.5pt solid #000; font-size:8.5pt; line-height:1.4;">
                         <b>REVISADO POR:</b> ${nombreRevisado}<br>
                         <b>APROBADO POR:</b> ${nombreAprobado}<br>
-                        <b>ELABORADO POR:</b> ___________________________<br>
+                        <b>ELABORADO POR:</b> ${nombreElaborado}<br>
                         <b>CONTABILIZADO POR:</b> _______________________
                     </td>
                 </tr>
@@ -18920,6 +18959,7 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
 
         let nombreRevisado = window.escapeHtml((typeof especialistaGestion !== 'undefined' ? especialistaGestion : '').toUpperCase());
         let nombreAprobado = window.escapeHtml((typeof jefeProyecto !== 'undefined' ? jefeProyecto : '').toUpperCase());
+        let nombreElaborado = window.escapeHtml((typeof especialistaNominas !== 'undefined' ? especialistaNominas : '').toUpperCase());
 
         const esBono = (tipoNomina === 'bono');
         const esAjuste = (tipoNomina === 'ajuste');
@@ -19282,7 +19322,7 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                                 stack: [
                                     { text: `REVISADO POR: ${nombreRevisado}`, fontSize: 6.5, bold: true },
                                     { text: `APROBADO POR: ${nombreAprobado}`, fontSize: 6.5, bold: true, margin: [0, 2, 0, 0] },
-                                    { text: 'ELABORADO POR: ___________________________', fontSize: 6.5, margin: [0, 2, 0, 0] },
+                                    { text: `ELABORADO POR: ${nombreElaborado}`, fontSize: 6.5, margin: [0, 2, 0, 0] },
                                     { text: 'CONTABILIZADO POR: _______________________', fontSize: 6.5, margin: [0, 2, 0, 0] }
                                 ],
                                 margin: [5, 1, 0, 0]
@@ -19418,6 +19458,7 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
 
         let nombreRevisado = escapeHtml((typeof especialistaGestion !== 'undefined' ? especialistaGestion : '').toUpperCase());
         let nombreAprobado = escapeHtml((typeof jefeProyecto !== 'undefined' ? jefeProyecto : '').toUpperCase());
+        let nombreElaborado = escapeHtml((typeof especialistaNominas !== 'undefined' ? especialistaNominas : '').toUpperCase());
         let codigoMostrado = (numeroNomina === 'S/N' || numeroNomina === 'Borrador' || !numeroNomina) ? '' : escapeHtml(numeroNomina);
 
         let cleanLogo = logoBase64 ? logoBase64.replace(/(\r\n|\n|\r)/gm, "") : "";
@@ -19814,7 +19855,7 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                             <td rowspan="4" style="border:0.5pt solid #000; padding:0.3125rem; font-size:7.5pt; vertical-align:top; line-height:1.3;">
                                 <b>REVISADO POR:</b> ${nombreRevisado}<br>
                                 <b>APROBADO POR:</b> ${nombreAprobado}<br>
-                                <b>ELABORADO POR:</b> ___________________<br>
+                                <b>ELABORADO POR:</b> ${nombreElaborado}<br>
                                 <b>CONTABILIZADO:</b> ___________________
                             </td>
                         </tr>
@@ -20119,7 +20160,7 @@ function generarContenidoTXT(trabajadores) {
         lines.push("-".repeat(50));
         lines.push("REVISADO POR:  " + (typeof especialistaGestion !== 'undefined' ? especialistaGestion.toUpperCase() : '___________________'));
         lines.push("APROBADO POR:  " + (typeof jefeProyecto !== 'undefined' ? jefeProyecto.toUpperCase() : '___________________'));
-        lines.push("ELABORADO POR: ___________________");
+        lines.push("ELABORADO POR:  " + (typeof especialistaNominas !== 'undefined' ? especialistaNominas.toUpperCase() : '___________________'));
         lines.push("CONTABILIZADO: ___________________");
         lines.push("==========================================================================");
     }
@@ -21964,7 +22005,7 @@ $(function() {
             + '<div class="info-line"><strong>NOMBRE DEL TRABAJADOR:</strong> ' + listadoEscapeHtml(trabajadorActual.nombre_completo) + '</div>'
             + '<table class="main-table">' + tablaHtml + '</table>'
             + '<div class="signature-section"><table class="signature-table"><tr>'
-            + '<td><p><b>Elaborado por:</b></p><div class="sig-line"></div><span class="sig-label">Especialista de Nóminas</span></td>'
+            + '<td><p><b>Elaborado por:</b></p><div class="sig-line"></div><span class="sig-name">' + listadoEscapeHtml(especialistaNominas || '') + '</span><span class="sig-label">Especialista de Nóminas</span></td>'
             + '<td><p><b>Revisado por:</b></p><div class="sig-line"></div><span class="sig-name">' + listadoEscapeHtml(especialistaGestion || '') + '</span><span class="sig-label">Especialista en Gestión Económica</span></td>'
             + '<td><p><b>Aprobado por:</b></p><div class="sig-line"></div><span class="sig-name">' + listadoEscapeHtml(jefeProyecto || '') + '</span><span class="sig-label">Director de Proyecto</span></td>'
             + '<td><p><b>Contabilizado por:</b></p><div class="sig-line"></div><span class="sig-label">Área Contable y Financiera</span></td>'
@@ -22041,7 +22082,7 @@ $(function() {
         var colspanFirmas = numCols;
         tabla += '<table border="0" cellspacing="0" cellpadding="4" style="width:100%;margin-top:3.4375rem;">'
             + '<tr>'
-            + '<td style="text-align:center;width:25%;"><b>Elaborado por:</b><br><br><br><br>_____________________________________<br><span style="font-size:8pt;color:#444;">Especialista de Nóminas</span></td>'
+            + '<td style="text-align:center;width:25%;"><b>Elaborado por:</b><br><br><br><br><b>' + listadoEscapeHtml((especialistaNominas || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Especialista de Nóminas</span></td>'
             + '<td style="text-align:center;width:25%;"><b>Revisado por:</b><br><br><br><br>_____________________________________<br><b>' + listadoEscapeHtml((especialistaGestion || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Especialista en Gestión Económica</span></td>'
             + '<td style="text-align:center;width:25%;"><b>Aprobado por:</b><br><br><br><br>_____________________________________<br><b>' + listadoEscapeHtml((jefeProyecto || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Director de Proyecto</span></td>'
             + '<td style="text-align:center;width:25%;"><b>Contabilizado por:</b><br><br><br><br>_____________________________________<br><span style="font-size:8pt;color:#444;">Área Contable y Financiera</span></td>'
@@ -22188,7 +22229,7 @@ $(function() {
 
         contenido += '<table border="0" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;margin-top:3.4375rem;">'
             + '<tr>'
-            + '<td style="text-align:center;width:25%;"><p><b>Elaborado por:</b></p><p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p><span style="font-size:8pt;color:#444;">Especialista de Nóminas</span></td>'
+            + '<td style="text-align:center;width:25%;"><p><b>Elaborado por:</b></p><p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p><b>' + listadoEscapeHtml((especialistaNominas || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Especialista de Nóminas</span></td>'
             + '<td style="text-align:center;width:25%;"><p><b>Revisado por:</b></p><p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p><b>' + listadoEscapeHtml((especialistaGestion || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Especialista en Gestión Económica</span></td>'
             + '<td style="text-align:center;width:25%;"><p><b>Aprobado por:</b></p><p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p><b>' + listadoEscapeHtml((jefeProyecto || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Director de Proyecto</span></td>'
             + '<td style="text-align:center;width:25%;"><p><b>Contabilizado por:</b></p><p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p><span style="font-size:8pt;color:#444;">Área Contable y Financiera</span></td>'
@@ -22337,7 +22378,7 @@ $(function() {
                             width: '*',
                             stack: [
                                 { text: 'Elaborado por:', bold: true, fontSize: 9 },
-                                { text: '', margin: [0, 30, 0, 0] },
+                                { text: (especialistaNominas || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 30, 0, 0] },
                                 { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] },
                                 { text: 'Especialista de Nóminas', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] }
                             ]

@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -88,6 +89,18 @@ try {
         $stmt->execute([$usuario, $hashed, $nombre, $apellidos, $no_ci, $email ?: null, $telefono_contacto ?: null, $direccion_particular ?: null, $rol_id, $activo]);
         
         $nuevo_id = $pdo->lastInsertId();
+
+        // ===== AUDITORÍA: creación de usuario =====
+        logAction(
+            'crear_usuario',
+            'usuarios',
+            'Creación de usuario',
+            ['usuario' => $usuario, 'user_id' => (int)$nuevo_id, 'rol_id' => $rol_id, 'activo' => (bool)$activo],
+            null,
+            'success',
+            null,
+            $_SESSION['auth_provider'] ?? 'local'
+        );
         
         // Guardar foto si se recortó una
         $foto_ruta = null;
@@ -201,6 +214,18 @@ try {
             $_SESSION['rol_descripcion'] = $rol_info['descripcion'];
             $_SESSION['usuario_rol'] = $rol_info['codigo'];
         }
+
+        // ===== AUDITORÍA: edición de usuario =====
+        logAction(
+            'editar_usuario',
+            'usuarios',
+            'Edición de usuario',
+            ['usuario' => $usuario, 'user_id' => (int)$id, 'rol_id' => $rol_id, 'activo' => (bool)$activo, 'cambio_password' => !empty($password)],
+            (int)$id,
+            'success',
+            null,
+            $_SESSION['auth_provider'] ?? 'local'
+        );
         
         
         echo json_encode(['success' => true, 'message' => 'Usuario actualizado correctamente']);

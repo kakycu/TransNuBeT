@@ -24,6 +24,45 @@ $is_google_auth = (isset($_SESSION['auth_provider']) && $_SESSION['auth_provider
 $puede_restaurar = in_array(strtolower(trim($user_rol_codigo)), ['admin', 'soft', 'editor'], true);
 
 // ==========================================
+// ÚLTIMO ACCESO DEL USUARIO (para el menú de usuario)
+// ==========================================
+if (!function_exists('obtenerUltimoAcceso')) {
+    function obtenerUltimoAcceso($usuario_id = 0) {
+        if (empty($usuario_id)) {
+            return 'No disponible';
+        }
+        if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
+            return 'No disponible';
+        }
+        try {
+            $pdo = $GLOBALS['pdo'];
+            $stmt = $pdo->prepare("SELECT created_at FROM audit_logs WHERE user_id = ? AND action_type IN ('iniciar_sesion', 'iniciar_sesion_google') AND status = 'success' ORDER BY created_at DESC, id DESC LIMIT 1 OFFSET 1");
+            $stmt->execute([$usuario_id]);
+            $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$fila || empty($fila['created_at'])) {
+                return 'Primer acceso';
+            }
+            $fecha = new DateTime($fila['created_at']);
+            $ahora = new DateTime();
+            $diffMin = (int)(($ahora->getTimestamp() - $fecha->getTimestamp()) / 60);
+            if ($diffMin < 1) {
+                $tiempo = 'Hace un momento';
+            } elseif ($diffMin < 60) {
+                $tiempo = 'Hace ' . $diffMin . ' minuto(s)';
+            } elseif ($diffMin < 1440) {
+                $tiempo = 'Hace ' . floor($diffMin / 60) . ' hora(s)';
+            } else {
+                $tiempo = 'Hace ' . floor($diffMin / 1440) . ' día(s)';
+            }
+            $fecha_texto = $fecha->format('d/m/Y') . '-' . $fecha->format('h:i:s A');
+            return $fecha_texto . ' (' . $tiempo . ')';
+        } catch (PDOException $e) {
+            return 'No disponible';
+        }
+    }
+}
+
+// ==========================================
 // OBTENER EL TIPO DE USUARIO REAL DESDE LA BD
 // (no depender solo de la sesión, que puede estar desactualizada)
 // ==========================================
@@ -305,6 +344,38 @@ if (count($nombre_parts_menu) >= 2) {
 
 .dropdown-menu-win .dropdown-item-text small {
     color: var(--accent) !important;
+}
+
+.dropdown-menu-win .dropdown-footer {
+    background: rgba(var(--accent-rgb), 0.13) !important;
+    border: 0.0625rem solid rgba(var(--accent-rgb), 0.25) !important;
+    border-radius: 0.625rem !important;
+    margin: 0.125rem 0.25rem !important;
+}
+
+html[data-theme="light"] .dropdown-menu-win .dropdown-footer {
+    background: rgba(var(--accent-rgb), 0.16) !important;
+    border-color: rgba(var(--accent-rgb), 0.32) !important;
+}
+
+html[data-theme="orgullo"] .dropdown-menu-win .dropdown-footer {
+    background: rgba(var(--accent-rgb), 0.2) !important;
+    border-color: rgba(var(--accent-rgb), 0.38) !important;
+}
+
+.dropdown-menu-win .dropdown-footer small {
+    color: var(--muted) !important;
+    white-space: nowrap;
+}
+
+.dropdown-menu-win .dropdown-footer small span.ultimo-acceso-valor {
+    color: var(--accent) !important;
+    letter-spacing: 0.01rem;
+}
+
+html[data-theme="light"] .dropdown-menu-win .dropdown-footer small span.ultimo-acceso-valor,
+html[data-theme="orgullo"] .dropdown-menu-win .dropdown-footer small span.ultimo-acceso-valor {
+    color: var(--accent-dark) !important;
 }
 
 .dropdown-menu-win .badge {
@@ -1596,7 +1667,70 @@ html[data-theme="light"] {
 [data-theme="light"] [style*="#86efac"],
 [data-theme="light"] [style*="#6ee7b7"] { color: #047857 !important; }
 [data-theme="light"] [style*="#fbbf24"],
-[data-theme="light"] [style*="#fcd34d"] { color: #b45309 !important; }
+[data-theme="light"] [style*="#fcd34d"],
+[data-theme="orgullo"] [style*="#fbbf24"],
+[data-theme="orgullo"] [style*="#fcd34d"] { color: #b45309 !important; }
+/* ===== Textos ámbar/amarillos inline restantes: oscurecer en temas claros ===== */
+[data-theme="light"] [style*="color:#f59e0b"],
+[data-theme="light"] [style*="color: #f59e0b"],
+[data-theme="light"] [style*="color:#d97706"],
+[data-theme="light"] [style*="color: #d97706"],
+[data-theme="light"] [style*="color:#eab308"],
+[data-theme="light"] [style*="color: #eab308"],
+[data-theme="light"] [style*="color:#fde047"],
+[data-theme="light"] [style*="color: #fde047"],
+[data-theme="light"] [style*="color:#facc15"],
+[data-theme="light"] [style*="color: #facc15"],
+[data-theme="light"] [style*="color:#fb923c"],
+[data-theme="light"] [style*="color: #fb923c"],
+[data-theme="light"] [style*="color:#fdba74"],
+[data-theme="light"] [style*="color: #fdba74"],
+[data-theme="light"] [style*="color:#ffc107"],
+[data-theme="light"] [style*="color: #ffc107"],
+[data-theme="light"] [style*="color:#ffca28"],
+[data-theme="light"] [style*="color: #ffca28"],
+[data-theme="light"] [style*="color:#ffb300"],
+[data-theme="light"] [style*="color: #ffb300"],
+[data-theme="light"] [style*="color:#ffd54f"],
+[data-theme="light"] [style*="color: #ffd54f"],
+[data-theme="light"] [style*="color:#ffd166"],
+[data-theme="light"] [style*="color: #ffd166"],
+[data-theme="light"] [style*="color:#ff9800"],
+[data-theme="light"] [style*="color: #ff9800"],
+[data-theme="light"] [style*="color:#f57c00"],
+[data-theme="light"] [style*="color: #f57c00"],
+[data-theme="orgullo"] [style*="color:#f59e0b"],
+[data-theme="orgullo"] [style*="color: #f59e0b"],
+[data-theme="orgullo"] [style*="color:#d97706"],
+[data-theme="orgullo"] [style*="color: #d97706"],
+[data-theme="orgullo"] [style*="color:#eab308"],
+[data-theme="orgullo"] [style*="color: #eab308"],
+[data-theme="orgullo"] [style*="color:#fde047"],
+[data-theme="orgullo"] [style*="color: #fde047"],
+[data-theme="orgullo"] [style*="color:#facc15"],
+[data-theme="orgullo"] [style*="color: #facc15"],
+[data-theme="orgullo"] [style*="color:#fb923c"],
+[data-theme="orgullo"] [style*="color: #fb923c"],
+[data-theme="orgullo"] [style*="color:#fdba74"],
+[data-theme="orgullo"] [style*="color: #fdba74"],
+[data-theme="orgullo"] [style*="color:#ffc107"],
+[data-theme="orgullo"] [style*="color: #ffc107"],
+[data-theme="orgullo"] [style*="color:#ffca28"],
+[data-theme="orgullo"] [style*="color: #ffca28"],
+[data-theme="orgullo"] [style*="color:#ffb300"],
+[data-theme="orgullo"] [style*="color: #ffb300"],
+[data-theme="orgullo"] [style*="color:#ffd54f"],
+[data-theme="orgullo"] [style*="color: #ffd54f"],
+[data-theme="orgullo"] [style*="color:#ffd166"],
+[data-theme="orgullo"] [style*="color: #ffd166"],
+[data-theme="orgullo"] [style*="color:#ff9800"],
+[data-theme="orgullo"] [style*="color: #ff9800"],
+[data-theme="orgullo"] [style*="color:#f57c00"],
+[data-theme="orgullo"] [style*="color: #f57c00"],
+[data-theme="light"] .text-warning,
+[data-theme="light"] .text-amber,
+[data-theme="orgullo"] .text-warning,
+[data-theme="orgullo"] .text-amber { color: #b45309 !important; }
 [data-theme="light"] [style*="#fca5a5"] { color: #b91c1c !important; }
 [data-theme="light"] [style*="var(--accent)"] { color: #5b21b6 !important; }
 [data-theme="light"] [style*="color:#e2e8f0"][style*="rgba(52,211,153"] { color: #047857 !important; border-color: rgba(4,120,87,0.35) !important; }
@@ -3256,8 +3390,8 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 				 referrerpolicy="no-referrer" 
                  class="user-avatar-img" 
                  style="display: none;"
-                 onload="this.style.display='block'; this.parentElement.querySelector('.user-avatar-iniciales').style.display='none';"
-                 onerror="this.style.display='none'; this.parentElement.querySelector('.user-avatar-iniciales').style.display='flex';">
+                 onload="this.style.display='block'; var s=this.parentElement&&this.parentElement.querySelector('.user-avatar-iniciales'); if(s){s.style.display='none';}"
+                 onerror="this.style.display='none'; var s=this.parentElement&&this.parentElement.querySelector('.user-avatar-iniciales'); if(s){s.style.display='flex';}">
             <span class="user-avatar-iniciales" style="display: flex;"><?php echo htmlspecialchars($user_iniciales_menu); ?></span>
         </div>
         <ul class="dropdown-menu dropdown-menu-win dropdown-menu-end">
@@ -3283,6 +3417,12 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
             </li>
             <li><hr class="dropdown-divider"></li>
 			<li><a class="dropdown-item" href="<?php echo $base_prefix; ?>modules/users.php?id=<?php echo $user_id; ?>"><i class="fas fa-user me-2"></i> Mi Perfil</a></li>
+			<li><a class="dropdown-item" id="bloquearSesionMenuBtn"
+			   href="<?php echo $base_prefix; ?>bloquear_sesion.php">
+				<i class="fas fa-user-lock me-2" style="color:#f59e0b;"></i>
+				<span style="color:#f59e0b; font-weight:600;">Bloquear Sesión</span>
+				<kbd style="margin-left:auto; font-size:0.65rem; background:rgba(255,255,255,0.08); border:0.0625rem solid rgba(255,255,255,0.15); padding:0.125rem 0.375rem; border-radius:0.25rem; color:#94a3b8; margin-top:0.125rem;">Ctrl+Alt+W</kbd>
+			</a></li>
     <li><a class="dropdown-item <?= $is_google_auth ? 'disabled text-muted fst-italic' : '' ?>"
        href="<?= $is_google_auth ? '#' : $base_prefix . 'modules/users.php?id=' . $user_id . '&cambiar_pass=1' ?>"
        <?= $is_google_auth ? 'tabindex="-1" aria-disabled="true"' : '' ?>>
@@ -3470,11 +3610,22 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 </li>
 
 <li><hr class="dropdown-divider"></li>
-<li><a class="dropdown-item" href="#" id="salvaRestauraBtn"><i class="fas fa-database me-2" style="color: #fbbf24;"></i> Salva / Restaura</a></li>
+<li><a class="dropdown-item" href="#" id="salvaRestauraBtn"><i class="fas fa-database me-2" style="color: #fbbf24;"></i> Salva / Restaura<kbd style="margin-left:auto; font-size:0.65rem; background:rgba(255,255,255,0.08); border:0.0625rem solid rgba(255,255,255,0.15); padding:0.125rem 0.375rem; border-radius:0.25rem; color:#94a3b8; margin-top:0.125rem;">Ctrl+Alt+S</kbd></a></li>
 <li><hr class="dropdown-divider"></li>
 <!-- NUEVO: Sobre el autor con enlace fijo ../explorer.html -->
 <li><a class="dropdown-item" href="../../explorer.html"><i class="fas fa-info-circle me-2"></i> Sobre el autor</a></li>
-<li><a class="dropdown-item text-danger" href="#" id="logoutUserMenuBtn"><i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión</a></li>
+<li><a class="dropdown-item text-danger" href="#" id="logoutUserMenuBtn"><i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión<kbd style="margin-left:auto; font-size:0.65rem; background:rgba(255,255,255,0.08); border:0.0625rem solid rgba(255,255,255,0.15); padding:0.125rem 0.375rem; border-radius:0.25rem; color:#94a3b8; margin-top:0.125rem;">Ctrl+X</kbd></a></li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <?php $ultimo_acceso_texto = obtenerUltimoAcceso($user_id ?: 0); ?>
+            <li class="dropdown-footer px-3 py-2 mt-1">
+                <small class="d-block" style="font-size: 11px;">
+                    <i class="fas fa-shield-alt me-1"></i> Sesión segura &nbsp;-&nbsp;
+                    <i class="fas fa-clock me-1"></i>Último acceso:
+                </small>
+                <small class="fw-bold d-block" style="font-size: 12px; text-align: center;">
+                    <span class="ultimo-acceso-valor"><?php echo $ultimo_acceso_texto; ?></span>
+                </small>
+            </li>
         </ul>
     </div>
 </div>
@@ -3529,6 +3680,7 @@ var PUEDE_RESTAURAR = <?php echo $puede_restaurar ? 'true' : 'false'; ?>;
 var AJAX_PREFIX = '<?php echo $base_prefix; ?>';
 var AJAX_BACKUP_URL = '<?php echo $base_prefix; ?>ajax/backup_db.php';
 var AJAX_RESTORE_URL = '<?php echo $base_prefix; ?>ajax/restore_db.php';
+var AJAX_RESTORE_LOG_URL = '<?php echo $base_prefix; ?>ajax/restore_log.php';
 
 var PERMISOS_NOMBRES_MODULOS = {
     'dashboard': 'Panel de control', 'empleados': 'Empleados', 'nominas': 'Nóminas',
@@ -4302,10 +4454,17 @@ function accionRestaurar() {
     });
 }
 
-function realizarRestaurarFetch(file) {
+async function realizarRestaurarFetch(file) {
     var formData = new FormData();
     formData.append('backup_file', file);
     var progressUrl = AJAX_RESTORE_URL.replace('restore_db.php', 'restore_progress.php');
+
+    // Reiniciar el progreso para que el modal arranque siempre desde cero
+    // y no muestre el estado de la restauración anterior.
+    try {
+        await fetch(progressUrl + '?reset=1', { cache: 'no-store' });
+    } catch (e) { /* continuar igualmente */ }
+
     Swal.fire({
         title: 'Restaurando...',
         html: '<style>.restore-spinner{width:2.375rem;height:2.375rem;margin:0 auto;border:0.25rem solid #334155;border-top-color:#14b8a6;border-radius:50%;animation:restore-spin .8s linear infinite;}@keyframes restore-spin{to{transform:rotate(360deg);}}</style>' +
@@ -4347,16 +4506,21 @@ function realizarRestaurarFetch(file) {
         if (data.success) {
             Swal.fire({
                 title: 'Restauración Completada',
-                html: `<pre style="background:#2d2d3a; padding:0.75rem; border-radius:0.5rem;">${data.message}</pre>`,
+                html: `<pre style="background:#2d2d3a; color:#e2e8f0 !important; padding:0.75rem; border-radius:0.5rem; white-space:pre-wrap; word-break:break-word;">${data.message}</pre>`,
                 icon: 'success',
+                showDenyButton: true,
                 confirmButtonText: '<i class="fas fa-check me-2"></i> Recargar',
+                denyButtonText: '<i class="fas fa-file-lines me-2"></i> Ver log',
                 background: '#1a1a2e',
                 color: '#fff'
-            }).then(() => location.reload());
+            }).then(function (result) {
+                if (result.isDenied) { verLogRestauracion(); }
+                else { location.reload(); }
+            });
         } else {
             Swal.fire({
                 title: 'Error',
-                html: `<pre style="background:#2d2d3a; padding:0.75rem; border-radius:0.5rem; color:#fca5a5;">${data.message}</pre>`,
+                html: `<pre style="background:#2d2d3a; padding:0.75rem; border-radius:0.5rem; color:#fca5a5 !important; white-space:pre-wrap; word-break:break-word;">${data.message}</pre>`,
                 icon: 'error',
                 background: '#1a1a2e',
                 color: '#fff'
@@ -4375,10 +4539,81 @@ function realizarRestaurarFetch(file) {
     });
 }
 
+// Escapa HTML para inyectar texto de forma segura dentro de un <pre> de SweetAlert
+function escaparHTML(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+}
+
+// Abre una ventana de impresión con el texto indicado
+function imprimirTexto(titulo, texto) {
+    var win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) {
+        Swal.fire({ title: 'Impresión bloqueada', text: 'Permita las ventanas emergentes para imprimir el log.', icon: 'warning', background: '#1a1a2e', color: '#fff' });
+        return;
+    }
+    win.document.write(
+        '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>' + escaparHTML(titulo) + '</title>' +
+        '<style>' +
+        'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;}' +
+        'h1{font-size:1rem;margin:0 0 0.75rem;}' +
+        'pre{font-family:Consolas,"Courier New",monospace;font-size:0.75rem;line-height:1.35;white-space:pre-wrap;word-break:break-word;border:1px solid #ccc;border-radius:6px;padding:12px;}' +
+        '</style></head><body>' +
+        '<h1>' + escaparHTML(titulo) + '</h1>' +
+        '<pre>' + escaparHTML(texto) + '</pre>' +
+        '</body></html>'
+    );
+    win.document.close();
+    win.focus();
+    win.print();
+}
+
+// Muestra el log de restauraciones (logs/restore_log.json) en un modal
+function verLogRestauracion() {
+    fetch(AJAX_RESTORE_LOG_URL + '?t=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (resp) {
+            if (!resp.success) { throw new Error(resp.message || 'No se pudo leer el log'); }
+            var logs = Array.isArray(resp.logs) ? resp.logs : [];
+            var entrada = logs.length ? logs[0] : null;
+            var texto = entrada ? JSON.stringify(entrada, null, 2) : 'No hay registros de restauración.';
+            Swal.fire({
+                title: 'Log de restauración',
+                html: '<pre style="text-align:left; max-height:55vh; overflow:auto; background:#2d2d3a; color:#e2e8f0 !important; padding:0.75rem; border-radius:0.5rem; font-size:0.8rem; white-space:pre-wrap; word-break:break-word;">' + escaparHTML(texto) + '</pre>',
+                icon: 'info',
+                width: '52rem',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: '<i class="fas fa-check me-2"></i> Recargar',
+                denyButtonText: '<i class="fas fa-print me-2"></i> Imprimir',
+                cancelButtonText: '<i class="fas fa-times me-2"></i> Cerrar',
+                preDeny: function () { imprimirTexto('Log de restauración', texto); return false; },
+                background: '#1a1a2e',
+                color: '#fff'
+            }).then(function (res) {
+                if (res.isConfirmed) { location.reload(); }
+            });
+        })
+        .catch(function (err) {
+            Swal.fire({ title: 'Error', text: err.message || 'No se pudo leer el log', icon: 'error', background: '#1a1a2e', color: '#fff' });
+        });
+}
+
 // Abrir el modal desde el menú del usuario
 document.getElementById('salvaRestauraBtn')?.addEventListener('click', function (e) {
     e.preventDefault();
     mostrarModalSalvaRestaura();
+});
+
+// Atajo de teclado: CTRL + ALT + S para abrir Salva / Restaura desde cualquier página
+document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && e.altKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        e.stopPropagation();
+        mostrarModalSalvaRestaura();
+        return false;
+    }
 });
 
 // Reloj
@@ -4398,32 +4633,92 @@ if (document.getElementById('liveClockMenu')) {
 }
 
 // Logout
+function solicitarCerrarSesion() {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '<i class="fas fa-sign-out-alt" style="color: #ef4444"></i> Cerrar sesión',
+            text: '¿Está seguro que desea salir del sistema?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#D13438',
+            cancelButtonColor: '#2D2D2D',
+            confirmButtonText: '<i class="fas fa-sign-out-alt me-2"></i>Sí, salir',
+            cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
+            background: '#1F1F1F',
+            color: '#FFFFFF'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '<?php echo $base_prefix; ?>logout.php';
+            }
+        });
+    } else {
+        window.location.href = '<?php echo $base_prefix; ?>logout.php';
+    }
+}
+
 const logoutUserMenuBtn = document.getElementById('logoutUserMenuBtn');
 if (logoutUserMenuBtn) {
     logoutUserMenuBtn.addEventListener('click', function(e) {
         e.preventDefault();
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: '<i class="fas fa-sign-out-alt" style="color: #ef4444"></i> Cerrar sesión',
-                text: '¿Está seguro que desea salir del sistema?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#D13438',
-                cancelButtonColor: '#2D2D2D',
-                confirmButtonText: '<i class="fas fa-sign-out-alt me-2"></i>Sí, salir',
-                cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
-                background: '#1F1F1F',
-                color: '#FFFFFF'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = '<?php echo $base_prefix; ?>logout.php';
-                }
-            });
-        } else {
-            window.location.href = '<?php echo $base_prefix; ?>logout.php';
-        }
+        solicitarCerrarSesion();
     });
 }
+
+// Atajo de teclado: CTRL + ALT + X (y CTRL + X fuera de campos de texto) para cerrar sesión
+document.addEventListener('keydown', function (e) {
+    const esEditable = (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement || e.target.isContentEditable);
+    const comboSeguro = e.ctrlKey && e.altKey && (e.key === 'X' || e.key === 'x');
+    const soloCtrlFuera = e.ctrlKey && !e.altKey && !e.shiftKey && !esEditable && (e.key === 'X' || e.key === 'x');
+    if (comboSeguro || soloCtrlFuera) {
+        e.preventDefault();
+        e.stopPropagation();
+        solicitarCerrarSesion();
+        return false;
+    }
+});
+
+// Bloquear sesión
+function solicitarBloqueoSesion() {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '<i class="fas fa-lock" style="color: #3b82f6"></i> Bloquear sesión',
+            html: 'La sesión quedará bloqueada hasta que ingreses tu contraseña. <b>Solo tú podrás desbloquearla.</b><br><br><span style="font-size:0.8rem; opacity:0.8;"><i class="fas fa-keyboard me-1"></i>Atajo: <b>Ctrl + Alt + W</b></span>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#2D2D2D',
+            confirmButtonText: '<i class="fas fa-user-lock me-2"></i>Bloquear ahora',
+            cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
+            background: '#1F1F1F',
+            color: '#FFFFFF',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '<?php echo $base_prefix; ?>bloquear_sesion.php';
+            }
+        });
+    } else {
+        window.location.href = '<?php echo $base_prefix; ?>bloquear_sesion.php';
+    }
+}
+
+const bloquearSesionMenuBtn = document.getElementById('bloquearSesionMenuBtn');
+if (bloquearSesionMenuBtn) {
+    bloquearSesionMenuBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        solicitarBloqueoSesion();
+    });
+}
+
+// Atajo de teclado: CTRL + ALT + W para bloquear la sesión desde cualquier página
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.altKey && (e.key === 'W' || e.key === 'w')) {
+        e.preventDefault();
+        e.stopPropagation();
+        solicitarBloqueoSesion();
+        return false;
+    }
+});
 
 </script>
 

@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 
 // Incluir configuración de base de datos
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 require_once '../includes/funciones.php';
 
 // Verificar sesión
@@ -493,6 +494,7 @@ if (isset($_POST['accion']) && in_array($_POST['accion'], ['plantilla_dbf', 'pla
     }
 
     if ($archivoSalida) {
+        logAction('exportar_nomina_acreditativa', 'exportar_bandec', 'Exportación de nómina a entidad bancaria (plantilla)', ['tipo_plantilla' => $accionPlantilla, 'archivo' => basename($archivoSalida)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         echo json_encode([
             'success' => true,
             'archivo' => basename($archivoSalida),

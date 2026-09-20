@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../config/mail.php';
+require_once __DIR__ . '/../logger.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -46,6 +47,18 @@ try {
     // Guardar nueva contraseña y limpiar tokens previos
     $stmt = $pdo->prepare("UPDATE clasif_usuarios SET password = ?, reset_token = NULL, reset_expira = NULL, fecha_actualizacion = NOW() WHERE id = ?");
     $stmt->execute([$hashed, $id]);
+
+    // ===== AUDITORÍA: reset de contraseña de un usuario =====
+    logAction(
+        'resetear_password_usuario',
+        'usuarios',
+        'Reset de contraseña de un usuario',
+        ['user_id' => (int)$id, 'usuario' => $usr['usuario']],
+        (int)$id,
+        'success',
+        null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
 
     $nombre_completo = trim(($usr['nombre'] ?? '') . ' ' . ($usr['apellidos'] ?? ''));
 

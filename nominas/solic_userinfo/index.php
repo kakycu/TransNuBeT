@@ -1178,6 +1178,7 @@ html, body { overflow-x: hidden; }
             'nitEmpresa' => NIT,
             'jefeProyecto' => JEFE_PROYECTO,
             'especialistaGestion' => ESPECIALISTA,
+            'especialistaNominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : '',
             'usuarioNombre' => 'Consulta Pública',
             'logoBase64' => $inicial_logo_b64,
         ], JSON_UNESCAPED_UNICODE);
@@ -1190,6 +1191,7 @@ html, body { overflow-x: hidden; }
     var nitEmpresa = INICIAL.nitEmpresa || '';
     var jefeProyecto = INICIAL.jefeProyecto || '';
     var especialistaGestion = INICIAL.especialistaGestion || '';
+    var especialistaNominas = INICIAL.especialistaNominas || '';
     var usuarioNombre = INICIAL.usuarioNombre || '';
     var logoBase64 = INICIAL.logoBase64 || '';
     var trabajadoresTodos = INICIAL.trabajadores || [];
@@ -1573,7 +1575,7 @@ html, body { overflow-x: hidden; }
 
     function firmasHtml(estiloLinea) {
         return '<table style="width:100%;border:none;border-collapse:collapse;margin-top:3.4375rem;"><tr>'
-            + '<td style="width:25%;text-align:center;"><p><b>Elaborado por:</b></p>' + estiloLinea + '<span style="font-size:8pt;color:#444;">Especialista de Nóminas</span></td>'
+            + '<td style="width:25%;text-align:center;"><p><b>Elaborado por:</b></p>' + estiloLinea + '<b>' + listadoEscapeHtml((especialistaNominas || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Especialista de Nóminas</span></td>'
             + '<td style="width:25%;text-align:center;"><p><b>Revisado por:</b></p>' + estiloLinea + '<b>' + listadoEscapeHtml((especialistaGestion || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Especialista en Gestión Económica</span></td>'
             + '<td style="width:25%;text-align:center;"><p><b>Aprobado por:</b></p>' + estiloLinea + '<b>' + listadoEscapeHtml((jefeProyecto || '').toUpperCase()) + '</b><br><span style="font-size:8pt;color:#444;">Director de Proyecto</span></td>'
             + '<td style="width:25%;text-align:center;"><p><b>Contabilizado por:</b></p>' + estiloLinea + '<span style="font-size:8pt;color:#444;">Área Contable y Financiera</span></td>'
@@ -1957,7 +1959,7 @@ html, body { overflow-x: hidden; }
                 { text: '', margin: [0, 22, 0, 0] },
                 {
                     columns: [
-                        { width: '*', stack: [ { text: 'Elaborado por:', bold: true, fontSize: 9 }, { text: '', margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Especialista de Nóminas', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] },
+                        { width: '*', stack: [ { text: 'Elaborado por:', bold: true, fontSize: 9 }, { text: (especialistaNominas || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Especialista de Nóminas', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] },
                         { width: '*', stack: [ { text: 'Revisado por:', bold: true, fontSize: 9 }, { text: (especialistaGestion || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Especialista en Gestión Económica', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] },
                         { width: '*', stack: [ { text: 'Aprobado por:', bold: true, fontSize: 9 }, { text: (jefeProyecto || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Director de Proyecto', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] },
                         { width: '*', stack: [ { text: 'Contabilizado por:', bold: true, fontSize: 9 }, { text: '', margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Área Contable y Financiera', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] }

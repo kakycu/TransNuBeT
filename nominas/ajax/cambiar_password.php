@@ -2,6 +2,7 @@
 // ajax/cambiar_password.php - Cambio de contraseña del usuario autenticado
 require_once '../config/database.php';
 require_once '../config/mail.php';
+require_once __DIR__ . '/../logger.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -45,6 +46,18 @@ if (!$hash_actual || !password_verify($password_actual, $hash_actual)) {
 $hashed = password_hash($password_nueva, PASSWORD_DEFAULT);
 $stmt = $pdo->prepare("UPDATE clasif_usuarios SET password = ?, fecha_actualizacion = NOW() WHERE id = ?");
 $stmt->execute([$hashed, $id_actual]);
+
+// ===== AUDITORÍA: cambio de contraseña propia =====
+logAction(
+    'cambiar_password',
+    'usuarios',
+    'Cambio de contraseña del usuario autenticado',
+    ['user_id' => (int)$id_actual],
+    (int)$id_actual,
+    'success',
+    null,
+    $_SESSION['auth_provider'] ?? 'local'
+);
 
 // Notificar por correo si el usuario tiene email configurado
 $correo = notificarPasswordCambiada($pdo, $id_actual);

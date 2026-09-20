@@ -30,6 +30,7 @@ header('Content-Type: application/json');
 
 // Configuración de la base de datos (desde database.php)
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 // Directorio de backups
 $backup_dir = '../backups/';
 
@@ -383,6 +384,18 @@ try {
     // ============================================
     
     $zip_filesize = filesize($zip_filepath);
+
+    // ===== AUDITORÍA: backup de la base de datos =====
+    logAction(
+        'crear_backup_base_datos',
+        'sistema',
+        'Se creó un backup de la base de datos',
+        ['nombre_backup' => basename($zip_filepath), 'tamano' => $zip_filesize],
+        null,
+        'success',
+        null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
     
     if ($zip_filesize >= 1073741824) {
         $size_formatted = number_format($zip_filesize / 1073741824, 2) . ' GB';

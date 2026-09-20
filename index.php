@@ -1149,7 +1149,7 @@ function getBadge($codigo, $server_ok, $estados) {
         <div class="subsystem-card <?php echo !$server_ok ? 'disabled' : ''; ?> animate__animated animate__fadeInUp animate__delay-1s" 
              data-module="facturacion" 
              data-name="Facturación" 
-             data-url="/facturacion/login.php" 
+             data-url="/facturacion/index.php" 
              data-activo="<?php echo isset($sub_estados['0002']) ? $sub_estados['0002'] : 0; ?>">
             <div class="card-image-container">
                 <img src="images/facturacion.png" alt="Facturación"

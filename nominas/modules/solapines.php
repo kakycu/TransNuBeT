@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -392,6 +393,8 @@ if (isset($_GET['exportar_todos'])) {
 
     $zip->close();
 
+    logAction('generar_solapines', 'solapines', 'Exportación masiva de solapines (ZIP)', ['total' => count($trabajadores)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+
     // Enviar las cabeceras correspondientes para descargar el archivo ZIP
     header('Content-Type: application/zip');
     header('Content-Disposition: attachment; filename="Solapines_Personal_Activo_' . date('Ymd') . '.zip"');
@@ -467,6 +470,7 @@ if ($resultado) {
     } else {
         header('Content-Disposition: inline; filename="' . $nombre_archivo . '"');
     }
+    logAction('generar_solapin', 'solapines', 'Generación de solapín individual', ['trabajador_id' => $empleado_id], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     echo $resultado;
 } else {
     http_response_code(500);

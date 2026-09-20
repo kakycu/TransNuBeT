@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 require_once '../includes/funciones.php';
 
 // Iniciar sesión
@@ -456,6 +457,7 @@ if ($formato === 'dbf') {
 // RESPUESTA FINAL
 // ========================
 if ($success) {
+    logAction('exportar_cumpleanos', 'exportar_cumpleanos', 'Exportación de listado de cumpleaños', ['tipo' => $tipo, 'formato' => $formato, 'registros' => count($cumpleaneros)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     echo json_encode([
         'success' => true,
         'archivo' => basename($archivoSalida),

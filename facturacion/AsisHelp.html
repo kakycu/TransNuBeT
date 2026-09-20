@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SISFACT Chatbot - Ayuda Completa</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
+    
+    <!-- Estilos del Chatbot -->
+    <link rel="stylesheet" href="css/chatbot.css">
+    
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            padding-top: 0;
+            padding-bottom: 100px;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e2e; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #4a4a6a; border-radius: 10px; }
+        
+        .header {
+            text-align: center;
+            padding: 2rem 1rem;
+            background: linear-gradient(135deg, rgba(102,126,234,0.3) 0%, rgba(118,75,162,0.3) 100%);
+            border-radius: 0 0 30px 30px;
+            margin-bottom: 1rem;
+        }
+        
+        .quick-actions-wrapper {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 100%);
+            padding: 10px 0;
+            border-bottom: 1px solid #2d2d3d;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .quick-actions {
+            background: #1a1a2a;
+            border-radius: 60px;
+            padding: 8px;
+            border: 1px solid #2d2d3d;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+        .quick-btn {
+            background: #252540;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 50px;
+            color: #e0e0ff;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        .quick-btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .quick-btn-primary:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        
+/* Arreglar color del input y botón de limpiar */
+.search-box input {
+    background: transparent !important;
+    border: none !important;
+    color: #fff !important;
+    padding: 12px 20px !important;
+}
+
+.search-box input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.search-box input::placeholder {
+    color: #6c6c8a !important;
+}
+
+#clearSearchBtn {
+    background: transparent !important;
+    border: none !important;
+    color: #a0a0c0 !important;
+    padding: 0 15px !important;
+    cursor: pointer !important;
+    transition: color 0.2s !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#clearSearchBtn:hover {
+    color: #f44336 !important;
+}
+
+.search-box {
+    background: #1e1e2e !important;
+    border-radius: 50px !important;
+    padding: 5px !important;
+    border: 1px solid #2d2d3d !important;
+    transition: all 0.3s !important;
+    margin-bottom: 1.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.search-box:focus-within {
+    border-color: #667eea !important;
+    box-shadow: 0 0 0 2px rgba(102,126,234,0.25) !important;
+}
+        
+        .stat-card {
+            background: #1e1e2e;
+            border: 1px solid #2d2d3d;
+            border-radius: 16px;
+            padding: 1rem;
+            text-align: center;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: #667eea;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .stat-label { color: #a0a0c0; font-size: 0.85rem; }
+        
+        .category-card {
+            background: #1a1a2a;
+            border: 1px solid #2d2d3d;
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .category-header {
+            background: linear-gradient(135deg, #1e1e2e 0%, #252540 100%);
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #2d2d3d;
+        }
+        .category-header:hover { background: #252540; }
+        .category-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #c4c4e0;
+        }
+        .category-header i { transition: transform 0.3s; color: #667eea; }
+        .category-header.collapsed i { transform: rotate(-90deg); }
+        .category-content { display: block; padding: 1rem; }
+        .category-content.collapsed { display: none; }
+        
+        .func-card {
+            background: #14141f;
+            border: 1px solid #252535;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+        .func-card:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+        .func-name {
+            font-weight: 700;
+            color: #e0e0ff;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .func-name code {
+            background: #0d0d15;
+            color: #a5d6ff;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+        .func-desc { color: #a0a0c0; font-size: 0.85rem; margin-bottom: 0.75rem; }
+        .func-example {
+            background: #0d0d15;
+            color: #7e7eb5;
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            margin: 0.5rem 0;
+        }
+        .badge-cmd {
+            background: #252540;
+            color: #b8b8e0;
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin: 2px;
+            display: inline-block;
+        }
+        .btn-test {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+        .btn-test:hover {
+            transform: scale(1.02);
+            filter: brightness(1.1);
+            color: white;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #6c6c8a;
+            border-top: 1px solid #2d2d3d;
+            margin-top: 2rem;
+        }
+        
+        .toast-custom {
+            position: fixed;
+            bottom: 120px;
+            right: 20px;
+            background: #1e1e2e;
+            border-left: 4px solid #28a745;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 12px;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width: 768px) {
+            .func-name { flex-direction: column; align-items: flex-start; }
+            body { padding-bottom: 120px; }
+            .stat-number { font-size: 1.5rem; }
+            .quick-actions { border-radius: 20px; }
+            .quick-btn { padding: 6px 12px; font-size: 0.7rem; }
+            .toast-custom { bottom: 160px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- QUICK ACTIONS - FIJO -->
+<div class="quick-actions-wrapper">
+    <div class="container">
+        <div class="quick-actions">
+            <button class="quick-btn quick-btn-primary" onclick="toggleAllCategories()">
+                <i class="fas fa-layer-group"></i> <span id="toggleAllText">Expandir Todo</span>
+            </button>
+            <button class="quick-btn quick-btn-primary" onclick="goToDashboard()">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+<button class="quick-btn" id="btnAbrirChat" onclick="abrirChatReal()">
+    <i class="fas fa-comment-dots"></i> Abrir Chat
+</button>
+            <button class="quick-btn" onclick="limpiarChatGlobal()">
+                <i class="fas fa-trash-alt"></i> Limpiar Chat
+            </button>
+            <button class="quick-btn" onclick="scrollToTop()">
+                <i class="fas fa-arrow-up"></i> Subir
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <i class="fas fa-robot" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+        <h1 class="text-white mb-2">SISFACT Chatbot</h1>
+        <p class="text-white-50 mb-0">Documentación completa de funciones y comandos</p>
+        <small class="text-white-50">💡 Haz clic en cualquier botón "Probar" para enviar el comando al chat</small>
+    </div>
+
+<!-- Search - Versión con X para limpiar -->
+<div class="row justify-content-center mb-4">
+    <div class="col-md-8">
+        <div class="search-box d-flex">
+            <i class="fas fa-search align-self-center ms-3" style="color: #6c6c8a;"></i>
+            <input type="text" id="searchInput" class="flex-grow-1" placeholder="🔍 Buscar función, comando o descripción..." onkeyup="searchFunctionsOnKeyUp(event)">
+            <button class="btn quick-btn-primary rounded-pill px-4" onclick="searchFunctions()"><i class="fas fa-search me-1"></i> Buscar</button>
+            <button id="clearSearchBtn" onclick="clearSearch()" style="display: none; background: transparent; border: none; color: #a0a0c0; padding: 0 15px; cursor: pointer;">
+                <i class="fas fa-times-circle"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4" id="stats"></div>
+
+    <!-- Categories -->
+    <div id="categories"></div>
+
+    <div class="footer">
+        <i class="fas fa-code"></i> SISFACT PDL Visiones v2.3.3<br>
+        <small>Desarrollado por Franklin Ramos Lamadrid (kaky°)</small><br>
+        <small class="text-white-50">💬 Comandos disponibles: ayuda, facturas hoy, ingresos del mes, clientes activos, contratos por vencer, proyeccion del mes, cierre actual, resumen del mes, chiste, limpiar chat</small>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toastMsg" class="toast-custom">
+    <i class="fas fa-comment-dots me-2"></i> <span id="toastText"></span>
+</div>
+
+<script src="js/bootstrap5.3.0/bootstrap.bundle.min.js"></script>
+<script src="js/chatbot.js"></script>
+
+<script>
+    let allExpanded = false;
+
+    // ==================== FUNCIONES PRINCIPALES ====================
+    
+function abrirChatReal() {
+    const chat = document.getElementById('chat-window-final');
+    if (chat) {
+        // Mismo método que funciona en testCommand
+        chat.style.display = 'flex';
+        chat.style.width = '380px';
+        chat.style.height = '550px';
+        chat.style.visibility = 'visible';
+        chat.style.opacity = '1';
+        chat.style.position = 'fixed';
+        chat.style.bottom = '100px';
+        chat.style.left = '25px';
+        chat.style.zIndex = '9999999';
+        chat.style.background = '#1f1f1f';
+        chat.style.borderRadius = '12px';
+        
+        // Forzar nuevamente después de un milisegundo
+        setTimeout(function() {
+            chat.style.display = 'flex';
+        }, 10);
+        
+        mostrarToast('💬 Chat abierto');
+    } else {
+        mostrarToast('⚠️ Chat no disponible');
+    }
+}
+    
+    function limpiarChatGlobal() {
+        if (typeof window.limpiarChat === 'function') {
+            window.limpiarChat();
+            mostrarToast('🧹 Chat limpiado');
+        } else {
+            const messagesContainer = document.getElementById('chat-messages');
+            if (messagesContainer) {
+                messagesContainer.innerHTML = '';
+                mostrarToast('🧹 Chat limpiado');
+            } else {
+                mostrarToast('⚠️ No se pudo limpiar el chat');
+            }
+        }
+    }
+    
+function testCommand(cmd) {
+    console.log("testCommand:", cmd);
+    mostrarToast(`📤 "${cmd}"`);
+    
+    let intentos = 0;
+    const maxIntentos = 30;
+    
+    function intentarAbrirYEnviar() {
+        const chat = document.getElementById('chat-window-final');
+        const input = document.getElementById('chat-input-final');
+        
+        if (chat && input) {
+            // Forzar display flex MULTIPLES VECES
+            chat.style.display = 'flex';
+            chat.style.width = '380px';
+            chat.style.height = '550px';
+            chat.style.visibility = 'visible';
+            chat.style.opacity = '1';
+            chat.style.position = 'fixed';
+            chat.style.bottom = '100px';
+            chat.style.left = '25px';
+            chat.style.zIndex = '9999999';
+            chat.style.background = '#1f1f1f';
+            chat.style.borderRadius = '12px';
+            
+            // Forzar nuevamente después de un milisegundo (por si algo lo revierte)
+            setTimeout(function() {
+                chat.style.display = 'flex';
+            }, 10);
+            
+            console.log("Chat forzado a flex");
+            
+            // Enviar comando
+            setTimeout(function() {
+                input.value = cmd;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                const sendBtn = document.getElementById('send-message-final');
+                if (sendBtn) {
+                    sendBtn.click();
+                } else {
+                    input.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', bubbles: true }));
+                }
+                mostrarToast(`✅ "${cmd}"`);
+            }, 200);
+            
+        } else if (intentos < maxIntentos) {
+            intentos++;
+            console.log("Esperando chat... intento", intentos);
+            setTimeout(intentarAbrirYEnviar, 300);
+        } else {
+            mostrarToast(`❌ No se pudo: "${cmd}"`);
+        }
+    }
+    
+    intentarAbrirYEnviar();
+}
+	
+	
+	
+    function mostrarToast(msg) {
+        let toast = document.getElementById('toastMsg');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toastMsg';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 120px;
+                right: 20px;
+                background: #1e1e2e;
+                border-left: 4px solid #28a745;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 12px;
+                z-index: 99999;
+                font-size: 14px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            `;
+            document.body.appendChild(toast);
+        }
+        toast.innerHTML = `<i class="fas fa-comment-dots me-2"></i> ${msg}`;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2500);
+    }
+    
+    // ==================== FUNCIONES DE NAVEGACIÓN ====================
+    
+    function goToDashboard() {
+        window.location.href = 'dashboard.php';
+    }
+    
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    // ==================== FUNCIONES DE CATEGORÍAS ====================
+    
+    function collapseAllCategories() {
+        document.querySelectorAll('.category-content').forEach(c => c.classList.add('collapsed'));
+        document.querySelectorAll('.category-header').forEach(h => h.classList.add('collapsed'));
+        allExpanded = false;
+        document.getElementById('toggleAllText').innerHTML = 'Expandir Todo';
+        mostrarToast('📁 Todas las categorías colapsadas');
+    }
+    
+    function expandAllCategories() {
+        document.querySelectorAll('.category-content').forEach(c => c.classList.remove('collapsed'));
+        document.querySelectorAll('.category-header').forEach(h => h.classList.remove('collapsed'));
+        allExpanded = true;
+        document.getElementById('toggleAllText').innerHTML = 'Colapsar Todo';
+        mostrarToast('📂 Todas las categorías expandidas');
+    }
+    
+    function toggleAllCategories() {
+        if (allExpanded) collapseAllCategories();
+        else expandAllCategories();
+    }
+    
+    function searchFunctions() {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        const cards = document.querySelectorAll('.func-card');
+        let visible = 0;
+        cards.forEach(c => {
+            if (c.textContent.toLowerCase().includes(term) || term === '') {
+                c.style.display = 'block';
+                visible++;
+            } else c.style.display = 'none';
+        });
+        mostrarToast(term ? `🔍 ${visible} resultados para "${term}"` : `📋 ${visible} funciones disponibles`);
+    }
+    
+    function toggleCat(id) {
+        const content = document.getElementById(`cat-content-${id}`);
+        const header = document.getElementById(`cat-header-${id}`);
+        if (content && header) {
+            content.classList.toggle('collapsed');
+            header.classList.toggle('collapsed');
+            const allContents = document.querySelectorAll('.category-content');
+            const allExpandedState = Array.from(allContents).every(c => !c.classList.contains('collapsed'));
+            allExpanded = allExpandedState;
+            document.getElementById('toggleAllText').innerHTML = allExpanded ? 'Colapsar Todo' : 'Expandir Todo';
+        }
+    }
+    
+    // ==================== TODAS LAS FUNCIONES DEL SISTEMA ====================
+    
+    const functionsData = {
+        stats: { total: 95, cats: 14, cmds: 250 },
+        cats: [
+            { name: "📋 FACTURACIÓN", icon: "fa-file-invoice", funcs: [
+                { name: "getTotalFacturas", desc: "Resumen total de facturas (total, pagadas, pendientes, contabilizadas, anuladas)", cmds: ["cuantas facturas hay", "total de facturas"], ex: "cuantas facturas hay" },
+                { name: "getUltimasFacturas", desc: "Muestra las últimas facturas registradas", cmds: ["ultimas facturas", "ultimas 5 facturas"], ex: "ultimas 10 facturas" },
+                { name: "getFacturasHoy", desc: "Facturas del día actual (según fecha de cierre)", cmds: ["facturas hoy"], ex: "facturas hoy" },
+                { name: "getFacturasDelMes", desc: "Facturas del mes actual (según fecha de cierre)", cmds: ["facturas del mes"], ex: "facturas del mes" },
+                { name: "getFacturasPorEstado", desc: "Facturas filtradas por estado", cmds: ["facturas pendientes", "facturas pagadas", "facturas contabilizadas", "facturas anuladas"], ex: "facturas pendientes" },
+                { name: "getFacturasCliente", desc: "Facturas de un cliente específico", cmds: ["facturas del cliente [nombre]"], ex: "facturas del cliente ABC" },
+                { name: "getFacturasPorDia", desc: "Facturas de un día específico del mes", cmds: ["facturas del dia 15"], ex: "facturas del dia 15" },
+                { name: "getFacturasPorMes", desc: "Facturas de un mes específico", cmds: ["facturas del mes 5", "facturas de mayo"], ex: "facturas del mes 5" },
+                { name: "getFacturasPorAnio", desc: "Facturas de un año específico", cmds: ["facturas del año 2025"], ex: "facturas del año 2025" }
+            ]},
+            { name: "💰 INGRESOS", icon: "fa-chart-line", funcs: [
+                { name: "getIngresosHoy", desc: "Ingresos del día actual", cmds: ["ingresos hoy"], ex: "ingresos hoy" },
+                { name: "getIngresosMes", desc: "Ingresos del mes vs meta", cmds: ["ingresos del mes"], ex: "ingresos del mes" },
+                { name: "getIngresosAnio", desc: "Ingresos del año", cmds: ["ingresos del año"], ex: "ingresos del año" },
+                { name: "getComparativaPlan", desc: "Comparativa ingresos reales vs plan", cmds: ["comparar ingresos con plan"], ex: "comparar ingresos con plan" },
+                { name: "getProyeccionMensual", desc: "Proyección de ingresos para fin de mes", cmds: ["proyeccion del mes", "proyeccion mensual"], ex: "proyeccion del mes" },
+                { name: "getMejorPeriodo", desc: "Mejor día/mes en ventas", cmds: ["mejor dia de ventas", "mejor mes de ventas"], ex: "mejor dia de ventas" },
+                { name: "getPeorPeriodo", desc: "Peor día/mes en ventas", cmds: ["peor dia de ventas", "peor mes de ventas"], ex: "peor mes de ventas" },
+                { name: "getPromedios", desc: "Promedios diarios/mensuales", cmds: ["promedio de facturas por dia"], ex: "promedio de facturas por dia" }
+            ]},
+            { name: "👥 CLIENTES", icon: "fa-users", funcs: [
+                { name: "getTotalClientes", desc: "Total de clientes (activos e inactivos)", cmds: ["cuantos clientes hay"], ex: "cuantos clientes hay" },
+                { name: "getUltimosClientes", desc: "Últimos clientes registrados", cmds: ["ultimos clientes"], ex: "ultimos 5 clientes" },
+                { name: "getClientesActivos", desc: "Clientes activos", cmds: ["clientes activos"], ex: "clientes activos" },
+                { name: "getClientesInactivos", desc: "Clientes inactivos", cmds: ["clientes inactivos"], ex: "clientes inactivos" },
+                { name: "getContratosPorVencerDetallado", desc: "Contratos que vencen en 30/60 días", cmds: ["contratos por vencer"], ex: "contratos por vencer" },
+                { name: "getContratosVencidosDetallado", desc: "Contratos ya vencidos", cmds: ["contratos vencidos"], ex: "contratos vencidos" },
+                { name: "getClientePorCodigo", desc: "Buscar cliente por código/contrato", cmds: ["cliente con codigo 115"], ex: "cliente con codigo 115" },
+                { name: "getClientesRenuevan", desc: "Clientes con renovación automática", cmds: ["clientes que renuevan"], ex: "clientes que renuevan" },
+                { name: "getRankingClientes", desc: "Top clientes por facturación", cmds: ["ranking de clientes"], ex: "ranking de clientes" }
+            ]},
+            { name: "🛠️ SERVICIOS", icon: "fa-tools", funcs: [
+                { name: "getServiciosMasSolicitados", desc: "Top servicios más vendidos", cmds: ["servicios mas solicitados"], ex: "servicios mas solicitados" },
+                { name: "getTotalServicios", desc: "Total de servicios", cmds: ["cuantos servicios hay"], ex: "cuantos servicios hay" },
+                { name: "getServiciosActivos", desc: "Servicios activos", cmds: ["servicios activos"], ex: "servicios activos" },
+                { name: "getServiciosInactivos", desc: "Servicios inactivos", cmds: ["servicios inactivos"], ex: "servicios inactivos" },
+                { name: "getServicioMasCaro", desc: "Servicio más caro", cmds: ["servicio mas caro"], ex: "servicio mas caro" },
+                { name: "getServicioMasBarato", desc: "Servicio más barato", cmds: ["servicio mas barato"], ex: "servicio mas barato" },
+                { name: "getServiciosPorCategoria", desc: "Servicios por categoría", cmds: ["servicios de la categoria Internet"], ex: "servicios de la categoria Internet" }
+            ]},
+            { name: "📁 CATEGORÍAS", icon: "fa-folder", funcs: [
+                { name: "getTotalCategorias", desc: "Total de categorías", cmds: ["cuantas categorias hay"], ex: "cuantas categorias hay" },
+                { name: "getCategoriasActivas", desc: "Categorías activas", cmds: ["categorias activas"], ex: "categorias activas" },
+                { name: "getCategoriasInactivas", desc: "Categorías inactivas", cmds: ["categorias inactivas"], ex: "categorias inactivas" },
+                { name: "getCategoriaConMasServicios", desc: "Categoría con más servicios", cmds: ["categoria con mas servicios"], ex: "categoria con mas servicios" },
+                { name: "getCategoriasConCodigos", desc: "Categorías por código", cmds: ["categorias por codigo"], ex: "categorias por codigo" }
+            ]},
+            { name: "👤 USUARIOS", icon: "fa-user-shield", funcs: [
+                { name: "getTotalUsuarios", desc: "Total de usuarios", cmds: ["cuantos usuarios hay"], ex: "cuantos usuarios hay" },
+                { name: "getUsuariosActivos", desc: "Usuarios activos", cmds: ["usuarios activos"], ex: "usuarios activos" },
+                { name: "getUsuariosPorRol", desc: "Usuarios por rol", cmds: ["usuarios por rol"], ex: "usuarios por rol" },
+                { name: "getUltimosAccesos", desc: "Últimos accesos al sistema", cmds: ["ultimos accesos"], ex: "ultimos accesos" }
+            ]},
+            { name: "📊 REPORTES", icon: "fa-chart-pie", funcs: [
+                { name: "getReporteGeneral", desc: "Reporte general del sistema", cmds: ["reporte general"], ex: "reporte general" },
+                { name: "getEvolucionMensual", desc: "Evolución de ingresos mensual", cmds: ["evolucion mensual"], ex: "evolucion mensual" },
+                { name: "getComparativaAnual", desc: "Comparativa entre años", cmds: ["comparativa anual"], ex: "comparativa anual" },
+                { name: "getMetodoPagoPopular", desc: "Método de pago más usado", cmds: ["metodo de pago mas usado"], ex: "metodo de pago mas usado" }
+            ]},
+            { name: "📅 CIERRES", icon: "fa-calendar-check", funcs: [
+                { name: "getCierreActual", desc: "Estado del cierre del mes en curso", cmds: ["cierre actual"], ex: "cierre actual" },
+                { name: "getUltimoCierreMensual", desc: "Último cierre realizado", cmds: ["ultimo cierre"], ex: "ultimo cierre" },
+                { name: "getHistorialCierres", desc: "Historial de cierres", cmds: ["historial de cierres"], ex: "historial de cierres" },
+                { name: "getProximoCierre", desc: "Próximo cierre programado", cmds: ["proximo cierre"], ex: "proximo cierre" }
+            ]},
+            { name: "🎯 PLANES Y METAS", icon: "fa-bullseye", funcs: [
+                { name: "getPlanMensual", desc: "Plan/meta del mes", cmds: ["plan del mes"], ex: "plan del mes" },
+                { name: "getPlanAnual", desc: "Plan/meta anual", cmds: ["plan anual"], ex: "plan anual" },
+                { name: "getCumplimientoPlan", desc: "Cumplimiento de planes", cmds: ["cumplimiento del plan"], ex: "cumplimiento del plan" },
+                { name: "getMetaMensual", desc: "Meta mensual con proyección", cmds: ["meta mensual"], ex: "meta mensual" }
+            ]},
+            { name: "🗓️ FECHAS", icon: "fa-calendar-alt", funcs: [
+                { name: "getFechaMaestraSistema", desc: "Fecha de cierre de operaciones", cmds: ["fecha de cierre"], ex: "fecha de cierre" },
+                { name: "getRespuestaTrimestreActual", desc: "Trimestre actual", cmds: ["trimestre actual"], ex: "trimestre actual" },
+                { name: "getResumenTrimestre", desc: "Resumen del trimestre", cmds: ["resumen del trimestre"], ex: "resumen del trimestre" },
+                { name: "getResumenMes", desc: "Resumen del mes", cmds: ["resumen del mes"], ex: "resumen del mes" }
+            ]},
+            { name: "📜 HISTORIAL", icon: "fa-history", funcs: [
+                { name: "getUltimasActividades", desc: "Últimas actividades del sistema", cmds: ["ultimas actividades"], ex: "ultimas actividades" },
+                { name: "getOperacionesPorFecha", desc: "Operaciones por fecha", cmds: ["operaciones de hoy"], ex: "operaciones de hoy" },
+                { name: "getActividadesUsuario", desc: "Actividades de un usuario", cmds: ["actividades del usuario admin"], ex: "actividades del usuario admin" },
+                { name: "getTotalOperaciones", desc: "Total de operaciones", cmds: ["total de operaciones"], ex: "total de operaciones" }
+            ]},
+            { name: "🧭 NAVEGACIÓN", icon: "fa-compass", funcs: [
+                { name: "abrirFacturas", desc: "Abrir página de facturas", cmds: ["abrir facturas"], ex: "abrir facturas" },
+                { name: "abrirClientes", desc: "Abrir página de clientes", cmds: ["abrir clientes"], ex: "abrir clientes" },
+                { name: "abrirServicios", desc: "Abrir página de servicios", cmds: ["abrir servicios"], ex: "abrir servicios" },
+                { name: "abrirReportes", desc: "Abrir página de reportes", cmds: ["abrir reportes"], ex: "abrir reportes" },
+                { name: "crearFactura", desc: "Crear nueva factura", cmds: ["crear factura"], ex: "crear factura" },
+                { name: "crearCliente", desc: "Registrar nuevo cliente", cmds: ["crear cliente"], ex: "crear cliente" },
+                { name: "buscarEnSistema", desc: "Búsqueda global", cmds: ["buscar factura FV-001", "buscar cliente Empresa"], ex: "buscar factura FV-001" },
+                { name: "getAyudaCompleta", desc: "Mostrar ayuda completa", cmds: ["ayuda", "comandos"], ex: "ayuda" },
+                { name: "getChisteRespuesta", desc: "Contar un chiste", cmds: ["chiste"], ex: "chiste" },
+                { name: "limpiarChat", desc: "Limpiar el chat", cmds: ["limpiar chat"], ex: "limpiar chat" }
+            ]}
+        ]
+    };
+    
+    function renderStats() {
+        const s = functionsData.stats;
+        document.getElementById('stats').innerHTML = `
+            <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-number">${s.total}</div><div class="stat-label"><i class="fas fa-code"></i> Funciones</div></div></div>
+            <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-number">${s.cats}</div><div class="stat-label"><i class="fas fa-layer-group"></i> Categorías</div></div></div>
+            <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-number">${s.cmds}+</div><div class="stat-label"><i class="fas fa-terminal"></i> Comandos</div></div></div>
+            <div class="col-md-3 col-6"><div class="stat-card"><div class="stat-number">24/7</div><div class="stat-label"><i class="fas fa-clock"></i> Disponible</div></div></div>
+        `;
+    }
+    
+    function renderCategories() {
+        const container = document.getElementById('categories');
+        container.innerHTML = '';
+        functionsData.cats.forEach((cat, idx) => {
+            container.innerHTML += `
+                <div class="category-card">
+                    <div class="category-header collapsed" id="cat-header-${idx}" onclick="toggleCat(${idx})">
+                        <h3 class="d-flex justify-content-between align-items-center mb-0">
+                            <span><i class="fas ${cat.icon} me-2"></i> ${cat.name}</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </h3>
+                    </div>
+                    <div class="category-content collapsed" id="cat-content-${idx}">
+                        ${cat.funcs.map(f => `
+                            <div class="func-card">
+                                <div class="func-name">
+                                    <code><i class="fas fa-function me-1"></i> ${f.name}()</code>
+                                    <button class="btn-test" onclick="testCommand('${f.ex.replace(/'/g, "\\'")}')"><i class="fas fa-paper-plane me-1"></i> Probar: "${f.ex}"</button>
+                                </div>
+                                <div class="func-desc"><i class="fas fa-info-circle me-1"></i> ${f.desc}</div>
+                                <div class="func-commands">
+                                    ${f.cmds.map(c => `<span class="badge-cmd"><i class="fas fa-comment-dots me-1"></i> ${c}</span>`).join('')}
+                                </div>
+                                <div class="func-example">
+                                    <i class="fas fa-lightbulb me-1"></i> Ejemplo: <strong class="text-warning">"${f.ex}"</strong>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', () => {
+        renderStats();
+        renderCategories();
+        allExpanded = false;
+        setTimeout(() => mostrarToast('🤖 ¡Bienvenido! Usa los botones "Probar" para enviar comandos al chat'), 800);
+    });
+function searchFunctions() {
+    const term = document.getElementById('searchInput').value.toLowerCase();
+    const cards = document.querySelectorAll('.func-card');
+    const categories = document.querySelectorAll('.category-card');
+    let visibleTotal = 0;
+    const clearBtn = document.getElementById('clearSearchBtn');
+    
+    // PRIMERO: Expandir TODAS las categorías antes de buscar
+    if (term !== '') {
+        categories.forEach(category => {
+            const content = category.querySelector('.category-content');
+            const header = category.querySelector('.category-header');
+            if (content && content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                if (header) header.classList.remove('collapsed');
+            }
+        });
+    }
+    
+    // SEGUNDO: Aplicar filtro a las tarjetas
+    cards.forEach(card => {
+        const matches = card.textContent.toLowerCase().includes(term);
+        if (matches || term === '') {
+            card.style.display = 'block';
+            if (term !== '' && matches) visibleTotal++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Mostrar resultado
+    if (term !== '') {
+        mostrarToast(`🔍 ${visibleTotal} resultados para "${term}"`);
+    } else {
+        mostrarToast(`📋 ${visibleTotal} funciones disponibles`);
+    }
+    
+    // Mostrar u ocultar botón de limpiar
+    if (clearBtn) {
+        clearBtn.style.display = term !== '' ? 'flex' : 'none';
+    }
+}
+
+// Función para limpiar y restaurar todo colapsado
+function clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const categories = document.querySelectorAll('.category-card');
+    
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+    }
+    
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+    
+    // Restaurar todas las funciones visibles
+    const cards = document.querySelectorAll('.func-card');
+    cards.forEach(card => {
+        card.style.display = 'block';
+    });
+    
+    // Volver a colapsar todas las categorías (estado inicial)
+    categories.forEach(category => {
+        const content = category.querySelector('.category-content');
+        const header = category.querySelector('.category-header');
+        if (content && !content.classList.contains('collapsed')) {
+            content.classList.add('collapsed');
+            if (header) header.classList.add('collapsed');
+        }
+    });
+    
+    mostrarToast(`📋 Todas las funciones disponibles`);
+}
+
+function searchFunctionsOnKeyUp(event) {
+    if (event.key === 'Enter') {
+        searchFunctions();
+    }
+}
+</script>
+
+</body>
+</html>

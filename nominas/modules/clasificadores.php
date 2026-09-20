@@ -7,6 +7,8 @@ require_once '../config/database.php';
 // Cifrado de contraseña SMTP (para editar mail_password de forma segura)
 require_once '../config/mail.php';
 
+require_once __DIR__ . '/../logger.php';
+
 // 2. Iniciar sesión únicamente si config.php no lo hizo
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -169,6 +171,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax'])) {
                 $params[] = $id;
                 $stmt = $pdo->prepare("UPDATE {$tabla} SET " . implode(', ', $sets) . " WHERE id = ?");
                 $stmt->execute($params);
+
+                // ===== AUDITORÍA: guardar clasificador (editar o config) =====
+                if ($tabla === 'configuracion_general') {
+                    logAction('guardar_configuracion_general', 'clasificadores', 'Guardar configuración general', ['id' => (int)$id], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+                } elseif ($tabla === 'configuracion_rangos_impuesto') {
+                    logAction('guardar_rangos_impuesto', 'clasificadores', 'Guardar rangos de impuesto', ['id' => (int)$id], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+                } else {
+                    logAction('editar_clasificador', 'clasificadores', 'Edición de clasificador', ['tabla' => $tabla, 'id' => (int)$id], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+                }
+
                 echo json_encode(['success' => true, 'message' => 'El registro ha sido actualizado con éxito']);
             } else {
                 // Crear
@@ -176,6 +188,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax'])) {
                 $placeholders = array_fill(0, count($campos), '?');
                 $stmt = $pdo->prepare("INSERT INTO {$tabla} (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")");
                 $stmt->execute(array_values($datos));
+                $nuevo_id_cl = $pdo->lastInsertId();
+
+                // ===== AUDITORÍA: crear clasificador =====
+                logAction('crear_clasificador', 'clasificadores', 'Creación de clasificador', ['tabla' => $tabla, 'id' => (int)$nuevo_id_cl], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+
                 echo json_encode(['success' => true, 'message' => 'El registro ha sido creado con éxito']);
             }
             exit();
@@ -225,6 +242,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax'])) {
                     // Soft-delete: desactivar sin borrar histórico ni desvincular trabajadores
                     $stmt = $pdo->prepare("UPDATE pagos_adicionales SET activo = 0 WHERE id = ?");
                     $stmt->execute([$id]);
+                    // ===== AUDITORÍA: desactivación de pago adicional (soft-delete) =====
+                    logAction('cambiar_estado_clasificador', 'clasificadores', 'Desactivación de pago adicional (histórico preservado)', ['tabla' => 'pagos_adicionales', 'id' => (int)$id], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
                     echo json_encode(['success' => true, 'message' => 'El pago adicional ha sido desactivado correctamente', 'soft' => true]);
                     exit();
                 }
@@ -238,6 +257,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax'])) {
             
             $stmt = $pdo->prepare("DELETE FROM {$tabla} WHERE id = ?");
             $stmt->execute([$id]);
+            // ===== AUDITORÍA: eliminación de clasificador =====
+            logAction('eliminar_clasificador', 'clasificadores', 'Eliminación de clasificador', ['tabla' => $tabla, 'id' => (int)$id], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             echo json_encode(['success' => true, 'message' => 'El registro ha sido eliminado del sistema']);
             exit();
         }
@@ -257,6 +278,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax'])) {
             
             $stmt = $pdo->prepare("UPDATE {$tabla} SET activo = ? WHERE id = ?");
             $stmt->execute([$activo, $id]);
+            // ===== AUDITORÍA: cambio de estado de clasificador =====
+            logAction('cambiar_estado_clasificador', 'clasificadores', 'Cambio de estado de clasificador', ['tabla' => $tabla, 'id' => (int)$id, 'activo' => (bool)$activo], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             echo json_encode(['success' => true, 'message' => 'El estado se ha actualizado correctamente']);
             exit();
         }
@@ -833,6 +856,9 @@ if (file_exists($ruta_logo)) {
         .clasificador-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
         .clasificador-btn.active { background: #3b82f6; color: white; }
 
+        /* Nav del selector (flechas + contador): ocultos en escritorio, activos en móvil */
+        .cls-nav-btn, .cls-nav-counter { display: none; }
+
         /* Estructuras de Tabla */
         .data-table-wrapper { overflow-x: auto; margin-top:1.25rem; }
         .table-custom { width:100%; border-collapse: collapse; }
@@ -1125,6 +1151,7 @@ if (file_exists($ruta_logo)) {
         gap: 0.375rem;
         width: 100%;
         scrollbar-width: thin;
+        scroll-snap-type: x proximity;
     }
     .clasificador-selector::-webkit-scrollbar {
         height: 0.25rem;
@@ -1138,22 +1165,62 @@ if (file_exists($ruta_logo)) {
         padding: 0.5rem 0.875rem;
         font-size: 0.78rem;
         border-radius: 0.5rem;
+        scroll-snap-align: start;
     }
     .clasificador-btn i {
         font-size: 0.85rem;
     }
 
-    /* Indicador de scroll horizontal */
-    .clasificador-selector::after {
-        content: '⟷';
-        position: sticky;
-        right: 0;
-        align-self: center;
-        font-size: 0.75rem;
-        color: rgba(255, 255, 255, 0.3);
-        pointer-events: none;
-        padding: 0 0.25rem;
+    /* ---------- NAVEGACIÓN DEL SELECTOR (flechas + degradados + contador) ---------- */
+    .cls-sel-wrap { position: relative; }
+    .cls-sel-wrap.can-left .clasificador-selector {
+        -webkit-mask-image: linear-gradient(to right, transparent 0, #000 1.25rem, #000 100%);
+        mask-image: linear-gradient(to right, transparent 0, #000 1.25rem, #000 100%);
     }
+    .cls-sel-wrap.can-right .clasificador-selector {
+        -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 1.25rem), transparent 100%);
+        mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 1.25rem), transparent 100%);
+    }
+    .cls-sel-wrap.can-left.can-right .clasificador-selector {
+        -webkit-mask-image: linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%);
+        mask-image: linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%);
+    }
+    .cls-nav-btn {
+        position: absolute;
+        top: calc(50% - 0.62rem);
+        transform: translateY(-50%);
+        z-index: 3;
+        width: 2rem;
+        height: 2rem;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 0.0625rem solid rgba(255, 255, 255, 0.18);
+        background: rgba(20, 20, 25, 0.92);
+        color: #fff;
+        cursor: pointer;
+        box-shadow: 0 0.25rem 0.875rem rgba(0, 0, 0, 0.5);
+        -webkit-backdrop-filter: blur(0.375rem);
+        backdrop-filter: blur(0.375rem);
+        transition: background 0.2s, transform 0.2s;
+    }
+    .cls-nav-btn:hover { background: rgba(var(--accent-rgb), 0.9); }
+    .cls-nav-btn:active { transform: translateY(-50%) scale(0.92); }
+    .cls-sel-wrap.can-left .cls-nav-left { display: inline-flex; }
+    .cls-sel-wrap.can-right .cls-nav-right { display: inline-flex; }
+    .cls-nav-left { left: 0.15rem; }
+    .cls-nav-right { right: 0.15rem; }
+    .cls-nav-counter {
+        display: block;
+        text-align: right;
+        font-size: 0.68rem;
+        color: rgba(255, 255, 255, 0.5);
+        margin: 0.25rem 0.25rem 0 0;
+    }
+    .cls-nav-counter b { color: var(--accent); font-weight: 600; }
+    [data-theme="light"] .cls-nav-counter { color: rgba(0, 0, 0, 0.55); }
+    [data-theme="light"] .cls-nav-btn { background: rgba(255, 255, 255, 0.96); border-color: rgba(0, 0, 0, 0.15); color: #1f2937; }
 
     /* ---------- FILTROS ---------- */
     .filters-bar {
@@ -3059,6 +3126,62 @@ async function exportarClasificadorPdf() {
     btnBottom.addEventListener('click', function () { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }); });
     window.addEventListener('scroll', actualizarVisibilidad);
     actualizarVisibilidad();
+})();
+</script>
+<script>
+/* Navegación mejorada del selector de clasificadores (móvil): flechas, degradados y contador */
+(function () {
+    var sel = document.querySelector('.clasificador-selector');
+    if (!sel) return;
+
+    var wrap = document.createElement('div');
+    wrap.className = 'cls-sel-wrap';
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+
+    var items = sel.querySelectorAll('.clasificador-btn');
+
+    function crearFlecha(dir) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cls-nav-btn cls-nav-' + dir;
+        b.setAttribute('aria-label', dir === 'left' ? 'Ver clasificadores anteriores' : 'Ver más clasificadores');
+        b.innerHTML = '<i class="fas fa-chevron-' + dir + '"></i>';
+        b.addEventListener('click', function () {
+            var paso = Math.max(sel.clientWidth * 0.6, 120);
+            sel.scrollBy({ left: dir === 'left' ? -paso : paso, behavior: 'smooth' });
+        });
+        wrap.appendChild(b);
+    }
+    crearFlecha('left');
+    crearFlecha('right');
+
+    var counter = document.createElement('span');
+    counter.className = 'cls-nav-counter';
+    wrap.appendChild(counter);
+
+    function actualizar() {
+        var max = sel.scrollWidth - sel.clientWidth;
+        var x = sel.scrollLeft;
+        var UMBRAL = 8;
+        var canLeft = x > UMBRAL;
+        var canRight = max > UMBRAL && x < max - UMBRAL;
+        wrap.classList.toggle('can-left', canLeft);
+        wrap.classList.toggle('can-right', canRight);
+
+        var visibles = 0;
+        for (var i = 0; i < items.length; i++) {
+            var el = items[i];
+            if (el.offsetLeft + el.offsetWidth > x + 4 && el.offsetLeft < x + sel.clientWidth - 4) visibles++;
+        }
+        counter.innerHTML = 'Mostrando <b>' + visibles + '</b> de ' + items.length + ' · desliza para ver más';
+        if (max <= 2) counter.innerHTML = 'Mostrando <b>' + items.length + '</b> de ' + items.length;
+    }
+
+    sel.addEventListener('scroll', actualizar, { passive: true });
+    window.addEventListener('resize', actualizar);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(actualizar);
+    actualizar();
 })();
 </script>
 </body>

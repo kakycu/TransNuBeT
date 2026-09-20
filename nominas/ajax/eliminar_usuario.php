@@ -1,5 +1,6 @@
 ﻿<?php
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -34,5 +35,16 @@ $eliminado = $stmt->fetch(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("DELETE FROM clasif_usuarios WHERE id = ?");
 $stmt->execute([$id]);
 
+// ===== AUDITORÍA: eliminación de usuario =====
+logAction(
+    'eliminar_usuario',
+    'usuarios',
+    'Eliminación de usuario',
+    ['user_id' => (int)$id, 'usuario' => $eliminado['usuario'] ?? null],
+    null,
+    'success',
+    null,
+    $_SESSION['auth_provider'] ?? 'local'
+);
 
 echo json_encode(['success' => true, 'message' => 'Usuario eliminado correctamente']);

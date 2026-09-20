@@ -10,7 +10,7 @@
 - Proyecto PHP: `nominas/` (raíz web: `C:\Users\kakyc\Desktop\TRANSNUBET\root\nominas`)
 - MySQL local: `localhost`, usuario `root`, `frl8110kaky`, BD `TransNuBeT_nomina`
 - **Binario MySQL:** `C:\Users\kakyc\Desktop\TRANSNUBET\mysql\bin\mysqld_usbwv8.exe`
-- **NO hay cliente MySQL CLI** (`mysql.exe`) en esta instalación; para escribir en la BD usar un script PHP con PDO ejecutado con `php.exe` (el MCP de MySQL es de solo lectura y rechaza INSERT).
+- **NO hay cliente MySQL CLI** (`mysql.exe`) en esta instalación. El MCP de MySQL (`@benborla29/mcp-server-mysql`) tiene habilitadas las operaciones de escritura (`ALLOW_INSERT/UPDATE/DELETE/DDL_OPERATION=true` en `opencode.json`), por lo que se puede usar directamente para INSERT/UPDATE/DELETE y DDL; si el MCP no estuviera disponible, escribir con un script PHP con PDO ejecutado con `php.exe`.
 - **PHP (CLI):** `C:\Users\kakyc\Desktop\TRANSNUBET\php\php.exe` (PHP 8.1.7)
 - Credenciales de prueba: usuario `admin`, contraseña `password`
 

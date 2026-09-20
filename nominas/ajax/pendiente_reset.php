@@ -2,6 +2,7 @@
 // ajax/pendiente_reset.php - Decide sobre una solicitud de cambio de contraseña pendiente
 require_once '../config/database.php';
 require_once '../config/mail.php';
+require_once __DIR__ . '/../logger.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -23,6 +24,17 @@ $action = $_POST['action'] ?? '';
 if ($action === 'descartar') {
     $stmt = $pdo->prepare("UPDATE clasif_usuarios SET reset_token = NULL, reset_expira = NULL WHERE id = ?");
     $stmt->execute([$id]);
+    // ===== AUDITORÍA: descartar solicitud de reset pendiente =====
+    logAction(
+        'descartar_solicitud_reset',
+        'usuarios',
+        'Se descartó una solicitud de reset de contraseña pendiente',
+        ['user_id' => (int)$id],
+        (int)$id,
+        'success',
+        null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
     echo json_encode(['success' => true]);
     exit;
 }
@@ -47,6 +59,18 @@ if ($action === 'restablecer') {
     $hashed = password_hash($password_nueva, PASSWORD_DEFAULT);
     $stmtUpd = $pdo->prepare("UPDATE clasif_usuarios SET password = ?, reset_token = NULL, reset_expira = NULL, fecha_actualizacion = NOW() WHERE id = ?");
     $stmtUpd->execute([$hashed, $id]);
+
+    // ===== AUDITORÍA: restablecer contraseña pendiente =====
+    logAction(
+        'restablecer_password_pendiente',
+        'usuarios',
+        'Restablecimiento de contraseña pendiente desde el aviso',
+        ['user_id' => (int)$id],
+        (int)$id,
+        'success',
+        null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
 
     // Notificar por correo si el usuario tiene email configurado
     $correo = notificarPasswordCambiada($pdo, $id);

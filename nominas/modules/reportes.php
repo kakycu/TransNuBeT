@@ -48,16 +48,87 @@ if (file_exists($ruta_logo)) {
     $logo_base64 = 'data:image/' . $tipo . ';base64,' . base64_encode($data);
 }
 
+// ==================== FILTRO GLOBAL AÑO / MES ====================
+// Un solo dropdown de año y otro de mes, fuera de las pestañas, gobiernan
+// todos los reportes y consultas financieras.
+$anios_disponibles = [];
+$anio_tot_seleccionado = 0;
+$meses_disponibles = [];
+$mes_tot_seleccionado = 0;
+$num_mes_seleccionado = 0;
+$es_todos_meses = false;
+$mes_get = '';
+$ultimo_anio_label = '';
+$ultimo_mes_label = '';
+try {
+    $anios_disponibles = $pdo->query("
+        SELECT DISTINCT YEAR(periodo_desde) as anio
+        FROM nominas
+        WHERE estado != 'borrador'
+        ORDER BY anio DESC
+    ")->fetchAll(PDO::FETCH_COLUMN);
+
+    $anio_tot_seleccionado = isset($_GET['anio']) ? intval($_GET['anio']) : 0;
+    if (!in_array($anio_tot_seleccionado, $anios_disponibles)) {
+        $anio_tot_seleccionado = !empty($anios_disponibles) ? (int)$anios_disponibles[0] : (int)date('Y');
+    }
+    $ultimo_anio_label = $anio_tot_seleccionado;
+
+    $stmt_meses_global = $pdo->prepare("
+        SELECT DISTINCT MONTH(periodo_desde) as num_mes
+        FROM nominas
+        WHERE estado != 'borrador' AND YEAR(periodo_desde) = ?
+        ORDER BY num_mes ASC
+    ");
+    $stmt_meses_global->execute([$anio_tot_seleccionado]);
+    $meses_disponibles = array_map('intval', $stmt_meses_global->fetchAll(PDO::FETCH_COLUMN));
+
+    $mes_input = isset($_GET['mes']) ? $_GET['mes'] : '';
+    $mes_get = $mes_input;
+    if ($mes_input === 'todos') {
+        $es_todos_meses = true;
+        $mes_tot_seleccionado = 0;
+    } else {
+        $mes_tot_seleccionado = ($mes_input === 'reciente' || $mes_input === '') ? 0 : intval($mes_input);
+        if (!in_array($mes_tot_seleccionado, $meses_disponibles)) {
+            $mes_tot_seleccionado = !empty($meses_disponibles) ? $meses_disponibles[count($meses_disponibles) - 1] : 0;
+        }
+    }
+    $num_mes_seleccionado = $mes_tot_seleccionado;
+    $ultimo_mes_label = $es_todos_meses ? 'Todos los meses ' . $anio_tot_seleccionado
+        : ($mes_tot_seleccionado ? nombreMesEspanol($mes_tot_seleccionado) . ' ' . $anio_tot_seleccionado : '');
+} catch (PDOException $e) {
+    $anio_tot_seleccionado = (int)date('Y');
+    $mes_tot_seleccionado = 0;
+    $es_todos_meses = false;
+}
+
 // ==================== ESTADÍSTICAS DE TRABAJADORES ====================
-$total_activos = $pdo->query("SELECT COUNT(*) FROM trabajadores WHERE activo = 1 AND (fecha_baja IS NULL OR fecha_baja > CURDATE())")->fetchColumn();
-$total_inactivos = $pdo->query("SELECT COUNT(*) FROM trabajadores WHERE activo = 0 OR (fecha_baja IS NOT NULL AND fecha_baja <= CURDATE())")->fetchColumn();
+// Fechas del período del filtro global Año/Mes (año completo si TODOS)
+if ($es_todos_meses || !$num_mes_seleccionado) {
+    $fecha_ini_periodo = (int)$anio_tot_seleccionado . '-01-01';
+    $fecha_fin_periodo = (int)$anio_tot_seleccionado . '-12-31';
+} else {
+    $num_dias_mes = date('t', mktime(0, 0, 0, $num_mes_seleccionado, 1, $anio_tot_seleccionado));
+    $fecha_ini_periodo = (int)$anio_tot_seleccionado . '-' . str_pad((int)$num_mes_seleccionado, 2, '0', STR_PAD_LEFT) . '-01';
+    $fecha_fin_periodo = (int)$anio_tot_seleccionado . '-' . str_pad((int)$num_mes_seleccionado, 2, '0', STR_PAD_LEFT) . '-' . $num_dias_mes;
+}
+// Las estadísticas demográficas se calculan sobre la plantilla ACTIVA (activo = 1)
+// que además trabajaba en el período del filtro: fecha_alta <= fin del período AND
+// (fecha_baja IS NULL OR fecha_baja >= inicio del período).
+$sql_periodo_trab = "t.activo = 1 AND t.fecha_alta <= '" . $fecha_fin_periodo . "' AND (t.fecha_baja IS NULL OR t.fecha_baja >= '" . $fecha_ini_periodo . "')";
+$sql_periodo_trab_sin_alias = "activo = 1 AND fecha_alta <= '" . $fecha_fin_periodo . "' AND (fecha_baja IS NULL OR fecha_baja >= '" . $fecha_ini_periodo . "')";
+
+// La plantilla ACTIVA actual (activo = 1) es un dato fijo que no depende del filtro.
+$total_activos = $pdo->query("SELECT COUNT(*) FROM trabajadores WHERE activo = 1")->fetchColumn();
+$total_inactivos = $pdo->query("SELECT COUNT(*) FROM trabajadores WHERE activo != 1 OR activo IS NULL")->fetchColumn();
 $total_general = $total_activos;
 
-// NUEVO: Calcular las bajas producidas en el año fiscal actual
-$bajas_del_anio = $pdo->query("SELECT COUNT(*) FROM trabajadores WHERE (activo = 0 OR (fecha_baja IS NOT NULL AND fecha_baja <= CURDATE())) AND YEAR(fecha_baja) = YEAR(CURDATE())")->fetchColumn();
+// Bajas producidas dentro del período del filtro
+$bajas_del_anio = $pdo->query("SELECT COUNT(*) FROM trabajadores WHERE fecha_baja IS NOT NULL AND fecha_baja >= '" . $fecha_ini_periodo . "' AND fecha_baja <= '" . $fecha_fin_periodo . "'")->fetchColumn();
 
-// Estadísticas por género
-$trabajadores_data = $pdo->query("SELECT id, ci, activo, fecha_baja FROM trabajadores WHERE activo = 1 AND (fecha_baja IS NULL OR fecha_baja > CURDATE())")->fetchAll();
+// Estadísticas por género (trabajadores del período)
+$trabajadores_data = $pdo->query("SELECT id, ci, activo, fecha_baja FROM trabajadores t WHERE " . $sql_periodo_trab)->fetchAll();
 $hombres = 0;
 $mujeres = 0;
 foreach ($trabajadores_data as $t) {
@@ -70,92 +141,149 @@ foreach ($trabajadores_data as $t) {
 }
 $total_genero = $hombres + $mujeres; // <--- CORREGIDO: Calcular después de que el bucle termine
 
-// Estadísticas por área
+// Estadísticas por área (trabajadores del período)
 $areas_stats = $pdo->query("
     SELECT a.id, a.nombre_area, COUNT(t.id) as total
     FROM areas a
-    LEFT JOIN trabajadores t ON t.area_id = a.id AND t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())
+    LEFT JOIN trabajadores t ON t.area_id = a.id AND " . $sql_periodo_trab . "
     WHERE a.activo = 1
     GROUP BY a.id, a.nombre_area
     ORDER BY total DESC
 ")->fetchAll();
 
-// Estadísticas por centro de costo
-$centros_stats = $pdo->query("
-    SELECT cc.id, cc.codigo, cc.nombre, COUNT(t.id) as total,
-           SUM(e.salario_mensual) as masa_salarial
-    FROM centros_costo cc
-    LEFT JOIN trabajadores t ON t.centro_costo_id = cc.id AND t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())
-    LEFT JOIN escalas_salariales e ON t.escala_salarial_id = e.id
-    WHERE cc.activo = 1
-    GROUP BY cc.id, cc.codigo, cc.nombre
-    ORDER BY total DESC
-    LIMIT 10
-")->fetchAll();
+// Estadísticas por centro de costo (período del filtro global Año/Mes, o todos los meses)
+// masa = salario escalar de los trabajadores que tienen nómina en el período
+$centros_stats = [];
+$anio_masa_seleccionado = $anio_tot_seleccionado;
+$mes_masa_seleccionado = $num_mes_seleccionado;
+try {
+    if ($es_todos_meses) {
+        $stmt_cs = $pdo->prepare("
+            SELECT cc.id, cc.codigo, cc.nombre,
+                   (SELECT COUNT(DISTINCT n2.trabajador_id)
+                    FROM nominas n2
+                    WHERE n2.estado != 'borrador'
+                      AND YEAR(n2.periodo_desde) = ?
+                      AND n2.trabajador_id IN (SELECT t2.id FROM trabajadores t2 WHERE t2.centro_costo_id = cc.id)) as total,
+                   (SELECT COALESCE(SUM(e2.salario_mensual), 0)
+                    FROM (SELECT DISTINCT n3.trabajador_id
+                          FROM nominas n3
+                          WHERE n3.estado != 'borrador' AND YEAR(n3.periodo_desde) = ?) tc
+                    JOIN trabajadores t3 ON t3.id = tc.trabajador_id
+                    JOIN escalas_salariales e2 ON t3.escala_salarial_id = e2.id
+                    WHERE t3.centro_costo_id = cc.id) as masa_salarial
+            FROM centros_costo cc
+            WHERE cc.activo = 1
+            ORDER BY total DESC
+            LIMIT 10
+        ");
+        $stmt_cs->execute([$anio_masa_seleccionado, $anio_masa_seleccionado]);
+    } else {
+        $stmt_cs = $pdo->prepare("
+            SELECT cc.id, cc.codigo, cc.nombre,
+                   (SELECT COUNT(DISTINCT n2.trabajador_id)
+                    FROM nominas n2
+                    WHERE n2.estado != 'borrador'
+                      AND YEAR(n2.periodo_desde) = ?
+                      AND MONTH(n2.periodo_desde) = ?
+                      AND n2.trabajador_id IN (SELECT t2.id FROM trabajadores t2 WHERE t2.centro_costo_id = cc.id)) as total,
+                   (SELECT COALESCE(SUM(e2.salario_mensual), 0)
+                    FROM (SELECT DISTINCT n3.trabajador_id
+                          FROM nominas n3
+                          WHERE n3.estado != 'borrador'
+                            AND YEAR(n3.periodo_desde) = ?
+                            AND MONTH(n3.periodo_desde) = ?) tc
+                    JOIN trabajadores t3 ON t3.id = tc.trabajador_id
+                    JOIN escalas_salariales e2 ON t3.escala_salarial_id = e2.id
+                    WHERE t3.centro_costo_id = cc.id) as masa_salarial
+            FROM centros_costo cc
+            WHERE cc.activo = 1
+            ORDER BY total DESC
+            LIMIT 10
+        ");
+        $stmt_cs->execute([$anio_masa_seleccionado, $mes_masa_seleccionado, $anio_masa_seleccionado, $mes_masa_seleccionado]);
+    }
+    $centros_stats = $stmt_cs->fetchAll();
+} catch (PDOException $e) {
+    $centros_stats = [];
+}
 
 // Estadísticas por categoría ocupacional
 $categorias_stats = $pdo->query("
     SELECT co.id, co.nombre, co.codigo, co.factor_incidencia, COUNT(t.id) as total,
            SUM(e.salario_mensual) as masa_salarial
     FROM categorias_ocupacionales co
-    LEFT JOIN trabajadores t ON t.categoria_ocupacional_id = co.id AND t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())
+    LEFT JOIN trabajadores t ON t.categoria_ocupacional_id = co.id AND " . $sql_periodo_trab . "
     LEFT JOIN escalas_salariales e ON t.escala_salarial_id = e.id
     WHERE co.activo = 1
     GROUP BY co.id, co.nombre, co.codigo, co.factor_incidencia
     ORDER BY total DESC
 ")->fetchAll();
 
-// Estadísticas por tipo de contrato
-$contratos_stats = $pdo->query("
+// Estadísticas por tipo de contrato (se muestran siempre los 3 tipos,
+// aunque un tipo esté en 0)
+$tipos_contrato = ['Indeterminado', 'Determinado', 'A Prueba'];
+$contratos_stats = [];
+$mapa_contratos = [];
+$filas_contratos = $pdo->query("
     SELECT tipo_contrato, COUNT(*) as total
     FROM trabajadores
-    WHERE activo = 1 AND (fecha_baja IS NULL OR fecha_baja > CURDATE())
+    WHERE " . $sql_periodo_trab_sin_alias . "
     GROUP BY tipo_contrato
 ")->fetchAll();
+foreach ($filas_contratos as $fc) {
+    $mapa_contratos[$fc['tipo_contrato']] = (int)$fc['total'];
+}
+foreach ($tipos_contrato as $tipo) {
+    $contratos_stats[] = ['tipo_contrato' => $tipo, 'total' => $mapa_contratos[$tipo] ?? 0];
+}
 
-// Rangos de edad
+// Rangos de edad (sobre los trabajadores del período)
 $rangos_edad = ['18-25' => 0, '26-35' => 0, '36-45' => 0, '46-55' => 0, '56-65' => 0, '65+' => 0];
 foreach ($trabajadores_data as $t) {
-    if ($t['activo'] == 1 && (empty($t['fecha_baja']) || $t['fecha_baja'] > date('Y-m-d'))) {
-        $ci = preg_replace('/\D/', '', $t['ci']);
-        if (strlen($ci) >= 6) {
-            $anio = intval(substr($ci, 0, 2));
-            $mes = intval(substr($ci, 2, 2));
-            $dia = intval(substr($ci, 4, 2));
-            $anio_completo = $anio < 30 ? 2000 + $anio : 1900 + $anio;
-            $fecha_nac = mktime(0, 0, 0, $mes, $dia, $anio_completo);
-            $edad = date('Y') - date('Y', $fecha_nac);
-            if (date('md') < date('md', $fecha_nac)) $edad--;
-            
-            if ($edad >= 18 && $edad <= 25) $rangos_edad['18-25']++;
-            elseif ($edad >= 26 && $edad <= 35) $rangos_edad['26-35']++;
-            elseif ($edad >= 36 && $edad <= 45) $rangos_edad['36-45']++;
-            elseif ($edad >= 46 && $edad <= 55) $rangos_edad['46-55']++;
-            elseif ($edad >= 56 && $edad <= 65) $rangos_edad['56-65']++;
-            elseif ($edad > 65) $rangos_edad['65+']++;
-        }
+    $ci = preg_replace('/\D/', '', $t['ci']);
+    if (strlen($ci) >= 6) {
+        $anio = intval(substr($ci, 0, 2));
+        $mes = intval(substr($ci, 2, 2));
+        $dia = intval(substr($ci, 4, 2));
+        $anio_completo = $anio < 30 ? 2000 + $anio : 1900 + $anio;
+        $fecha_nac = mktime(0, 0, 0, $mes, $dia, $anio_completo);
+        $edad = date('Y') - date('Y', $fecha_nac);
+        if (date('md') < date('md', $fecha_nac)) $edad--;
+        
+        if ($edad >= 18 && $edad <= 25) $rangos_edad['18-25']++;
+        elseif ($edad >= 26 && $edad <= 35) $rangos_edad['26-35']++;
+        elseif ($edad >= 36 && $edad <= 45) $rangos_edad['36-45']++;
+        elseif ($edad >= 46 && $edad <= 55) $rangos_edad['46-55']++;
+        elseif ($edad >= 56 && $edad <= 65) $rangos_edad['56-65']++;
+        elseif ($edad > 65) $rangos_edad['65+']++;
     }
 }
 
-// Antigüedad promedio
+// Antigüedad promedio (al cierre del período del filtro, para trabajadores del período)
 $antiguedad_promedio = round(
-    $pdo->query("SELECT COALESCE(AVG(DATEDIFF(CURDATE(), fecha_alta) / 365.25), 0) 
+    $pdo->query("SELECT COALESCE(AVG(DATEDIFF(COALESCE(fecha_baja, '" . $fecha_fin_periodo . "'), fecha_alta) / 365.25), 0) 
                  FROM trabajadores 
-                 WHERE activo = 1 AND (fecha_baja IS NULL OR fecha_baja > CURDATE())")
+                 WHERE " . $sql_periodo_trab_sin_alias)
           ->fetchColumn(), 
     1
 );
 
-// Salario promedio
-$salario_promedio = $pdo->query("SELECT AVG(e.salario_mensual) FROM trabajadores t JOIN escalas_salariales e ON t.escala_salarial_id = e.id WHERE t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())")->fetchColumn() ?: 0;
+// Salario promedio (se recalcula con el filtro global tras las estadísticas de nóminas)
 
-// Vacaciones excedidas
-$vacaciones_excedidas = $pdo->query("SELECT COUNT(*) FROM trabajadores WHERE activo = 1 AND (fecha_baja IS NULL OR fecha_baja > CURDATE()) AND vacaciones_acumuladas > 20")->fetchColumn();
+// Vacaciones excedidas (trabajadores del período)
+$vacaciones_excedidas = $pdo->query("SELECT COUNT(*) FROM trabajadores WHERE " . $sql_periodo_trab_sin_alias . " AND vacaciones_acumuladas > 20")->fetchColumn();
 
 // ==================== ESTADÍSTICAS DE NÓMINAS ====================
 
-// Totales generales de nóminas
-$nominas_totales = $pdo->query("
+// Totales generales de nóminas (filtrados por Año/Mes o TODOS los meses del año)
+$where_totales = ["estado IN ('procesado', 'pagado', 'cerrado', 'contabilizado')", 'YEAR(periodo_desde) = ?'];
+$params_totales = [$anio_tot_seleccionado];
+if (!$es_todos_meses) {
+    $where_totales[] = 'MONTH(periodo_desde) = ?';
+    $params_totales[] = $num_mes_seleccionado;
+}
+$stmt_totales = $pdo->prepare("
     SELECT 
         COUNT(DISTINCT numero_nomina) as total_nominas,
         COUNT(*) as total_lineas,
@@ -165,22 +293,30 @@ $nominas_totales = $pdo->query("
         SUM(contribucion_especial) as total_contribucion,
         AVG(total_salario_devengado) as promedio_devengado
     FROM nominas
-    WHERE estado IN ('procesado', 'pagado', 'cerrado', 'contabilizado')
-")->fetch();
+    WHERE " . implode(' AND ', $where_totales) . "
+");
+$stmt_totales->execute($params_totales);
+$nominas_totales = $stmt_totales->fetch();
 
 // Nóminas automáticas: total por numero_nomina y líneas (base del promedio salarial)
-$nominas_automaticas = $pdo->query("
+// también filtradas por el período global
+$stmt_auto = $pdo->prepare("
     SELECT 
         COUNT(DISTINCT numero_nomina) as total_nominas,
         COUNT(*) as total_lineas,
         AVG(total_salario_devengado) as promedio_devengado
     FROM nominas
-    WHERE estado IN ('procesado', 'pagado', 'cerrado', 'contabilizado')
+    WHERE " . implode(' AND ', $where_totales) . "
       AND tipo_nomina = 'automatica'
-")->fetch();
+");
+$stmt_auto->execute($params_totales);
+$nominas_automaticas = $stmt_auto->fetch();
 
-// Nóminas por mes (CORREGIDO - meses en español)
-$nominas_por_mes_raw = $pdo->query("
+// Salario promedio del período filtrado (se muestra en Estadísticas de Personal)
+$salario_promedio = (float)($nominas_totales['promedio_devengado'] ?? 0);
+
+// Nóminas por mes (del año del filtro global, meses en español)
+$stmt_evol = $pdo->prepare("
     SELECT 
         DATE_FORMAT(periodo_desde, '%Y-%m') as mes,
         YEAR(periodo_desde) as anio,
@@ -190,11 +326,12 @@ $nominas_por_mes_raw = $pdo->query("
         SUM(importe_neto) as total_neto,
         SUM(contribucion_especial) as total_contribucion
     FROM nominas
-    WHERE estado IN ('procesado', 'pagado', 'cerrado', 'contabilizado')
+    WHERE estado != 'borrador' AND YEAR(periodo_desde) = ?
     GROUP BY DATE_FORMAT(periodo_desde, '%Y-%m'), YEAR(periodo_desde), MONTH(periodo_desde)
-    ORDER BY mes DESC
-    LIMIT 12
-")->fetchAll();
+    ORDER BY mes ASC
+");
+$stmt_evol->execute([$anio_tot_seleccionado]);
+$nominas_por_mes_raw = $stmt_evol->fetchAll();
 
 // Procesar nombres de meses en español
 $nominas_por_mes = [];
@@ -211,7 +348,7 @@ $top_salarios = $pdo->query("
     JOIN escalas_salariales e ON t.escala_salarial_id = e.id
     LEFT JOIN areas a ON t.area_id = a.id
     LEFT JOIN categorias_ocupacionales co ON t.categoria_ocupacional_id = co.id
-    WHERE t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())
+    WHERE " . $sql_periodo_trab . "
     ORDER BY e.salario_mensual DESC
     LIMIT 10
 ")->fetchAll();
@@ -230,25 +367,30 @@ $rangos_salariales = $pdo->query("
         SUM(e.salario_mensual) as total_salarios
     FROM trabajadores t
     JOIN escalas_salariales e ON t.escala_salarial_id = e.id
-    WHERE t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())
+    WHERE " . $sql_periodo_trab . "
     GROUP BY rango
     ORDER BY MIN(e.salario_mensual)
 ")->fetchAll();
 
-// Contribución especial por mes (CORREGIDO - meses en español)
-$contribucion_mensual_raw = $pdo->query("
+// Años/meses para los gráficos mensuales: los define el filtro global (ver inicio)
+
+// Contribución especial por mes (filtrada por año, meses en español)
+$stmt_contribucion_mensual = $pdo->prepare("
     SELECT 
         DATE_FORMAT(periodo_desde, '%Y-%m') as mes,
         YEAR(periodo_desde) as anio,
         MONTH(periodo_desde) as num_mes,
         SUM(contribucion_especial) as total_contribucion,
-        COUNT(*) as cantidad_nominas
+        COUNT(*) as cantidad_nominas,
+        COUNT(DISTINCT trabajador_id) as trabajadores
     FROM nominas
-    WHERE estado IN ('procesado', 'pagado', 'cerrado', 'contabilizado')
+    WHERE estado != 'borrador'
+      AND YEAR(periodo_desde) = ?
     GROUP BY DATE_FORMAT(periodo_desde, '%Y-%m'), YEAR(periodo_desde), MONTH(periodo_desde)
-    ORDER BY mes DESC
-    LIMIT 12
-")->fetchAll();
+    ORDER BY mes ASC
+");
+$stmt_contribucion_mensual->execute([$anio_tot_seleccionado]);
+$contribucion_mensual_raw = $stmt_contribucion_mensual->fetchAll();
 
 // Procesar nombres de meses en español
 $contribucion_mensual = [];
@@ -256,6 +398,55 @@ foreach ($contribucion_mensual_raw as $c) {
     $c['mes_nombre'] = nombreMesEspanol($c['num_mes']) . ' ' . $c['anio'];
     $contribucion_mensual[] = $c;
 }
+
+// Pago de Seguridad Social Patronal (12.5%) por mes, sobre el PAGADO (importe neto).
+// Misma lógica que modules/assp.php ($TASA_SEG_SOCIAL = 12.5)
+$stmt_patronal_mensual = $pdo->prepare("
+    SELECT 
+        DATE_FORMAT(periodo_desde, '%Y-%m') as mes,
+        YEAR(periodo_desde) as anio,
+        MONTH(periodo_desde) as num_mes,
+        ROUND(SUM(importe_neto) * (12.5 / 100), 2) as total_patronal,
+        COUNT(*) as cantidad_nominas,
+        COUNT(DISTINCT trabajador_id) as trabajadores
+    FROM nominas
+    WHERE estado != 'borrador'
+      AND YEAR(periodo_desde) = ?
+    GROUP BY DATE_FORMAT(periodo_desde, '%Y-%m'), YEAR(periodo_desde), MONTH(periodo_desde)
+    ORDER BY mes ASC
+");
+$stmt_patronal_mensual->execute([$anio_tot_seleccionado]);
+$patronal_mensual_raw = $stmt_patronal_mensual->fetchAll();
+
+// Procesar nombres de meses en español
+$patronal_mensual = [];
+foreach ($patronal_mensual_raw as $c) {
+    $c['mes_nombre'] = nombreMesEspanol($c['num_mes']) . ' ' . $c['anio'];
+    $patronal_mensual[] = $c;
+}
+
+// Redistribución de montos por mes (tabla montos_distrib) - mismo gráfico que nominas.php#historial_montos
+$anio_montos_seleccionado = $anio_tot_seleccionado;
+$montos_distrib_por_anio = [];
+try {
+    $stmt_md = $pdo->query("
+        SELECT anio, mes, importe_dis
+        FROM montos_distrib
+        ORDER BY anio DESC, FIELD(mes, 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre') DESC
+    ");
+    foreach ($stmt_md->fetchAll() as $m) {
+        $montos_distrib_por_anio[$m['anio']][] = ['mes' => $m['mes'], 'importe_dis' => $m['importe_dis']];
+    }
+} catch (PDOException $e) {
+    $montos_distrib_por_anio = [];
+}
+$montos_distrib_mensual = $montos_distrib_por_anio[$anio_montos_seleccionado] ?? [];
+$max_importe_dis = 0;
+foreach ($montos_distrib_mensual as $md) {
+    $max_importe_dis = max($max_importe_dis, (float)$md['importe_dis']);
+}
+$mes_masa_nombre = $es_todos_meses ? 'Todos los meses' : ($mes_masa_seleccionado ? nombreMesEspanol($mes_masa_seleccionado) : '');
+$etiqueta_masa_periodo = trim(($mes_masa_nombre ? $mes_masa_nombre . ' ' : '') . ($anio_masa_seleccionado ?: ''));
 
 // Resumen de vacaciones pagadas
 $vacaciones_pagadas = $pdo->query("
@@ -279,7 +470,7 @@ $masa_salarial_total = $pdo->query("
     SELECT SUM(e.salario_mensual) as total
     FROM trabajadores t
     JOIN escalas_salariales e ON t.escala_salarial_id = e.id
-    WHERE t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())
+    WHERE " . $sql_periodo_trab . "
 ")->fetchColumn() ?: 0;
 
 // ============================================
@@ -297,23 +488,8 @@ $totales_generales = [
     'nominas' => 0,
     'trabajadores' => 0
 ];
-$anios_disponibles = [];
-$anio_tot_seleccionado = 0;
-$ultimo_anio_label = '';
+$ultimo_anio_label = $anio_tot_seleccionado;
 try {
-    $anios_disponibles = $pdo->query("
-        SELECT DISTINCT YEAR(periodo_desde) as anio
-        FROM nominas
-        WHERE estado != 'borrador'
-        ORDER BY anio DESC
-    ")->fetchAll(PDO::FETCH_COLUMN);
-
-    $anio_tot_seleccionado = isset($_GET['anio']) ? intval($_GET['anio']) : 0;
-    if (!in_array($anio_tot_seleccionado, $anios_disponibles)) {
-        $anio_tot_seleccionado = !empty($anios_disponibles) ? (int)$anios_disponibles[0] : (int)date('Y');
-    }
-    $ultimo_anio_label = $anio_tot_seleccionado;
-
     $stmt_anio = $pdo->prepare("
         SELECT 
             tipo_nomina,
@@ -375,26 +551,14 @@ $totales_generales_mes = [
     'nominas' => 0,
     'trabajadores' => 0
 ];
-$meses_disponibles = [];
-$mes_tot_seleccionado = '';
-$ultimo_mes_label = '';
+$mes_tot_seleccionado = $num_mes_seleccionado;
 try {
-    $meses_disponibles = $pdo->query("
-        SELECT DISTINCT DATE_FORMAT(periodo_desde, '%Y-%m') as mes
-        FROM nominas
-        WHERE estado != 'borrador'
-        ORDER BY mes DESC
-    ")->fetchAll(PDO::FETCH_COLUMN);
-
-    $mes_tot_seleccionado = isset($_GET['mes']) ? $_GET['mes'] : '';
-    if (!in_array($mes_tot_seleccionado, $meses_disponibles)) {
-        $mes_tot_seleccionado = !empty($meses_disponibles) ? $meses_disponibles[0] : '';
-    }
-
-    if ($mes_tot_seleccionado) {
-        $anio_mes = (int)substr($mes_tot_seleccionado, 0, 4);
-        $num_mes = (int)substr($mes_tot_seleccionado, 5, 2);
-        $ultimo_mes_label = nombreMesEspanol($num_mes) . ' ' . $anio_mes;
+    if ($es_todos_meses) {
+        $totales_por_tipo_mes = $totales_por_tipo;
+        $totales_generales_mes = $totales_generales;
+    } elseif ($mes_tot_seleccionado) {
+        $anio_mes = $anio_tot_seleccionado;
+        $num_mes = $mes_tot_seleccionado;
 
         $stmt_mes = $pdo->prepare("
             SELECT 
@@ -409,11 +573,12 @@ try {
                 SUM(importe_vacaciones) as sum_vacaciones
             FROM nominas
             WHERE estado != 'borrador'
-              AND DATE_FORMAT(periodo_desde, '%Y-%m') = ?
+              AND YEAR(periodo_desde) = ?
+              AND MONTH(periodo_desde) = ?
             GROUP BY tipo_nomina
             ORDER BY tipo_nomina ASC
         ");
-        $stmt_mes->execute([$mes_tot_seleccionado]);
+        $stmt_mes->execute([$anio_mes, $num_mes]);
         $totales_por_tipo_mes = $stmt_mes->fetchAll();
 
         foreach ($totales_por_tipo_mes as $t) {
@@ -448,6 +613,8 @@ $ultimas_bajas = $pdo->query("
     FROM trabajadores t
     LEFT JOIN areas a ON t.area_id = a.id
     WHERE t.fecha_baja IS NOT NULL
+      AND t.fecha_baja >= '" . $fecha_ini_periodo . "'
+      AND t.fecha_baja <= '" . $fecha_fin_periodo . "'
     ORDER BY t.fecha_baja DESC
     LIMIT 10
 ")->fetchAll();
@@ -1186,6 +1353,33 @@ $ultimas_bajas = $pdo->query("
         </li>
     </ul>
 
+    <!-- FILTRO GLOBAL AÑO / MES (fuera de los tabs; gobierna todas las consultas financieras) -->
+    <div class="glass-card p-3 mb-4 fade-in-up">
+        <form method="GET" class="d-flex flex-wrap align-items-end gap-3">
+            <div>
+                <label for="sel_anio_global" class="form-label mb-1" style="font-size:0.8rem; color: #94a3b8;">Año</label>
+                <select name="anio" id="sel_anio_global" class="form-select form-select-sm" style="background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); width:auto; border-radius: 0.5rem; padding-right:2.5rem;" title="Seleccionar año" data-tooltip="Seleccionar año" data-tooltip-theme="primary">
+                    <?php foreach ($anios_disponibles as $ano): ?>
+                    <option value="<?php echo (int)$ano; ?>" <?php echo ((int)$anio_tot_seleccionado === (int)$ano) ? 'selected' : ''; ?>><?php echo (int)$ano; ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div>
+                <label for="sel_mes_global" class="form-label mb-1" style="font-size:0.8rem; color: #94a3b8;">Mes</label>
+                <select name="mes" id="sel_mes_global" class="form-select form-select-sm" style="background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); width:auto; border-radius: 0.5rem; padding-right:2.5rem;" title="Seleccionar mes (TODOS = suma del año completo; Más reciente = último mes con datos)" data-tooltip="Seleccionar mes" data-tooltip-theme="primary">
+                    <option value="todos" <?php echo $es_todos_meses ? 'selected' : ''; ?>>TODOS</option>
+                    <option value="reciente" <?php echo (!$es_todos_meses && ($mes_get === 'reciente' || $mes_get === '')) ? 'selected' : ''; ?>>Más reciente</option>
+                    <?php foreach ($meses_disponibles as $num_mes): ?>
+                    <option value="<?php echo (int)$num_mes; ?>" <?php echo (!$es_todos_meses && $mes_get !== '' && $mes_get !== 'reciente' && (int)$mes_tot_seleccionado === (int)$num_mes) ? 'selected' : ''; ?>><?php echo nombreMesEspanol($num_mes); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <button type="submit" class="btn-win btn-win-sm" title="Filtrar todas las consultas por el período seleccionado" data-tooltip="Filtrar por período" data-tooltip-theme="primary">
+                <i class="fas fa-filter me-1"></i>Filtrar
+            </button>
+        </form>
+    </div>
+
     <div class="tab-content">
         <!-- TAB 1: ESTADÍSTICAS DE PERSONAL -->
         <div class="tab-pane fade show active" id="personal" role="tabpanel">
@@ -1212,7 +1406,7 @@ $ultimas_bajas = $pdo->query("
                 <div class="col">
                     <div class="stat-card">
                         <div class="d-flex justify-content-between align-items-start">
-                            <div><div class="stat-value text-danger"><?php echo $bajas_del_anio; ?></div><div class="stat-label">Bajas del Año</div></div>
+                            <div><div class="stat-value text-danger"><?php echo $bajas_del_anio; ?></div><div class="stat-label"><?php echo $es_todos_meses ? 'Bajas del Año' : 'Bajas del Mes'; ?></div></div>
                             <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15);"><i class="fas fa-user-minus" style="color: #ef4444;"></i></div>
                         </div>
                     </div>
@@ -1239,7 +1433,7 @@ $ultimas_bajas = $pdo->query("
                 <div class="col-md-5">
                     <div class="glass-card p-4 h-100">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                            <h6 class="mb-0"><i class="fas fa-venus-mars me-2" style="color: #a78bfa;"></i> Distribución por Género</h6>
+                            <h6 class="mb-0"><i class="fas fa-venus-mars me-2" style="color: #a78bfa;"></i> Distribución por Género <span><?php echo htmlspecialchars($ultimo_mes_label); ?></span></h6>
                             <button class="btn-win btn-win-sm" onclick="exportarGeneroPNG()" title="Exportar gráfico a PNG" data-tooltip="Exportar gráfico a PNG" data-tooltip-theme="info"><i class="fas fa-download me-1"></i> PNG</button>
                         </div>
                         <div class="row align-items-center">
@@ -1283,7 +1477,7 @@ $ultimas_bajas = $pdo->query("
             <div class="row g-3 mb-4 fade-in-up">
                 <div class="col-md-6">
                     <div class="glass-card p-4">
-                        <h6 class="mb-3"><i class="fas fa-chart-bar me-2" style="color: #60a5fa;"></i> Rangos de Edad</h6>
+                        <h6 class="mb-3"><i class="fas fa-chart-bar me-2" style="color: #60a5fa;"></i> Rangos de Edad <span><?php echo htmlspecialchars($ultimo_mes_label); ?></span></h6>
                         <div class="row g-3">
                             <?php foreach ($rangos_edad as $rango => $cantidad): ?>
                             <div class="col-md-6">
@@ -1296,7 +1490,7 @@ $ultimas_bajas = $pdo->query("
                 </div>
                 <div class="col-md-6">
                     <div class="glass-card p-4">
-                        <h6 class="mb-3"><i class="fas fa-building me-2" style="color: #60a5fa;"></i> Distribución por Área</h6>
+                        <h6 class="mb-3"><i class="fas fa-building me-2" style="color: #60a5fa;"></i> Distribución por Área <span><?php echo htmlspecialchars($ultimo_mes_label); ?></span></h6>
                         <div style="max-height:15.625rem; overflow-y: auto;">
                             <?php foreach ($areas_stats as $area): ?>
                             <div class="mb-2"><div class="d-flex justify-content-between"><span class="small"><?php echo htmlspecialchars($area['nombre_area']); ?></span><span class="fw-bold"><?php echo $area['total']; ?></span></div><div class="progress-custom mt-1"><div class="progress-custom-bar" style="width:<?php echo $total_activos > 0 ? ($area['total'] / $total_activos) * 100 : 0; ?>%; background: #a78bfa;"></div></div></div>
@@ -1309,7 +1503,7 @@ $ultimas_bajas = $pdo->query("
 <div class="row g-3 mb-4 fade-in-up">
     <div class="col-12">
         <div class="glass-card p-4">
-            <h6 class="mb-3"><i class="fas fa-user-slash me-2" style="color: #ef4444;"></i> Últimas 10 Bajas</h6>
+            <h6 class="mb-3"><i class="fas fa-user-slash me-2" style="color: #ef4444;"></i> Últimas 10 Bajas <span><?php echo htmlspecialchars($ultimo_mes_label); ?></span></h6>
             <div class="table-responsive">
                 <table class="table table-sm table-dark">
                     <thead>
@@ -1408,7 +1602,7 @@ $ultimas_bajas = $pdo->query("
             <div class="row g-3 mb-4 fade-in-up">
                 <div class="col-md-6">
                     <div class="glass-card p-4">
-                        <h6 class="mb-3"><i class="fas fa-chart-pie me-2" style="color: #60a5fa;"></i> Categorías Ocupacionales</h6>
+                        <h6 class="mb-3"><i class="fas fa-chart-pie me-2" style="color: #60a5fa;"></i> Categorías Ocupacionales <span><?php echo htmlspecialchars($ultimo_mes_label); ?></span></h6>
                         <?php foreach ($categorias_stats as $cat): ?>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between"><div><span class="fw-bold"><?php echo htmlspecialchars($cat['nombre']); ?></span> <span class="text-muted small">(<?php echo $cat['codigo']; ?> - <?php echo ($cat['factor_incidencia'] * 100); ?>%)</span></div><span class="fw-bold"><?php echo $cat['total']; ?></span></div>
@@ -1419,7 +1613,7 @@ $ultimas_bajas = $pdo->query("
                 </div>
                 <div class="col-md-6">
                     <div class="glass-card p-4">
-                        <h6 class="mb-3"><i class="fas fa-chart-line me-2" style="color: #60a5fa;"></i> Top 10 Mejores Salarios</h6>
+                        <h6 class="mb-3"><i class="fas fa-chart-line me-2" style="color: #60a5fa;"></i> Top 10 Mejores Salarios <span><?php echo htmlspecialchars($ultimo_mes_label); ?></span></h6>
                         <div style="max-height:18.75rem; overflow-x:auto; overflow-y:auto;">
                             <table class="table table-sm table-dark table-borderless">
                                 <thead><tr><th>Empleado</th><th>Área</th><th>Categoría</th><th class="text-end">Salario</th></tr></thead>
@@ -1542,7 +1736,7 @@ $ultimas_bajas = $pdo->query("
                 <div class="col-md-12">
                     <div class="glass-card p-4">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                            <h6 class="mb-0"><i class="fas fa-chart-line me-2" style="color: #60a5fa;"></i> Evolución Mensual de Nóminas</h6>
+                            <h6 class="mb-0"><i class="fas fa-chart-line me-2" style="color: #60a5fa;"></i> Evolución Mensual de Nóminas <small style="font-weight:400; opacity:0.7;">(Año <?php echo (int)$anio_tot_seleccionado; ?>)</small></h6>
                             <?php if (!empty($nominas_por_mes)): ?>
                             <button class="btn-win btn-win-sm" onclick="exportarEvolucionPNG()" title="Exportar gráfico a PNG" data-tooltip="Exportar gráfico a PNG" data-tooltip-theme="info"><i class="fas fa-download me-1"></i> PNG</button>
                             <?php endif; ?>
@@ -1556,12 +1750,14 @@ $ultimas_bajas = $pdo->query("
 
             <div class="row g-3 mb-4 fade-in-up">
                 <div class="col-md-6">
-                    <div class="glass-card p-4">
+                    <div class="glass-card p-4 h-100">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                            <h6 class="mb-0"><i class="fas fa-percent me-2" style="color: #f59e0b;"></i> Contribución Especial por Mes</h6>
-                            <?php if (!empty($contribucion_mensual)): ?>
-                            <button class="btn-win btn-win-sm" onclick="exportarContribucionPNG()" title="Exportar gráfico a PNG" data-tooltip="Exportar gráfico a PNG" data-tooltip-theme="info"><i class="fas fa-download me-1"></i> PNG</button>
-                            <?php endif; ?>
+                            <h6 class="mb-0"><i class="fas fa-percent me-2" style="color: #f59e0b;"></i> Contribución Especial (CESS) por Mes (Trabajadores) <small style="font-weight:400; opacity:0.7;">(Año <?php echo (int)$anio_tot_seleccionado; ?>)</small></h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <?php if (!empty($contribucion_mensual)): ?>
+                                <button class="btn-win btn-win-sm" onclick="exportarContribucionPNG()" title="Exportar gráfico a PNG" data-tooltip="Exportar gráfico a PNG" data-tooltip-theme="info"><i class="fas fa-download me-1"></i> PNG</button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div class="chart-container">
                             <canvas id="contribucionChart"></canvas>
@@ -1569,8 +1765,66 @@ $ultimas_bajas = $pdo->query("
                     </div>
                 </div>
                 <div class="col-md-6">
+                    <div class="glass-card p-4 h-100">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <h6 class="mb-0"><i class="fas fa-building-columns me-2" style="color: #34d399;"></i> Pago de Seguridad Social Patronal por Mes <small style="font-weight:400; opacity:0.7;">(12.5% - Año <?php echo (int)$anio_tot_seleccionado; ?>)</small></h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <?php if (!empty($patronal_mensual)): ?>
+                                <button class="btn-win btn-win-sm" onclick="exportarPatronalPNG()" title="Exportar gráfico a PNG" data-tooltip="Exportar gráfico a PNG" data-tooltip-theme="info"><i class="fas fa-download me-1"></i> PNG</button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="patronalChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Redistribución de Montos por Mes -->
+            <div class="row g-3 mb-4 fade-in-up">
+                <div class="col-md-12">
                     <div class="glass-card p-4">
-                        <h6 class="mb-3"><i class="fas fa-chart-bar me-2" style="color: var(--color-success);"></i> Masa Salarial por Centro de Costo</h6>
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <h6 class="mb-0"><i class="fas fa-scale-balanced me-2" style="color: #818cf8;"></i> Redistribución de Montos por Mes <small style="font-weight:400; opacity:0.7;">(Año <?php echo (int)$anio_tot_seleccionado; ?>)</small></h6>
+                        </div>
+                        <?php if (!empty($montos_distrib_mensual)): ?>
+                        <table class="table table-sm table-dark">
+                            <thead>
+                                <tr><th>Mes</th><th style="width:40%;">Distribución</th><th class="text-end">Importe Distribuido</th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($montos_distrib_mensual as $md): ?>
+                                <?php $pc = $max_importe_dis > 0 ? round(((float)$md['importe_dis'] * 100) / $max_importe_dis, 1) : 0; ?>
+                                <tr>
+                                    <td class="text-capitalize"><?php echo htmlspecialchars($md['mes']); ?></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div style="flex:1; background: rgba(129,140,248,0.2); border-radius:0.25rem; overflow:hidden;">
+                                                <div style="width:<?php echo $pc; ?>%; background: #818cf8; height:0.625rem;"></div>
+                                            </div>
+                                            <span style="font-size:0.75rem; color: #c7d2fe;"><?php echo $pc; ?>%</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end text-info">$<?php echo number_format((float)$md['importe_dis'], 2); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php else: ?>
+                        <div class="text-muted">No hay montos redistribuidos para el año seleccionado.</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Masa Salarial por Centro de Costo -->
+            <div class="row g-3 mb-4 fade-in-up">
+                <div class="col-md-12">
+                    <div class="glass-card p-4">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <h6 class="mb-0"><i class="fas fa-chart-bar me-2" style="color: var(--color-success);"></i> Masa Salarial por Centro de Costo <small style="font-weight:400; opacity:0.7;">(<?php echo htmlspecialchars($etiqueta_masa_periodo); ?>)</small></h6>
+                        </div>
                         <div style="max-height:18.75rem; overflow-x:auto; overflow-y:auto;">
                             <table class="table table-sm table-dark">
                                 <thead>
@@ -1677,22 +1931,8 @@ $ultimas_bajas = $pdo->query("
                         <div class="mt-4">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
                                 <h6 class="fw-semibold mb-0" style="color: #67e8f9;">
-                                    <i class="fas fa-calendar-check me-2"></i> Totales por Tipo - Mes <span><?php echo htmlspecialchars($ultimo_mes_label); ?></span>
+                                    <i class="fas fa-calendar-check me-2"></i> <?php echo $es_todos_meses ? 'Totales por Tipo - Acumulado' : 'Totales por Tipo - Mes'; ?> <span><?php echo htmlspecialchars($ultimo_mes_label); ?></span>
                                 </h6>
-                                <form method="GET" class="d-flex align-items-center gap-2">
-                                    <label for="sel_mes_tot" class="mb-0 text-muted" style="font-size:0.8rem; color: #94a3b8 !important;">Mes:</label>
-                                    <select name="mes" id="sel_mes_tot" class="form-select form-select-sm" style="background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); width:auto; border-radius: 0.5rem; padding-right:2.5rem;" title="Seleccionar mes" data-tooltip="Seleccionar mes" data-tooltip-theme="primary">
-                                        <?php foreach ($meses_disponibles as $m): ?>
-                                            <?php $m_label = nombreMesEspanol((int)substr($m, 5, 2)) . ' ' . (int)substr($m, 0, 4); ?>
-                                            <option value="<?php echo htmlspecialchars($m); ?>" <?php echo ($mes_tot_seleccionado === $m) ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($m_label); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <button type="submit" class="btn-win btn-win-sm" title="Filtrar por mes seleccionado" data-tooltip="Filtrar por mes" data-tooltip-theme="primary">
-                                        <i class="fas fa-filter me-1"></i>Filtrar
-                                    </button>
-                                </form>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm table-dark" style="color: #e2e8f0;">
@@ -1841,7 +2081,7 @@ document.getElementById('logoutSidebarBtn')?.addEventListener('click', logoutLog
 // Gráfico de Género (Donut con Chart.js)
 const generoCanvas = document.getElementById('generoChart');
 if (generoCanvas) {
-    new Chart(generoCanvas, {
+    var generoChartInst = new Chart(generoCanvas, {
         type: 'doughnut',
         data: {
             labels: ['Masculino', 'Femenino'],
@@ -1876,9 +2116,9 @@ if (generoCanvas) {
 
 // Gráfico de Evolución de Nóminas (con meses en español)
 <?php if (!empty($nominas_por_mes)): ?>
-const meses = <?php echo json_encode(array_reverse(array_column($nominas_por_mes, 'mes_nombre'))); ?>;
-const devengado = <?php echo json_encode(array_reverse(array_column($nominas_por_mes, 'total_devengado'))); ?>;
-const neto = <?php echo json_encode(array_reverse(array_column($nominas_por_mes, 'total_neto'))); ?>;
+const meses = <?php echo json_encode(array_column($nominas_por_mes, 'mes_nombre')); ?>;
+const devengado = <?php echo json_encode(array_column($nominas_por_mes, 'total_devengado')); ?>;
+const neto = <?php echo json_encode(array_column($nominas_por_mes, 'total_neto')); ?>;
 
 var evolucionChartInst = new Chart(document.getElementById('evolucionNominasChart'), {
     type: 'line',
@@ -1935,8 +2175,8 @@ var evolucionChartInst = new Chart(document.getElementById('evolucionNominasChar
 
 // Gráfico de Contribución Especial por Mes (con meses en español)
 <?php if (!empty($contribucion_mensual)): ?>
-const mesesContrib = <?php echo json_encode(array_reverse(array_column($contribucion_mensual, 'mes_nombre'))); ?>;
-const contribucion = <?php echo json_encode(array_reverse(array_column($contribucion_mensual, 'total_contribucion'))); ?>;
+const mesesContrib = <?php echo json_encode(array_column($contribucion_mensual, 'mes_nombre')); ?>;
+const contribucion = <?php echo json_encode(array_column($contribucion_mensual, 'total_contribucion')); ?>;
 
 var contribucionChartInst = new Chart(document.getElementById('contribucionChart'), {
     type: 'bar',
@@ -1979,6 +2219,131 @@ var contribucionChartInst = new Chart(document.getElementById('contribucionChart
     }
 });
 <?php endif; ?>
+
+// Gráfico de Pago de Seguridad Social Patronal (12.5%) por Mes (con meses en español)
+<?php if (!empty($patronal_mensual)): ?>
+const mesesPatronal = <?php echo json_encode(array_column($patronal_mensual, 'mes_nombre')); ?>;
+const patronal = <?php echo json_encode(array_column($patronal_mensual, 'total_patronal')); ?>;
+
+var patronalChartInst = new Chart(document.getElementById('patronalChart'), {
+    type: 'bar',
+    data: { 
+        labels: mesesPatronal, 
+        datasets: [{ 
+            label: 'Seg. Social Patronal', 
+            data: patronal, 
+            backgroundColor: 'rgba(' + (window.themeColor('--green-soft-rgb') || '52, 211, 153') + ', 0.7)', 
+            borderColor: (window.themeColor('--green') || '#10b981'), 
+            borderWidth: 1 
+        }] 
+    },
+    options: { 
+        responsive: true, 
+        maintainAspectRatio: true, 
+        plugins: { 
+            legend: { labels: { color: (window.themeColor('--txt') || '#e8edf6') } }, 
+            tooltip: { 
+                backgroundColor: (window.themeColor('--panel') || '#10151f'),
+                titleColor: (window.themeColor('--txt') || '#e8edf6'),
+                bodyColor: (window.themeColor('--txt') || '#e8edf6'),
+                callbacks: { 
+                    label: function(ctx) { 
+                        return 'Seg. Social Patronal: $' + ctx.raw.toLocaleString(); 
+                    } 
+                } 
+            } 
+        }, 
+        scales: { 
+            y: { 
+                ticks: { color: (window.themeColor('--txt') || '#e8edf6'), callback: function(v) { return '$' + v.toLocaleString(); } }, 
+                grid: { color: (window.themeColor('--border') || 'rgba(255,255,255,0.1)') } 
+            }, 
+            x: { 
+                ticks: { color: (window.themeColor('--txt') || '#e8edf6') }, 
+                grid: { color: (window.themeColor('--border') || 'rgba(255,255,255,0.1)') } 
+            } 
+        } 
+    }
+});
+<?php endif; ?>
+
+var graficosFinancierosReportes = [];
+if (typeof evolucionChartInst !== 'undefined') { graficosFinancierosReportes.push(evolucionChartInst); }
+if (typeof contribucionChartInst !== 'undefined') { graficosFinancierosReportes.push(contribucionChartInst); }
+if (typeof patronalChartInst !== 'undefined') { graficosFinancierosReportes.push(patronalChartInst); }
+if (typeof generoChartInst !== 'undefined') { graficosFinancierosReportes.push(generoChartInst); }
+(function () {
+    var tabFin = document.getElementById('financiero-tab');
+    if (!tabFin) return;
+    tabFin.addEventListener('shown.bs.tab', function () {
+        window.requestAnimationFrame(function () {
+            graficosFinancierosReportes.forEach(function (g) {
+                if (g && typeof g.resize === 'function') { g.resize(); }
+            });
+        });
+    });
+})();
+
+var recolorarGraficosReportes = function () {
+    var txt = window.themeColor('--txt') || '#e8edf6';
+    var panel = window.themeColor('--panel') || '#10151f';
+    var borde = window.themeColor('--border') || 'rgba(255,255,255,0.1)';
+    graficosFinancierosReportes.forEach(function (g) {
+        if (!g) return;
+        if (g.options && g.options.plugins) {
+            if (g.options.plugins.legend && g.options.plugins.legend.labels) { g.options.plugins.legend.labels.color = txt; }
+            if (g.options.plugins.tooltip) {
+                g.options.plugins.tooltip.backgroundColor = panel;
+                g.options.plugins.tooltip.titleColor = txt;
+                g.options.plugins.tooltip.bodyColor = txt;
+            }
+        }
+        if (g.options && g.options.scales) {
+            ['x', 'y'].forEach(function (eje) {
+                var sc = g.options.scales[eje];
+                if (!sc) return;
+                if (sc.ticks) { sc.ticks.color = txt; }
+                if (sc.grid) { sc.grid.color = borde; }
+            });
+        }
+        if (g.data && g.data.datasets) {
+            g.data.datasets.forEach(function (ds) {
+                switch (ds.label) {
+                    case 'Total Devengado':
+                        ds.borderColor = window.themeColor('--blue') || '#60a5fa';
+                        ds.backgroundColor = 'rgba(' + (window.themeColor('--blue-soft-rgb') || '147, 197, 253') + ', 0.1)';
+                        break;
+                    case 'Total Neto':
+                        ds.borderColor = window.themeColor('--color-success') || '#10b981';
+                        ds.backgroundColor = 'rgba(' + (window.themeColor('--color-success-rgb') || '16, 185, 129') + ', 0.1)';
+                        break;
+                    case 'Contribución Especial':
+                        ds.backgroundColor = 'rgba(' + (window.themeColor('--amber-soft-rgb') || '252, 211, 77') + ', 0.7)';
+                        ds.borderColor = window.themeColor('--amber') || '#f59e0b';
+                        break;
+                    case 'Seg. Social Patronal':
+                        ds.backgroundColor = 'rgba(' + (window.themeColor('--green-soft-rgb') || '52, 211, 153') + ', 0.7)';
+                        ds.borderColor = window.themeColor('--green') || '#10b981';
+                        break;
+                }
+            });
+        }
+        if (typeof g.update === 'function') { g.update(); }
+    });
+};
+(function () {
+    var objetivo = document.documentElement;
+    if (!objetivo || !window.MutationObserver) return;
+    var temaPrevio = (objetivo.getAttribute('data-theme') || '').trim();
+    var obs = new MutationObserver(function () {
+        var temaActual = (objetivo.getAttribute('data-theme') || '').trim();
+        if (temaActual && temaActual !== temaPrevio) {
+            temaPrevio = temaActual;
+            window.requestAnimationFrame(recolorarGraficosReportes);
+        }
+    });
+    obs.observe(objetivo, { attributes: true, attributeFilter: ['data-theme'] });
+})();
 
 // ==========================================
 // PLUGIN CHART.JS: VALORES EN LOS GRÁFICOS AL EXPORTAR PNG
@@ -2063,6 +2428,11 @@ if (contribucionChartInst) {
     formattersValoresExportacionR[contribucionChartInst.id] = function(d, i, v) { return '$' + new Intl.NumberFormat('es-ES').format(v); };
 }
 <?php endif; ?>
+<?php if (!empty($patronal_mensual)): ?>
+if (patronalChartInst) {
+    formattersValoresExportacionR[patronalChartInst.id] = function(d, i, v) { return '$' + new Intl.NumberFormat('es-ES').format(v); };
+}
+<?php endif; ?>
 
 // ==========================================
 // EXPORTAR GRÁFICOS A PNG (con colores del tema actual y valores de las series)
@@ -2127,6 +2497,7 @@ function exportarChartPNG(canvasId, nombreBase, titulo, conValores) {
 }
 function exportarEvolucionPNG() { exportarChartPNG('evolucionNominasChart', 'evolucion_nominas', 'Evolución Mensual de Nóminas'); }
 function exportarContribucionPNG() { exportarChartPNG('contribucionChart', 'contribucion_especial', 'Contribución Especial por Mes'); }
+function exportarPatronalPNG() { exportarChartPNG('patronalChart', 'seg_social_patronal', 'Pago de Seguridad Social Patronal por Mes'); }
 
 // ==========================================
 // EXPORTAR DISTRIBUCIÓN POR GÉNERO A PNG (igual que la tarjeta que lo contiene)
@@ -2271,8 +2642,17 @@ window.printData = {
         totales_generales: <?php echo json_encode($totales_generales); ?>,
         totales_por_tipo_mes: <?php echo json_encode($totales_por_tipo_mes); ?>,
         totales_generales_mes: <?php echo json_encode($totales_generales_mes); ?>,
+        contribucion_mensual: <?php echo json_encode($contribucion_mensual); ?>,
+        patronal_mensual: <?php echo json_encode($patronal_mensual); ?>,
+        montos_distrib_mensual: <?php echo json_encode($montos_distrib_mensual); ?>,
+        max_importe_dis: <?php echo (float)$max_importe_dis; ?>,
+        anio_montos_label: <?php echo json_encode((int)$anio_montos_seleccionado); ?>,
+        anio_masa_label: <?php echo json_encode((int)$anio_masa_seleccionado); ?>,
+        mes_masa_label: <?php echo json_encode($mes_masa_nombre); ?>,
+        anio_graf_label: <?php echo json_encode($anio_tot_seleccionado); ?>,
         anio_label: <?php echo json_encode($ultimo_anio_label); ?>,
-        mes_label: <?php echo json_encode($ultimo_mes_label); ?>
+        mes_label: <?php echo json_encode($ultimo_mes_label); ?>,
+        todos_meses: <?php echo $es_todos_meses ? 'true' : 'false'; ?>
     }
 };
 // ==========================================
@@ -2399,6 +2779,56 @@ function construirHtmlInformeGeneral(opts) {
             <td style="text-align: right;">${fmt(tpgm.neto)}</td>
             <td style="text-align: right;">100.00%</td>
         </tr>`;
+    }
+
+    // Renderizar Contribución Especial (CESS) por Mes (Trabajadores) y Seguridad Social Patronal por mes
+    const ceePorMes = data.financiero.contribucion_mensual || [];
+    const patronalPorMes = data.financiero.patronal_mensual || [];
+    const ceePorMesMap = {};
+    ceePorMes.forEach(c => { ceePorMesMap[c.mes] = c.total_contribucion; });
+    let cessTrabajadoresHtml = '';
+    ceePorMes.forEach(c => {
+        cessTrabajadoresHtml += `<tr>
+            <td style="font-weight: bold;">${escapeHtml(c.mes_nombre)}</td>
+            <td style="text-align: center;">${c.trabajadores}</td>
+            <td style="text-align: right;">${fmt(c.total_contribucion)}</td>
+        </tr>`;
+    });
+    if (!cessTrabajadoresHtml) {
+        cessTrabajadoresHtml = '<tr><td colspan="3" style="text-align:center;">No hay datos para el año seleccionado</td></tr>';
+    }
+    let aportesMensualesHtml = '';
+    patronalPorMes.forEach(p => {
+        aportesMensualesHtml += `<tr>
+            <td style="font-weight: bold;">${escapeHtml(p.mes_nombre)}</td>
+            <td style="text-align: center;">${p.trabajadores}</td>
+            <td style="text-align: right;">${fmt(p.total_patronal)}</td>
+        </tr>`;
+    });
+    if (!aportesMensualesHtml) {
+        aportesMensualesHtml = '<tr><td colspan="3" style="text-align:center;">No hay datos para el año seleccionado</td></tr>';
+    }
+
+    // Renderizar Redistribución de Montos por Mes (montos_distrib, igual que nominas.php#historial_montos)
+    const montosDistrib = data.financiero.montos_distrib_mensual || [];
+    const maxImporteDis = parseFloat(data.financiero.max_importe_dis) || 0;
+    let montosDistribHtml = '';
+    montosDistrib.forEach(md => {
+        const importeDis = parseFloat(md.importe_dis) || 0;
+        const pc = maxImporteDis > 0 ? ((importeDis * 100) / maxImporteDis).toFixed(1) : '0';
+        montosDistribHtml += `<tr>
+            <td style="font-weight: bold; text-transform: capitalize;">${escapeHtml(md.mes)}</td>
+            <td>
+                <div style="background:#eee; border-radius:0.25rem; overflow:hidden;">
+                    <div style="width:${pc}%; background:#6366f1; height:0.5rem;"></div>
+                </div>
+            </td>
+            <td style="text-align: right;">${pc}%</td>
+            <td style="text-align: right;">${fmt(importeDis)}</td>
+        </tr>`;
+    });
+    if (!montosDistribHtml) {
+        montosDistribHtml = '<tr><td colspan="4" style="text-align:center;">No hay montos redistribuidos para el año seleccionado</td></tr>';
     }
 
 	// Generar filas de últimas bajas
@@ -2531,6 +2961,18 @@ function construirHtmlInformeGeneral(opts) {
 
     const pageFooter = (titulo, label) => `<div class="print-footer"><div>${titulo}</div><div>${label}</div></div>`;
 
+    // Hoja inicial de presentación: todo centrado, logo, empresa y período (mes / año)
+    const periodoPortada = (data.financiero.mes_label || '').replace(/ (\d{4})$/, ' / $1');
+    const pagePortada = () => `
+        <div class="page-sheet portada">
+            <div class="portada-inner">
+                ${data.logo ? `<div class="portada-logo">${logoHtml}</div>` : ''}
+                <h1 class="portada-titulo">Informe Estadístico y Demográfico de Personal</h1>
+                <div class="portada-empresa">${escapeHtml(data.empresa)}</div>
+                <div class="portada-periodo">${escapeHtml(periodoPortada)}</div>
+            </div>
+        </div>`;
+
     let html = `
         <!DOCTYPE html>
         <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
@@ -2597,6 +3039,17 @@ function construirHtmlInformeGeneral(opts) {
                     text-transform: uppercase;
                 }
 
+                .portada {
+                    border: 0.1875rem solid #004B87;
+                    text-align: center;
+                }
+                .portada-inner { margin-top: 58mm; }
+                .portada-logo { margin: 0 auto 1.5625rem; }
+                .portada-logo img { max-height: 6.25rem; max-width: 6.25rem; object-fit: contain; }
+                .portada-titulo { font-size: 19pt; font-weight: bold; color: #004B87; text-transform: uppercase; margin-bottom: 1.5625rem; }
+                .portada-empresa { font-size: 24pt; font-weight: bold; color: #111; text-transform: uppercase; }
+                .portada-periodo { font-size: 15pt; color: #333; margin-top: 1.5625rem; }
+
 				.grid-stats {
                     display: grid;
                     grid-template-columns: repeat(5, 1fr); /* Ajustado a 5 columnas */
@@ -2640,8 +3093,9 @@ function construirHtmlInformeGeneral(opts) {
             </style>
         </head>
         <body>
-            ${PRINT_TOOLBAR_HTML}
+            ${paraWord ? '' : PRINT_TOOLBAR_HTML}
             ${paraWord ? '<div class="WordSection1">' : ''}
+            ${pagePortada()}
             <!-- PÁGINA 1: INFORME GENERAL DE PERSONAL -->
             <div class="page-sheet">
                 ${pageHeader('Informe Estadístico y Demográfico de Personal')}
@@ -2649,26 +3103,26 @@ function construirHtmlInformeGeneral(opts) {
                 ${gridStats([
                     { val: data.personal.total_general, lbl: 'Masa de Personal' },
                     { val: data.personal.total_activos, lbl: 'Trabajadores Activos', color: '#15803d' },
-                    { val: data.personal.bajas_anio, lbl: 'Bajas del Año', color: '#b91c1c' },
+                    { val: data.personal.bajas_anio, lbl: (data.financiero.todos_meses ? 'Bajas del Año' : 'Bajas del Mes'), color: '#b91c1c' },
                     { val: data.personal.hombres, lbl: 'Hombres' },
                     { val: data.personal.mujeres, lbl: 'Mujeres' }
                 ])}
 
                 ${twoColumns(`
-                    <div class="section-title">Distribución por Área de Trabajo</div>
+                    <div class="section-title">Distribución por Área de Trabajo · ${data.financiero.mes_label}</div>
                     <table>
                         <thead><tr><th>Área Organizativa</th><th style="width:25%; text-align: center;">Trabajadores</th></tr></thead>
                         <tbody>${areasHtml}</tbody>
                     </table>
                 `, `
-                    <div class="section-title">Categorías Ocupacionales</div>
+                    <div class="section-title">Categorías Ocupacionales · ${data.financiero.mes_label}</div>
                     <table>
                         <thead><tr><th>Categoría</th><th style="width:20%; text-align: center;">Cant.</th><th style="text-align: right;">Masa Salarial</th></tr></thead>
                         <tbody>${categoriasHtml}</tbody>
                     </table>
                 `)}
 				<!-- Tabla de últimas bajas -->
-				<div class="section-title">Últimas 10 Bajas de Personal</div>
+				<div class="section-title">Últimas 10 Bajas de Personal · ${data.financiero.mes_label}</div>
 				<table>
 					<thead>
 						<tr>
@@ -2692,20 +3146,20 @@ function construirHtmlInformeGeneral(opts) {
                 ${pageHeader('Estructura de Contratación y Escalas Salariales')}
 
                 ${twoColumns(`
-                    <div class="section-title">Tipos de Contrato</div>
+                    <div class="section-title">Tipos de Contrato · ${data.financiero.mes_label}</div>
                     <table>
                         <thead><tr><th>Contrato</th><th style="width:30%; text-align: center;">Asignados</th></tr></thead>
                         <tbody>${contratosHtml}</tbody>
                     </table>
                 `, `
-                    <div class="section-title">Rangos Etarios del Colectivo</div>
+                    <div class="section-title">Rangos Etarios del Colectivo · ${data.financiero.mes_label}</div>
                     <table>
                         <thead><tr><th>Rango de Edad</th><th style="width:30%; text-align: center;">Trabajadores</th></tr></thead>
                         <tbody>${edadesHtml}</tbody>
                     </table>
                 `)}
 
-                <div class="section-title">Top 10 Salarios Más Altos de la Organización</div>
+                <div class="section-title">Top 10 Salarios Más Altos de la Organización · ${data.financiero.mes_label}</div>
                 <table>
                     <thead><tr><th>Nombre y Apellidos</th><th>Área</th><th>Categoría Ocupacional</th><th style="text-align: right; width:20%;">Salario Mensual</th></tr></thead>
                     <tbody>${topSalariosHtml}</tbody>
@@ -2742,7 +3196,7 @@ function construirHtmlInformeGeneral(opts) {
                 </table>
                 <div style="font-size:7.5pt; color: #666; margin-top:0.375rem;">Datos actualizados al ${fechaHora}</div>
 
-                <div class="section-title">Totales por Tipo de Nómina - Mes ${escapeHtml(data.financiero.mes_label || '')}</div>
+                <div class="section-title">Totales por Tipo de Nómina - ${data.financiero.todos_meses ? 'Acumulado' : 'Mes'} ${escapeHtml(data.financiero.mes_label || '')}</div>
                 <table>
                     <thead><tr>
                         <th>Tipo</th>
@@ -2758,7 +3212,7 @@ function construirHtmlInformeGeneral(opts) {
                     <tbody>${totalesPorTipoMesHtml}${totalesGeneralesMesHtml}</tbody>
                 </table>
 
-                <div class="section-title">Distribución de Masa Salarial por Centro de Costo</div>
+                <div class="section-title">Distribución de Masa Salarial por Centro de Costo - <?php echo htmlspecialchars($etiqueta_masa_periodo); ?></div>
                 <table>
                     <thead><tr><th>Centro de Costo (Área Productiva)</th><th style="text-align: center; width:15%;">Trabajadores</th><th style="text-align: right; width:25%;">Masa Salarial Mensual</th></tr></thead>
                     <tbody>${centrosHtml}</tbody>
@@ -2767,15 +3221,48 @@ function construirHtmlInformeGeneral(opts) {
                 ${pageFooter('Informe de Contabilidad y Finanzas', 'Página 3 de 4')}
             </div>
 
-            <!-- PÁGINA 4: HISTORIAL DE CIERRES Y FIRMAS DE AUTORIZACIÓN -->
+            <!-- PÁGINA 4: HISTORIAL DE CIERRES, APORTES MENSUALES Y FIRMAS DE AUTORIZACIÓN -->
             <div class="page-sheet last">
-                ${pageHeader('Historial de Cierres y Firmas de Autorización')}
+                ${pageHeader('Historial de Cierres, Aportes Mensuales y Firmas')}
 
                 <div class="section-title">Historial de Cierres de Nómina</div>
                 <table>
                     <thead><tr><th>Fecha Cierre</th><th>Nómina</th><th style="text-align: center;">Trabajadores</th><th style="text-align: right;">Total Devengado</th><th style="text-align: right;">Total Neto</th></tr></thead>
                     <tbody>${cierresHtml}</tbody>
                 </table>
+
+                <div class="section-title">Contribución Especial (CESS) por Mes (Trabajadores) - Año <?php echo (int)$anio_tot_seleccionado; ?></div>
+                <table>
+                    <thead><tr>
+                        <th style="width:40%;">Mes</th>
+                        <th style="text-align: center; width:20%;">Trabajadores</th>
+                        <th style="text-align: right; width:40%;">Contribución Especial (CESS)</th>
+                    </tr></thead>
+                    <tbody>${cessTrabajadoresHtml}</tbody>
+                </table>
+
+                <div class="section-title">Pago de Seguridad Social Patronal por Mes (12.5%) - Año <?php echo (int)$anio_tot_seleccionado; ?></div>
+                <table>
+                    <thead><tr>
+                        <th style="width:40%;">Mes</th>
+                        <th style="text-align: center; width:20%;">Trabajadores</th>
+                        <th style="text-align: right; width:40%;">12.5% Seg. Social Patronal</th>
+                    </tr></thead>
+                    <tbody>${aportesMensualesHtml}</tbody>
+                </table>
+                <div style="font-size:7.5pt; color: #666; margin-top:0.375rem;">La Contribución Especial (CESS) corresponde a los trabajadores. El aporte patronal (12.5%) se calcula sobre el PAGADO (importe neto) de las nóminas, igual que en el módulo de Aporte de Seguridad Social.</div>
+
+                <div class="section-title">Redistribución de Montos por Mes - Año <?php echo (int)$anio_montos_seleccionado; ?></div>
+                <table>
+                    <thead><tr>
+                        <th style="width:25%;">Mes</th>
+                        <th style="width:45%;">Distribución</th>
+                        <th style="text-align: right; width:12%;">%</th>
+                        <th style="text-align: right; width:18%;">Importe Distribuido</th>
+                    </tr></thead>
+                    <tbody>${montosDistribHtml}</tbody>
+                </table>
+                <div style="font-size:7.5pt; color: #666; margin-top:0.375rem;">Montos redistribuidos mensualmente (tabla montos_distrib), igual que en el Historial de Montos del módulo de Nóminas.</div>
 
                 ${signaturesHtml()}
 
@@ -2850,11 +3337,12 @@ function exportarInformeExcel() {
     const wsResumen = XLSX.utils.aoa_to_sheet([
         ['INFORME CONSOLIDADO DE PERSONAL', data.empresa],
         ['Generado', obtenerFechaHora12H()],
+        ['Período (Mes/Año)', data.financiero.mes_label],
         [],
         ['Masa de Personal', data.personal.total_general],
         ['Trabajadores Activos', data.personal.total_activos],
         ['Trabajadores Inactivos (Histórico)', data.personal.total_inactivos],
-        ['Bajas del Año', data.personal.bajas_anio],
+        ['Bajas del ' + (data.financiero.todos_meses ? 'Año' : 'Mes'), data.personal.bajas_anio],
         ['Hombres', data.personal.hombres],
         ['Mujeres', data.personal.mujeres],
         ['Antigüedad Promedio (años)', data.personal.antiguedad],
@@ -2961,8 +3449,11 @@ function exportarInformeExcel() {
     const tgm = data.financiero.totales_generales_mes || {};
     const netoTotalMesExcel = parseFloat(tgm.neto || 0);
     const mesLabelExcel = data.financiero.mes_label || '';
+    const tituloTotMesExcel = data.financiero.todos_meses
+        ? 'TOTALES POR TIPO DE NÓMINA - ACUMULADO' + (data.financiero.anio_label ? ' - AÑO ' + data.financiero.anio_label : '')
+        : 'TOTALES POR TIPO DE NÓMINA - MES ' + mesLabelExcel;
     const wsTotalesTipoMes = XLSX.utils.aoa_to_sheet([
-        ['TOTALES POR TIPO DE NÓMINA - MES ' + mesLabelExcel],
+        [tituloTotMesExcel],
         [],
         ['Tipo', 'Cant. Nóm.', 'Trabajadores', 'Registros', 'Devengado', 'Contribución', 'Deducciones', 'Neto', '% Neto'],
         ...(data.financiero.totales_por_tipo_mes || []).map(t => {
@@ -2983,7 +3474,10 @@ function exportarInformeExcel() {
     wsTotalesTipoMes['!cols'] = [{ wch: 18 }, { wch: 10 }, { wch: 13 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(wb, wsTotalesTipoMes, 'Totales por Tipo Mes');
 
+    const periodoMasaLbl = (data.financiero.mes_masa_label ? data.financiero.mes_masa_label + ' ' : '') + (data.financiero.anio_masa_label || '');
     const wsCentros = XLSX.utils.aoa_to_sheet([
+        ['MASA SALARIAL POR CENTRO DE COSTO - ' + periodoMasaLbl],
+        [],
         ['Centro de Costo', 'Trabajadores', 'Masa Salarial Mensual'],
         ...data.financiero.centros.map(cs => [cs.nombre, cs.total, cs.masa_salarial || 0])
     ]);
@@ -2996,6 +3490,36 @@ function exportarInformeExcel() {
     ]);
     wsCierres['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, wsCierres, 'Cierres de Nómina');
+
+    const ceeExcel = data.financiero.contribucion_mensual || [];
+    const patExcel = data.financiero.patronal_mensual || [];
+    const anioLbl = data.financiero.anio_graf_label ? ' - AÑO ' + data.financiero.anio_graf_label : '';
+    const wsAportesMensuales = XLSX.utils.aoa_to_sheet([
+        ['APORTES AL ESTADO POR MES' + anioLbl],
+        [],
+        ['CONTRIBUCIÓN ESPECIAL (CESS) POR MES (TRABAJADORES)' + anioLbl],
+        ['Mes', 'Trabajadores', 'Contribución Especial (CESS)'],
+        ...ceeExcel.map(c => [c.mes_nombre, c.trabajadores, c.total_contribucion]),
+        [],
+        [],
+        ['PAGO DE SEGURIDAD SOCIAL PATRONAL POR MES (12.5%)' + anioLbl],
+        ['Mes', 'Trabajadores', 'Aporte Patronal (12.5%)'],
+        ...patExcel.map(p => [p.mes_nombre, p.trabajadores, p.total_patronal])
+    ]);
+    wsAportesMensuales['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 28 }];
+    XLSX.utils.book_append_sheet(wb, wsAportesMensuales, 'Aportes por Mes');
+
+    const montosExcel = data.financiero.montos_distrib_mensual || [];
+    const maxImporteExcel = parseFloat(data.financiero.max_importe_dis) || 0;
+    const anioMontosLbl = data.financiero.anio_montos_label ? ' - AÑO ' + data.financiero.anio_montos_label : '';
+    const wsMontosDistrib = XLSX.utils.aoa_to_sheet([
+        ['REDISTRIBUCIÓN DE MONTOS POR MES' + anioMontosLbl],
+        [],
+        ['Mes', '%', 'Importe Distribuido'],
+        ...montosExcel.map(m => [m.mes, maxImporteExcel > 0 ? ((parseFloat(m.importe_dis) * 100) / maxImporteExcel).toFixed(1) + '%' : '0%', m.importe_dis])
+    ]);
+    wsMontosDistrib['!cols'] = [{ wch: 18 }, { wch: 10 }, { wch: 24 }];
+    XLSX.utils.book_append_sheet(wb, wsMontosDistrib, 'Redistribución de Montos');
 
     const fecha = new Date();
     const fileName = 'Informe_Consolidado_' + fecha.getFullYear() + ('0' + (fecha.getMonth() + 1)).slice(-2) + ('0' + fecha.getDate()).slice(-2) + '.xlsx';

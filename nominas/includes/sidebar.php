@@ -50,6 +50,44 @@ if ($user_id && isset($pdo) && $pdo instanceof PDO) {
 }
 
 // ==========================================
+// ESTADÍSTICAS PARA BADGES DEL MENÚ
+// ==========================================
+$stats_sidebar = [
+    'empleados' => 0,
+    'nominas_anio' => 0,
+    'clasificadores' => 0,
+    'usuarios' => 0,
+    'historico' => 0,
+];
+if (isset($pdo) && $pdo instanceof PDO) {
+    try {
+        $stats_sidebar['empleados'] = (int)$pdo->query("SELECT COUNT(*) FROM trabajadores WHERE activo = 1 AND (fecha_baja IS NULL OR fecha_baja > CURDATE())")->fetchColumn();
+    } catch (PDOException $e) {}
+    try {
+        $stats_sidebar['nominas_anio'] = (int)$pdo->query("SELECT COUNT(DISTINCT CONCAT(DATE_FORMAT(periodo_desde, '%Y-%m'), '-', tipo_nomina)) FROM nominas WHERE estado != 'borrador' AND periodo_desde >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)")->fetchColumn();
+    } catch (PDOException $e) {}
+    $clasificadores_tablas = [
+        'areas',
+        'cargos_plantilla',
+        'categorias_ocupacionales',
+        'centros_costo',
+        'configuracion_general',
+        'escalas_salariales',
+        'motivos_baja',
+        'pagos_adicionales',
+        'permisos_usuario',
+        'configuracion_rangos_impuesto'
+    ];
+    $stats_sidebar['clasificadores'] = count($clasificadores_tablas);
+    try {
+        $stats_sidebar['usuarios'] = (int)$pdo->query("SELECT COUNT(*) FROM clasif_usuarios WHERE activo = 1")->fetchColumn();
+    } catch (PDOException $e) {}
+    try {
+        $stats_sidebar['historico'] = (int)$pdo->query("SELECT COUNT(*) FROM audit_logs")->fetchColumn();
+    } catch (PDOException $e) {}
+}
+
+// ==========================================
 // OBTENER FOTO DEL USUARIO - MANEJO DE RUTAS
 // ==========================================
 $user_foto = null;
@@ -600,7 +638,7 @@ body:has(.win-sidebar.collapsed) .main-container {
 }
 
 .nav-item .nav-badge {
-    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
 .nav-item:hover {
@@ -617,10 +655,6 @@ body:has(.win-sidebar.collapsed) .main-container {
 
 .nav-item:hover .sidebar-text {
     transform: translateX(0.125rem);
-}
-
-.nav-item:hover .nav-badge {
-    transform: scale(2.05);
 }
 
 .nav-item:active {
@@ -1029,6 +1063,7 @@ html.focus-mode .fluid-container {
             <a href="<?php echo $base_prefix; ?>modules/empleados.php" class="nav-item <?php echo ($current_file == 'empleados.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Empleados" data-tooltip-theme="primary">
                 <i class="fas fa-users"></i>
                 <span class="sidebar-text">Empleados</span>
+                <span class="nav-badge sidebar-text"><?php echo $stats_sidebar['empleados']; ?></span>
                 <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="empleadosChevron"></i>
             </a>
             <div class="nav-submenu" id="empleadosSubmenu">
@@ -1069,6 +1104,7 @@ html.focus-mode .fluid-container {
             <a href="<?php echo $base_prefix; ?>modules/nominas.php" class="nav-item <?php echo ($current_file == 'nominas.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Nóminas" data-tooltip-theme="primary">
                 <i class="fas fa-calculator"></i>
                 <span class="sidebar-text">Nóminas</span>
+                <span class="nav-badge sidebar-text"><?php echo $stats_sidebar['nominas_anio']; ?></span>
                 <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="nominasChevron"></i>
             </a>
             <div class="nav-submenu" id="nominasSubmenu">
@@ -1127,6 +1163,7 @@ html.focus-mode .fluid-container {
         <a href="<?php echo $base_prefix; ?>modules/clasificadores.php" class="nav-item <?php echo ($current_file == 'clasificadores.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Clasificadores" data-tooltip-theme="primary">
             <i class="fas fa-folder-tree"></i>
             <span class="sidebar-text">Clasificadores</span>
+            <span class="nav-badge sidebar-text"><?php echo $stats_sidebar['clasificadores']; ?></span>
         </a>
         <?php endif; ?>
         <?php endif; ?>
@@ -1146,10 +1183,19 @@ html.focus-mode .fluid-container {
                 <a href="<?php echo $base_prefix; ?>modules/usuarios.php" class="nav-item <?php echo ($current_file == 'usuarios.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Usuarios" data-tooltip-theme="primary">
                     <i class="fas fa-user-shield"></i>
                     <span class="sidebar-text">Usuarios</span>
+                    <span class="nav-badge sidebar-text"><?php echo $stats_sidebar['usuarios']; ?></span>
                 </a>
             </div>
             <?php endif; ?>
         </div>
+        <?php endif; ?>
+
+        <?php if (in_array(permiso_rol_codigo(), ['Admin', 'Soft'], true)): ?>
+        <a href="<?php echo $base_prefix; ?>modules/historico.php" class="nav-item <?php echo ($current_file == 'historico.php') ? 'active' : ''; ?>" data-tooltip="Histórico de Operaciones (auditoría)" data-tooltip-theme="primary">
+            <i class="fas fa-clock-rotate-left"></i>
+            <span class="sidebar-text">Histórico de Operaciones</span>
+            <span class="nav-badge sidebar-text"><?php echo $stats_sidebar['historico']; ?></span>
+        </a>
         <?php endif; ?>
     </nav>
     

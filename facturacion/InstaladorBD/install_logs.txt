@@ -1,0 +1,128 @@
+[17-09-2026 21:59:26] [INFO] PHP Version: 8.1.7
+[17-09-2026 21:59:26] [INFO] Required PHP Version: 7.4.0+
+[17-09-2026 21:59:26] [INFO] Instalador iniciado
+[17-09-2026 21:59:29] [INFO] Avanzado al paso 2
+[17-09-2026 21:59:31] [INFO] Iniciando verificación de requisitos...
+[17-09-2026 21:59:31] [INFO] Verificando requisitos del sistema
+[17-09-2026 21:59:31] [INFO] Iniciando verificación de requisitos del sistema
+[17-09-2026 21:59:31] [INFO] Verificación de requisitos completada
+[17-09-2026 21:59:31] [SUCCESS] Alert: Requisitos Completos - Todos los requisitos del sistema se cumplen correctamente. ¿Deseas ver los detalles antes de continuar?
+[17-09-2026 21:59:31] [SUCCESS] Todos los requisitos cumplidos
+[17-09-2026 21:59:33] [INFO] Modal de requisitos abierto
+[17-09-2026 21:59:35] [INFO] Continuando al siguiente paso después de ver requisitos
+[17-09-2026 21:59:35] [INFO] Modal de requisitos cerrado
+[17-09-2026 21:59:38] [INFO] Avanzado al paso 3
+[17-09-2026 21:59:50] [INFO] Intentando conexión a: localhost:3306
+[17-09-2026 21:59:50] [INFO] Probando conexión a base de datos
+[17-09-2026 21:59:50] [INFO] Iniciando prueba de conexión a base de datos
+[17-09-2026 21:59:50] [SUCCESS] Prueba de conexión exitosa
+[17-09-2026 21:59:50] [INFO] Probando conexión a base de datos...
+[17-09-2026 21:59:50] [SUCCESS] Alert: Conexión Exitosa - Conexión a la base de datos establecida correctamente.
+[17-09-2026 21:59:50] [SUCCESS] Conexión a base de datos exitosa
+[17-09-2026 21:59:50] [SUCCESS] Conexión OK - Botón de creación de base de datos habilitado
+[17-09-2026 21:59:52] [WARNING] Alert: Confirmación - ¿Deseas crear la base de datos? Si ya existe, será eliminada y recreada.
+[17-09-2026 21:59:53] [INFO] Creando base de datos...
+[17-09-2026 21:59:53] [INFO] Conectando al servidor para crear base de datos...
+[17-09-2026 21:59:53] [INFO] Creando base de datos
+[17-09-2026 21:59:53] [INFO] Iniciando creación de base de datos
+[17-09-2026 21:59:53] [INFO] Conectado al servidor MySQL en localhost:3306
+[17-09-2026 21:59:53] [SUCCESS] Base de datos 'sisfact_imdl' eliminada (si existía)
+[17-09-2026 21:59:53] [SUCCESS] Base de datos 'sisfact_imdl' creada con éxito
+[17-09-2026 21:59:53] [SUCCESS] Base de datos 'sisfact_imdl' seleccionada
+[17-09-2026 21:59:53] [INFO] Base de datos 'sisfact_imdl' eliminada (si existía)
+[17-09-2026 21:59:53] [SUCCESS] Base de datos 'sisfact_imdl' creada con éxito
+[17-09-2026 21:59:53] [SUCCESS] Base de datos 'sisfact_imdl' Puesta en Uso
+[17-09-2026 21:59:53] [SUCCESS] Tabla 'clasif_cat_de_serv' creada
+[17-09-2026 21:59:53] [SUCCESS] Datos insertados en 'clasif_cat_de_serv'
+[17-09-2026 21:59:53] [SUCCESS] Tabla 'clasif_clientes' creada
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'clasif_rol' creada
+[17-09-2026 21:59:54] [SUCCESS] Roles insertados en 'clasif_rol'
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'clasif_serv' creada
+[17-09-2026 21:59:54] [SUCCESS] Servicios insertados en 'clasif_serv'
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'clasif_usuarios' creada
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'configuracion_sistema' creada
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'historico_operaciones' creada
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'historico_cierres' creada
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'tbl_fact' creada
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'tbl_fact_detalle' creada
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'tbl_planes' creada
+[17-09-2026 21:59:54] [SUCCESS] Tabla 'tipos_pago' creada
+[17-09-2026 21:59:54] [SUCCESS] Tipos de pago insertados
+[17-09-2026 21:59:55] [SUCCESS] Restricción fk_usuario_rol agregada
+[17-09-2026 21:59:55] [SUCCESS] Restricción fk_servicio_categoria agregada
+[17-09-2026 21:59:55] [SUCCESS] Restricción fk_factura_tipo_pago agregada
+[17-09-2026 21:59:55] [SUCCESS] Restricción fk_factura_usuario agregada
+[17-09-2026 21:59:55] [SUCCESS] Restricción fk_factura_usuario_cont agregada
+[17-09-2026 21:59:56] [SUCCESS] Restricción fk_detalle_factura agregada
+[17-09-2026 21:59:56] [SUCCESS] Restricción fk_detalle_servicio agregada
+[17-09-2026 21:59:56] [SUCCESS] Restricción fk_historico_usuario agregada
+[17-09-2026 21:59:56] [SUCCESS] Restricción historico_cierres_ibfk_1 agregada
+[17-09-2026 21:59:56] [SUCCESS] Índice idx_clasif_serv_categoria creado
+[17-09-2026 21:59:56] [SUCCESS] Índice idx_tbl_fact_cliente creado
+[17-09-2026 21:59:57] [SUCCESS] Índice idx_tbl_fact_fecha creado
+[17-09-2026 21:59:57] [SUCCESS] Índice idx_tbl_fact_estado creado
+[17-09-2026 21:59:57] [SUCCESS] Índice idx_tbl_fact_detalle_factura creado
+[17-09-2026 21:59:57] [SUCCESS] Índice idx_clasif_clientes_codigo creado
+[17-09-2026 21:59:57] [SUCCESS] Índice idx_clasif_serv_codigo creado
+[17-09-2026 21:59:57] [SUCCESS] Archivo SQL 'scriptBD.sql' creado exitosamente en la carpeta MYSQL_BD
+[17-09-2026 21:59:57] [INFO] Archivo de configuración existente eliminado
+[17-09-2026 21:59:57] [SUCCESS] Archivo de configuración 'config.php' creado exitosamente en la carpeta raíz
+[17-09-2026 21:59:57] [SUCCESS] Base de datos creada exitosamente
+[17-09-2026 21:59:57] [INFO] Total tablas creadas: 12
+[17-09-2026 21:59:57] [INFO] Iniciando proceso de creación de base de datos...
+[17-09-2026 21:59:57] [SUCCESS] Base de datos creada exitosamente
+[17-09-2026 21:59:57] [SUCCESS] Tabla creada: clasif_cat_de_serv
+[17-09-2026 21:59:57] [SUCCESS] Total de tablas creadas: 12
+[17-09-2026 21:59:57] [SUCCESS] Tabla creada: clasif_clientes
+[17-09-2026 21:59:57] [SUCCESS] Tabla creada: clasif_rol
+[17-09-2026 21:59:57] [SUCCESS] Tabla creada: clasif_serv
+[17-09-2026 21:59:57] [SUCCESS] Tabla creada: clasif_usuarios
+[17-09-2026 21:59:58] [SUCCESS] Tabla creada: configuracion_sistema
+[17-09-2026 21:59:58] [SUCCESS] Tabla creada: historico_operaciones
+[17-09-2026 21:59:58] [SUCCESS] Tabla creada: historico_cierres
+[17-09-2026 21:59:58] [SUCCESS] Tabla creada: tbl_fact
+[17-09-2026 21:59:58] [SUCCESS] Tabla creada: tbl_fact_detalle
+[17-09-2026 21:59:58] [SUCCESS] Alert: ¡Base de Datos Creada! - Base de datos y tablas creadas exitosamente.
+[17-09-2026 21:59:58] [SUCCESS] Tabla creada: tbl_planes
+[17-09-2026 21:59:58] [SUCCESS] Tabla creada: tipos_pago
+[17-09-2026 22:00:01] [INFO] Parámetros generales limpiados después de creación exitosa
+[17-09-2026 22:00:03] [INFO] Avanzado al paso 4
+[17-09-2026 22:00:07] [INFO] Modo autocreación activado - Valores por defecto establecidos
+[17-09-2026 22:00:07] [INFO] Autocrear usuario: activado
+[17-09-2026 22:00:11] [INFO] Creando usuario administrador...
+[17-09-2026 22:00:11] [INFO] Creando usuario administrador
+[17-09-2026 22:00:11] [INFO] Iniciando creación de usuario administrador
+[17-09-2026 22:00:11] [INFO] Conectado a la base de datos 'sisfact_imdl'
+[17-09-2026 22:00:11] [INFO] ID del rol Admin obtenido: 1
+[17-09-2026 22:00:11] [SUCCESS] Usuario 'admin' creado exitosamente
+[17-09-2026 22:00:11] [INFO] Operación de instalación registrada en el historial
+[17-09-2026 22:00:11] [SUCCESS] Usuario administrador creado exitosamente
+[17-09-2026 22:00:11] [SUCCESS] Alert: Usuario Creado - Usuario administrador creado exitosamente.
+[17-09-2026 22:00:11] [SUCCESS] Usuario administrador creado exitosamente
+[17-09-2026 22:00:13] [INFO] Avanzado al paso 5
+[17-09-2026 22:00:16] [INFO] Guardando configuración de empresa...
+[17-09-2026 22:00:17] [SUCCESS] Todas las validaciones de empresa pasaron
+[17-09-2026 22:00:17] [INFO] Fecha a guardar: 2026-09-01
+[17-09-2026 22:00:17] [INFO] Guardando configuración de empresa
+[17-09-2026 22:00:17] [INFO] Guardando configuración de empresa...
+[17-09-2026 22:00:17] [INFO] Datos de empresa recibidos. Fecha inicio: 2026-09-01
+[17-09-2026 22:00:17] [INFO] Insertando nueva configuración de empresa
+[17-09-2026 22:00:17] [SUCCESS] Configuración de empresa guardada exitosamente
+[17-09-2026 22:00:17] [INFO] Fecha inicio operaciones guardada: 2026-09-01
+[17-09-2026 22:00:17] [SUCCESS] Configuración guardada. Fecha inicio: 2026-09-01
+[17-09-2026 22:00:17] [SUCCESS] Alert: Configuración Guardada - Datos de la empresa guardados exitosamente.
+[17-09-2026 22:00:19] [INFO] Avanzado al paso 6
+[17-09-2026 22:00:22] [INFO] Guardando configuración del sistema...
+[17-09-2026 22:00:22] [INFO] Guardando configuración del sistema
+[17-09-2026 22:00:22] [INFO] Iniciando guardado de configuración del sistema
+[17-09-2026 22:00:22] [INFO] Datos del sistema recibidos
+[17-09-2026 22:00:22] [SUCCESS] Configuración del sistema guardada
+[17-09-2026 22:00:22] [INFO] Configuración actualizada en config.php
+[17-09-2026 22:00:22] [INFO] Archivo .htaccess existente eliminado
+[17-09-2026 22:00:22] [INFO] Archivo .htaccess creado exitosamente en la carpeta raíz
+[17-09-2026 22:00:22] [SUCCESS] Configuración del sistema guardada exitosamente
+[17-09-2026 22:00:22] [SUCCESS] INSTALACIÓN COMPLETADA EXITOSAMENTE
+[17-09-2026 22:00:22] [INFO] Respuesta del servidor recibida, procesando...
+[17-09-2026 22:00:22] [SUCCESS] Configuración del sistema guardada exitosamente
+[17-09-2026 22:00:22] [SUCCESS] Alert: Configuración Guardada - Configuración del sistema guardada exitosamente.
+[17-09-2026 22:00:23] [INFO] Avanzado al paso 7

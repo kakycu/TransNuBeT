@@ -24,10 +24,11 @@ $puede_exportar_assp = permiso_puede('nominas', 'exportar') || permiso_puede('no
 $config_empresa = [
     'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom',
     'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director',
-    'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas'
+    'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas',
+    'especialista_nominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : ''
 ];
 try {
-    $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa','jefe_proyecto','especialista_gestion','reeup_empresa','nit_empresa')");
+    $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa','jefe_proyecto','especialista_gestion','especialista_nominas','reeup_empresa','nit_empresa')");
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $config_empresa[$row['parametro']] = $row['valor'];
     }
@@ -738,7 +739,7 @@ $nombre_mes_actual = nombreMesEspanol($mes);
                 <div class="firma-item">
                     <div class="firma-label">Elaborado por:</div>
                     <div class="firma-linea">
-                        <div class="firma-nombre"><?php echo htmlspecialchars($_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usuario'); ?></div>
+                        <div class="firma-nombre"><?php echo htmlspecialchars($config_empresa['especialista_nominas'] ?? ''); ?></div>
                         <small style="color:rgba(255,255,255,0.5); font-size:0.7rem;">Especialista de Nóminas</small>
                     </div>
                 </div>
@@ -769,6 +770,7 @@ const ASSP_DATA = {
     nit:            <?php echo json_encode($config_empresa['nit_empresa'] ?? ''); ?>,
     logo:           <?php echo json_encode($logo_base64); ?>,
     usuario:        <?php echo json_encode($_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usuario'); ?>,
+    especialistaNominas: <?php echo json_encode($config_empresa['especialista_nominas'] ?? ''); ?>,
     periodo:        <?php echo json_encode($periodo); ?>,
     periodo_label:  <?php echo json_encode($nombre_mes_actual . ' / ' . $anio); ?>,
     desglose:       <?php echo json_encode(array_values($desglose), JSON_UNESCAPED_UNICODE); ?>,
@@ -972,7 +974,7 @@ document.getElementById('btnExportarExcel')?.addEventListener('click', function 
     celda(f, 4, firmasL[1], { bold: true });
     celda(f, 7, firmasL[2], { bold: true });
     f++;
-    celda(f, 1, String(ASSP_DATA.usuario).toUpperCase(), { bold: true });
+    celda(f, 1, String(ASSP_DATA.especialistaNominas).toUpperCase(), { bold: true });
     celda(f, 4, String(ASSP_DATA.especialista || 'SIN ESPECIALISTA DEFINIDO').toUpperCase(), { bold: true });
     celda(f, 7, String(ASSP_DATA.jefe || '').toUpperCase(), { bold: true });
     f++;
@@ -1052,7 +1054,7 @@ function construirHtmlWordAssp() {
         + '<table style="width:100%;" border="0"><tr>'
         + '<td style="border:none;text-align:center;font-size:8pt;"><b>Aprobado por:</b><br><br><br><u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u><br>' + escHtmlAssp(String(ASSP_DATA.jefe || '').toUpperCase()) + '<br><span style="font-size:7pt;">Jefe de Proyecto</span></td>'
         + '<td style="border:none;text-align:center;font-size:8pt;"><b>Revisado por:</b><br><br><br><u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u><br>' + escHtmlAssp(String(ASSP_DATA.especialista || '').toUpperCase()) + '<br><span style="font-size:7pt;">Especialista en Gestión Económica</span></td>'
-        + '<td style="border:none;text-align:center;font-size:8pt;"><b>Elaborado por:</b><br><br><br><u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u><br>' + escHtmlAssp(String(ASSP_DATA.usuario || '').toUpperCase()) + '<br><span style="font-size:7pt;">Especialista de Nóminas</span></td>'
+        + '<td style="border:none;text-align:center;font-size:8pt;"><b>Elaborado por:</b><br><br><br><u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u><br>' + escHtmlAssp(String(ASSP_DATA.especialistaNominas || '').toUpperCase()) + '<br><span style="font-size:7pt;">Especialista de Nóminas</span></td>'
         + '</tr></table></div></body></html>';
 }
 document.getElementById('btnExportarWord')?.addEventListener('click', function (e) {
@@ -1199,7 +1201,7 @@ document.getElementById('btnExportarPDF')?.addEventListener('click', function ()
     const firmas = [
         { label: 'Aprobado por:', nombre: ASSP_DATA.jefe, cargo: 'Jefe de Proyecto' },
         { label: 'Revisado por:', nombre: ASSP_DATA.especialista, cargo: 'Especialista en Gestión Económica' },
-        { label: 'Elaborado por:', nombre: ASSP_DATA.usuario, cargo: 'Especialista de Nóminas' }
+        { label: 'Elaborado por:', nombre: ASSP_DATA.especialistaNominas, cargo: 'Especialista de Nóminas' }
     ];
     const zonaW = (pageW - 60) / 3;
     firmas.forEach(function (f, i) {
@@ -1341,7 +1343,7 @@ document.getElementById('btnImprimir')?.addEventListener('click', function () {
         <div class="firmas">
             <div class="firma"><div class="linea"></div><div class="nombre">${ASSP_DATA.jefe || ''}</div><div class="cargo">Jefe de Proyecto</div></div>
             <div class="firma"><div class="linea"></div><div class="nombre">${ASSP_DATA.especialista || ''}</div><div class="cargo">Especialista en Gestión Económica</div></div>
-            <div class="firma"><div class="linea"></div><div class="nombre">${ASSP_DATA.usuario || ''}</div><div class="cargo">Especialista de Nóminas</div></div>
+            <div class="firma"><div class="linea"></div><div class="nombre">${ASSP_DATA.especialistaNominas || ''}</div><div class="cargo">Especialista de Nóminas</div></div>
         </div>
     </body>
     </html>`;

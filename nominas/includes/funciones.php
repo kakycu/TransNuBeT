@@ -381,6 +381,26 @@ function generarCodigoTrabajador($ci) {
 }
 
 /**
+ * Genera un código de confirmación tipo captcha con letras (mayúsculas y
+ * minúsculas) y números.
+ *
+ * @param int $longitud Número de caracteres (por defecto 8)
+ * @return string
+ */
+if (!function_exists('generarCaptchaAlfanumerico')) {
+function generarCaptchaAlfanumerico($longitud = 8) {
+    $longitud = max(4, (int)$longitud);
+    $caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    $max = strlen($caracteres) - 1;
+    $codigo = '';
+    for ($i = 0; $i < $longitud; $i++) {
+        $codigo .= $caracteres[random_int(0, $max)];
+    }
+    return $codigo;
+}
+}
+
+/**
  * Verifica si las tablas referenciales/clasificadoras están vacías y, si es
  * así, emite una barra fija superior (estilo "Solicitud de cambio de
  * contraseña pendiente") con una "X" para cerrar. La barra aparece en cada

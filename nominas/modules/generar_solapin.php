@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -58,6 +59,7 @@ if ($resultado) {
     } else {
         header('Content-Disposition: inline; filename="solapin_' . $empleado_id . '.png"');
     }
+    logAction('generar_solapin', 'generar_solapin', 'Generación de solapín individual', ['trabajador_id' => $empleado_id], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     echo $raw_image;
 } else {
     http_response_code(500);

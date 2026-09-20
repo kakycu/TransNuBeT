@@ -1163,6 +1163,27 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         max-width: calc(25% - 0.375rem);
     }
 }
+
+    /* ===== Medidor de fortaleza de contraseña (modal Cambiar Contraseña) ===== */
+    #modalCambiarPassword .pass-strength-bar {
+        display: flex;
+        gap: 0.3125rem;
+        padding: 0.125rem 0 0.25rem;
+    }
+    #modalCambiarPassword .pass-strength-seg {
+        flex: 1;
+        height: 0.3125rem;
+        border-radius: 0.1875rem;
+        background: rgba(255, 255, 255, 0.12);
+        transition: background 0.25s ease;
+    }
+    #modalCambiarPassword .pass-strength-bar[data-level="1"] .pass-strength-seg:nth-child(-n+1),
+    #modalCambiarPassword .pass-strength-bar[data-level="2"] .pass-strength-seg:nth-child(-n+2),
+    #modalCambiarPassword .pass-strength-bar[data-level="3"] .pass-strength-seg:nth-child(-n+3),
+    #modalCambiarPassword .pass-strength-bar[data-level="4"] .pass-strength-seg:nth-child(-n+4),
+    #modalCambiarPassword .pass-strength-bar[data-level="5"] .pass-strength-seg:nth-child(-n+5) {
+        background: var(--strength-color, #fbbf24);
+    }
     </style>
 </head>
 <body>
@@ -1509,7 +1530,17 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
-                            <div class="form-text text-white-50">Mínimo 6 caracteres</div>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <span class="form-text text-white-50" style="font-size:0.75rem;">Mínimo 6 caracteres</span>
+                                <span class="small fw-semibold" id="passStrengthText" style="font-size:0.7rem; color:rgba(255,255,255,0.5); display:none;">—</span>
+                            </div>
+                            <div class="pass-strength-bar" id="passStrengthBar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Fortaleza de la contraseña">
+                                <div class="pass-strength-seg"></div>
+                                <div class="pass-strength-seg"></div>
+                                <div class="pass-strength-seg"></div>
+                                <div class="pass-strength-seg"></div>
+                                <div class="pass-strength-seg"></div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label" style="color: rgba(255,255,255,0.85);">Confirmar nueva contraseña</label>
@@ -2180,6 +2211,67 @@ if (formUsuarioEl) formUsuarioEl.addEventListener('submit', function(e) {
 (function() {
     const form = document.getElementById('formCambiarPassword');
     if (!form) return;
+
+    // ===== Medidor de fortaleza de contraseña =====
+    const passNuevaInput = document.getElementById('passNueva');
+    const strengthBar = document.getElementById('passStrengthBar');
+    const strengthText = document.getElementById('passStrengthText');
+
+    function puntuarFortaleza(p) {
+        if (!p) return 0;
+        let score = 0;
+        const len = p.length;
+        score += Math.min(30, len * 3);
+        let clases = 0;
+        if (/[a-zà-ÿ]/.test(p)) clases++;
+        if (/[A-ZÀ-Þ]/.test(p)) clases++;
+        if (/\d/.test(p)) clases++;
+        if (/[^a-zA-Z0-9à-ÿÀ-Þ]/.test(p)) clases++;
+        score += clases * 12;
+        if (clases >= 4) score += 12;
+        else if (clases >= 3) score += 6;
+        if (len >= 12) score += 10;
+        if (len >= 16) score += 10;
+        return Math.min(100, score);
+    }
+
+    function actualizarMedidor(p) {
+        if (!strengthBar || !strengthText) return;
+        const score = p ? puntuarFortaleza(p) : 0;
+        const niveles = [
+            { min: 91, label: 'Muy fuerte', color: '#22c55e', seg: 5 },
+            { min: 76, label: 'Fuerte',     color: '#3b82f6', seg: 4 },
+            { min: 51, label: 'Media',      color: '#fbbf24', seg: 3 },
+            { min: 26, label: 'Débil',      color: '#f97316', seg: 2 },
+            { min: 1,  label: 'Muy débil',  color: '#ef4444', seg: 1 }
+        ];
+        let nivel = null;
+        for (let i = 0; i < niveles.length; i++) {
+            if (score >= niveles[i].min) { nivel = niveles[i]; break; }
+        }
+        strengthBar.dataset.level = nivel ? String(nivel.seg) : '0';
+        if (nivel) {
+            strengthBar.style.setProperty('--strength-color', nivel.color);
+        } else {
+            strengthBar.style.removeProperty('--strength-color');
+        }
+        strengthBar.setAttribute('aria-valuenow', String(score));
+        if (!p || !nivel) {
+            strengthText.textContent = '';
+            strengthText.style.color = '';
+            strengthText.style.display = 'none';
+        } else {
+            strengthText.textContent = nivel.label;
+            strengthText.style.color = nivel.color;
+            strengthText.style.display = 'inline';
+        }
+    }
+
+    if (passNuevaInput) {
+        passNuevaInput.addEventListener('input', function() {
+            actualizarMedidor(passNuevaInput.value);
+        });
+    }
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();

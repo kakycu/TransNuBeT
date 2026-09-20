@@ -6005,12 +6005,75 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 <script>
-(function () {
-    var initialTheme = document.documentElement.getAttribute('data-theme');
-    window.addEventListener('themechange', function (e) {
-        var t = e.detail && e.detail.theme;
-        if (t && t !== initialTheme) { window.location.reload(); }
+function recolorarGraficosDashboard() {
+    var V = function (n, fb) { var v = getComputedStyle(document.documentElement).getPropertyValue(n).trim(); return v || fb; };
+    var txt = V('--txt', '#e8edf6');
+    var muted = V('--muted', '#97a5bb');
+    var panel = V('--panel', 'rgba(0, 0, 0, 0.85)');
+    var borde = V('--border', 'rgba(255,255,255,0.08)');
+    var azul = V('--blue', '#3b82f6');
+    var azulSoftRgb = V('--blue-soft-rgb', '147, 197, 253');
+    var amber = V('--amber', '#fbbf24');
+    var successSoft = V('--color-success-soft', '#34d399');
+    var successSoftRgb = V('--color-success-soft-rgb', '52, 211, 153');
+
+    var charts = [chartInstance, tipoChartInstance, distribucionChartInstance, centrosChartInstance, areaChartInstance];
+    charts.forEach(function (c) {
+        if (!c || !c.options) return;
+        var id = c.canvas && c.canvas.id;
+        var opt = c.options;
+        var pl = opt.plugins || {};
+        if (pl.legend && pl.legend.labels) { pl.legend.labels.color = txt; }
+        if (pl.tooltip) {
+            pl.tooltip.backgroundColor = panel;
+            pl.tooltip.titleColor = txt;
+            pl.tooltip.bodyColor = txt;
+            pl.tooltip.borderColor = (id === 'distribucionChart') ? amber : azul;
+        }
+        if (c.data && c.data.datasets) {
+            c.data.datasets.forEach(function (ds) {
+                if (ds.label === '💰 Importe Neto') {
+                    ds.backgroundColor = 'rgba(' + azulSoftRgb + ', 0.85)';
+                    ds.borderColor = azul;
+                } else if (ds.label === '👥 Cantidad de Trabajadores' || ds.label === '👥 Cantidad de Empleados') {
+                    ds.backgroundColor = 'rgba(' + successSoftRgb + ', 0.85)';
+                    ds.borderColor = successSoft;
+                } else if (ds.label === '💰 Importe de Distribución') {
+                    ds.borderColor = amber;
+                }
+            });
+            if (id === 'tipoChart' && c.data.datasets[0]) {
+                c.data.datasets[0].borderColor = borde;
+            }
+        }
+        var sc = opt.scales;
+        if (sc) {
+            if (sc.x && sc.x.ticks) { sc.x.ticks.color = (id === 'areaChart') ? muted : txt; }
+            if (sc.x && sc.x.grid) { sc.x.grid.color = borde; }
+            if (sc.x && sc.x.title) { sc.x.title.color = muted; }
+            if (sc.y && sc.y.ticks) {
+                sc.y.ticks.color = (id === 'distribucionChart') ? amber : (id === 'areaChart') ? txt : azul;
+            }
+            if (sc.y && sc.y.grid) { sc.y.grid.color = borde; }
+            if (sc.y && sc.y.title) { sc.y.title.color = (id === 'distribucionChart') ? amber : azul; }
+            if (sc.y1 && sc.y1.ticks) { sc.y1.ticks.color = successSoft; }
+            if (sc.y1 && sc.y1.title) { sc.y1.title.color = successSoft; }
+        }
+        if (typeof c.update === 'function') { c.update(); }
     });
+}
+(function () {
+    var objetivo = document.documentElement;
+    if (!objetivo || !window.MutationObserver) return;
+    var temaPrevio = (objetivo.getAttribute('data-theme') || '').trim();
+    var obs = new MutationObserver(function () {
+        var temaActual = (objetivo.getAttribute('data-theme') || '').trim();
+        if (temaActual && temaActual !== temaPrevio) {
+            temaPrevio = temaActual;
+            window.requestAnimationFrame(recolorarGraficosDashboard);
+        }
+    });
+    obs.observe(objetivo, { attributes: true, attributeFilter: ['data-theme'] });
 })();
 </script>
 <!-- Toggle de los cuadres por mes (Visor de Cuadres) -->

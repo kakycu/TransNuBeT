@@ -1,0 +1,1465 @@
+Dim contadorFacturasGlobal As Integer
+
+Sub ExportarTodasFacturasFormatoCompacto()
+    Dim ws As Worksheet
+    Dim libroOrigen As Workbook
+    Dim rutaArchivo As String
+    Dim contenidoTotal As String
+    Dim contadorFacturas As Integer
+    Dim fso As Object, archivo As Object
+    Dim facturasData As Object ' Scripting.Dictionary
+    Dim detallesData As Object ' Scripting.Dictionary
+    Dim facturaIndex As Long
+    Dim detalleIndex As Long
+    
+    Dim idInicialFact As Long
+    Dim idInicialDet As Long
+    Dim respuestaIdFact As String
+    Dim respuestaIdDet As String
+    Dim idActualFact As Long
+    Dim idActualDet As Long
+    
+    Set libroOrigen = ThisWorkbook
+    contadorFacturas = 0
+    contenidoTotal = ""
+    
+    ' Usar Dictionary en lugar de ArrayList
+    Set facturasData = CreateObject("Scripting.Dictionary")
+    Set detallesData = CreateObject("Scripting.Dictionary")
+    
+    facturaIndex = 0
+    detalleIndex = 0
+    
+    ' Inicializar contador global de números de factura
+    contadorFacturasGlobal = 1
+    
+    ' Solicitar archivo destino
+    rutaArchivo = Application.GetSaveAsFilename( _
+        InitialFileName:="Facturas_Compacto.txt", _
+        FileFilter:="Archivos de texto (*.txt), *.txt", _
+        Title:="Guardar archivo de texto")
+    
+    If rutaArchivo = "False" Then Exit Sub
+    
+    ' Preguntar por el ID inicial para tbl_fact
+    respuestaIdFact = InputBox("¿En qué número debe comenzar el ID de la tabla 'tbl_fact'?", _
+                               "Configuración SQL - Facturas", "1")
+                           
+    ' Validar que sea un número, si no, usar 1 por defecto
+    If IsNumeric(respuestaIdFact) And respuestaIdFact <> "" Then
+        idInicialFact = CLng(respuestaIdFact)
+    Else
+        idInicialFact = 1
+    End If
+    
+    ' Preguntar por el ID inicial para tbl_fact_detalle
+    respuestaIdDet = InputBox("¿En qué número debe comenzar el ID de la tabla 'tbl_fact_detalle'? (Se incrementará automáticamente para cada detalle)", _
+                              "Configuración SQL - Detalles", "1")
+                           
+    ' Validar que sea un número, si no, usar 1 por defecto
+    If IsNumeric(respuestaIdDet) And respuestaIdDet <> "" Then
+        idInicialDet = CLng(respuestaIdDet)
+    Else
+        idInicialDet = 1
+    End If
+    
+    ' Inicializar IDs actuales
+    idActualFact = idInicialFact
+    idActualDet = idInicialDet
+    
+    ' Procesar cada hoja (excepto las que tienen nombres específicos)
+    For Each ws In libroOrigen.Worksheets
+        ' Saltar hojas con nombres específicos
+        If LCase(ws.Name) = "instrucciones" Or _
+           LCase(ws.Name) = "resumen-enero" Or _
+           LCase(ws.Name) = "resumen" Or _
+           LCase(Left(ws.Name, 7)) = "resumen" Then
+            ' No hacer nada, saltar esta hoja
+        ElseIf ws.Visible Then
+            ' Procesar la hoja pasando los IDs actuales
+            Dim contenidoHoja As String
+            Dim idFactUsado As Long
+            contenidoHoja = ExtraerContenidoCompacto(ws, facturasData, detallesData, facturaIndex, detalleIndex, _
+                                                     idActualFact, idActualDet, idFactUsado)
+            
+            If contenidoHoja <> "" Then
+                contenidoTotal = contenidoTotal & contenidoHoja
+                contadorFacturas = contadorFacturas + 1
+                ' Actualizar ID actual para la siguiente factura (incrementar en 1)
+                idActualFact = idFactUsado + 1
+                ' NOTA: idActualDet se actualiza dentro de ExtraerContenidoCompacto
+            End If
+        End If
+    Next ws
+
+    ' Agregar estructura de base de datos y INSERTs SQL al final
+    contenidoTotal = contenidoTotal & GenerarEstructuraSQL(facturasData, detallesData, idInicialFact, idInicialDet)
+    
+    ' Crear y escribir archivo
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set archivo = fso.CreateTextFile(rutaArchivo, True, True)
+    archivo.Write contenidoTotal
+    archivo.Close
+    
+    ' Abrir el archivo generado
+    Shell "notepad.exe " & Chr(34) & rutaArchivo & Chr(34), vbNormalFocus
+    
+    MsgBox "Exportación completada:" & vbCrLf & _
+           "Facturas procesadas: " & contadorFacturas & vbCrLf & _
+           "ID inicial facturas: " & idInicialFact & vbCrLf & _
+           "ID inicial detalles: " & idInicialDet & vbCrLf & _
+           "Último ID de detalle usado: " & (idActualDet - 1) & vbCrLf & _
+           "Archivo: " & rutaArchivo, vbInformation
+    
+    ' Limpiar
+    Set fso = Nothing
+    Set archivo = Nothing
+    Set libroOrigen = Nothing
+    Set facturasData = Nothing
+    Set detallesData = Nothing
+End Sub
+
+Function ExtraerContenidoCompacto(ws As Worksheet, ByRef facturasData As Object, ByRef detallesData As Object, _
+                                  ByRef facturaIndex As Long, ByRef detalleIndex As Long, _
+                                  ByVal idActualFact As Long, ByRef idActualDet As Long, _
+                                  ByRef idFactUsado As Long) As String
+    Dim contenido As String
+    Dim numFactura As String, cliente As String, fechaEmision As String
+    Dim observaciones As String
+    Dim totalGeneral As Double
+    Dim i As Integer, startRow As Integer
+    Dim descripcion As String, cantidad As String, precio As String, importe As String
+    Dim productCount As Integer
+    Dim facturaId As Long
+    Dim j As Integer
+    Dim posicionDetalle As Integer
+    Dim idDetalleActual As Long
+    
+    ' Extraer No. Factura
+    numFactura = ExtraerNumeroFacturaSimple(ws)
+    
+    ' Extraer Cliente
+    cliente = ExtraerClienteLimpio(ws)
+    
+    ' Extraer Fecha Emisión
+    fechaEmision = ExtraerFechaSola(ws)
+    
+    ' Extraer observaciones completas
+    observaciones = ExtraerObservacionesCompletas(ws)
+    
+    ' Procesar productos primero para obtener el total
+    startRow = 1
+    For i = 1 To 20
+        If Not IsError(ws.Cells(i, 2).Value) Then
+            Dim cellValue As String
+            cellValue = CStr(ws.Cells(i, 2).Value)
+            
+            If cellValue = "Descripcion:" Or cellValue = "Descipcion:" Then
+                startRow = i + 1
+                Exit For
+            End If
+        End If
+    Next i
+    
+    ' Si no encuentra, empezar en fila 8
+    If startRow = 1 Then startRow = 8
+    
+    ' Procesar productos para calcular total
+    i = startRow
+    productCount = 0
+    totalGeneral = 0
+    
+    Do While i <= 100
+        ' Obtener valores con limpieza completa
+        On Error Resume Next
+        descripcion = LimpiarTexto(ws.Cells(i, 2).Value)
+        cantidad = LimpiarTexto(ws.Cells(i, 4).Value)
+        precio = LimpiarTexto(ws.Cells(i, 5).Value)
+        importe = LimpiarTexto(ws.Cells(i, 6).Value)
+        On Error GoTo 0
+        
+        ' Si la descripción está vacía, salir
+        If descripcion = "" Or descripcion = "Descripcion:" Or descripcion = "Descipcion:" Then
+            Exit Do
+        End If
+        
+        ' Obtener código basado en la descripción
+        Dim codigoServicio As String
+        codigoServicio = ObtenerCodigoServicioSimple(descripcion)
+        
+        ' Calcular valores reales
+        Dim cantidadNum As Double, precioNum As Double, importeNum As Double
+        cantidadNum = ConvertirCantidadSimple(cantidad)
+        precioNum = ConvertirPrecioSimple(precio)
+        
+        ' Calcular importe si es fórmula o vacío
+        If IsNumeric(importe) Then
+            importeNum = CDbl(importe)
+        Else
+            importeNum = cantidadNum * precioNum
+        End If
+        
+        totalGeneral = totalGeneral + importeNum
+        
+        productCount = productCount + 1
+        i = i + 1
+    Loop
+    
+    ' Buscar Total General en F14-F16 (si no se encontró en productos)
+    If totalGeneral = 0 Then
+        totalGeneral = BuscarTotalGeneralSimple(ws)
+    End If
+    
+    ' Línea de encabezado
+    contenido = numFactura & "," & cliente & "," & fechaEmision & "," & Format(totalGeneral, "0.00") & vbCrLf
+    
+    ' Ahora procesar productos para mostrar en el contenido
+    i = startRow
+    Do While i <= 100
+        ' Obtener valores con limpieza completa
+        On Error Resume Next
+        descripcion = LimpiarTexto(ws.Cells(i, 2).Value)
+        cantidad = LimpiarTexto(ws.Cells(i, 4).Value)
+        precio = LimpiarTexto(ws.Cells(i, 5).Value)
+        importe = LimpiarTexto(ws.Cells(i, 6).Value)
+        On Error GoTo 0
+        
+        ' Si la descripción está vacía, salir
+        If descripcion = "" Or descripcion = "Descripcion:" Or descripcion = "Descipcion:" Then
+            Exit Do
+        End If
+        
+        ' Obtener código basado en la descripción
+        codigoServicio = ObtenerCodigoServicioSimple(descripcion)
+        
+        ' Calcular valores reales
+        cantidadNum = ConvertirCantidadSimple(cantidad)
+        precioNum = ConvertirPrecioSimple(precio)
+        
+        ' Calcular importe si es fórmula o vacío
+        If IsNumeric(importe) Then
+            importeNum = CDbl(importe)
+        Else
+            importeNum = cantidadNum * precioNum
+        End If
+        
+        ' Formatear línea del producto
+        contenido = contenido & codigoServicio & "," & _
+                    descripcion & "," & _
+                    Format(cantidadNum, "0") & "," & _
+                    Format(importeNum, "#,##0.00") & ", Precio: " & _
+                    Format(precioNum, "0.00") & vbCrLf
+        
+        i = i + 1
+    Loop
+    
+    ' Si no hay productos, agregar mensaje
+    If productCount = 0 Then
+        contenido = contenido & "SIN PRODUCTOS" & vbCrLf
+    End If
+    
+    ' Agregar total
+    contenido = contenido & "Total Factura No." & numFactura & ": " & Format(totalGeneral, "#,##0.00") & vbCrLf
+    
+    ' Agregar observaciones completas
+    contenido = contenido & "Observaciones: " & observaciones & vbCrLf
+    
+    ' Línea separadora
+    contenido = contenido & String(80, "=") & vbCrLf & vbCrLf
+    
+    ' Almacenar datos para SQL
+    If numFactura <> "" And totalGeneral > 0 Then
+        ' Asignar el ID actual a esta factura
+        facturaId = idActualFact
+        
+        ' Guardar factura en Dictionary
+        Dim facturaKey As String
+        facturaKey = "F" & facturaIndex
+        facturaIndex = facturaIndex + 1
+        
+        facturasData.Add facturaKey, Array( _
+            facturaId, _
+            numFactura, _
+            cliente, _
+            fechaEmision, _
+            totalGeneral, _
+            observaciones, _
+            productCount)
+        
+        ' Guardar detalles - CADA DETALLE USA UN ID SECUENCIAL ÚNICO
+        i = startRow
+        posicionDetalle = 0
+        
+        Do While i <= 100
+            On Error Resume Next
+            descripcion = LimpiarTexto(ws.Cells(i, 2).Value)
+            cantidad = LimpiarTexto(ws.Cells(i, 4).Value)
+            precio = LimpiarTexto(ws.Cells(i, 5).Value)
+            importe = LimpiarTexto(ws.Cells(i, 6).Value)
+            On Error GoTo 0
+            
+            If descripcion = "" Or descripcion = "Descripcion:" Or descripcion = "Descipcion:" Then
+                Exit Do
+            End If
+            
+            codigoServicio = ObtenerCodigoServicioSimple(descripcion)
+            cantidadNum = ConvertirCantidadSimple(cantidad)
+            precioNum = ConvertirPrecioSimple(precio)
+            
+            If IsNumeric(importe) Then
+                importeNum = CDbl(importe)
+            Else
+                importeNum = cantidadNum * precioNum
+            End If
+            
+            ' Guardar detalle - CADA DETALLE TIENE UN ID ÚNICO Y SECUENCIAL
+            Dim detalleKey As String
+            detalleKey = "D" & detalleIndex
+            detalleIndex = detalleIndex + 1
+            
+            ' Guardamos: facturaId, código, descripción, cantidad, precio, importe, idDetalle
+            detallesData.Add detalleKey, Array( _
+                facturaId, _
+                codigoServicio, _
+                descripcion, _
+                cantidadNum, _
+                precioNum, _
+                importeNum, _
+                idActualDet)  ' ID SECUENCIAL ÚNICO para este detalle
+            
+            i = i + 1
+            posicionDetalle = posicionDetalle + 1
+            idActualDet = idActualDet + 1  ' INCREMENTAR SIEMPRE EN 1 PARA CADA DETALLE
+        Loop
+        
+        ' Devolver el ID usado para esta factura
+        idFactUsado = facturaId
+    Else
+        idFactUsado = idActualFact - 1
+    End If
+    
+    ExtraerContenidoCompacto = contenido
+End Function
+Function GenerarEstructuraSQL(facturasData As Object, detallesData As Object, ByVal idInicialFact As Long, ByVal idInicialDet As Long) As String
+    Dim contenidoSQL As String
+    Dim i As Long
+    Dim valoresFacturas As String
+    Dim valoresDetalles As String
+    Dim facturaKey As Variant
+    Dim detalleKey As Variant
+    Dim facturaArray As Variant
+    Dim detalleArray As Variant
+    
+    contenidoSQL = contenidoSQL & "--" & vbCrLf
+    contenidoSQL = contenidoSQL & "-- Volcado de datos para la tabla `tbl_fact`" & vbCrLf
+    contenidoSQL = contenidoSQL & "-- (IDs comenzando desde: " & idInicialFact & ")" & vbCrLf
+    contenidoSQL = contenidoSQL & "--" & vbCrLf & vbCrLf
+    
+    ' Generar INSERTs para tbl_fact
+    valoresFacturas = ""
+    i = 0
+    
+    For Each facturaKey In facturasData.Keys
+        If valoresFacturas <> "" Then valoresFacturas = valoresFacturas & "," & vbCrLf
+        
+        facturaArray = facturasData(facturaKey)
+        
+        ' EXTRAER VALORES EN VARIABLES INDIVIDUALES
+        Dim facturaIdVal As Variant
+        Dim noFacturaVal As String
+        Dim clienteVal As String
+        Dim fechaVal As String
+        Dim totalVal As Double
+        Dim observacionesVal As String
+        
+        facturaIdVal = facturaArray(0)
+        noFacturaVal = facturaArray(1)
+        clienteVal = facturaArray(2)
+        fechaVal = facturaArray(3)
+        totalVal = facturaArray(4)
+        observacionesVal = facturaArray(5)
+        
+        ' Obtener cliente_id
+        Dim clienteId As Integer
+        clienteId = ObtenerClienteIdDeClasifClientes(clienteVal)
+        
+        ' CORREGIDO: fecha_pago = NULL, Ref_pago = NULL (sin coma extra)
+        valoresFacturas = valoresFacturas & "(" & facturaIdVal & ", '" & EscapeSQL(noFacturaVal) & "', " & _
+                         clienteId & ", 20, " & _
+                         Format(CDbl(totalVal), "0.00") & ", " & _
+                         Format(CDbl(totalVal), "0.00") & ", 1, 'CONTABILIZADA', " & _
+                         "'" & ConvertirFechaMySQL(fechaVal) & "', " & _
+                         "'" & ConvertirFechaMySQL(fechaVal) & "', " & _
+                         "NULL, NULL, " & _
+                         "'" & EscapeSQL(observacionesVal) & "', 1)"
+        
+        i = i + 1
+    Next facturaKey
+    
+    If valoresFacturas <> "" Then
+        contenidoSQL = contenidoSQL & "INSERT INTO `tbl_fact` (`id`, `no_fact`, `cliente_id`, `tipo_pago_id`, `subtotal`, `total_general`, `usuario_id`, `estado`, `fecha_emision`, `fecha_contabilizacion`, `fecha_pago`, `Ref_pago`, `observaciones`, `usuario_contabilizacion`) VALUES" & vbCrLf
+        contenidoSQL = contenidoSQL & valoresFacturas & ";" & vbCrLf & vbCrLf & vbCrLf
+    End If
+
+    contenidoSQL = contenidoSQL & "--" & vbCrLf
+    contenidoSQL = contenidoSQL & "-- Volcado de datos para la tabla `tbl_fact_detalle`" & vbCrLf
+    contenidoSQL = contenidoSQL & "-- (IDs comenzando desde: " & idInicialDet & " y aumentando secuencialmente)" & vbCrLf
+    contenidoSQL = contenidoSQL & "--" & vbCrLf & vbCrLf
+    
+    ' Generar INSERTs para tbl_fact_detalle
+    valoresDetalles = ""
+    
+    For Each detalleKey In detallesData.Keys
+        If valoresDetalles <> "" Then valoresDetalles = valoresDetalles & "," & vbCrLf
+        
+        detalleArray = detallesData(detalleKey)
+        
+        ' EXTRAER VALORES
+        Dim facturaIdDet As Variant
+        Dim codigoServicioDet As String
+        Dim cantidadDet As Double
+        Dim precioDet As Double
+        Dim importeDet As Double
+        Dim idDetalle As Long
+        
+        facturaIdDet = detalleArray(0)
+        codigoServicioDet = detalleArray(1)
+        ' descripcionDet = detalleArray(2) ' No se usa
+        cantidadDet = detalleArray(3)
+        precioDet = detalleArray(4)
+        importeDet = detalleArray(5)
+        idDetalle = detalleArray(6)  ' ID SECUENCIAL ÚNICO para este detalle
+        
+        ' Obtener servicio_id
+        Dim servicioId As Integer
+        servicioId = ObtenerServicioIdSQL(codigoServicioDet)
+        
+        valoresDetalles = valoresDetalles & "(" & idDetalle & ", " & facturaIdDet & ", " & _
+                         servicioId & ", " & _
+                         Format(CDbl(cantidadDet), "0") & ", " & _
+                         Format(CDbl(precioDet), "0.00") & ", " & _
+                         Format(CDbl(importeDet), "0.00") & ")"
+        
+    Next detalleKey
+    
+    If valoresDetalles <> "" Then
+        contenidoSQL = contenidoSQL & "INSERT INTO `tbl_fact_detalle` (`id`, `factura_id`, `servicio_id`, `cantidad`, `precio_unitario`, `total_linea`) VALUES" & vbCrLf
+        contenidoSQL = contenidoSQL & valoresDetalles & ";" & vbCrLf
+    End If
+    
+    GenerarEstructuraSQL = contenidoSQL
+End Function
+
+' ============================================================================
+' FUNCIONES DE MAPEO DE CLIENTES Y SERVICIOS (sin cambios)
+' ============================================================================
+
+Function ObtenerClienteIdDeClasifClientes(ByVal nombreCliente As String) As Integer
+    ' Mapeo de nombres de clientes a IDs basado en la tabla clasif_clientes
+    Dim nombreUpper As String
+    nombreUpper = UCase(Trim(nombreCliente))
+    
+    ' Buscar coincidencias parciales priorizando las más específicas
+    Select Case True
+        
+        ' SERVICIOS DE SALUD Y HOSPITALES
+        Case InStr(nombreUpper, "HOSPITAL") > 0 And InStr(nombreUpper, "MARTIN CHANG") > 0
+            ObtenerClienteIdDeClasifClientes = 98 ' UPR Hospital General Docente Martín Chang Puga
+        Case InStr(nombreUpper, "SALUD PÚBLICA") > 0 Or InStr(nombreUpper, "SALUD PUBLICA") > 0
+            ObtenerClienteIdDeClasifClientes = 2 ' UPR Dirección Municipal de Salud Pública Nuevitas
+        Case InStr(nombreUpper, "CIENCIAS MÉDICAS") > 0 Or InStr(nombreUpper, "CIENCIAS MEDICAS") > 0
+            ObtenerClienteIdDeClasifClientes = 24 ' Universidad de Ciencias Médicas
+        Case InStr(nombreUpper, "UNIDAD DE ASEGURAMIENTO") > 0 Or InStr(nombreUpper, "APOYO A LA SALUD") > 0
+            ObtenerClienteIdDeClasifClientes = 14 ' Unidad de Aseguramiento y Apoyo a la salud
+        
+        ' EMPRESAS Y ENTIDADES GUBERNAMENTALES
+        Case InStr(nombreUpper, "DIRECCIÓN MUNICIPAL DE EDUCACIÓN") > 0 Or InStr(nombreUpper, "DIRECCION MUNICIPAL DE EDUCACION") > 0
+            ObtenerClienteIdDeClasifClientes = 82 ' Dirección Municipal de Educación
+        Case InStr(nombreUpper, "DIRECCIÓN MUNICIPAL DE DEPORTES") > 0 Or InStr(nombreUpper, "DIRECCION MUNICIPAL DE DEPORTES") > 0
+            ObtenerClienteIdDeClasifClientes = 35 ' UPR Dirección Municipal de Deportes de Nuevitas
+        Case InStr(nombreUpper, "DIRECCIÓN MUNICIPAL DE TRABAJO") > 0 Or InStr(nombreUpper, "DIRECCION MUNICIPAL DE TRABAJO") > 0
+            ObtenerClienteIdDeClasifClientes = 50 ' UPR Dirección Municipal de Trabajo y Seguridad Social
+        Case InStr(nombreUpper, "DIRECCIÓN MUNICIPAL DE VIVIENDA") > 0 Or InStr(nombreUpper, "DIRECCION MUNICIPAL DE VIVIENDA") > 0
+            ObtenerClienteIdDeClasifClientes = 73 ' Dirección Municipal de Vivienda Nuevitas
+        Case InStr(nombreUpper, "SERVICIOS COMUNALES") > 0
+            ObtenerClienteIdDeClasifClientes = 64 ' UPR Dirección Municipal de Servicios Comunales
+        Case InStr(nombreUpper, "PODER POPULAR") > 0
+            ObtenerClienteIdDeClasifClientes = 45 ' UPR Poder Popular Municipal Nuevitas
+        Case InStr(nombreUpper, "CONSEJO ELECTORAL") > 0
+            ObtenerClienteIdDeClasifClientes = 30 ' UPR Consejo Electoral Provincial
+        
+        ' EMPRESAS INDUSTRIALES Y DE CONSTRUCCIÓN
+        Case InStr(nombreUpper, "TERMOELÉCTRICA") > 0 Or InStr(nombreUpper, "TERMOELECTRICA") > 0 Or InStr(nombreUpper, "10 DE OCTUBRE") > 0
+            ObtenerClienteIdDeClasifClientes = 40 ' Emp. Central Termoeléctrica 10 de Octubre
+        Case InStr(nombreUpper, "CEMENTO") > 0 And InStr(nombreUpper, "26 DE JULIO") > 0
+            ObtenerClienteIdDeClasifClientes = 88 ' Empresa de Cemento 26 de Julio
+        Case InStr(nombreUpper, "CEMENTO") > 0 And InStr(nombreUpper, "COMERCIAL") > 0
+            ObtenerClienteIdDeClasifClientes = 18 ' Empresa Comercial del Cemento UEB Nuevitas
+        Case InStr(nombreUpper, "MATERIALES DE LA CONSTRUCCIÓN") > 0 Or InStr(nombreUpper, "MATERIALES DE LA CONSTRUCCION") > 0
+            ObtenerClienteIdDeClasifClientes = 22 ' Empresa de Materiales de la Construcción Camagüey
+        Case InStr(nombreUpper, "CONSTRUCCIONES MARIO") > 0 Or InStr(nombreUpper, "SURL CONSTRUCCIONES MARIO") > 0
+            ObtenerClienteIdDeClasifClientes = 70 ' SURL Construcciones Mario
+        Case InStr(nombreUpper, "COOPERATIVA") > 0 And InStr(nombreUpper, "PIRÁMIDE") > 0
+            ObtenerClienteIdDeClasifClientes = 83 ' CNA Cooperativa de Construcción Pirámide
+        Case InStr(nombreUpper, "PINTURAS VITRAL") > 0
+            ObtenerClienteIdDeClasifClientes = 26 ' Empresa de Pinturas Vitral, UEB Nuevitas
+        Case InStr(nombreUpper, "QUÍMICA REVOLUCIÓN") > 0 Or InStr(nombreUpper, "QUIMICA REVOLUCION") > 0
+            ObtenerClienteIdDeClasifClientes = 107 ' Empresa Química Revolución de Octubre
+        
+        ' ENERGÍA Y COMBUSTIBLES
+        Case InStr(nombreUpper, "GRUPOS ELECTRÓGENOS") > 0 Or InStr(nombreUpper, "GRUPOS ELECTROGENOS") > 0
+            ObtenerClienteIdDeClasifClientes = 28 ' Empresa de Grupos electrógenos y Servicios eléctricos
+        Case InStr(nombreUpper, "CUPET") > 0
+            ObtenerClienteIdDeClasifClientes = 69 ' Empresa Comercializadora de Combustible-CUPET
+        Case InStr(nombreUpper, "TRANSPORTACIÓN DE COMBUSTIBLE") > 0 Or InStr(nombreUpper, "TRANSPORTACION DE COMBUSTIBLE") > 0
+            ObtenerClienteIdDeClasifClientes = 56 ' Empresa de Transportación de combustible UEB CMG
+        Case InStr(nombreUpper, "SERVICIOS PETROLEROS") > 0
+            ObtenerClienteIdDeClasifClientes = 25 ' Empresa de Servicios Petroleros
+        
+        ' TRANSPORTE Y LOGÍSTICA
+        Case InStr(nombreUpper, "TRANSPORTE") > 0 And InStr(nombreUpper, "PROVINCIAL") > 0
+            ObtenerClienteIdDeClasifClientes = 10 ' Empresa Provincial Transporte Camagüey
+        Case InStr(nombreUpper, "SERVICIOS PORTUARIOS") > 0
+            ObtenerClienteIdDeClasifClientes = 27 ' Empresa de Servicios Portuarios Centro Este, UEB Nuevitas
+        Case InStr(nombreUpper, "ASTILLEROS") > 0
+            ObtenerClienteIdDeClasifClientes = 54 ' Empresa de Astilleros Oriente Nuevitas
+        Case InStr(nombreUpper, "NAVEGACIÓN") > 0 Or InStr(nombreUpper, "NAVEGACION") > 0
+            ObtenerClienteIdDeClasifClientes = 19 ' Empresa de Navegación Caribe
+        Case InStr(nombreUpper, "TRANSPORTACIONES ORO") > 0
+            ObtenerClienteIdDeClasifClientes = 66 ' Transportaciones Oro SURL
+        
+        ' PESCA Y ALIMENTOS
+        Case InStr(nombreUpper, "PESQUERA INDUSTRIAL") > 0 And InStr(nombreUpper, "SANTA CRUZ") > 0
+            ObtenerClienteIdDeClasifClientes = 33 ' Empresa Pesquera Industrial Santa Cruz del Sur
+        Case InStr(nombreUpper, "PESQUERA INDUSTRIAL") > 0
+            ObtenerClienteIdDeClasifClientes = 95 ' Empresa Filial Pesquera Industrial Nuevitas
+        Case InStr(nombreUpper, "PASTEURIZADORA") > 0
+            ObtenerClienteIdDeClasifClientes = 55 ' Pasteurizadora Nuevitas
+        Case InStr(nombreUpper, "FRUTAS SELECTAS") > 0
+            ObtenerClienteIdDeClasifClientes = 72 ' Frigorífico Nuevitas
+        Case InStr(nombreUpper, "SAL") > 0 And InStr(nombreUpper, "EL REAL") > 0
+            ObtenerClienteIdDeClasifClientes = 34 ' Empresa de la Sal UEB El Real
+        
+        ' GASTRONOMÍA Y COMERCIO
+        Case InStr(nombreUpper, "COMERCIO Y GASTRONOMÍA") > 0 Or InStr(nombreUpper, "COMERCIO Y GASTRONOMIA") > 0
+            ObtenerClienteIdDeClasifClientes = 8 ' Empresa Municipal Comercio y Gastronomía
+        Case InStr(nombreUpper, "PIZZERIA") > 0 And InStr(nombreUpper, "MATERNILLO") > 0
+            ObtenerClienteIdDeClasifClientes = 17 ' UEB Pizzería Maternillo
+        Case InStr(nombreUpper, "PIZZERIA") > 0 And InStr(nombreUpper, "PORTO NOVO") > 0
+            ObtenerClienteIdDeClasifClientes = 32 ' UEB Pizzería Porto Novo
+        Case InStr(nombreUpper, "HELADERÍA") > 0 Or InStr(nombreUpper, "HELADERIA") > 0
+            ObtenerClienteIdDeClasifClientes = 76 ' Heladería Dulcería Los PP´s SRL
+        Case InStr(nombreUpper, "GASTRONÓMICA") > 0 And InStr(nombreUpper, "EL PUENTE") > 0
+            ObtenerClienteIdDeClasifClientes = 112 ' UEB Gastronómica El Puente
+        Case InStr(nombreUpper, "EL BALKAN") > 0
+            ObtenerClienteIdDeClasifClientes = 1 ' UEB El Balkan
+        
+        ' CULTURA, MEDIOS Y EDUCACIÓN
+        Case InStr(nombreUpper, "RADIO") > 0 Or InStr(nombreUpper, "CMHL") > 0
+            ObtenerClienteIdDeClasifClientes = 20 ' Emisora Municipal CMHL Radio Nuevitas
+        Case InStr(nombreUpper, "TELEVISIÓN") > 0 Or InStr(nombreUpper, "TELEVISION") > 0
+            ObtenerClienteIdDeClasifClientes = 97 ' Unidad Presupuestada de Televisión Camagüey
+        Case InStr(nombreUpper, "CULTURA") > 0 And InStr(nombreUpper, "MUNICIPAL") > 0
+            ObtenerClienteIdDeClasifClientes = 65 ' Unidad Municipal de la Cultura Nuevitas
+        Case InStr(nombreUpper, "CINE") > 0
+            ObtenerClienteIdDeClasifClientes = 23 ' Centro Provincial del Cine Camagüey
+        Case InStr(nombreUpper, "EIDE") > 0
+            ObtenerClienteIdDeClasifClientes = 13 ' EIDE Cerro Pelado
+        
+        ' AGUA, ELECTRICIDAD Y SERVICIOS PÚBLICOS
+        Case InStr(nombreUpper, "ACUEDUCTO") > 0
+            ObtenerClienteIdDeClasifClientes = 39 ' UEB Acueducto y Alcantarillado
+        Case InStr(nombreUpper, "HIDRORED") > 0
+            ObtenerClienteIdDeClasifClientes = 89 ' HIDRORED
+        
+        ' SEGURIDAD Y PROTECCIÓN
+        Case InStr(nombreUpper, "AGESP") > 0
+            ObtenerClienteIdDeClasifClientes = 48 ' UEB Agencia Territorial de Seguridad AGESP
+        Case InStr(nombreUpper, "SEGURIDAD Y PROTECCIÓN") > 0 Or InStr(nombreUpper, "SEGURIDAD Y PROTECCION") > 0
+            ObtenerClienteIdDeClasifClientes = 52 ' Empresa de Seguridad y Protección AGESP
+        
+        ' PROYECTOS DE DESARROLLO LOCAL (PDL)
+        Case InStr(nombreUpper, "PDL GEMA") > 0
+            ObtenerClienteIdDeClasifClientes = 15 ' PDL Gema
+        Case InStr(nombreUpper, "PDL FLAMBOYAN") > 0
+            ObtenerClienteIdDeClasifClientes = 16 ' PDL Flamboyan
+        Case InStr(nombreUpper, "PDL EL REY") > 0
+            ObtenerClienteIdDeClasifClientes = 67 ' Proyecto de Desarrollo Local El Rey
+        Case InStr(nombreUpper, "PDL EL PORVENIR") > 0
+            ObtenerClienteIdDeClasifClientes = 71 ' Proyecto de Desarrollo Local El Porvenir
+        Case InStr(nombreUpper, "PDL SOLUCIONES AQUÍ") > 0 Or InStr(nombreUpper, "PDL SOLUCIONES AQUI") > 0
+            ObtenerClienteIdDeClasifClientes = 74 ' PDL Soluciones aquí
+        Case InStr(nombreUpper, "PDL GANEV") > 0
+            ObtenerClienteIdDeClasifClientes = 106 ' PDL GANEV
+        Case InStr(nombreUpper, "PDL AGUAS NUEVAS") > 0
+            ObtenerClienteIdDeClasifClientes = 109 ' PDL Aguas Nuevas
+        
+        ' EMPRESAS DE SERVICIOS TECNOLÓGICOS
+        Case InStr(nombreUpper, "NUEVITEC") > 0
+            ObtenerClienteIdDeClasifClientes = 91 ' NueviTec SURL
+        Case InStr(nombreUpper, "SEMANT") > 0
+            ObtenerClienteIdDeClasifClientes = 93 ' SRL Soluciones Energéticas SEMANT
+        Case InStr(nombreUpper, "INVESTIGACIONES APLICADAS") > 0
+            ObtenerClienteIdDeClasifClientes = 104 ' Empresa Filial de Investigaciones Aplicadas
+        
+        ' TCPs y Entidades Privadas
+        Case InStr(nombreUpper, "TCP MARIA ISABEL") > 0
+            ObtenerClienteIdDeClasifClientes = 100 ' TCP Maria Isabel Céspedes Ávila
+        Case InStr(nombreUpper, "TCP RAMÓN ALARCON") > 0 Or InStr(nombreUpper, "TCP RAMON ALARCON") > 0
+            ObtenerClienteIdDeClasifClientes = 110 ' TCP Ramón Alarcón Yero
+        Case InStr(nombreUpper, "TCP JOAQUIN JONH") > 0
+            ObtenerClienteIdDeClasifClientes = 111 ' TCP Joaquín Jonh Rodríguez
+        Case InStr(nombreUpper, "TCP RAYMAR") > 0
+            ObtenerClienteIdDeClasifClientes = 31 ' TCP Raymar Guzmán Rodríguez
+        Case InStr(nombreUpper, "TCP SOLDADURA GRB") > 0
+            ObtenerClienteIdDeClasifClientes = 79 ' TCP Soldadura GRB
+        Case InStr(nombreUpper, "SRL SOLUCIONES ENERGÉTICAS") > 0
+            ObtenerClienteIdDeClasifClientes = 93 ' SEMANT
+        Case InStr(nombreUpper, "SM KLIMATIZA") > 0
+            ObtenerClienteIdDeClasifClientes = 58 ' SM KLIMATIZA SRL
+        Case InStr(nombreUpper, "SERVILIM") > 0
+            ObtenerClienteIdDeClasifClientes = 78 ' SERVILIM SRL
+        Case InStr(nombreUpper, "CETA") > 0
+            ObtenerClienteIdDeClasifClientes = 37 ' CETA Sociedad de Responsabilidad Limitada
+        Case InStr(nombreUpper, "MPM LEÓN") > 0 Or InStr(nombreUpper, "MPM LEON") > 0
+            ObtenerClienteIdDeClasifClientes = 38 ' MPM León SRL
+        Case InStr(nombreUpper, "FRANKVILA") > 0
+            ObtenerClienteIdDeClasifClientes = 21 ' Frankvila Sociedad Unipersonal
+        
+        ' OTRAS ENTIDADES
+        Case InStr(nombreUpper, "FLORA Y FAUNA") > 0
+            ObtenerClienteIdDeClasifClientes = 80 ' Empresa de Flora y Fauna Camagüey
+        Case InStr(nombreUpper, "UJC") > 0
+            ObtenerClienteIdDeClasifClientes = 103 ' Comité Municipal UJC Nuevitas
+        Case InStr(nombreUpper, "CTC") > 0
+            ObtenerClienteIdDeClasifClientes = 105 ' CTC Provincial Camagüey
+        Case InStr(nombreUpper, "GONEV") > 0
+            ObtenerClienteIdDeClasifClientes = 84 ' GONEV
+        Case InStr(nombreUpper, "BANDEC") > 0
+            ObtenerClienteIdDeClasifClientes = 90 ' BANDEC Nuevitas
+        Case InStr(nombreUpper, "ADUANA") > 0
+            ObtenerClienteIdDeClasifClientes = 94 ' Aduana Camagüey
+        Case InStr(nombreUpper, "FARMACIAS") > 0
+            ObtenerClienteIdDeClasifClientes = 101 ' UEB Farmacias
+        Case InStr(nombreUpper, "INDUSTRIAS LOCALES") > 0
+            ObtenerClienteIdDeClasifClientes = 86 ' Empresa Provincial Industrias Locales
+        Case InStr(nombreUpper, "EMGEF") > 0
+            ObtenerClienteIdDeClasifClientes = 87 ' EMGEF Camagüey
+        
+        ' CASO POR DEFECTO
+        Case Else
+            If InStr(nombreUpper, "UEB") > 0 Then
+                ObtenerClienteIdDeClasifClientes = 49 ' UEB Zona Industrial
+            ElseIf InStr(nombreUpper, "EMPRESA") > 0 Then
+                ObtenerClienteIdDeClasifClientes = 80 ' Empresa de Flora y Fauna (genérico)
+            Else
+                ObtenerClienteIdDeClasifClientes = 80 ' Empresa de Flora y Fauna Camagüey
+            End If
+    End Select
+End Function
+
+Function ObtenerServicioIdSQL(ByVal codigoServicio As String) As Integer
+    ' Mapeo de códigos de servicio a IDs
+    Select Case codigoServicio
+        Case "I001": ObtenerServicioIdSQL = 13  ' Impresión B/N
+        Case "I002": ObtenerServicioIdSQL = 14  ' Impresión Doble Cara B/N
+        Case "I003": ObtenerServicioIdSQL = 15  ' Impresión Color
+        Case "I004": ObtenerServicioIdSQL = 16  ' Impresión Doble Cara Color
+        Case "FS01": ObtenerServicioIdSQL = 10  ' Fotocopia/Scanner
+        Case "FS02": ObtenerServicioIdSQL = 11  ' Fotocopia/Scanner D/C
+        Case "P001": ObtenerServicioIdSQL = 31  ' Impresión Planillas B/N
+        Case "P002": ObtenerServicioIdSQL = 32  ' Impresión Planillas D/C B/N
+        Case "I005": ObtenerServicioIdSQL = 17  ' Impresión imágenes papel normal
+        Case "I006": ObtenerServicioIdSQL = 18  ' Impresión imágenes papel normal D/C
+        Case "IC01": ObtenerServicioIdSQL = 19  ' Impresión cartulina 8.5x11
+        Case "IC02": ObtenerServicioIdSQL = 20  ' Impresión cartulina 12x18
+        Case "IC03": ObtenerServicioIdSQL = 21  ' Impresión cartulina D/C 8.5x11
+        Case "IC04": ObtenerServicioIdSQL = 22  ' Impresión cartulina D/C 12x18
+        Case "IC05": ObtenerServicioIdSQL = 23  ' Impresión Diplomas cartulina 8.5x11
+        Case "IC06": ObtenerServicioIdSQL = 24  ' Impresión Diplomas cartulina 12x18
+        Case "IC07": ObtenerServicioIdSQL = 25  ' Impresión imágenes cartulina 8.5x11
+        Case "IC08": ObtenerServicioIdSQL = 26  ' Impresión imágenes cartulina 12x18
+        Case "IT01": ObtenerServicioIdSQL = 27  ' Impresión sencilla tarjetas
+        Case "IT02": ObtenerServicioIdSQL = 28  ' Impresión doble cara tarjeta
+        Case "CR01": ObtenerServicioIdSQL = 1   ' Credencial unidad
+        Case "CR02": ObtenerServicioIdSQL = 2   ' Credencial con colgante
+        Case "DC01": ObtenerServicioIdSQL = 3   ' Diploma cartulina forrado vinilo
+        Case "DI01": ObtenerServicioIdSQL = 4   ' Diseño diploma, tarjetas
+        Case "E001": ObtenerServicioIdSQL = 5   ' Encuadernado
+        Case "F001": ObtenerServicioIdSQL = 6   ' Fotografía 5x7
+        Case "F002": ObtenerServicioIdSQL = 7   ' Fotografía 1x1
+        Case "F003": ObtenerServicioIdSQL = 8   ' 4 Fotos pasaporte
+        Case "F004": ObtenerServicioIdSQL = 9   ' Fotografía 8.5x11
+        Case "GT01": ObtenerServicioIdSQL = 12  ' Grabar tazón
+        Case "MP01": ObtenerServicioIdSQL = 29  ' Mica plástica tamaño solapín
+        Case "MP02": ObtenerServicioIdSQL = 30  ' Mica plástica tamaño carta
+        Case "ST01": ObtenerServicioIdSQL = 35  ' Sublimación textil
+        Case "TE01": ObtenerServicioIdSQL = 36  ' Trámites embajadas
+        Case "P003": ObtenerServicioIdSQL = 33  ' Impresión Planillas Color
+        Case "P004": ObtenerServicioIdSQL = 34  ' Impresión Planillas D/C Color
+        Case "LC01": ObtenerServicioIdSQL = 37  ' Lápiceros
+        Case "FO01": ObtenerServicioIdSQL = 38  ' Foliadora
+        Case "AR01": ObtenerServicioIdSQL = 39  ' Archivador DL 5071
+        Case "AR02": ObtenerServicioIdSQL = 40  ' Archivador Tipo Libro
+        Case "AR03": ObtenerServicioIdSQL = 41  ' Archivador con 1 presilla
+        Case "AL01": ObtenerServicioIdSQL = 42  ' Almohadillas para cuños
+        Case "AR04": ObtenerServicioIdSQL = 43  ' Archivador con 2 presilla
+        Case "PD01": ObtenerServicioIdSQL = 44  ' Porta documentos colores
+        Case "PC01": ObtenerServicioIdSQL = 45  ' Paper Clip colores 728
+        Case "PC02": ObtenerServicioIdSQL = 46  ' Paper Clip colores 733
+        Case "PC03": ObtenerServicioIdSQL = 47  ' Paper Clip colores 750
+        Case "AR05": ObtenerServicioIdSQL = 48  ' Archivador con presillas
+        Case "AR06": ObtenerServicioIdSQL = 49  ' Archivador DL 5072
+        Case "EP01": ObtenerServicioIdSQL = 50  ' Estuche de presillas
+        Case "SP01": ObtenerServicioIdSQL = 51  ' Saca Presillas
+        Case "SD01": ObtenerServicioIdSQL = 52  ' Servicio Desconocido
+        Case "CP10": ObtenerServicioIdSQL = 53
+        Case Else: ObtenerServicioIdSQL = 52
+    End Select
+End Function
+
+Function ConvertirFechaMySQL(ByVal fechaTexto As String) As String
+    ' Convertir fecha de formato dd/mm/yyyy a YYYY-MM-DD HH:MM:SS
+    Dim fechaParts() As String
+    Dim dia As String, mes As String, anio As String
+    
+    fechaTexto = Trim(fechaTexto)
+    
+    If fechaTexto Like "##/##/####" Or fechaTexto Like "##/##/##" Then
+        fechaParts = Split(fechaTexto, "/")
+        If UBound(fechaParts) = 2 Then
+            dia = Format(fechaParts(0), "00")
+            mes = Format(fechaParts(1), "00")
+            anio = fechaParts(2)
+            If Len(anio) = 2 Then anio = "20" & anio
+            
+            ConvertirFechaMySQL = anio & "-" & mes & "-" & dia & " 08:00:00"
+            Exit Function
+        End If
+    End If
+    
+    ConvertirFechaMySQL = "2025-01-06 08:00:00"
+End Function
+
+Function EscapeSQL(ByVal texto As String) As String
+    ' Función para escapar caracteres especiales en SQL
+    texto = LimpiarTexto(texto)
+    
+    If IsNull(texto) Or texto = "" Then
+        EscapeSQL = ""
+        Exit Function
+    End If
+    
+    Dim result As String
+    result = CStr(texto)
+    result = Replace(result, "'", "''")
+    result = Replace(result, "\", "\\")
+    result = Trim(result)
+    
+    ' Limitar longitud para observaciones
+    If Len(result) > 200 Then
+        result = Left(result, 197) & "..."
+    End If
+    
+    EscapeSQL = result
+End Function
+
+Function ExtraerClienteLimpio(ws As Worksheet) As String
+    ' Extraer cliente de celda B6 y eliminar "Cliente:" si está presente
+    Dim clienteCompleto As String
+    clienteCompleto = ""
+    
+    On Error Resume Next
+    clienteCompleto = LimpiarTexto(ws.Cells(6, 2).Value)
+    On Error GoTo 0
+    
+    If clienteCompleto = "" Then
+        ExtraerClienteLimpio = ws.Name
+        Exit Function
+    End If
+    
+    clienteCompleto = Replace(clienteCompleto, "Cliente:", "")
+    clienteCompleto = Replace(clienteCompleto, "CLIENTE:", "")
+    clienteCompleto = Replace(clienteCompleto, "cliente:", "")
+    clienteCompleto = Replace(clienteCompleto, "Cliente", "")
+    clienteCompleto = Replace(clienteCompleto, "CLIENTE", "")
+    clienteCompleto = Replace(clienteCompleto, "cliente", "")
+    clienteCompleto = Trim(clienteCompleto)
+    
+    If Left(clienteCompleto, 1) = ":" Then
+        clienteCompleto = Mid(clienteCompleto, 2)
+        clienteCompleto = Trim(clienteCompleto)
+    End If
+    
+    If clienteCompleto = "" Then
+        ExtraerClienteLimpio = ws.Name
+    Else
+        ExtraerClienteLimpio = clienteCompleto
+    End If
+End Function
+
+Function ExtraerFechaSola(ws As Worksheet) As String
+    ' Extraer solo la fecha de la celda D3, sin la palabra "Fecha"
+    Dim fechaCompleta As String
+    fechaCompleta = ""
+    
+    On Error Resume Next
+    fechaCompleta = Trim(CStr(ws.Cells(3, 4).Value))
+    On Error GoTo 0
+    
+    If fechaCompleta = "" Then
+        ExtraerFechaSola = "Sin fecha"
+        Exit Function
+    End If
+    
+    fechaCompleta = Replace(fechaCompleta, "Fecha", "")
+    fechaCompleta = Replace(fechaCompleta, "FECHA", "")
+    fechaCompleta = Replace(fechaCompleta, "fecha", "")
+    fechaCompleta = Trim(fechaCompleta)
+    
+    If Left(fechaCompleta, 1) = ":" Then
+        fechaCompleta = Mid(fechaCompleta, 2)
+        fechaCompleta = Trim(fechaCompleta)
+    End If
+    
+    If InStr(1, fechaCompleta, "/") > 0 Then
+        Dim fechaParts() As String
+        fechaParts = Split(fechaCompleta, " ")
+        If UBound(fechaParts) >= 0 Then
+            If InStr(1, fechaParts(0), "/") > 0 Then
+                ExtraerFechaSola = Trim(fechaParts(0))
+                Exit Function
+            End If
+        End If
+    End If
+    
+    ExtraerFechaSola = fechaCompleta
+End Function
+
+Function ExtraerObservacionesCompletas(ws As Worksheet) As String
+    Dim i As Integer
+    Dim obsText As String
+    
+    For i = 1 To 100
+        If Not IsError(ws.Cells(i, 1).Value) Then
+            Dim cellValue As String
+            cellValue = LimpiarTexto(ws.Cells(i, 1).Value)
+            
+            If InStr(1, cellValue, "Observaciones") > 0 Then
+                obsText = cellValue
+                
+                obsText = Replace(obsText, "Observaciones :", "")
+                obsText = Replace(obsText, "Observaciones:", "")
+                obsText = Replace(obsText, "OBSERVACIONES :", "")
+                obsText = Replace(obsText, "OBSERVACIONES:", "")
+                obsText = Replace(obsText, "observaciones :", "")
+                obsText = Replace(obsText, "observaciones:", "")
+                
+                obsText = Replace(obsText, vbLf, " ")
+                obsText = Replace(obsText, vbCr, " ")
+                obsText = Replace(obsText, Chr(10), " ")
+                obsText = Replace(obsText, Chr(13), " ")
+                
+                Do While InStr(obsText, "  ") > 0
+                    obsText = Replace(obsText, "  ", " ")
+                Loop
+                
+                obsText = Trim(obsText)
+                
+                ExtraerObservacionesCompletas = obsText
+                Exit Function
+            End If
+        End If
+    Next i
+    
+    ExtraerObservacionesCompletas = "Sin observaciones"
+End Function
+
+Function ExtraerNumeroFacturaSimple(ws As Worksheet) As String
+    Dim i As Integer, j As Integer
+    Dim fechaFactura As String
+    Dim fechaYYYYMMDD As String
+    Dim numeroEncontrado As String
+    Dim regex As Object, matches As Object
+    Dim celdaTexto As String
+    
+    fechaFactura = ExtraerFechaSola(ws)
+    fechaYYYYMMDD = ConvertirFechaYYYYMMDD(fechaFactura)
+    
+    Set regex = CreateObject("VBScript.RegExp")
+    regex.Pattern = "\d+"
+    regex.Global = True
+    
+    numeroEncontrado = ""
+    
+    For i = 1 To 50
+        For j = 4 To 8
+            If Not IsError(ws.Cells(i, j).Value) Then
+                celdaTexto = Trim(CStr(ws.Cells(i, j).Value))
+                
+                If InStr(1, UCase(celdaTexto), "FACTURA") > 0 Or _
+                   InStr(1, UCase(celdaTexto), "NO.") > 0 Or _
+                   InStr(1, UCase(celdaTexto), "FOLIO") > 0 Or _
+                   InStr(1, UCase(celdaTexto), "N°") > 0 Then
+                   
+                    Set matches = regex.Execute(celdaTexto)
+                    If matches.Count > 0 Then
+                        numeroEncontrado = matches(matches.Count - 1).Value
+                        GoTo ConstruirCodigo
+                    End If
+                    
+                    Dim valorDerecha As String
+                    If j < 10 Then
+                        valorDerecha = Trim(CStr(ws.Cells(i, j + 1).Value))
+                        Set matches = regex.Execute(valorDerecha)
+                        If matches.Count > 0 Then
+                            numeroEncontrado = matches(0).Value
+                            GoTo ConstruirCodigo
+                        End If
+                    End If
+                End If
+                
+                If InStr(1, UCase(celdaTexto), "FV-") > 0 Then
+                    Set matches = regex.Execute(celdaTexto)
+                    If matches.Count > 0 Then
+                        numeroEncontrado = matches(matches.Count - 1).Value
+                        GoTo ConstruirCodigo
+                    End If
+                End If
+            End If
+        Next j
+    Next i
+    
+    If numeroEncontrado = "" Then
+        On Error Resume Next
+        celdaTexto = ws.Cells(16, 6).Value
+        Set matches = regex.Execute(celdaTexto)
+        If matches.Count > 0 Then
+            numeroEncontrado = matches(0).Value
+        End If
+        On Error GoTo 0
+    End If
+
+ConstruirCodigo:
+    If numeroEncontrado <> "" Then
+        ExtraerNumeroFacturaSimple = "FV-" & fechaYYYYMMDD & Format(CLng(numeroEncontrado), "0000")
+    Else
+        If contadorFacturasGlobal = 0 Then contadorFacturasGlobal = 1
+        ExtraerNumeroFacturaSimple = "FV-" & fechaYYYYMMDD & Format(contadorFacturasGlobal, "0000")
+        contadorFacturasGlobal = contadorFacturasGlobal + 1
+    End If
+    
+    Set regex = Nothing
+    Set matches = Nothing
+End Function
+
+Function ConvertirFechaYYYYMMDD(ByVal fechaTexto As String) As String
+    ' Convertir fecha de formato dd/mm/yyyy a YYYYMMDD
+    Dim fechaParts() As String
+    Dim dia As String, mes As String, anio As String
+    
+    fechaTexto = Trim(fechaTexto)
+    
+    If fechaTexto Like "##/##/####" Or fechaTexto Like "##/##/##" Then
+        fechaParts = Split(fechaTexto, "/")
+        If UBound(fechaParts) = 2 Then
+            dia = Format(fechaParts(0), "00")
+            mes = Format(fechaParts(1), "00")
+            anio = fechaParts(2)
+            
+            If Len(anio) = 2 Then anio = "20" & anio
+            
+            ConvertirFechaYYYYMMDD = anio & mes & dia
+            Exit Function
+        End If
+    End If
+    
+    ConvertirFechaYYYYMMDD = "20250106"
+End Function
+
+Function BuscarTotalGeneralSimple(ws As Worksheet) As Double
+    Dim i As Integer
+    
+    BuscarTotalGeneralSimple = 0
+    
+    For i = 14 To 50
+        On Error Resume Next
+        If IsNumeric(ws.Cells(i, 6).Value) Then
+            BuscarTotalGeneralSimple = CDbl(ws.Cells(i, 6).Value)
+            Exit Function
+        End If
+        On Error GoTo 0
+    Next i
+    
+    For i = 10 To 30
+        On Error Resume Next
+        If IsNumeric(ws.Cells(i, 6).Value) Then
+            Dim j As Integer
+            For j = 1 To 5
+                If Not IsError(ws.Cells(i, j).Value) Then
+                    Dim cellText As String
+                    cellText = CStr(ws.Cells(i, j).Value)
+                    If InStr(1, UCase(cellText), "TOTAL") > 0 Then
+                        BuscarTotalGeneralSimple = CDbl(ws.Cells(i, 6).Value)
+                        Exit Function
+                    End If
+                End If
+            Next j
+        End If
+        On Error GoTo 0
+    Next i
+End Function
+
+Function ConvertirCantidadSimple(cantidad As String) As Double
+    If Left(cantidad, 1) = "=" Then
+        Dim formula As String
+        formula = Mid(cantidad, 2)
+        
+        Dim parts() As String
+        parts = Split(formula, "+")
+        Dim total As Double
+        total = 0
+        
+        Dim k As Integer
+        For k = 0 To UBound(parts)
+            Dim part As String
+            part = Trim(parts(k))
+            If IsNumeric(part) Then
+                total = total + CDbl(part)
+            End If
+        Next k
+        
+        ConvertirCantidadSimple = total
+    ElseIf IsNumeric(cantidad) Then
+        ConvertirCantidadSimple = CDbl(cantidad)
+    Else
+        ConvertirCantidadSimple = 0
+    End If
+End Function
+
+Function ConvertirPrecioSimple(precio As String) As Double
+    If IsNumeric(precio) Then
+        ConvertirPrecioSimple = CDbl(precio)
+    Else
+        ConvertirPrecioSimple = 0
+    End If
+End Function
+
+Function ObtenerCodigoServicioSimple(descripcion As String) As String
+    ' Función para obtener el código de servicio basado en la descripción
+    descripcion = LimpiarTexto(descripcion)
+    Dim descripcionLower As String
+    descripcionLower = LCase(descripcion)
+       
+    ' 1. PRIMERO: Fotografías con tamaños específicos
+    If (InStr(descripcionLower, "fotografía") > 0 Or InStr(descripcionLower, "foto") > 0) Then
+        If InStr(descripcionLower, "8x10") > 0 Or InStr(descripcionLower, "8.5x11") > 0 Or _
+           InStr(descripcionLower, "8 x 10") > 0 Or InStr(descripcionLower, "8.5 x 11") > 0 Then
+            ObtenerCodigoServicioSimple = "F004"
+            Exit Function
+        ElseIf InStr(descripcionLower, "5x7") > 0 Or InStr(descripcionLower, "5 x 7") > 0 Then
+            ObtenerCodigoServicioSimple = "F001"
+            Exit Function
+        ElseIf InStr(descripcionLower, "1x1") > 0 Or InStr(descripcionLower, "1 x 1") > 0 Then
+            ObtenerCodigoServicioSimple = "F002"
+            Exit Function
+        ElseIf InStr(descripcionLower, "pasaporte") > 0 Or InStr(descripcionLower, "4 fotos") > 0 Then
+            ObtenerCodigoServicioSimple = "F003"
+            Exit Function
+        End If
+    End If
+    
+    ' 2. SEGUNDO: Impresión de imágenes en papel normal
+    If (InStr(descripcionLower, "imagen") > 0 Or InStr(descripcionLower, "fotografía") > 0 Or InStr(descripcionLower, "foto") > 0) Then
+        If Not (InStr(descripcionLower, "8x10") > 0 Or InStr(descripcionLower, "8.5x11") > 0 Or _
+                InStr(descripcionLower, "5x7") > 0 Or InStr(descripcionLower, "1x1") > 0 Or _
+                InStr(descripcionLower, "pasaporte") > 0) Then
+            
+            If InStr(descripcionLower, "doble cara") > 0 Or InStr(descripcionLower, "d/c") > 0 Then
+                ObtenerCodigoServicioSimple = "I006"
+            Else
+                ObtenerCodigoServicioSimple = "I005"
+            End If
+            Exit Function
+        End If
+    End If
+    
+    ' 3. Impresiones normales
+    If InStr(descripcionLower, "impresión") > 0 Then
+        If InStr(descripcionLower, "b/n") > 0 Then
+            If InStr(descripcionLower, "doble cara") > 0 Or InStr(descripcionLower, "d/c") > 0 Then
+                ObtenerCodigoServicioSimple = "I002"
+            Else
+                ObtenerCodigoServicioSimple = "I001"
+            End If
+            Exit Function
+        ElseIf InStr(descripcionLower, "color") > 0 Then
+            If InStr(descripcionLower, "doble cara") > 0 Or InStr(descripcionLower, "d/c") > 0 Then
+                ObtenerCodigoServicioSimple = "I004"
+            Else
+                ObtenerCodigoServicioSimple = "I003"
+            End If
+            Exit Function
+        Else
+            ObtenerCodigoServicioSimple = "I005"
+            Exit Function
+        End If
+    End If
+    
+    ' 4. Fotocopias/Scanner
+    If InStr(descripcionLower, "fotocopia") > 0 Or InStr(descripcionLower, "scaner") > 0 Or InStr(descripcionLower, "scanner") > 0 Then
+        If InStr(descripcionLower, "d/c") > 0 Or InStr(descripcionLower, "doble cara") > 0 Then
+            ObtenerCodigoServicioSimple = "FS02"
+        Else
+            ObtenerCodigoServicioSimple = "FS01"
+        End If
+        Exit Function
+    End If
+    
+    ' 5. Planillas
+    If InStr(descripcionLower, "planilla") > 0 Then
+        If InStr(descripcionLower, "b/n") > 0 Then
+            If InStr(descripcionLower, "doble cara") > 0 Or InStr(descripcionLower, "d/c") > 0 Then
+                ObtenerCodigoServicioSimple = "P002"
+            Else
+                ObtenerCodigoServicioSimple = "P001"
+            End If
+            Exit Function
+        ElseIf InStr(descripcionLower, "color") > 0 Then
+            If InStr(descripcionLower, "doble cara") > 0 Or InStr(descripcionLower, "d/c") > 0 Then
+                ObtenerCodigoServicioSimple = "P004"
+            Else
+                ObtenerCodigoServicioSimple = "P003"
+            End If
+            Exit Function
+        End If
+    End If
+    
+    ' 6. Cartulina
+    If InStr(descripcionLower, "cartulina") > 0 Then
+        If InStr(descripcionLower, "8.5x11") > 0 Or InStr(descripcionLower, "8.5 x 11") > 0 Then
+            If InStr(descripcionLower, "doble cara") > 0 Then
+                ObtenerCodigoServicioSimple = "IC03"
+            Else
+                ObtenerCodigoServicioSimple = "IC01"
+            End If
+            Exit Function
+        ElseIf InStr(descripcionLower, "12x18") > 0 Or InStr(descripcionLower, "12 x 18") > 0 Then
+            If InStr(descripcionLower, "doble cara") > 0 Then
+                ObtenerCodigoServicioSimple = "IC04"
+            Else
+                ObtenerCodigoServicioSimple = "IC02"
+            End If
+            Exit Function
+        ElseIf InStr(descripcionLower, "diploma") > 0 Then
+            If InStr(descripcionLower, "8.5x11") > 0 Or InStr(descripcionLower, "8.5 x 11") > 0 Then
+                ObtenerCodigoServicioSimple = "IC05"
+            ElseIf InStr(descripcionLower, "12x18") > 0 Or InStr(descripcionLower, "12 x 18") > 0 Then
+                ObtenerCodigoServicioSimple = "IC06"
+            End If
+            Exit Function
+        ElseIf InStr(descripcionLower, "imagen") > 0 Then
+            If InStr(descripcionLower, "8.5x11") > 0 Or InStr(descripcionLower, "8.5 x 11") > 0 Then
+                ObtenerCodigoServicioSimple = "IC07"
+            ElseIf InStr(descripcionLower, "12x18") > 0 Or InStr(descripcionLower, "12 x 18") > 0 Then
+                ObtenerCodigoServicioSimple = "IC08"
+            End If
+            Exit Function
+        End If
+    End If
+    
+    ' 7. Credenciales
+    If InStr(descripcionLower, "credencial") > 0 Or _
+       InStr(descripcionLower, "carne") > 0 Or _
+       InStr(descripcionLower, "carnet") > 0 Then
+        
+        If InStr(descripcionLower, "colgante") > 0 Then
+            ObtenerCodigoServicioSimple = "CR02"
+        Else
+            ObtenerCodigoServicioSimple = "CR01"
+        End If
+        Exit Function
+    End If
+    
+    ' 8. Diplomas
+    If InStr(descripcionLower, "diploma") > 0 Then
+        If InStr(descripcionLower, "forrado") > 0 Or InStr(descripcionLower, "vinilo") > 0 Then
+            ObtenerCodigoServicioSimple = "DC01"
+        ElseIf InStr(descripcionLower, "diseño") > 0 Then
+            ObtenerCodigoServicioSimple = "DI01"
+        End If
+        Exit Function
+    End If
+    
+    ' 9. Diseño
+    If InStr(descripcionLower, "diseño") > 0 And InStr(descripcionLower, "tarjeta") > 0 Then
+        ObtenerCodigoServicioSimple = "DI01"
+        Exit Function
+    End If
+    
+    ' 10. Encuadernado
+    If InStr(descripcionLower, "encuadernado") > 0 Then
+        ObtenerCodigoServicioSimple = "E001"
+        Exit Function
+    End If
+    
+    ' 11. Grabado
+    If InStr(descripcionLower, "grabar") > 0 And InStr(descripcionLower, "tazón") > 0 Then
+        ObtenerCodigoServicioSimple = "GT01"
+        Exit Function
+    End If
+    
+    ' 12. Mica plástica
+    If InStr(descripcionLower, "mica") > 0 Or InStr(descripcionLower, "mica ") > 0 Then
+        If InStr(descripcionLower, "plástica") > 0 Or _
+           InStr(descripcionLower, "plastica") > 0 Or _
+           InStr(descripcionLower, "platicar") > 0 Or _
+           InStr(descripcionLower, "plast") > 0 Then
+            
+            If InStr(descripcionLower, "solapín") > 0 Or _
+               InStr(descripcionLower, "solapin") > 0 Or _
+               InStr(descripcionLower, "solap") > 0 Then
+                ObtenerCodigoServicioSimple = "MP01"
+            ElseIf InStr(descripcionLower, "carta") > 0 Then
+                ObtenerCodigoServicioSimple = "MP02"
+            Else
+                ObtenerCodigoServicioSimple = "MP01"
+            End If
+        Else
+            ObtenerCodigoServicioSimple = "MP01"
+        End If
+        Exit Function
+    End If
+    
+    ' 13. Sublimación
+    If InStr(descripcionLower, "sublimación") > 0 Or InStr(descripcionLower, "textil") > 0 Then
+        ObtenerCodigoServicioSimple = "ST01"
+        Exit Function
+    End If
+    
+    ' 14. Trámites
+    If InStr(descripcionLower, "trámite") > 0 And InStr(descripcionLower, "embajada") > 0 Then
+        ObtenerCodigoServicioSimple = "TE01"
+        Exit Function
+    End If
+    
+    ' 15. Tarjetas
+    If InStr(descripcionLower, "tarjeta") > 0 And InStr(descripcionLower, "credencial") = 0 Then
+        If InStr(descripcionLower, "doble cara") > 0 Then
+            ObtenerCodigoServicioSimple = "IT02"
+        Else
+            ObtenerCodigoServicioSimple = "IT01"
+        End If
+        Exit Function
+    End If
+    
+    '16 CAFE
+    If (InStr(descripcionLower, "paquete") > 0 And InStr(descripcionLower, "café") > 0) Or _
+       (InStr(descripcionLower, "paquete") > 0 And InStr(descripcionLower, "cafe") > 0) Or _
+       InStr(descripcionLower, "paquete cafe") > 0 Or _
+       InStr(descripcionLower, "paquete de cafe") > 0 Then
+        ObtenerCodigoServicioSimple = "CP10"
+        Exit Function
+    End If
+    
+    ' 17. SUMINISTROS DE OFICINA
+    If InStr(descripcionLower, "lápicero") > 0 Or InStr(descripcionLower, "lapicero") > 0 Or _
+       InStr(descripcionLower, "bolígrafo") > 0 Or InStr(descripcionLower, "boligrafo") > 0 Then
+        ObtenerCodigoServicioSimple = "LC01"
+        Exit Function
+    End If
+    
+    If InStr(descripcionLower, "foliadora") > 0 Then
+        ObtenerCodigoServicioSimple = "FO01"
+        Exit Function
+    End If
+    
+    If InStr(descripcionLower, "archivador") > 0 Then
+        If InStr(descripcionLower, "dl 5071") > 0 Then
+            ObtenerCodigoServicioSimple = "AR01"
+        ElseIf InStr(descripcionLower, "tipo libro") > 0 Then
+            ObtenerCodigoServicioSimple = "AR02"
+        ElseIf InStr(descripcionLower, "1 presilla") > 0 Or InStr(descripcionLower, "una presilla") > 0 Then
+            ObtenerCodigoServicioSimple = "AR03"
+        ElseIf InStr(descripcionLower, "2 presilla") > 0 Or InStr(descripcionLower, "dos presilla") > 0 Then
+            ObtenerCodigoServicioSimple = "AR04"
+        ElseIf InStr(descripcionLower, "presillas") > 0 And Not InStr(descripcionLower, "1 presilla") > 0 And Not InStr(descripcionLower, "2 presilla") > 0 Then
+            ObtenerCodigoServicioSimple = "AR05"
+        ElseIf InStr(descripcionLower, "dl 5072") > 0 Then
+            ObtenerCodigoServicioSimple = "AR06"
+        Else
+            ObtenerCodigoServicioSimple = "AR01"
+        End If
+        Exit Function
+    End If
+    
+    If InStr(descripcionLower, "almohadilla") > 0 Or InStr(descripcionLower, "cuño") > 0 Then
+        ObtenerCodigoServicioSimple = "AL01"
+        Exit Function
+    End If
+    
+    If InStr(descripcionLower, "porta documento") > 0 Or InStr(descripcionLower, "portadocumento") > 0 Then
+        ObtenerCodigoServicioSimple = "PD01"
+        Exit Function
+    End If
+    
+    If InStr(descripcionLower, "paper clip") > 0 Or InStr(descripcionLower, "clip") > 0 Then
+        If InStr(descripcionLower, "728") > 0 Then
+            ObtenerCodigoServicioSimple = "PC01"
+        ElseIf InStr(descripcionLower, "733") > 0 Then
+            ObtenerCodigoServicioSimple = "PC02"
+        ElseIf InStr(descripcionLower, "750") > 0 Then
+            ObtenerCodigoServicioSimple = "PC03"
+        Else
+            ObtenerCodigoServicioSimple = "PC01"
+        End If
+        Exit Function
+    End If
+    
+    If InStr(descripcionLower, "estuche") > 0 And InStr(descripcionLower, "presilla") > 0 Then
+        ObtenerCodigoServicioSimple = "EP01"
+        Exit Function
+    End If
+    
+    If InStr(descripcionLower, "saca presilla") > 0 Or InStr(descripcionLower, "saca-presilla") > 0 Then
+        ObtenerCodigoServicioSimple = "SP01"
+        Exit Function
+    End If
+    
+    ObtenerCodigoServicioSimple = "SD01"
+End Function
+
+Sub ExportarFacturaActualFormatoCompacto()
+    Dim ws As Worksheet
+    Dim libroOrigen As Workbook
+    Dim rutaArchivo As String
+    Dim contenidoTotal As String
+    Dim fso As Object, archivo As Object
+    Dim facturasData As Object
+    Dim detallesData As Object
+    Dim facturaIndex As Long
+    Dim detalleIndex As Long
+    
+    Dim idInicialFact As Long
+    Dim idInicialDet As Long
+    Dim respuestaIdFact As String
+    Dim respuestaIdDet As String
+    Dim idActualFact As Long
+    Dim idActualDet As Long
+    
+    Set libroOrigen = ThisWorkbook
+    
+    On Error Resume Next
+    Set ws = ActiveSheet
+    On Error GoTo 0
+    
+    If ws Is Nothing Then
+        MsgBox "No hay una hoja activa seleccionada.", vbExclamation
+        Exit Sub
+    End If
+    
+    If LCase(ws.Name) = "instrucciones" Or _
+       LCase(ws.Name) = "resumen-enero" Or _
+       LCase(ws.Name) = "resumen" Or _
+       LCase(Left(ws.Name, 7)) = "resumen" Then
+        MsgBox "Esta hoja (" & ws.Name & ") no es una factura válida para exportar.", vbExclamation
+        Exit Sub
+    End If
+    
+    contadorFacturasGlobal = 1
+    contenidoTotal = ""
+    facturaIndex = 0
+    detalleIndex = 0
+    
+    Set facturasData = CreateObject("Scripting.Dictionary")
+    Set detallesData = CreateObject("Scripting.Dictionary")
+    
+    rutaArchivo = Application.GetSaveAsFilename( _
+        InitialFileName:="Factura_" & ws.Name & "_Compacto.txt", _
+        FileFilter:="Archivos de texto (*.txt), *.txt", _
+        Title:="Guardar archivo de texto")
+    
+    If rutaArchivo = "False" Then Exit Sub
+    
+    ' Preguntar por el ID inicial para tbl_fact
+    respuestaIdFact = InputBox("¿En qué número debe comenzar el ID de la tabla 'tbl_fact'?", _
+                               "Configuración SQL - Facturas", "1")
+                           
+    If IsNumeric(respuestaIdFact) And respuestaIdFact <> "" Then
+        idInicialFact = CLng(respuestaIdFact)
+    Else
+        idInicialFact = 1
+    End If
+    
+    ' Preguntar por el ID inicial para tbl_fact_detalle
+    respuestaIdDet = InputBox("¿En qué número debe comenzar el ID de la tabla 'tbl_fact_detalle'? (Se incrementará automáticamente para cada detalle)", _
+                              "Configuración SQL - Detalles", "1")
+                           
+    If IsNumeric(respuestaIdDet) And respuestaIdDet <> "" Then
+        idInicialDet = CLng(respuestaIdDet)
+    Else
+        idInicialDet = 1
+    End If
+    
+    idActualFact = idInicialFact
+    idActualDet = idInicialDet
+    
+    Dim idFactUsado As Long
+    contenidoTotal = ExtraerContenidoCompacto(ws, facturasData, detallesData, facturaIndex, detalleIndex, _
+                                              idActualFact, idActualDet, idFactUsado)
+    
+    If contenidoTotal = "" Then
+        MsgBox "No se encontraron datos válidos en la hoja actual.", vbExclamation
+        Exit Sub
+    End If
+    
+    contenidoTotal = contenidoTotal & GenerarEstructuraSQL(facturasData, detallesData, idInicialFact, idInicialDet)
+    
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set archivo = fso.CreateTextFile(rutaArchivo, True, True)
+    archivo.Write contenidoTotal
+    archivo.Close
+    
+    Shell "notepad.exe " & Chr(34) & rutaArchivo & Chr(34), vbNormalFocus
+    
+    MsgBox "Exportación completada:" & vbCrLf & _
+           "Factura procesada: " & ws.Name & vbCrLf & _
+           "ID inicial facturas: " & idInicialFact & vbCrLf & _
+           "ID inicial detalles: " & idInicialDet & vbCrLf & _
+           "Último ID de detalle usado: " & (idActualDet - 1) & vbCrLf & _
+           "Archivo: " & rutaArchivo, vbInformation
+    
+    Set fso = Nothing
+    Set archivo = Nothing
+    Set libroOrigen = Nothing
+    Set facturasData = Nothing
+    Set detallesData = Nothing
+End Sub
+
+Function LimpiarTexto(texto As String) As String
+    If IsNull(texto) Or texto = "" Then
+        LimpiarTexto = ""
+        Exit Function
+    End If
+    
+    Dim resultado As String
+    resultado = CStr(texto)
+    
+    resultado = Trim(resultado)
+    
+    Do While InStr(resultado, "  ") > 0
+        resultado = Replace(resultado, "  ", " ")
+    Loop
+    
+    resultado = Replace(resultado, vbLf, " ")
+    resultado = Replace(resultado, vbCr, " ")
+    resultado = Replace(resultado, Chr(10), " ")
+    resultado = Replace(resultado, Chr(13), " ")
+    
+    Do While InStr(resultado, "  ") > 0
+        resultado = Replace(resultado, "  ", " ")
+    Loop
+    
+    LimpiarTexto = Trim(resultado)
+End Function
+

@@ -3,6 +3,7 @@
 
 // 1. Carga de configuración (config/database.php lee las credenciales desde config.php)
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 
 // 2. Control de seguridad por si la sesión no se inició en el paso anterior
 if (session_status() === PHP_SESSION_NONE) {
@@ -233,6 +234,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Exception $e) {
                 $response['message'] = 'Error en transacción: ' . $e->getMessage();
             }
+        }
+        if (!empty($response['success'])) {
+            logAction('registrar_movimiento_vacaciones', 'submayor_vacaciones', 'Registro de movimiento en submayor de vacaciones', ['tipo' => $tipo_mov, 'trabajador_id' => (int)$trabajador_id_post, 'dias' => $dias_post], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         }
     }
 

@@ -59,14 +59,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax']) && $_P
 $config_empresa = [
     'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', 
     'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 
-    'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. COntab. y Finanzas'
+    'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. COntab. y Finanzas',
+    'especialista_nominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : ''
 ];
 try {
-    $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion')");
+    $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_nominas')");
     while ($row = $stmt->fetch()) {
         if ($row['parametro'] == 'nombre_empresa') $config_empresa['nombre_empresa'] = $row['valor'];
         if ($row['parametro'] == 'jefe_proyecto') $config_empresa['jefe_proyecto'] = $row['valor'];
         if ($row['parametro'] == 'especialista_gestion') $config_empresa['especialista_gestion'] = $row['valor'];
+        if ($row['parametro'] == 'especialista_nominas') $config_empresa['especialista_nominas'] = $row['valor'];
     }
 } catch (PDOException $e) {}
 
@@ -2190,6 +2192,7 @@ var logoBase64 = '<?php echo $logo_base64; ?>';
 var nombreEmpresa = '<?php echo addslashes($config_empresa['nombre_empresa']); ?>';
 var jefeProyecto = '<?php echo addslashes($config_empresa['jefe_proyecto']); ?>';
 var especialistaGestion = '<?php echo addslashes($config_empresa['especialista_gestion']); ?>';
+var especialistaNominas = '<?php echo addslashes($config_empresa['especialista_nominas'] ?? ''); ?>';
 var periodoTexto = '';
 var tipoNominaTexto = '';
 var PRINT_TOOLBAR_HTML = '<style>#auto-hide-toolbar{transition:transform 0.3s ease}#auto-hide-toolbar.hidden{transform:translateY(-100%)}</style><div id="auto-hide-toolbar" class="no-print" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:0.625rem 1.25rem;display:flex;justify-content:center;align-items:center;gap:0.875rem;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;border-bottom:0.1875rem solid #1e40af;transition:transform 0.3s ease;">'
@@ -2794,14 +2797,21 @@ async function imprimirPreview() {
 
             <!-- Firmas de Autorización -->
             <div class="signatures-area" style="display: flex; justify-content: space-between; margin-top:3.75rem; padding:0 0.625rem;">
-                <div style="width:42%; text-align: center;">
+                <div style="width:30%; text-align: center;">
                     <p style="font-size:8.5pt; color: #555; margin-bottom:3.4375rem;">Elaborado por:</p>
+                    <div style="border-top: 0.0938rem solid #000; width:90%; margin:0 auto; padding-top:0.375rem;">
+                        <strong style="font-size:9pt; color: #111;">${escapeHtml(especialistaNominas)}</strong><br>
+                        <span style="font-size:8pt; color: #666;">Especialista de Nóminas</span>
+                    </div>
+                </div>
+                <div style="width:30%; text-align: center;">
+                    <p style="font-size:8.5pt; color: #555; margin-bottom:3.4375rem;">Revisado por:</p>
                     <div style="border-top: 0.0938rem solid #000; width:90%; margin:0 auto; padding-top:0.375rem;">
                         <strong style="font-size:9pt; color: #111;">${escapeHtml(especialista)}</strong><br>
                         <span style="font-size:8pt; color: #666;">Especialista en Gestión Económica</span>
                     </div>
                 </div>
-                <div style="width:42%; text-align: center;">
+                <div style="width:30%; text-align: center;">
                     <p style="font-size:8.5pt; color: #555; margin-bottom:3.4375rem;">Aprobado por:</p>
                     <div style="border-top: 0.0938rem solid #000; width:90%; margin:0 auto; padding-top:0.375rem;">
                         <strong style="font-size:9pt; color: #111;">${escapeHtml(jefe)}</strong><br>

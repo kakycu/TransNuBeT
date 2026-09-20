@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 require_once '../includes/funciones.php';
 
 // Iniciar sesión
@@ -636,6 +637,7 @@ if ($formato === 'excel') {
 // RESPUESTA FINAL
 // ========================
 if ($success) {
+    logAction('exportar_trabajadores_sin_nomina', 'exportar_sin_nomina', 'Exportación de trabajadores sin nómina', ['periodo' => $periodo, 'formato' => $formato, 'registros' => count($trabajadores)], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     echo json_encode([
         'success' => true,
         'archivo' => pathinfo(basename($archivoSalida), PATHINFO_FILENAME),

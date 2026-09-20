@@ -1,0 +1,31 @@
+# SOLUCIÓN FORZADA
+Options -Indexes
+ErrorDocument 404 /facturacion/404.php
+ErrorDocument 403 /facturacion/403.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # 1. Raíz del servidor → 403.php
+    RewriteRule ^$ - [R=403,L]
+    # 2. Directorio facturacion/ sin index.php → no-index.php
+    # Primero deshabilitar DirectoryIndex para facturacion/
+    <If "-f '%{DOCUMENT_ROOT}/facturacion/index.php'">
+        # Si existe index.php, no hacer nada (Apache lo mostrará)
+    </If>
+    <Else>
+        # Si NO existe index.php, mostrar no-index.php
+        RewriteCond %{REQUEST_URI} ^/facturacion/?$
+        RewriteRule ^ /facturacion/no-index.php [L]
+    </Else>    # 3. Directorios fuera de facturacion/ → 403.php
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteCond %{REQUEST_URI} !^/facturacion/
+    RewriteRule ^ - [R=403,L]
+    # 4. Subdirectorios dentro de facturacion/ → 403.php
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteCond %{REQUEST_URI} ^/facturacion/
+    RewriteCond %{REQUEST_URI} !^/facturacion/?$
+    RewriteRule ^ - [R=403,L]
+    # 5. Archivos no encontrados → 404.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ - [R=404,L]
+</IfModule>

@@ -1,5 +1,6 @@
 ﻿<?php
 require_once '../config/database.php';
+require_once __DIR__ . '/../logger.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -37,5 +38,16 @@ $blanco = $stmt->fetch(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("UPDATE clasif_usuarios SET activo = ? WHERE id = ?");
 $stmt->execute([$estado, $id]);
 
+// ===== AUDITORÍA: activar/desactivar usuario =====
+logAction(
+    $estado ? 'activar_usuario' : 'desactivar_usuario',
+    'usuarios',
+    ($estado ? 'Activación' : 'Desactivación') . ' de usuario',
+    ['user_id' => (int)$id, 'usuario' => $blanco['usuario'] ?? null],
+    (int)$id,
+    'success',
+    null,
+    $_SESSION['auth_provider'] ?? 'local'
+);
 
 echo json_encode(['success' => true, 'message' => $estado ? 'Usuario activado' : 'Usuario desactivado']);

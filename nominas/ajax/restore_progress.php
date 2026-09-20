@@ -16,6 +16,17 @@ $progressFile = $temp_dir . 'restore_progress_' . session_id() . '.json';
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
+// El cliente llama con ?reset=1 justo antes de iniciar una nueva restauración
+// para borrar el progreso de la ejecución anterior (evita que se muestre
+// "Finalizando consulta" al reabrir el modal).
+if (isset($_GET['reset'])) {
+    if (file_exists($progressFile)) {
+        @unlink($progressFile);
+    }
+    echo json_encode(['percent' => 0, 'table' => null, 'step' => 'Iniciando...', 'reset' => true]);
+    exit;
+}
+
 if (!file_exists($progressFile)) {
     echo json_encode(['percent' => 0, 'table' => null, 'step' => 'Iniciando...']);
     exit;

@@ -1,0 +1,637 @@
+/* css/chatbot.css - VERSION CORREGIDA */
+
+/* =========================================================================
+   ESTILOS BASE DEL CHATBOT
+   ========================================================================= */
+
+/* Contenedor principal del chatbot */
+#sisfact-chatbot {
+    position: fixed;
+    bottom: 100px;
+    right: 24px;
+    width: 380px;
+    height: 550px;
+    background: #1f1f1f;
+    border: 1px solid #3d3d3d;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 999999;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    color: white;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    transition: all 0.3s ease;
+}
+
+/* Ventana del chat */
+#chat-window-final {
+    position: fixed;
+    width: 380px;
+    height: 550px;
+    background: #1f1f1f;
+    border: 1px solid #3d3d3d;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 999998;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    color: white;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* =========================================================================
+   ESTILOS DEL GLOBO DE TEXTO DEL ROBOT (CORREGIDO)
+   ========================================================================= */
+
+#robot-asistente-container {
+    position: fixed;
+    bottom: 25px;
+    left: 25px;
+    z-index: 1000000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#robot-asistente-container:hover {
+    cursor: grab;
+}
+
+#robot-asistente-container:active {
+    cursor: grabbing;
+}
+
+/* GLOBO DE TEXTO - ESTILOS CORREGIDOS */
+#robot-globo-texto {
+    position: fixed !important;
+    z-index: 1000001 !important;
+    display: none;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transform: translateY(15px) scale(0.9);
+    margin-bottom: 15px;
+    max-width: 320px;
+    min-width: 280px;
+    pointer-events: auto;
+}
+
+/* Animacion de entrada del globo */
+@keyframes globoEntrada {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+#robot-globo-texto.visible {
+    display: block !important;
+    opacity: 1 !important;
+    transform: translateY(0) scale(1) !important;
+    animation: globoEntrada 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* =========================================================================
+   ESTILOS DEL AVATAR DEL ROBOT
+   ========================================================================= */
+
+#robot-avatar-vuelo {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: #1a1a1a url('assets/logobot.png') no-repeat center center;
+    background-size: contain;
+    transition: all 0.5s ease;
+    filter: drop-shadow(0 8px 15px rgba(0,0,0,0.3));
+    border: 2px solid #2e7d5e;
+    padding: 5px;
+}
+
+.luz-pulsante-verde {
+    animation: pulse-green 2s infinite, float-soft 3s infinite ease-in-out;
+}
+
+@keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(46, 125, 94, 0.7); }
+    70% { box-shadow: 0 0 0 20px rgba(46, 125, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(46, 125, 94, 0); }
+}
+
+@keyframes float-soft {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+/* =========================================================================
+   HEADER DEL CHAT
+   ========================================================================= */
+
+.chatbot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    border-bottom: 1px solid #3d3d3d;
+}
+
+/* =========================================================================
+   AREA DE MENSAJES
+   ========================================================================= */
+
+#chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #0d0d0d;
+}
+
+/* Burbujas de mensaje */
+.message {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+}
+
+.message.user {
+    align-self: flex-end;
+}
+
+.message.bot {
+    align-self: flex-start;
+}
+
+.message-bubble {
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: white;
+}
+
+.message.user .message-bubble {
+    background: #0078d4;
+    border-bottom-right-radius: 4px;
+}
+
+.message.bot .message-bubble {
+    background: #2d2d2d;
+    border-bottom-left-radius: 4px;
+    border: 1px solid #3d3d3d;
+}
+
+.message-time {
+    font-size: 10px;
+    color: #a6a6a6;
+    margin: 4px 8px 0;
+}
+
+/* =========================================================================
+   AREA DE INPUT
+   ========================================================================= */
+
+.chatbot-input-area {
+    display: flex;
+    padding: 12px;
+    border-top: 1px solid #3d3d3d;
+    background: #1f1f1f;
+    gap: 8px;
+}
+
+#chat-input-final {
+    flex: 1;
+    background: #2d2d2d;
+    border: 1px solid #3d3d3d;
+    border-radius: 20px;
+    padding: 10px 15px;
+    color: white;
+    outline: none;
+    font-size: 13px;
+}
+
+#chat-input-final:focus {
+    border-color: #0078d4;
+    box-shadow: 0 0 0 2px rgba(0,120,212,0.3);
+}
+
+#send-message-final {
+    background: #2e7d5e;
+    border: none;
+    border-radius: 50%;
+    color: white;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s ease;
+}
+
+#send-message-final:hover:not(:disabled) {
+    background: #1d5e45;
+    transform: scale(1.05);
+}
+
+/* =========================================================================
+   EJEMPLOS CLICKEABLES
+   ========================================================================= */
+
+.chat-example {
+    background: #2d2d2d;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.chat-example:hover {
+    background: #3d3d3d !important;
+    transform: translateX(2px);
+}
+
+/* =========================================================================
+   BOTONES DENTRO DEL CHAT
+   ========================================================================= */
+
+#chat-messages .chat-quick-btn {
+    background: #0078d4 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 15px !important;
+    padding: 5px 12px !important;
+    margin: 3px !important;
+    cursor: pointer !important;
+    font-size: 11px !important;
+    display: inline-block !important;
+    transition: all 0.2s ease !important;
+}
+
+#chat-messages .chat-quick-btn:hover {
+    background: #005a9e !important;
+    transform: translateY(-2px) !important;
+}
+
+#chat-messages .chat-link-btn {
+    background: #2e7d5e !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 15px !important;
+    padding: 5px 12px !important;
+    margin: 3px !important;
+    text-decoration: none !important;
+    font-size: 11px !important;
+    display: inline-block !important;
+    transition: all 0.2s ease !important;
+}
+
+#chat-messages .chat-link-btn:hover {
+    background: #1d5e45 !important;
+    transform: translateY(-2px) !important;
+    color: white !important;
+}
+
+/* Enlaces en mensajes */
+#chat-messages a {
+    display: inline-block;
+    padding: 5px 12px;
+    margin: 5px 0;
+    background: #0078d4;
+    color: white;
+    text-decoration: none;
+    border-radius: 15px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+#chat-messages a:hover {
+    background: #005a9e;
+    transform: translateY(-1px);
+}
+
+/* =========================================================================
+   LISTAS EN MENSAJES
+   ========================================================================= */
+
+#chat-messages ul {
+    margin: 5px 0;
+    padding-left: 20px;
+}
+
+#chat-messages li {
+    margin: 3px 0;
+}
+
+/* =========================================================================
+   SCROLLBAR PERSONALIZADA
+   ========================================================================= */
+
+#chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+#chat-messages::-webkit-scrollbar-track {
+    background: #1f1f1f;
+}
+
+#chat-messages::-webkit-scrollbar-thumb {
+    background: #3d3d3d;
+    border-radius: 3px;
+}
+
+#chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #4d4d4d;
+}
+
+/* =========================================================================
+   INDICADOR DE ESCRITURA
+   ========================================================================= */
+
+#typing-indicator {
+    align-self: flex-start;
+    max-width: 85%;
+}
+
+.typing-indicator {
+    align-self: flex-start;
+    max-width: 85%;
+    margin-bottom: 10px;
+}
+
+.typing-indicator div {
+    padding: 12px 18px;
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    border: 1px solid #3d3d3d;
+    font-size: 13px;
+    color: #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.typing-dots {
+    display: flex;
+    gap: 4px;
+    margin-left: 5px;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    background: #4caf50;
+    border-radius: 50%;
+    animation: typingDot 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingDot {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.6;
+    }
+    30% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}
+
+/* =========================================================================
+   ANIMACIONES DE ENTRADA PARA MENSAJES
+   ========================================================================= */
+
+@keyframes messageAppear {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#chat-messages > div {
+    animation: messageAppear 0.3s ease;
+}
+
+/* =========================================================================
+   ANIMACIONES DE ENTRADA/SALIDA
+   ========================================================================= */
+
+@keyframes slideInRight {
+    0% {
+        transform: translateX(100px) scale(0.8);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    0% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100px) scale(0.8);
+        opacity: 0;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 8px 20px rgba(0,120,212,0.4);
+    }
+    50% {
+        box-shadow: 0 8px 30px rgba(0,120,212,0.8);
+    }
+    100% {
+        box-shadow: 0 8px 20px rgba(0,120,212,0.4);
+    }
+}
+
+/* =========================================================================
+   ANIMACIONES PARA EL ROBOT
+   ========================================================================= */
+
+/* Sacudir */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+    20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+.animar-sacudir {
+    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Bailar */
+@keyframes dance {
+    0%, 100% { transform: rotate(0deg) translateY(0); }
+    25% { transform: rotate(15deg) translateY(-5px); }
+    50% { transform: rotate(-10deg) translateY(0); }
+    75% { transform: rotate(5deg) translateY(-3px); }
+}
+.animar-bailar {
+    animation: dance 0.6s ease-in-out;
+}
+
+/* Saltar */
+@keyframes jump {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+.animar-saltar {
+    animation: jump 0.5s ease-out;
+}
+
+/* Girar */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.animar-girar {
+    animation: spin 0.8s linear;
+}
+
+/* Vibrar */
+@keyframes vibrate {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-2px, -2px); }
+    20% { transform: translate(2px, -2px); }
+    30% { transform: translate(-2px, 2px); }
+    40% { transform: translate(2px, 2px); }
+    50% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, -2px); }
+    70% { transform: translate(-2px, 2px); }
+    80% { transform: translate(2px, 2px); }
+    90% { transform: translate(-2px, -2px); }
+}
+.animar-vibrar {
+    animation: vibrate 0.3s linear infinite;
+}
+
+/* Flotar */
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(5deg); }
+}
+.animar-flotar {
+    animation: float 0.8s ease-in-out;
+}
+
+/* Rebotar */
+@keyframes bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    30% { transform: translateY(-25px) scale(1.1); }
+    50% { transform: translateY(0) scale(0.95); }
+    70% { transform: translateY(-12px) scale(1.05); }
+}
+.animar-rebotar {
+    animation: bounce 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Brillar */
+@keyframes glow {
+    0% { filter: drop-shadow(0 0 2px #ffd700); transform: scale(1); }
+    25% { filter: drop-shadow(0 0 15px #ffaa00); transform: scale(1.1); }
+    50% { filter: drop-shadow(0 0 25px #ff6600); transform: scale(1.15); }
+    75% { filter: drop-shadow(0 0 15px #ffaa00); transform: scale(1.1); }
+    100% { filter: drop-shadow(0 0 2px #ffd700); transform: scale(1); }
+}
+.animar-brillar {
+    animation: glow 0.8s ease-in-out;
+}
+
+/* Zoom */
+@keyframes zoomEffect {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+.animar-zoom {
+    animation: zoomEffect 0.8s ease-in-out;
+}
+
+/* Saludar */
+@keyframes wave {
+    0% { transform: rotate(0deg) translateX(0); }
+    25% { transform: rotate(20deg) translateX(5px); }
+    50% { transform: rotate(-15deg) translateX(-5px); }
+    75% { transform: rotate(10deg) translateX(3px); }
+    100% { transform: rotate(0deg) translateX(0); }
+}
+.animar-saludar {
+    animation: wave 0.8s ease-in-out;
+    transform-origin: bottom center;
+}
+
+/* Estrellas */
+@keyframes starBurst {
+    0% {
+        transform: scale(1) rotate(0deg);
+        filter: drop-shadow(0 0 0px rgba(255, 215, 0, 0));
+    }
+    25% {
+        transform: scale(1.2) rotate(15deg);
+        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+    }
+    50% {
+        transform: scale(1.1) rotate(-10deg);
+        filter: drop-shadow(0 0 25px rgba(255, 215, 0, 1));
+    }
+    75% {
+        transform: scale(1.15) rotate(5deg);
+        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        filter: drop-shadow(0 0 0px rgba(255, 215, 0, 0));
+    }
+}
+.animar-estrellas {
+    animation: starBurst 0.8s ease-in-out;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 480px) {
+    #sisfact-chatbot {
+        width: calc(100vw - 48px);
+        right: 24px;
+        bottom: 80px;
+    }
+    
+    #chat-window-final {
+        width: calc(100vw - 48px);
+        height: calc(100vh - 120px);
+    }
+    
+    #robot-globo-texto {
+        max-width: 260px;
+        min-width: 220px;
+    }
+}

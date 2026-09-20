@@ -90,6 +90,13 @@ $pdo = null;
 if ($db_ok) {
     // Incluir el archivo que define $pdo (asumiendo que está correctamente configurado)
     require_once 'config/database.php';
+    // Las constantes COMPANY_NAME, SITE_VERSION y SLOGAN se definen en database.php
+    // a partir de la configuración de la BD; refrescar las variables locales
+    $COMPANY_NAME = defined('COMPANY_NAME') ? COMPANY_NAME : $COMPANY_NAME;
+    $SITE_VERSION = defined('SITE_VERSION') ? SITE_VERSION : $SITE_VERSION;
+    $SLOGAN = defined('SLOGAN') ? SLOGAN : $SLOGAN;
+    // ===== NUEVO: sistema de auditoría (logger.php usa el $pdo global) =====
+    require_once __DIR__ . '/logger.php';
     
     // Cargar configuración desde la base de datos
     try {
@@ -336,24 +343,26 @@ if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action
     $_SESSION['logged_in']        = true;
     $_SESSION['login_time']       = time();
 
-    try {
-        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $log_stmt = $pdo->prepare("
-            INSERT INTO sys_log_accesos (usuario_id, ip_address, user_agent, fecha_acceso) 
-            VALUES (?, ?, ?, NOW())
-        ");
-        $log_stmt->execute([$user_data['id'], $ip_address, $user_agent]);
-    } catch (PDOException $e) {}
+    // ===== NUEVO: auditar login exitoso con Google (flujo callback) =====
+    logAction(
+        'iniciar_sesion_google',
+        'login',
+        'Inicio de sesión con Google del usuario: ' . $user_data['usuario'],
+        ['metodo' => 'oauth_google', 'email_google' => $email_google],
+        (int)$user_data['id'],
+        'success',
+        null,
+        'google'
+    );
 
     if (!empty($_SESSION['google_popup'])) {
         unset($_SESSION['google_popup']);
         $ultimo_google = null;
         try {
-            $ulg = $pdo->prepare("SELECT fecha_acceso FROM sys_log_accesos WHERE usuario_id = ? ORDER BY fecha_acceso DESC LIMIT 1 OFFSET 1");
+            $ulg = $pdo->prepare("SELECT created_at FROM audit_logs WHERE user_id = ? AND action_type IN ('iniciar_sesion', 'iniciar_sesion_google') AND status = 'success' ORDER BY created_at DESC, id DESC LIMIT 1 OFFSET 1");
             $ulg->execute([$user_data['id']]);
             $rowG = $ulg->fetch(PDO::FETCH_ASSOC);
-            if ($rowG) $ultimo_google = $rowG['fecha_acceso'];
+            if ($rowG) $ultimo_google = $rowG['created_at'];
         } catch (PDOException $e) {}
         $perfil_js = json_encode([
             'nombre' => trim(($user_data['nombre'] ?? '') . ' ' . ($user_data['apellidos'] ?? '')),
@@ -511,23 +520,25 @@ if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action
     $_SESSION['logged_in']        = true;
     $_SESSION['login_time']       = time();
 
-    try {
-        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $log_stmt = $pdo->prepare("
-            INSERT INTO sys_log_accesos (usuario_id, ip_address, user_agent, fecha_acceso) 
-            VALUES (?, ?, ?, NOW())
-        ");
-        $log_stmt->execute([$user_data['id'], $ip_address, $user_agent]);
-    } catch (PDOException $e) {}
+    // ===== NUEVO: auditar login exitoso con Google (flujo popup token) =====
+    logAction(
+        'iniciar_sesion_google',
+        'login',
+        'Inicio de sesión con Google del usuario: ' . $user_data['usuario'],
+        ['metodo' => 'oauth_google', 'email_google' => $email_google],
+        (int)$user_data['id'],
+        'success',
+        null,
+        'google'
+    );
 
     // Último acceso (para el aviso de bienvenida del login AJAX)
     $ultimo_acceso = null;
     try {
-        $ul_stmt = $pdo->prepare("SELECT fecha_acceso FROM sys_log_accesos WHERE usuario_id = ? ORDER BY fecha_acceso DESC LIMIT 1 OFFSET 1");
+                            $ul_stmt = $pdo->prepare("SELECT created_at FROM audit_logs WHERE user_id = ? AND action_type IN ('iniciar_sesion', 'iniciar_sesion_google') AND status = 'success' ORDER BY created_at DESC, id DESC LIMIT 1 OFFSET 1");
         $ul_stmt->execute([$user_data['id']]);
         $ul_row = $ul_stmt->fetch(PDO::FETCH_ASSOC);
-        if ($ul_row) $ultimo_acceso = $ul_row['fecha_acceso'];
+                            if ($ul_row) $ultimo_acceso = $ul_row['created_at'];
     } catch (PDOException $e) {}
 
     header('Content-Type: application/json; charset=utf-8');
@@ -598,11 +609,12 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             
             $defaultSvg = 'data:image/svg+xml;base64,' . base64_encode('<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 549.62 605.05"><g transform="translate(-91.414 -149.93)"><g transform="matrix(11.705 0 0 11.705 -1944.4 1569.9)" stroke="#fff" stroke-width="0.1"><path transform="matrix(3.8528 0 0 -3.8528 -3551.4 48.489)" d="m978.4 31.352c0 2.9887-2.4228 5.4115-5.4115 5.4115s-5.4115-2.4228-5.4115-5.4115h5.4115z" fill="#0080ff"/><path transform="matrix(2.5762 0 0 2.5762 -2309.2 -185.48)" d="m978.4 31.352c0 2.9887-2.4228 5.4115-5.4115 5.4115s-5.4115-2.4228-5.4115-5.4115 2.4228-5.4115 5.4115-5.4115 5.4115 2.4228 5.4115 5.4115z" fill="#0080ff"/></g></g></svg>');
             
+            $tel_lim = preg_replace('/[^0-9]/', '', $dato_entrada);
             $sql = "SELECT foto, rol_id, nombre, apellidos, usuario, no_ci FROM clasif_usuarios 
-                    WHERE usuario = ? OR email = ? OR no_ci = ? 
+                    WHERE usuario = ? OR email = ? OR no_ci = ? OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(telefono_contacto, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ? 
                     LIMIT 1";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$dato_entrada, $dato_entrada, $dato_entrada]);
+            $stmt->execute([$dato_entrada, $dato_entrada, $dato_entrada, $tel_lim]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($result) {
@@ -669,6 +681,18 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
 
             $stmtUpd = $pdo->prepare("UPDATE clasif_usuarios SET reset_token = ?, reset_expira = DATE_ADD(NOW(), INTERVAL 30 MINUTE) WHERE id = ?");
             $stmtUpd->execute([$token, $user['id']]);
+
+            // ===== AUDITORÍA: solicitud de recuperación de contraseña =====
+            logAction(
+                'solicitar_recuperar_password',
+                'login',
+                'Solicitud de recuperación de contraseña',
+                ['user_id' => (int)$user['id'], 'email' => $email],
+                null,
+                'success',
+                null,
+                'anonimo'
+            );
 
             $esquema = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -1115,6 +1139,18 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             $stmtUpd = $pdo->prepare("UPDATE clasif_usuarios SET password = ?, reset_token = NULL, reset_expira = NULL WHERE id = ?");
             $stmtUpd->execute([$hashed, $user['id']]);
 
+            // ===== AUDITORÍA: contraseña restablecida por token =====
+            logAction(
+                'restablecer_password',
+                'login',
+                'Contraseña restablecida mediante token de recuperación',
+                ['user_id' => (int)$user['id']],
+                (int)$user['id'],
+                'success',
+                null,
+                'anonimo'
+            );
+
             echo json_encode(['success' => true, 'action' => 'reset_ok', 'usuario' => $user['usuario']]);
             exit;
         }
@@ -1172,6 +1208,18 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
                 }
                 
                 // Token válido
+                // ===== AUDITORÍA: verificación de token de recuperación =====
+                logAction(
+                    'verificar_token_recuperacion',
+                    'login',
+                    'Verificación de token de recuperación de contraseña',
+                    ['user_id' => (int)$user['id']],
+                    (int)$user['id'],
+                    'success',
+                    null,
+                    'anonimo'
+                );
+
                 echo json_encode([
                     'success' => true,
                     'message' => 'Token válido',
@@ -1202,6 +1250,7 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
     $dato_entrada = trim($_POST['username'] ?? '');
     $password_input = trim($_POST['password'] ?? '');
+    $tel_lim = preg_replace('/[^0-9]/', '', $dato_entrada);
     
     if (empty($dato_entrada) || empty($password_input)) {
         $error = 'complete_campos';
@@ -1211,9 +1260,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
                 SELECT u.*, r.codigo as rol_codigo, r.descripcion as rol_descripcion 
                 FROM clasif_usuarios u 
                 LEFT JOIN clasif_rol r ON u.rol_id = r.id 
-                WHERE (u.usuario = ? OR u.email = ? OR u.no_ci = ?) AND u.activo = 1
+                WHERE (u.usuario = ? OR u.email = ? OR u.no_ci = ? OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.telefono_contacto, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?) AND u.activo = 1
             ");
-            $stmt->execute([$dato_entrada, $dato_entrada, $dato_entrada]);
+            $stmt->execute([$dato_entrada, $dato_entrada, $dato_entrada, $tel_lim]);
             $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($user_data && password_verify($password_input, $user_data['password'])) {
@@ -1243,26 +1292,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
                     $_SESSION['rol_descripcion'] = $user_data['rol_descripcion'];
                     $_SESSION['logged_in'] = true;
                     $_SESSION['login_time'] = time();
-                    
-                    try {
-                        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-                        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                        $log_stmt = $pdo->prepare("
-                            INSERT INTO sys_log_accesos (usuario_id, ip_address, user_agent, fecha_acceso) 
-                            VALUES (?, ?, ?, NOW())
-                        ");
-                        $log_stmt->execute([$user_data['id'], $ip_address, $user_agent]);
-                    } catch (PDOException $e) {}
+
+                    // ===== NUEVO: auditar login exitoso local =====
+                    logAction(
+                        'iniciar_sesion',
+                        'login',
+                        'Inicio de sesión correcto del usuario: ' . $user_data['usuario'],
+                        ['metodo' => 'usuario_password'],
+                        (int)$user_data['id'],
+                        'success',
+                        null,
+                        'local'
+                    );
                     
                     $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
                     if ($isAjax) {
                         $ultimo_acceso = null;
                         try {
-                            $ul_stmt = $pdo->prepare("SELECT fecha_acceso FROM sys_log_accesos WHERE usuario_id = ? ORDER BY fecha_acceso DESC LIMIT 1 OFFSET 1");
+        $ul_stmt = $pdo->prepare("SELECT created_at FROM audit_logs WHERE user_id = ? AND action_type IN ('iniciar_sesion', 'iniciar_sesion_google') AND status = 'success' ORDER BY created_at DESC, id DESC LIMIT 1 OFFSET 1");
                             $ul_stmt->execute([$user_data['id']]);
                             $ul_row = $ul_stmt->fetch(PDO::FETCH_ASSOC);
-                            if ($ul_row) $ultimo_acceso = $ul_row['fecha_acceso'];
+        if ($ul_row) $ultimo_acceso = $ul_row['created_at'];
                         } catch (PDOException $e) {}
 
                         header('Content-Type: application/json; charset=utf-8');
@@ -1284,6 +1335,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
                 }
             } else {
                 $error = 'credenciales_invalidas';
+
+                // ===== NUEVO: auditar login fallido (NUNCA se guarda el password intentado) =====
+                logAction(
+                    'iniciar_sesion',
+                    'login',
+                    'Intento de inicio de sesión fallido para: ' . $dato_entrada,
+                    ['usuario_intentado' => $dato_entrada],
+                    null,
+                    'failed',
+                    'Credenciales inválidas',
+                    'local'
+                );
             }
         } catch (PDOException $e) {
             $error = 'error_sistema';
@@ -2572,7 +2635,7 @@ body::after {
         <form method="POST" action="" id="loginForm">
             <div class="form-row">
                 <div class="input-group">
-                    <label><i class="fas fa-user"></i> Usuario / Email / CI</label>
+                    <label><i class="fas fa-user"></i> Usuario / Email / CI / Teléfono</label>
                     <div class="input-with-icon">
                         <i class="fas fa-envelope" id="dynamicIcon"></i>
                         <input type="text" name="username" id="username" placeholder="Ingrese su credencial" 
@@ -2601,7 +2664,7 @@ body::after {
             </div>
 
             <a href="#" class="forgot-link" id="forgotPasswordLink" <?php if (!$db_ok) echo 'style="pointer-events: none; opacity: 0.5;"'; ?>>
-                <i class="fas fa-key me-1"></i> ¿Olvidaste la contraseña?
+                <i class="fas fa-key me-1"></i> ¿Olvidaste la contraseña?<kbd style="margin-left:0.375rem; font-size:0.65rem; background:rgba(148,163,184,0.15); border:0.0625rem solid rgba(148,163,184,0.35); padding:0.125rem 0.375rem; border-radius:0.25rem; color:#94a3b8; vertical-align:middle;">Alt+F</kbd>
             </a>
 
             <div class="button-group">
@@ -3034,7 +3097,7 @@ function mostrarBienvenida(datos) {
 
     let ultimoAccesoHtml = '';
     if (ultimoAcceso) {
-        const fechaUl = new Date(ultimoAcceso);
+        const fechaUl = new Date(String(ultimoAcceso).replace(' ', 'T'));
         const diffMs = ahora - fechaUl;
         const diffMin = Math.floor(diffMs / 60000);
         const diffHrs = Math.floor(diffMs / 3600000);
@@ -3045,8 +3108,10 @@ function mostrarBienvenida(datos) {
         else if (diffMin < 60) { tiempoTranscurrido = 'Hace ' + diffMin + ' minuto(s)'; colorTiempo = '#22c55e'; }
         else if (diffHrs < 24) { tiempoTranscurrido = 'Hace ' + diffHrs + ' hora(s)'; colorTiempo = '#f59e0b'; }
         else { tiempoTranscurrido = 'Hace ' + diffDias + ' día(s)'; colorTiempo = '#ef4444'; }
-        const fechaFormateada = fechaUl.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + fechaUl.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
-        ultimoAccesoHtml = '<div style="font-size:0.85rem; color: ' + colorTiempo + '; margin-top:0.9375rem; padding-top:0.625rem; border-top: 0.0625rem solid rgba(255,255,255,0.1);"><i class="fa-solid fa-clock-rotate-left" style="margin-right:0.3125rem;"></i><span style="font-weight: 500;">Último acceso:</span> <span style="font-weight: 700;">' + tiempoTranscurrido + '</span> — ' + fechaFormateada + '</div>';
+        const fechaFormateada = fechaUl.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) + ' a las ' + fechaUl.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        ultimoAccesoHtml = '<div style="font-size:0.85rem; margin-top:0.9375rem; padding-top:0.625rem; border-top: 0.0625rem solid rgba(255,255,255,0.1);"><i class="fa-solid fa-clock-rotate-left" style="margin-right:0.3125rem; color: ' + colorTiempo + ';"></i><span style="font-weight: 500; color: #94a3b8;">Último acceso:</span> <span style="font-weight: 700; color: ' + colorTiempo + ';">' + fechaFormateada + '</span><br><span style="font-size:0.78rem; opacity:0.85; color: ' + colorTiempo + ';">' + tiempoTranscurrido + '</span></div>';
+    } else {
+        ultimoAccesoHtml = '<div style="font-size:0.85rem; margin-top:0.9375rem; padding-top:0.625rem; border-top: 0.0625rem solid rgba(255,255,255,0.1);"><i class="fa-regular fa-star" style="margin-right:0.3125rem; color: #28a745;"></i><span style="font-weight: 500; color: #94a3b8;">Último acceso:</span> <span style="font-weight: 700; color: #28a745;">Primer acceso</span></div>';
     }
 
     Swal.fire({
@@ -3068,9 +3133,9 @@ function mostrarBienvenida(datos) {
                             <i class="fa-solid fa-shield-halved" style="margin-right:0.3125rem;"></i>${rol}
                         </span>
                     </div>
-                    <div style="display: flex; gap:0.9375rem; font-size:0.82rem; color: #94a3b8;">
-                        <span><i class="fa-regular fa-clock" style="margin-right:0.3125rem;"></i>${horaActual}</span>
-                        <span><i class="fa-regular fa-calendar" style="margin-right:0.3125rem;"></i>${fechaActual}</span>
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap:0.9375rem; font-size:0.82rem; color: #94a3b8;">
+                        <span style="white-space: nowrap;"><i class="fa-regular fa-clock" style="margin-right:0.3125rem;"></i>${horaActual}</span>
+                        <span style="white-space: nowrap;"><i class="fa-regular fa-calendar" style="margin-right:0.3125rem;"></i>${fechaActual}</span>
                     </div>
                 </div>
             </div>
@@ -3093,7 +3158,7 @@ function mostrarBienvenida(datos) {
         showConfirmButton: false,
         allowOutsideClick: false,
         allowEscapeKey: false,
-        width: '30rem',
+        width: '34rem',
         timer: 5000,
         timerProgressBar: true,
         customClass: { timerProgressBar: 'swal2-welcome-progress' },
@@ -3415,6 +3480,8 @@ function openForgotPassword() {
         cancelButtonText: '<i class="fa-solid fa-times" style="margin-right:0.5rem;"></i> Cancelar',
         cancelButtonColor: '#475569',
         allowOutsideClick: false,
+        showCloseButton: true,
+        closeButtonHtml: '<i class="fa-solid fa-xmark" style="font-size:1.1rem;"></i>',
         preConfirm: () => {
             const email = document.getElementById('forgotEmail').value.trim();
             const carnet = document.getElementById('forgotCarnet').value.trim();
@@ -3451,7 +3518,9 @@ function openRecoverModal(e) {
         background: '#0f172a',
         color: '#e2e8f0',
         confirmButtonText: '<i class="fas fa-check"></i> Entendido',
-        confirmButtonColor: '#3b82f6'
+        confirmButtonColor: '#3b82f6',
+        showCloseButton: true,
+        closeButtonHtml: '<i class="fa-solid fa-xmark" style="font-size:1.1rem;"></i>'
     });
 }
 
@@ -4450,15 +4519,30 @@ function mostrarProgresoReset(data) {
     });
 }
 
+function intentarAbrirRecuperacion() {
+    if (restabpw == 1 || mailConfigurado) openForgotPassword();
+    else openRecoverModal();
+}
+
 if (dbOk) {
     const forgotLink = document.getElementById('forgotPasswordLink');
     if (forgotLink) {
         forgotLink.addEventListener('click', function(e) {
             e.preventDefault();
-            if (restabpw == 1 || mailConfigurado) openForgotPassword();
-            else openRecoverModal();
+            intentarAbrirRecuperacion();
         });
     }
+
+    // Atajo de teclado: ALT + F para abrir ¿Olvidaste la contraseña?
+    document.addEventListener('keydown', function(e) {
+        const esTeclaF = (e.key === 'f' || e.key === 'F');
+        if (e.altKey && !e.ctrlKey && !e.shiftKey && esTeclaF) {
+            e.preventDefault();
+            e.stopPropagation();
+            intentarAbrirRecuperacion();
+            return false;
+        }
+    });
 }
 
 // ==========================================

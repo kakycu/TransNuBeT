@@ -7,6 +7,21 @@
  * CERO flash porque todo va en el <head> antes del paint.
  */
 ?>
+<?php if (!defined('TN_CHROME_CSS')): define('TN_CHROME_CSS', true); ?>
+<style>
+/* ===== CHROME COMPARTIDO: topbar + botón hamburguesa =====
+   Fuente única para todas las páginas. Se emite en <head> (al incluir theme_early)
+   ANTES de los estilos propios, por lo que cada página sigue ganando la cascada
+   (incluido el tamaño móvil 2.25rem). historico.css ya no duplica estas reglas. */
+.win-topbar { background: rgba(20,20,25,0.7); backdrop-filter: blur(20px); border-radius: 16px; padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; z-index: 100 !important; position: relative !important; }
+.sidebar-toggle { background: rgba(255,255,255,0.05); border: none; color: white; width: 2.5rem; height: 2.5rem; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.sidebar-toggle:hover { background: rgba(255,255,255,0.1); transform: scale(1.02); }
+.page-title h1 { font-size: 1.5rem; font-weight: 600; margin: 0; }
+.page-title p { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin: 0.25rem 0 0; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+</style>
+<?php endif; ?>
 <script>
 (function(){
 try{
