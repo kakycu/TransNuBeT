@@ -47,15 +47,6 @@ if ($action === 'restablecer') {
         exit;
     }
 
-    $stmt = $pdo->prepare("SELECT password FROM clasif_usuarios WHERE id = ? LIMIT 1");
-    $stmt->execute([$id]);
-    $hash_actual = $stmt->fetchColumn();
-
-    if ($hash_actual && password_verify($password_nueva, $hash_actual)) {
-        echo json_encode(['success' => false, 'message' => 'La nueva contraseña no puede ser igual a la actual']);
-        exit;
-    }
-
     $hashed = password_hash($password_nueva, PASSWORD_DEFAULT);
     $stmtUpd = $pdo->prepare("UPDATE clasif_usuarios SET password = ?, reset_token = NULL, reset_expira = NULL, fecha_actualizacion = NOW() WHERE id = ?");
     $stmtUpd->execute([$hashed, $id]);

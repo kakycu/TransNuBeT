@@ -1260,12 +1260,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
                 SELECT u.*, r.codigo as rol_codigo, r.descripcion as rol_descripcion 
                 FROM clasif_usuarios u 
                 LEFT JOIN clasif_rol r ON u.rol_id = r.id 
-                WHERE (u.usuario = ? OR u.email = ? OR u.no_ci = ? OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.telefono_contacto, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?) AND u.activo = 1
+                WHERE (u.usuario = ? OR u.email = ? OR u.no_ci = ? OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.telefono_contacto, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?)
+                LIMIT 1
             ");
             $stmt->execute([$dato_entrada, $dato_entrada, $dato_entrada, $tel_lim]);
             $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($user_data && password_verify($password_input, $user_data['password'])) {
+
+            if ($user_data && (int)$user_data['activo'] !== 1) {
+                $error = 'usuario_inhabilitado';
+                $user_inhabilitado = $user_data;
+
+                // ===== NUEVO: auditar intento de acceso con cuenta inhabilitada =====
+                logAction(
+                    'iniciar_sesion',
+                    'login',
+                    'Intento de inicio de sesión con cuenta INHABILITADA para: ' . $dato_entrada,
+                    ['usuario_intentado' => $dato_entrada, 'motivo' => 'cuenta_inhabilitada'],
+                    (int)$user_data['id'],
+                    'failed',
+                    'Cuenta inhabilitada',
+                    'local'
+                );
+            } elseif ($user_data && password_verify($password_input, $user_data['password'])) {
                 $enMantenimiento = false;
                 try {
                     $stmtMaint = $pdo->prepare("SELECT modo_mantenimiento FROM configuracion_sistema LIMIT 1");
@@ -1356,7 +1372,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
     if (!empty($error) && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
         if (ob_get_length()) ob_clean();
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['ok' => false, 'error' => $error]);
+        $respuesta_error = ['ok' => false, 'error' => $error];
+        if ($error === 'usuario_inhabilitado' && !empty($user_inhabilitado)) {
+            $respuesta_error['foto'] = $user_inhabilitado['foto'] ?? '';
+            $respuesta_error['nombre'] = trim(($user_inhabilitado['nombre'] ?? '') . ' ' . ($user_inhabilitado['apellidos'] ?? ''));
+            $respuesta_error['usuario'] = $user_inhabilitado['usuario'] ?? '';
+            $respuesta_error['ci'] = $user_inhabilitado['no_ci'] ?? '';
+        }
+        echo json_encode($respuesta_error, JSON_UNESCAPED_UNICODE);
         exit;
     }
 }
@@ -2625,7 +2648,7 @@ body::after {
             </div>
             <div class="logo-right">
                 <div class="logo-icon2">
-                    <img src="../images/LogoTN.png" alt="TransNuBeT Logo"
+                    <img src="../images/LogoTN.png" alt="Logo"
                          style="width:100%; height:100%; object-fit: contain; border-radius: inherit;"
                          onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon\'></i>';">
                 </div>
@@ -4743,6 +4766,10 @@ document.addEventListener('DOMContentLoaded', function() {
         mensaje = 'Ocurrió un error al procesar su solicitud. Intente más tarde.';
         icono = 'error';
         botonColor = '#ef4444';
+    <?php elseif ($error === 'usuario_inhabilitado'): ?>
+        titulo = 'Usuario Inhabilitado';
+        icono = 'error';
+        botonColor = '#ef4444';
     <?php elseif ($error === 'google_email_no_existe'): ?>
         titulo = 'Acceso Denegado';
         mensaje = 'Su cuenta de Google no está registrada en el sistema. Solicite su cuenta al administrador para poder acceder.';
@@ -4776,7 +4803,18 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php endif; ?>
     Swal.fire({
         title: '<i class="fas ' + (icono === 'error' ? 'fa-times-circle' : 'fa-exclamation-triangle') + '" style="color: ' + botonColor + '; font-size:2rem;"></i><br>' + titulo,
-        html: '<p style="font-size:1rem;">' + mensaje + '</p>',
+        html: <?php if ($error === 'usuario_inhabilitado' && !empty($user_inhabilitado)): ?>
+            '<div style="display:flex; align-items:center; gap:0.9375rem; background:rgba(239,68,68,0.08); padding:0.9375rem; border-radius:0.75rem; margin-bottom:0.9375rem;">'
+                + '<img src="<?php echo addslashes($user_inhabilitado['foto'] ?? ''); ?>" style="width:4.5rem; height:4.5rem; border-radius:50%; border:0.1875rem solid #ef4444; object-fit:cover;" alt="Foto del usuario" onerror="this.style.display=\'none\'">'
+                + '<div style="text-align:left;">'
+                    + '<div style="font-size:1.1rem; color:#ef4444; font-weight:700;"><?php echo addslashes(trim(($user_inhabilitado['nombre'] ?? '') . ' ' . ($user_inhabilitado['apellidos'] ?? ''))); ?></div>'
+                    + '<div style="font-size:0.85rem; color:#94a3b8; margin-top:0.3125rem;">Su cuenta está <strong style="color:#ef4444;">INHABILITADA</strong>.</div>'
+                    + '<div style="font-size:0.78rem; color:#64748b; margin-top:0.3125rem;">Contacte al administrador del sistema para reactivar su acceso.</div>'
+                + '</div>'
+            + '</div>'
+        <?php else: ?>
+        '<p style="font-size:1rem;">' + mensaje + '</p>'
+        <?php endif; ?>,
         icon: icono,
         background: '#0f172a',
         color: '#e2e8f0',
@@ -4833,6 +4871,32 @@ if (dbOk) {
                 if (!data.ok) {
                     btn.innerHTML = btnHtmlOriginal;
                     btn.disabled = false;
+
+                    if (data.error === 'usuario_inhabilitado') {
+                        var fotoInhab = data.foto || '';
+                        var nombreInhab = data.nombre || data.usuario || 'Usuario';
+                        var defaultAvatar = 'data:image/svg+xml;base64,<?php echo base64_encode('<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1e293b"/><circle cx="50" cy="38" r="18" fill="#64748b"/><path d="M50 62c-16 0-28 10-28 22h56c0-12-12-22-28-22z" fill="#64748b"/></svg>'); ?>';
+                        if (!fotoInhab) fotoInhab = defaultAvatar;
+                        Swal.fire({
+                            title: '<i class="fas fa-user-slash" style="color: #ef4444; font-size:2rem; margin-right:0.625rem;"></i> <?php echo addslashes($COMPANY_NAME); ?>',
+                            html: '<div style="display:flex; align-items:center; gap:0.9375rem; background:rgba(239,68,68,0.08); padding:0.9375rem; border-radius:0.75rem; margin-bottom:0.9375rem;">'
+                                + '<img src="' + fotoInhab + '" style="width:4.5rem; height:4.5rem; border-radius:50%; border:0.1875rem solid #ef4444; object-fit:cover;" alt="Foto del usuario" onerror="this.src=\'' + defaultAvatar + '\'">'
+                                + '<div style="text-align:left;">'
+                                    + '<div style="font-size:1.1rem; color:#ef4444; font-weight:700;"><i class="fas fa-ban" style="margin-right:0.5rem;"></i>' + nombreInhab + '</div>'
+                                    + '<div style="font-size:0.85rem; color:#94a3b8; margin-top:0.3125rem;">El usuario está <strong style="color:#ef4444;">INHABILITADO</strong>.</div>'
+                                    + '<div style="font-size:0.78rem; color:#64748b; margin-top:0.3125rem;">Contacte al administrador del sistema para reactivar su acceso.</div>'
+                                + '</div>'
+                            + '</div>',
+                            icon: 'error',
+                            background: '#0f172a',
+                            color: '#e2e8f0',
+                            confirmButtonColor: '#ef4444',
+                            confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
+                            allowOutsideClick: false
+                        });
+                        return;
+                    }
+
                     let msg = 'Nombre de usuario y/o contraseña incorrectos.';
                     if (data.error === 'complete_campos') msg = 'Complete todos los campos.';
                     else if (data.error === 'credenciales_invalidas') msg = 'Nombre de usuario y/o contraseña incorrectos. Verifique sus credenciales.';

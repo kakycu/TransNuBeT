@@ -38,6 +38,21 @@ if (strlen($ci_logueado) >= 6) {
 
 // El permiso para ver perfiles de otros se evalúa con permiso_puede('usuarios', 'ver')
 
+// Configuración de empresa (consistente con el resto de módulos)
+if (!isset($config_empresa)) {
+    $config_empresa = [
+        'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom',
+        'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director',
+        'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab y Finanzas'
+    ];
+    try {
+        $stmtConf = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro = 'nombre_empresa'");
+        while ($rowConf = $stmtConf->fetch()) {
+            $config_empresa[$rowConf['parametro']] = $rowConf['valor'];
+        }
+    } catch (Throwable $e) {}
+}
+
 // Determinar el id a mostrar
 $id = isset($_GET['id']) ? (int)$_GET['id'] : $usuario_actual_id;
 if ($id <= 0) {
@@ -550,6 +565,20 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         .usuario-modal-body::-webkit-scrollbar { width:0.375rem; }
         .usuario-modal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 0.625rem; }
 
+        @media (min-width: 992px) {
+            .border-end-lg { border-right: 0.0625rem solid rgba(255, 255, 255, 0.12); }
+        }
+
+        #modalUsuario .form-control,
+        #modalUsuario .form-select,
+        #modalUsuario .input-group-text,
+        #modalUsuario input.form-control,
+        #modalUsuario textarea.form-control,
+        #modalUsuario select.form-select {
+            border-radius: 0 !important;
+        }
+        #modalUsuario .btn-outline-secondary { border-radius: 0 !important; }
+
         .password-wrapper { position: relative; }
         .password-wrapper .form-control { padding-right:2.625rem !important; }
         .password-toggle {
@@ -630,7 +659,6 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         }
 
         hr { opacity: 1; border-color: rgba(148, 163, 184, 0.25); }
-        .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); }
 
         .swal2-popup { background: var(--panel) !important; color: var(--txt) !important; }
         .swal2-title { color: #ffffff !important; }
@@ -978,15 +1006,14 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
     }
 
     /* ---------- GRID DEL FORMULARIO DEL MODAL ---------- */
-    #modalUsuario .row.g-4 > .col-md-3,
-    #modalUsuario .row.g-4 > .col-md-9,
-    #modalUsuario .row.g-3 > .col-md-4,
+    #modalUsuario .row.g-4 > .col-md-4,
+    #modalUsuario .row.g-4 > .col-md-8,
     #modalUsuario .row.g-3 > .col-md-6,
     #modalUsuario .row.g-3 > .col-md-12 {
         flex: 1 1 100%;
         max-width: 100%;
     }
-    #modalUsuario .row.g-4 > .col-md-3 {
+    #modalUsuario .row.g-4 > .col-md-4 {
         text-align: center;
     }
     #modalUsuario .row.g-3 {
@@ -1270,7 +1297,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
 
 						<!-- Badge de estado de contraseña (siempre visible) -->
 						<span class="mx-2" style="color: rgba(255,255,255,0.15)">|</span>
-						<?php if ($is_google_auth): ?>
+						<?php if ($is_google_auth && !$es_admin): ?>
 							<span class="badge bg-secondary fst-italic" style="cursor: default; opacity: 0.7;">
 								<i class="fas fa-lock me-1"></i>Contraseña no modificable
 							</span>
@@ -1292,32 +1319,41 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
                     <?php echo $usuario['activo'] ? 'Activo' : 'Inactivo'; ?>
                 </span>
 <div class="dropdown perfil-acciones">
+    <?php $perfil_pass_habilitado = !$is_google_auth || $es_admin; ?>
     <button type="button" class="btn-win btn-win-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Acciones" data-tooltip="Acciones" data-tooltip-theme="primary">
         <i class="fas fa-ellipsis-vertical me-1"></i> Acciones
     </button>
     <ul class="dropdown-menu dropdown-menu-end">
         <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); editarUsuario(<?php echo (int)$id; ?>);"><i class="fas fa-user-edit me-2" style="color:#60a5fa;"></i>Editar Perfil</a></li>
-        <?php if ($es_propio): ?>
         <li>
-            <?php if ($is_google_auth): ?>
-                <a class="dropdown-item disabled text-muted fst-italic" 
-                   href="#" 
-                   tabindex="-1" 
-                   aria-disabled="true" 
-                   style="pointer-events: none; cursor: default; opacity: 0.6;">
-                    <i class="fas fa-key me-2" style="color:#9ca3af;"></i>Cambiar Contraseña
-                </a>
-            <?php else: ?>
+            <?php if ($perfil_pass_habilitado): ?>
                 <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalCambiarPassword">
                     <i class="fas fa-key me-2" style="color:#fbbf24;"></i>Cambiar Contraseña
                 </a>
+            <?php else: ?>
+                <a class="dropdown-item disabled text-muted fst-italic"
+                   href="#"
+                   tabindex="-1"
+                   aria-disabled="true"
+                   style="pointer-events: none; cursor: default; opacity: 0.6;">
+                    <i class="fas fa-key me-2" style="color:#9ca3af;"></i>Cambiar Contraseña
+                </a>
             <?php endif; ?>
         </li>
-        <?php endif; ?>
-        <?php if ($es_propio || permiso_rol_codigo() === 'Admin'): ?>
         <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); resetPasswordUsuario(<?php echo (int)$id; ?>, '<?php echo addslashes($nombre_completo); ?>');"><i class="fas fa-rotate-left me-2" style="color:#60a5fa;"></i>Resetear Contraseña</a></li>
-        <?php endif; ?>
+        <li>
+            <?php if ($perfil_pass_habilitado): ?>
+                <a class="dropdown-item" href="#" onclick="event.preventDefault(); resetPasswordUsuario(<?php echo (int)$id; ?>, '<?php echo addslashes($nombre_completo); ?>');"><i class="fas fa-rotate-left me-2" style="color:#60a5fa;"></i>Resetear Contraseña</a>
+            <?php else: ?>
+                <a class="dropdown-item disabled text-muted fst-italic"
+                   href="#"
+                   tabindex="-1"
+                   aria-disabled="true"
+                   style="pointer-events: none; cursor: default; opacity: 0.6;">
+                    <i class="fas fa-rotate-left me-2" style="color:#9ca3af;"></i>Resetear Contraseña
+                </a>
+            <?php endif; ?>
+        </li>
         <?php if (($es_propio && $es_admin) || !$es_propio): ?>
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item" href="usuarios.php"><i class="fas fa-user-cog me-2" style="color:#a78bfa;"></i>Gestionar Usuarios</a></li>
@@ -1500,7 +1536,6 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
 
     <?php endif; ?>
 
-    <?php if ($es_propio): ?>
     <!-- Modal Cambiar Contraseña -->
     <div class="modal fade" id="modalCambiarPassword" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
@@ -1510,7 +1545,15 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"></button>
                 </div>
                 <form id="formCambiarPassword">
+                    <input type="hidden" name="user_id" id="passTargetId" value="<?php echo (int)$id; ?>">
                     <div class="modal-body">
+                        <?php if (!$es_propio): ?>
+                        <div class="form-usuario-status edit mb-3">
+                            <i class="fas fa-user-shield"></i>
+                            Estableciendo la contraseña de <strong><?php echo htmlspecialchars($nombre_completo); ?></strong>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($es_propio): ?>
                         <div class="mb-3">
                             <label class="form-label" style="color: rgba(255,255,255,0.85);">Contraseña actual</label>
                             <div class="input-group">
@@ -1521,6 +1564,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
                                 </button>
                             </div>
                         </div>
+                        <?php endif; ?>
                         <div class="mb-3">
                             <label class="form-label" style="color: rgba(255,255,255,0.85);">Nueva contraseña</label>
                             <div class="input-group">
@@ -1562,12 +1606,36 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
             </div>
         </div>
     </div>
+
+    <?php if ($es_propio): ?>
+    <!-- Abrir el modal automáticamente si se llega con ?cambiar_pass=1 -->
+    <script>
+    (function () {
+        if (!/cambiar_pass=1/.test(window.location.search)) return;
+        var abrir = function () {
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('cambiar_pass') !== '1') return;
+            var modalEl = document.getElementById('modalCambiarPassword');
+            if (modalEl && window.bootstrap) {
+                new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true }).show();
+                if (window.history && history.replaceState) {
+                    history.replaceState(null, '', window.location.pathname + window.location.search.replace(/[?&]cambiar_pass=[^&]*/, ''));
+                }
+            }
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', abrir);
+        } else {
+            setTimeout(abrir, 50);
+        }
+    })();
+    </script>
     <?php endif; ?>
 
     <?php if (!$error_no_encontrado): ?>
     <!-- Modal para crear/editar usuarios con crop -->
     <div class="modal fade" id="modalUsuario" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
             <div class="modal-content modal-content-win">
                 <div class="modal-header modal-header-win d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-3">
@@ -1585,7 +1653,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"></button>
                 </div>
-                <form id="formUsuario" method="POST" autocomplete="off">
+                <form id="formUsuario" method="POST" autocomplete="off" novalidate>
                     <input type="hidden" name="action" id="usuarioAction" value="editar">
                     <input type="hidden" name="usuario_id" id="usuarioId" value="<?php echo (int)$id; ?>">
                     <input type="hidden" name="imagen_recortada" id="imagen_recortada_usuario" value="">
@@ -1596,9 +1664,10 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
                             <span id="formUsuarioStatusText">Editando el perfil del usuario</span>
                         </div>
                         <div class="row g-4">
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <div class="avatar-preview mb-2" id="avatarPreviewUsuario" onclick="abrirEditorFotoUsuario()" style="width:7.5rem; height:7.5rem;">
+                            <!-- Columna Izquierda: Foto + Datos de Acceso -->
+                            <div class="col-md-4 pe-lg-4 border-end-lg" style="border-color: rgba(255,255,255,0.12) !important;">
+                                <div class="text-center mb-4">
+                                    <div class="avatar-preview mb-2" id="avatarPreviewUsuario" onclick="abrirEditorFotoUsuario()" style="width:7.5rem; height:7.5rem;" title="Editar foto de perfil" data-tooltip="Editar foto de perfil" data-tooltip-theme="gradient">
                                         <div id="fotoPlaceholderUsuario" class="avatar-placeholder"><i class="fas fa-camera"></i><small style="font-size:0.6rem; margin-top:0.25rem;">Foto</small></div>
                                         <img id="imagePreviewUsuario" src="" style="display: none; width:100%; height:100%; object-fit: cover;">
                                         <div class="edit-overlay py-1"><i class="fas fa-crop-alt me-1"></i> Editar</div>
@@ -1607,47 +1676,83 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
                                         <label class="btn-win btn-win-sm py-1" style="font-size:0.7rem;" title="Subir foto de perfil" data-tooltip="Subir foto de perfil" data-tooltip-theme="info"><i class="fas fa-upload me-1"></i> Subir Foto<input type="file" id="imageUploadUsuario" accept="image/jpeg,image/png" hidden onchange="cargarImagenUsuario(this)"></label>
                                         <button type="button" class="btn-win btn-win-danger btn-win-sm py-1" id="btnEliminarFotoUsuario" style="display: none;" onclick="window.eliminarFotoUsuario()" title="Eliminar foto de perfil" data-tooltip="Eliminar foto de perfil" data-tooltip-theme="danger"><i class="fas fa-trash-alt me-1"></i> Eliminar</button>
                                     </div>
-                                    <div class="form-check form-switch d-flex justify-content-center mt-3 mb-1">
-                                        <input type="checkbox" class="form-check-input" name="activo" id="activo_usuario" checked>
-                                        <label class="form-check-label" for="activo_usuario" id="estadoUsuarioLabel">Usuario Activo</label>
-                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-9">
+
                                 <div class="section-title"><i class="fas fa-key"></i> Datos de Acceso</div>
-                                <div class="row g-3 mb-4">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Usuario <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" name="usuario" id="usuario" required data-tooltip="Nombre de usuario para acceso" data-tooltip-theme="info">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label">Nombre de Usuario <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            <input type="text" class="form-control" name="usuario" id="usuario" required title="Nombre de usuario para acceso" data-tooltip="Nombre de usuario para acceso" data-tooltip-theme="info">
+                                        </div>
                                         <small class="text-muted" id="usuarioFeedback"></small>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Contraseña <span class="text-muted">(opcional)</span></label>
-                                        <div class="password-wrapper">
-                                            <input type="password" class="form-control" name="password" id="password" autocomplete="new-password" data-tooltip="Contraseña de acceso" data-tooltip-theme="warning">
-                                            <button type="button" class="password-toggle" id="togglePasswordBtn" onclick="togglePassword()" tabindex="-1" data-tooltip="Mostrar/ocultar contraseña" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                    <div class="col-12">
+                                        <label class="form-label">Contraseña </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                            <input type="password" class="form-control" name="password" id="password" autocomplete="new-password" title="Contraseña de acceso" data-tooltip="Contraseña de acceso" data-tooltip-theme="warning">
+                                            <button type="button" class="btn btn-outline-secondary" id="togglePasswordBtn" onclick="togglePassword()" tabindex="-1" title="Mostrar/ocultar contraseña" data-tooltip="Mostrar/ocultar contraseña" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                        <div style="margin-top:0.5rem;" id="rpMeterWrapper">
+                                            <div style="display:flex; gap:0.3125rem; height:0.375rem;">
+                                                <div id="rpBar1" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                                <div id="rpBar2" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                                <div id="rpBar3" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                                <div id="rpBar4" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.3125rem;">
+                                                <span id="rpFuerzaTexto" style="font-size:0.72rem; color:#94a3b8;">Ingrese una contraseña</span>
+                                                <span id="rpFuerzaRequisitos" style="font-size:0.68rem; color:#64748b;">Mín. 6 caracteres</span>
+                                            </div>
                                         </div>
                                         <small class="text-muted" id="passHelp">Dejar en blanco para mantener la actual</small>
                                     </div>
+                                    <div class="col-12" id="confirmPasswordField">
+                                        <label class="form-label">Confirmar Contraseña <span class="text-danger" id="confirmPassRequired">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                            <input type="password" class="form-control" name="confirm_password" id="confirm_password" autocomplete="new-password" title="Confirmar contraseña" data-tooltip="Confirmar contraseña" data-tooltip-theme="warning">
+                                            <button type="button" class="btn btn-outline-secondary" id="togglePasswordConfirmBtn" onclick="toggleConfirmPassword()" tabindex="-1" title="Mostrar/ocultar contraseña" data-tooltip="Mostrar/ocultar contraseña" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                        <small class="text-danger" id="confirmPasswordFeedback" style="display:none;"></small>
+                                    </div>
                                 </div>
-                                <div class="section-title"><i class="fas fa-id-card"></i> Datos Personales</div>
-                                <div class="row g-3 mb-4">
-                                    <div class="col-md-4"><label class="form-label">Nombre <span class="text-danger">*</span></label><input type="text" class="form-control" name="nombre" id="nombre" required data-tooltip="Nombre completo del usuario" data-tooltip-theme="info"><small class="text-muted" id="nombreFeedback"></small></div>
-                                    <div class="col-md-4"><label class="form-label">Primer Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="primer_apellido" id="primer_apellido" required data-tooltip="Primer apellido" data-tooltip-theme="info"><small class="text-muted" id="apellido1Feedback"></small></div>
-                                    <div class="col-md-4"><label class="form-label">Segundo Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="segundo_apellido" id="segundo_apellido" required data-tooltip="Segundo apellido" data-tooltip-theme="info"><small class="text-muted" id="apellido2Feedback"></small></div>
-                                    <div class="col-md-6"><label class="form-label">Carnet de Identidad <span class="text-danger">*</span></label><input type="text" class="form-control" name="no_ci" id="no_ci" maxlength="11" required data-tooltip="Número de Carnet de Identidad" data-tooltip-theme="info"><small class="text-muted" id="ciFeedbackUsuario"></small></div>
-                                    <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" id="email" data-tooltip="Correo electrónico de contacto" data-tooltip-theme="info"><small class="text-muted" id="emailFeedback"></small></div>
-                                    <div class="col-md-6"><label class="form-label">Teléfono de Contacto</label><input type="text" class="form-control" name="telefono_contacto" id="telefono_contacto" maxlength="15" data-tooltip="Número de teléfono de contacto" data-tooltip-theme="info"><small class="text-muted" id="telefonoFeedback"></small></div>
+                            </div>
+
+                            <!-- Columna Derecha: Información Personal -->
+                            <div class="col-md-8">
+                                <div class="section-title"><i class="fas fa-id-card"></i> Información Personal</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6"><label class="form-label">Nombre(s) <span class="text-danger">*</span></label><input type="text" class="form-control" name="nombre" id="nombre" required><small class="text-muted" id="nombreFeedback"></small></div>
+                                    <div class="col-md-6"><label class="form-label">Primer Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="primer_apellido" id="primer_apellido" required><small class="text-muted" id="apellido1Feedback"></small></div>
+                                    <div class="col-md-6"><label class="form-label">Segundo Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="segundo_apellido" id="segundo_apellido" required><small class="text-muted" id="apellido2Feedback"></small></div>
+                                    <div class="col-md-6"><label class="form-label">Carnet de Identidad <span class="text-danger">*</span></label><input type="text" class="form-control" name="no_ci" id="no_ci" maxlength="11" required><small class="text-muted" id="ciFeedbackUsuario"></small></div>
+                                    <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" id="email"><small class="text-muted" id="emailFeedback"></small></div>
+                                    <div class="col-md-6"><label class="form-label">Teléfono</label><input type="tel" class="form-control" name="telefono_contacto" id="telefono_contacto" maxlength="15" placeholder="+535xxxxxxx" oninput="this.value = this.value.replace(/[^0-9+]/g, '')"><small class="text-muted" id="telefonoFeedback"></small></div>
+                                    <div class="col-12"><label class="form-label">Dirección Particular</label><textarea class="form-control" name="direccion_particular" id="direccion_particular" rows="3"></textarea></div>
+                                </div>
+                                <div class="section-title mt-4"><i class="fas fa-user-shield"></i> Rol y Estado</div>
+                                <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label">Rol <span class="text-danger">*</span></label>
-                                        <select class="form-select" name="rol_id" id="rol_id" required data-tooltip="Asignar rol al usuario" data-tooltip-theme="primary">
-                                            <option value="">-- Seleccione un rol --</option>
+                                        <label class="form-label">Rol para los permisos <span class="text-danger">*</span></label>
+                                        <select class="form-select" name="rol_id" id="rol_id" required title="Asignar rol al usuario" data-tooltip="Asignar rol al usuario" data-tooltip-theme="primary">
+                                            <option value="">Seleccionar Rol...</option>
                                             <?php $stmt_roles2 = $pdo->query("SELECT id, descripcion FROM clasif_rol ORDER BY id"); while ($rol2 = $stmt_roles2->fetch()): ?>
                                             <option value="<?php echo $rol2['id']; ?>"><?php echo htmlspecialchars($rol2['descripcion']); ?></option>
                                             <?php endwhile; ?>
                                         </select>
                                     </div>
-                                    <div class="col-md-12"><label class="form-label">Dirección Particular</label><textarea class="form-control" name="direccion_particular" id="direccion_particular" rows="2"></textarea></div>
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input type="checkbox" class="form-check-input" name="activo" id="activo_usuario" checked>
+                                            <label class="form-check-label" for="activo_usuario" id="estadoUsuarioLabel">
+                                                Usuario Activo
+                                                <small class="text-muted d-block" style="font-size:0.7rem;">Permitir acceso al sistema</small>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1770,6 +1875,44 @@ function togglePassword() {
     }
 }
 
+function toggleConfirmPassword() {
+    const pass = document.getElementById('confirm_password');
+    const btn = document.getElementById('togglePasswordConfirmBtn');
+    if (pass.type === 'password') {
+        pass.type = 'text';
+        if (btn) btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+    } else {
+        pass.type = 'password';
+        if (btn) btn.innerHTML = '<i class="fas fa-eye"></i>';
+    }
+}
+
+function medirFortalezaPassword(valor) {
+    const barras = ['rpBar1', 'rpBar2', 'rpBar3', 'rpBar4'].map(function (id) { return document.getElementById(id); });
+    const texto = document.getElementById('rpFuerzaTexto');
+    const requisitos = document.getElementById('rpFuerzaRequisitos');
+    if (!barras[0]) return;
+    let puntaje = 0;
+    if (valor.length >= 6) puntaje++;
+    if (valor.length >= 10) puntaje++;
+    if (/[A-Z]/.test(valor) && /[a-z]/.test(valor)) puntaje++;
+    if (/\d/.test(valor) && /[^A-Za-z0-9]/.test(valor)) puntaje++;
+    const colores = ['#ef4444', '#f59e0b', '#eab308', '#38bdf8', '#22c55e'];
+    const etiquetas = ['Muy débil', 'Débil', 'Aceptable', 'Buena', 'Fuerte'];
+    barras.forEach(function (barra, i) {
+        if (barra) barra.style.background = puntaje > i ? colores[i] : 'rgba(255,255,255,0.08)';
+    });
+    if (texto) { texto.textContent = etiquetas[puntaje]; texto.style.color = colores[puntaje]; texto.style.fontWeight = '600'; }
+    if (requisitos) {
+        if (valor.length === 0) requisitos.textContent = 'Mín. 6 caracteres';
+        else if (valor.length < 6) requisitos.textContent = 'Faltan ' + (6 - valor.length) + ' caracteres';
+        else requisitos.textContent = puntaje === 4 ? 'Contraseña fuerte' : 'Sugerencia: usa mayúsculas, números y símbolos';
+    }
+}
+document.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'password') medirFortalezaPassword(e.target.value);
+});
+
 function validarUsuario(value, feedbackId) {
     const limpio = value.trim();
     if (limpio.length === 0) { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Obligatorio').show(); return false; }
@@ -1779,9 +1922,24 @@ function validarUsuario(value, feedbackId) {
 }
 
 function validarCI(value, feedbackId) {
-    const limpio = value.trim();
-    if (limpio.length !== 11 || !/^\d{11}$/.test(limpio)) { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Debe tener 11 dígitos').show(); return false; }
-    $(feedbackId).html('<i class="fas fa-check-circle text-success me-1"></i> Válido').show(); return true;
+    const ci = (value || '').replace(/[\s-]/g, '');
+    if (!/^\d{11}$/.test(ci)) { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Debe tener 11 dígitos').show(); return false; }
+    const año = ci.substr(0, 2);
+    const mes = ci.substr(2, 2);
+    const dia = ci.substr(4, 2);
+    if (mes < '01' || mes > '12') { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Mes inválido').show(); return false; }
+    const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    const maxDias = diasPorMes[parseInt(mes) - 1];
+    if (parseInt(mes) === 2 && parseInt(dia) === 29) {
+        const añoCompletoB = parseInt(año) < 30 ? 2000 + parseInt(año) : 1900 + parseInt(año);
+        const esBisiesto = (añoCompletoB % 4 === 0 && añoCompletoB % 100 !== 0) || (añoCompletoB % 400 === 0);
+        if (!esBisiesto) { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> 29/02 solo válido en años bisiestos').show(); return false; }
+    } else if (dia < '01' || parseInt(dia) > maxDias) {
+        $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Día inválido').show(); return false;
+    }
+    const genero = parseInt(ci.charAt(9)) % 2 === 0 ? 'Masculino' : 'Femenino';
+    const iconoGenero = genero === 'Masculino' ? '<i class="fas fa-mars me-1"></i>' : '<i class="fas fa-venus me-1"></i>';
+    $(feedbackId).html('<i class="fas fa-check-circle text-success me-1"></i> CI válido: ' + iconoGenero + ' ' + genero).show(); return true;
 }
 
 function validarEmail(value, feedbackId) {
@@ -1812,7 +1970,26 @@ $(document).ready(function() {
     $('#no_ci').on('blur', function() { validarCI(this.value, '#ciFeedbackUsuario'); });
     $('#email').on('blur', function() { validarEmail(this.value, '#emailFeedback'); });
     $('#telefono_contacto').on('blur', function() { validarTelefono(this.value, '#telefonoFeedback'); });
-    $('#password').on('blur', function() { validarPassword(this.value, '#passHelp'); });
+    $('#password').on('blur', function() {
+        if (this.value.length === 0) {
+            const ph = document.getElementById('passHelp');
+            if (ph) { ph.textContent = 'Dejar en blanco para mantener la actual'; ph.style.display = 'block'; }
+            return;
+        }
+        validarPassword(this.value, '#passHelp');
+    });
+
+    $('#password, #confirm_password').on('input', function() {
+        const p = document.getElementById('password').value;
+        const c = document.getElementById('confirm_password').value;
+        if (c.length === 0) { $('#confirmPasswordFeedback').html('').hide(); return; }
+        if (c !== p) { $('#confirmPasswordFeedback').html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Las contraseñas no coinciden').show(); }
+        else { $('#confirmPasswordFeedback').html('<i class="fas fa-check-circle text-success me-1"></i> Coinciden').show(); }
+    });
+
+    $('#modalUsuario').on('shown.bs.modal', function() {
+        setTimeout(function() { $('#usuario').trigger('focus'); }, 150);
+    });
 
     // Chevron del select: arriba mientras el dropdown está abierto, abajo al cerrar
     $(document)
@@ -1986,6 +2163,69 @@ function eliminarFotoUsuario() {
     });
 }
 
+var SISGESNOM_NOMBRE_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom')); ?>;
+
+function construirContenidoReset(nombre, usuario, password) {
+    const d = new Date();
+    const pad = (n) => (n < 10 ? '0' : '') + n;
+    const dia  = pad(d.getDate());
+    const mes  = pad(d.getMonth() + 1);
+    const anio = String(d.getFullYear());
+    const hh24 = d.getHours();
+    const hh12 = hh24 % 12 || 12;
+    const hh = pad(hh12);
+    const mm = pad(d.getMinutes());
+    const ss = pad(d.getSeconds());
+    const ampm = hh24 >= 12 ? 'pm' : 'am';
+    const marca = dia + mes + anio + '-' + hh + mm + ss + ampm;
+    const fecha = dia + '/' + mes + '/' + anio + ' ' + hh + ':' + mm + ':' + ss + ' ' + ampm;
+    const empresa = typeof SISGESNOM_NOMBRE_EMPRESA !== 'undefined' ? String(SISGESNOM_NOMBRE_EMPRESA) : '';
+    const texto =
+        'SISTEMA DE GESTION DE NOMINAS - SISGESNOM\r\n' +
+        'EMPRESA: ' + empresa + '\r\n' +
+        'CONTRASENA RESETEADA\r\n' +
+        '\r\n' +
+        '========================================================\r\n' +
+        'Nombre: ' + nombre + '\r\n' +
+        'Usuario: ' + usuario + '\r\n' +
+        'Nueva contraseña: ' + password + '\r\n' +
+        'Fecha de reseteo: ' + fecha + '\r\n' +
+        '========================================================\r\n' +
+        'Guarde este archivo en un lugar seguro.\r\n' +
+        '\r\n' +
+        'Equipo de SisGesNom®\r\n';
+    return { texto: texto, marca: marca };
+}
+
+function descargarPasswordReset(nombre, usuario, password) {
+    const r = construirContenidoReset(nombre, usuario, password);
+    const sane = String(nombre).replace(/[<>:"/\\|?*\u0000-\u001F]/g, '').replace(/\s+/g, ' ').trim();
+    const filename = 'Reset_contrasena_' + sane + '_' + r.marca + '.txt';
+    const blob = new Blob([r.texto], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function imprimirPasswordReset(nombre, usuario, password) {
+    const r = construirContenidoReset(nombre, usuario, password);
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const w = window.open('', '_blank', 'width=560,height=500,scrollbars=yes');
+    if (!w) return;
+    w.document.write(
+        '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">' +
+        '<title>Contraseña reseteada - SisGesNom</title>' +
+        '<style>body{font-family:"Cascadia Code",Consolas,monospace;margin:2rem;color:#111;}pre{white-space:pre;font-family:inherit;font-size:.9rem;}</style>' +
+        '</head><body onload="window.print()"><pre>' + esc(r.texto) + '</pre></body></html>'
+    );
+    w.document.close();
+}
+
 function resetPasswordUsuario(id, nombre) {
     Swal.fire({
         title: '<i class="fas fa-rotate-left text-primary me-2"></i> Resetear contraseña',
@@ -1999,11 +2239,22 @@ function resetPasswordUsuario(id, nombre) {
         color: '#fff'
     }).then((result) => {
         if (!result.isConfirmed) return;
+        Swal.fire({
+            title: '<i class="fas fa-spinner fa-spin me-2"></i> Restableciendo Contraseña...',
+            text: 'Espere un momento, por favor',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: function () { Swal.showLoading(); },
+            background: 'var(--panel)',
+            color: 'var(--txt)'
+        });
         const formData = new FormData();
         formData.append('id', id);
         fetch('../ajax/reset_password_usuario.php', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
+            Swal.close();
             if (data.success) {
                 let htmlInfo = '';
                 if (data.correo === 'enviado') {
@@ -2017,16 +2268,43 @@ function resetPasswordUsuario(id, nombre) {
                     icon: 'success',
                     title: '<i class="fas fa-check-circle me-2"></i> Contraseña reseteada',
                     html: 'Nueva contraseña de <strong>' + nombre + '</strong>:<br><code style="font-size:1.2rem; background:rgba(255,255,255,.1); padding:.25rem .6rem; border-radius:.4rem; display:inline-block; margin-top:.5rem;">' + data.nueva_password + '</code><br><small style="display:block; margin-top:.5rem; color:#94a3b8;"><i class="fas fa-info-circle me-1"></i> Copie y guarde esta contraseña ahora.</small>' + htmlInfo,
+                    showCancelButton: false,
+                    showConfirmButton: true,
                     confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
                     confirmButtonColor: '#10b981',
                     background: 'var(--panel)',
-                    color: 'var(--txt)'
+                    color: 'var(--txt)',
+					allowOutsideClick: false,
+                    didRender: function () {
+                        const actions = document.querySelector('.swal2-actions');
+                        if (!actions) return;
+                        const crearBoton = function (id, icono, texto, bg, borde, color) {
+                            const b = document.createElement('button');
+                            b.type = 'button';
+                            b.id = id;
+                            b.innerHTML = icono + ' ' + texto;
+                            b.className = 'swal2-styled';
+                            b.style.cssText = 'border:1px solid ' + borde + ';background-color:' + bg + ';color:' + color + ';font-weight:500;padding:.625em 1.1em;font-size:1.0625em;border-radius:.25em;';
+                            const confirmBtn = actions.querySelector('.swal2-confirm');
+                            if (confirmBtn) { actions.insertBefore(b, confirmBtn); } else { actions.appendChild(b); }
+                            return b;
+                        };
+                        const btnExp = crearBoton('btnExportarReset', '<i class="fas fa-download"></i>', 'Exportar', 'rgba(245,158,11,.15)', 'rgba(245,158,11,.55)', '#fbbf24');
+                        btnExp.addEventListener('click', function () {
+                            descargarPasswordReset(data.nombre || nombre, data.usuario || '', data.nueva_password);
+                        });
+                        const btnImp = crearBoton('btnImprimirReset', '<i class="fas fa-print"></i>', 'Imprimir', 'rgba(96,165,250,.15)', 'rgba(96,165,250,.5)', '#60a5fa');
+                        btnImp.addEventListener('click', function () {
+                            imprimirPasswordReset(data.nombre || nombre, data.usuario || '', data.nueva_password);
+                        });
+                    }
                 });
             } else {
                 Swal.fire({ icon: 'error', title: '<i class="fas fa-exclamation-circle me-2"></i> Error', text: data.message, confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido', background: 'var(--panel)', color: 'var(--txt)' });
             }
         })
         .catch(() => {
+            Swal.close();
             Swal.fire({ icon: 'error', title: '<i class="fas fa-wifi me-2"></i> Error', text: 'Error de conexión', background: 'var(--panel)', color: 'var(--txt)' });
         });
     });
@@ -2052,6 +2330,11 @@ function editarUsuario(id) {
 
         document.getElementById('usuario').value = u.usuario || '';
         document.getElementById('password').value = '';
+        document.getElementById('confirm_password').value = '';
+        const confirmPassFeedbackEdit = document.getElementById('confirmPasswordFeedback');
+        if (confirmPassFeedbackEdit) confirmPassFeedbackEdit.style.display = 'none';
+        const confirmPassFieldEdit = document.getElementById('confirmPasswordField');
+        if (confirmPassFieldEdit) confirmPassFieldEdit.style.display = '';
         document.getElementById('nombre').value = u.nombre || '';
 
         const apellidos = (u.apellidos || '').split(' ');
@@ -2083,7 +2366,7 @@ function editarUsuario(id) {
             activoChk.removeAttribute('title');
         }
 
-        $('#usuarioFeedback, #nombreFeedback, #apellido1Feedback, #apellido2Feedback, #ciFeedbackUsuario, #emailFeedback, #telefonoFeedback, #passHelp').html('').hide();
+        $('#usuarioFeedback, #nombreFeedback, #apellido1Feedback, #apellido2Feedback, #ciFeedbackUsuario, #emailFeedback, #telefonoFeedback').html('').hide();
 
         const title = document.getElementById('modalUsuarioTitle');
         const subtitle = document.getElementById('modalUsuarioSubtitle');
@@ -2101,11 +2384,17 @@ function editarUsuario(id) {
         if (btnText) btnText.textContent = 'Guardar Cambios';
 
         const passHelp = document.getElementById('passHelp');
-        if (passHelp) passHelp.textContent = 'Dejar en blanco para mantener la contraseña actual';
+        if (passHelp) { passHelp.textContent = 'Dejar en blanco para mantener la actual'; passHelp.style.display = 'block'; }
+        const rpFuerzaRequisitos = document.getElementById('rpFuerzaRequisitos');
+        if (rpFuerzaRequisitos) rpFuerzaRequisitos.textContent = 'Mín. 6 caracteres';
         const toggleBtn = document.getElementById('togglePasswordBtn');
         if (toggleBtn) toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+        const toggleConfirmBtn = document.getElementById('togglePasswordConfirmBtn');
+        if (toggleConfirmBtn) toggleConfirmBtn.innerHTML = '<i class="fas fa-eye"></i>';
         const pass = document.getElementById('password');
         if (pass) pass.type = 'password';
+        const confirmPass = document.getElementById('confirm_password');
+        if (confirmPass) confirmPass.type = 'password';
 
         const headerImg = document.getElementById('headerAvatarImg');
         const headerIniciales = document.getElementById('headerAvatarIniciales');
@@ -2162,10 +2451,18 @@ if (formUsuarioEl) formUsuarioEl.addEventListener('submit', function(e) {
     const passwordVal = document.getElementById('password').value;
     const okPassword = passwordVal ? validarPassword(passwordVal, '#passHelp') : true;
 
-    const rolVal = document.getElementById('rol_id').value;
-    if (!rolVal) { Swal.fire({ icon: 'warning', title: '<i class="fas fa-exclamation-triangle me-2" style="color: #f59e0b;"></i> Seleccione un rol', text: 'Debe seleccionar el rol del usuario', background: 'var(--panel)', color: 'var(--txt)' }); return; }
+    let okConfirmPass = true;
+    if (passwordVal) {
+        const confirmPassVal = document.getElementById('confirm_password').value;
+        if (!confirmPassVal) { $('#confirmPasswordFeedback').html('<i class="fas fa-exclamation-circle me-1"></i> Confirmación obligatoria').show(); okConfirmPass = false; }
+        else if (confirmPassVal !== passwordVal) { $('#confirmPasswordFeedback').html('<i class="fas fa-exclamation-circle me-1"></i> Las contraseñas no coinciden').show(); okConfirmPass = false; }
+        else { $('#confirmPasswordFeedback').html('').hide(); }
+    }
 
-    if (!okUsuario || !okNombre || !okAp1 || !okAp2 || !okCI || !okEmail || !okTel || !okPassword) {
+    const rolVal = document.getElementById('rol_id').value;
+    if (!rolVal) { Swal.fire({ icon: 'warning', title: '<i class="fas fa-exclamation-triangle me-2" style="color: #f59e0b;"></i> Seleccione un rol', text: 'Debe seleccionar el rol del usuario', confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido', background: 'var(--panel)', color: 'var(--txt)' }); return; }
+
+    if (!okUsuario || !okNombre || !okAp1 || !okAp2 || !okCI || !okEmail || !okTel || !okPassword || !okConfirmPass) {
         Swal.fire({ icon: 'error', title: '<i class="fas fa-exclamation-circle me-2"></i> Campos inválidos', text: 'Revise los campos marcados en rojo', background: 'var(--panel)', color: 'var(--txt)' });
         return;
     }
@@ -2206,11 +2503,12 @@ if (formUsuarioEl) formUsuarioEl.addEventListener('submit', function(e) {
 });
 </script>
 
-<?php if ($es_propio): ?>
 <script>
 (function() {
     const form = document.getElementById('formCambiarPassword');
     if (!form) return;
+    const esPropio = <?php echo $es_propio ? 'true' : 'false'; ?>;
+    const passwordTargetId = <?php echo (int)$id; ?>;
 
     // ===== Medidor de fortaleza de contraseña =====
     const passNuevaInput = document.getElementById('passNueva');
@@ -2273,6 +2571,19 @@ if (formUsuarioEl) formUsuarioEl.addEventListener('submit', function(e) {
         });
     }
 
+    const modalCambiarPass = document.getElementById('modalCambiarPassword');
+    if (modalCambiarPass) {
+        modalCambiarPass.addEventListener('show.bs.modal', function() {
+            form.reset();
+            actualizarMedidor('');
+            const fb = document.getElementById('passFeedback');
+            if (fb) {
+                fb.classList.add('d-none');
+                fb.textContent = '';
+            }
+        });
+    }
+
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const feedback = document.getElementById('passFeedback');
@@ -2294,16 +2605,35 @@ if (formUsuarioEl) formUsuarioEl.addEventListener('submit', function(e) {
         const btn = document.getElementById('btnGuardarPass');
         btn.disabled = true;
 
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '<i class="fas fa-spinner fa-spin me-2"></i> Cambiando Contraseña...',
+                text: 'Espere un momento, por favor',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: function () { Swal.showLoading(); },
+                background: 'var(--panel)',
+                color: 'var(--txt)'
+            });
+        }
+
+        let datos = 'user_id=' + encodeURIComponent(passwordTargetId) +
+                    '&password_nueva=' + encodeURIComponent(passNueva) +
+                    '&password_confirm=' + encodeURIComponent(passConfirmar);
+        if (esPropio) {
+            datos += '&password_actual=' + encodeURIComponent(document.getElementById('passActual').value);
+        }
+
         fetch('../ajax/cambiar_password.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'password_actual=' + encodeURIComponent(document.getElementById('passActual').value) +
-                  '&password_nueva=' + encodeURIComponent(passNueva) +
-                  '&password_confirm=' + encodeURIComponent(passConfirmar)
+            body: datos
         })
         .then(function(r) { return r.json(); })
         .then(function(res) {
             btn.disabled = false;
+            if (typeof Swal !== 'undefined') Swal.close();
             if (res.success) {
                 if (typeof Swal !== 'undefined') {
                     let notaCorreo = '';
@@ -2336,20 +2666,15 @@ if (formUsuarioEl) formUsuarioEl.addEventListener('submit', function(e) {
         })
         .catch(function() {
             btn.disabled = false;
+            if (typeof Swal !== 'undefined') Swal.close();
             feedback.textContent = 'Error de conexión. Intente de nuevo.';
             feedback.classList.remove('d-none');
         });
     });
 
-    // Si se llegó con ?cambiar_pass=1, abrir el modal automáticamente
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('cambiar_pass') === '1') {
-        const modalEl = document.getElementById('modalCambiarPassword');
-        if (modalEl && window.bootstrap) bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    }
+    // Un rol Admin puede cambiar la contraseña también desde el perfil de otros usuarios
 })();
 </script>
-<?php endif; ?>
 
 <?php if ($cumpleanios_usuario_hoy): ?>
 <script>

@@ -618,7 +618,7 @@ $centros_costo_data = [];
 $centros_labels = [];
 $centros_salarios = [];
 $centros_empleados = [];
-$centros_colores = ['#3b82f6', '#fbbf24', 'var(--color-success-soft)', '#a78bfa', '#f87171', 'var(--color-success-soft)', '#f472b6', '#60a5fa', '#fb923c', '#22d3ee'];
+$centros_colores = ['#3b82f6', '#fbbf24', '#34d399', '#a78bfa', '#f87171', '#f472b6', '#60a5fa', '#fb923c', '#22d3ee', '#f59e0b'];
 $periodo_referencia = 'Sin datos';
 
 try {
@@ -701,18 +701,18 @@ try {
         SELECT 
             cc.id,
             cc.nombre,
-            COUNT(DISTINCT t.id) as total_empleados,
+            COUNT(DISTINCT n.trabajador_id) as total_empleados,
             COALESCE(SUM(n.total_salario_devengado), 0) as total_salario
         FROM centros_costo cc
-        LEFT JOIN trabajadores t ON t.centro_costo_id = cc.id AND t.activo = 1
+        LEFT JOIN trabajadores t ON t.centro_costo_id = cc.id
         LEFT JOIN nominas n ON n.trabajador_id = t.id 
             AND n.estado != 'borrador'
             AND MONTH(n.periodo_desde) = ?
             AND YEAR(n.periodo_desde) = ?
         WHERE cc.activo = 1
         GROUP BY cc.id, cc.nombre
+        HAVING COUNT(DISTINCT n.trabajador_id) > 0
         ORDER BY total_salario DESC
-        LIMIT 10
     ");
     
     $centros_stmt->execute([$periodo_ref_mes, $periodo_ref_anio]);
@@ -723,39 +723,20 @@ try {
     // ============================================
     $sin_centro_stmt = $pdo->prepare("
         SELECT 
-            COUNT(DISTINCT t.id) as total_empleados,
+            COUNT(DISTINCT n.trabajador_id) as total_empleados,
             COALESCE(SUM(n.total_salario_devengado), 0) as total_salario
         FROM trabajadores t
-        LEFT JOIN nominas n ON n.trabajador_id = t.id 
+        JOIN nominas n ON n.trabajador_id = t.id 
             AND n.estado != 'borrador'
             AND MONTH(n.periodo_desde) = ?
             AND YEAR(n.periodo_desde) = ?
-        WHERE t.activo = 1 
-            AND (t.centro_costo_id IS NULL OR t.centro_costo_id = 0)
+        WHERE (t.centro_costo_id IS NULL OR t.centro_costo_id = 0)
     ");
     $sin_centro_stmt->execute([$periodo_ref_mes, $periodo_ref_anio]);
     $sin_centro = $sin_centro_stmt->fetch();
     
     $sin_centro_empleados = intval($sin_centro['total_empleados']);
     $sin_centro_salario = floatval($sin_centro['total_salario']);
-    
-    // ============================================
-    // EMPLEADOS SIN NÓMINA EN EL MES DE REFERENCIA
-    // ============================================
-    $sin_nomina_stmt = $pdo->prepare("
-        SELECT COUNT(DISTINCT t.id) as total_empleados
-        FROM trabajadores t
-        WHERE t.activo = 1 
-        AND t.id NOT IN (
-            SELECT DISTINCT trabajador_id 
-            FROM nominas 
-            WHERE estado != 'borrador'
-            AND MONTH(periodo_desde) = ?
-            AND YEAR(periodo_desde) = ?
-        )
-    ");
-    $sin_nomina_stmt->execute([$periodo_ref_mes, $periodo_ref_anio]);
-    $sin_nomina_empleados = intval($sin_nomina_stmt->fetchColumn());
     
     // ============================================
     // PREPARAR ARRAYS PARA EL GRÁFICO
@@ -784,15 +765,6 @@ try {
         $total_salario_cc += $sin_centro_salario;
     }
     
-    // Agregar empleados sin nómina en el mes
-    if ($sin_nomina_empleados > 0) {
-        $centros_labels[] = 'Sin Nómina';
-        $centros_salarios[] = 0;
-        $centros_empleados[] = $sin_nomina_empleados;
-        $centros_colores[] = '#ef4444';
-        $total_empleados_cc += $sin_nomina_empleados;
-    }
-    
 } catch (PDOException $e) {
     error_log("Error en consulta centros costo: " . $e->getMessage());
     $centros_costo_data = [];
@@ -804,7 +776,6 @@ try {
     $periodo_referencia = 'Sin datos';
     $sin_centro_empleados = 0;
     $sin_centro_salario = 0;
-    $sin_nomina_empleados = 0;
 }
 $current_page = basename($_SERVER['PHP_SELF']);
 
@@ -1382,18 +1353,22 @@ canvas[id$="Chart"] {
     }
 }
 
-/* ---------- ACCIONES RÁPIDAS: 2 COLUMNAS EN MÓVIL ---------- */
+/* ---------- ACCIONES RÁPIDAS: UNA SOLA FILA EN MÓVIL ---------- */
 @media (max-width: 768px) {
+    #collapseAccionesRapidas .row {
+        flex-wrap: nowrap;
+    }
     #collapseAccionesRapidas .row > [class*="col-"] {
-        flex: 1 1 calc(50% - 0.5rem);
-        max-width: calc(50% - 0.5rem);
+        flex: 1 1 0;
+        max-width: none;
+        min-width: 0;
     }
     #collapseAccionesRapidas .btn-win {
-        font-size: 0.75rem;
-        padding: 0.5rem 0.5rem;
+        font-size: 0.7rem;
+        padding: 0.5rem 0.25rem;
     }
     #collapseAccionesRapidas .btn-win i {
-        font-size: 1.3rem !important;
+        font-size: 1.15rem !important;
     }
 }
 
@@ -1503,6 +1478,15 @@ canvas[id$="Chart"] {
         flex-direction: column;
         align-items: stretch !important;
         gap: 0.5rem !important;
+    }
+    .glass-card > .p-3.d-flex.justify-content-between {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+    .glass-card > .p-3.d-flex.justify-content-between > div:last-child {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.375rem;
     }
     .glass-card .p-3 > .d-flex > div:last-child {
         width: 100%;
@@ -1658,9 +1642,77 @@ body.solo-lectura .btn-win-success {
                 <h1><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?> - Dashboard</h1>
                 <p><i class="fas fa-chart-line me-1"></i> Panel de control y estadísticas del sistema</p>
             </div>
+            <select id="navegadorCards" class="form-select form-select-sm ms-auto" style="width:auto; min-width:9.5rem; max-width:13rem; background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); border-radius: 0.5rem; padding-top:0.15rem; padding-bottom:0.15rem;" title="Ir directamente a una sección del dashboard" data-tooltip="Ir a una sección" data-tooltip-theme="secondary">
+                <option value="">Ir a sección…</option>
+                <option value="collapseResumenNominas">Resumen de Nóminas</option>
+                <option value="collapseCumpleanios">Cumpleaños Empleados</option>
+                <option value="collapseAreaTrabajo">Distrib. Trabajadores por Área</option>
+                <option value="collapseEvolucionMes">Evolución de Nóminas por Mes</option>
+                <option value="collapseDistribucionTipo">Distribución por Tipo</option>
+                <option value="collapseRegistroMontos">Registro Histórico de Montos</option>
+                <option value="collapseCentrosCosto">Distribución por Centros de Costo</option>
+                <option value="collapseCierresMeses">Visor de Cuadres por Meses</option>
+                <option value="collapseUltimasNominas">Últimas Nóminas Generadas</option>
+                <option value="collapseAccionesRapidas">Acciones Rápidas</option>
+            </select>
         </div>
         <?php include 'includes/user_menu.php'; ?>
     </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var selCards = document.getElementById('navegadorCards');
+        if (!selCards) return;
+        var enCola = false;
+        function marcarSeccionActual() {
+            if (enCola) return;
+            enCola = true;
+            requestAnimationFrame(function () {
+                enCola = false;
+                var linea = window.scrollY + 90;
+                var actual = null;
+                var ultima = null;
+                document.querySelectorAll('.card-collapse-title[data-bs-target]').forEach(function (btn) {
+                    var id = (btn.getAttribute('data-bs-target') || '').replace('#', '');
+                    if (!selCards.querySelector('option[value="' + id + '"]')) return;
+                    var top = btn.closest('.glass-card').getBoundingClientRect().top + window.scrollY;
+                    if (!ultima || top > ultima.top) ultima = { id: id, top: top };
+                    if (top <= linea + 4 && (!actual || top > actual.top)) actual = { id: id, top: top };
+                });
+                if (document.documentElement.scrollHeight - window.scrollY - window.innerHeight < 120 && ultima) {
+                    actual = ultima;
+                }
+                if (actual) {
+                    if (selCards.value !== actual.id) selCards.value = actual.id;
+                } else if (selCards.value) {
+                    selCards.value = '';
+                }
+            });
+        }
+
+        document.addEventListener('scroll', marcarSeccionActual, { passive: true });
+        window.addEventListener('resize', marcarSeccionActual);
+        marcarSeccionActual();
+
+        selCards.addEventListener('change', function () {
+            var id = this.value;
+            if (!id) return;
+            this.value = '';
+            var btn = document.querySelector('.card-collapse-title[data-bs-target="#' + id + '"]');
+            if (!btn) return;
+            var card = btn.closest('.glass-card');
+            if (!card) return;
+            var contenido = document.getElementById(id);
+            if (contenido && !contenido.classList.contains('show')) {
+                bootstrap.Collapse.getOrCreateInstance(contenido).show();
+            }
+            var top = card.getBoundingClientRect().top + window.scrollY - 70;
+            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            card.style.boxShadow = '0 0 0 0.125rem var(--blue)';
+            setTimeout(function () { card.style.boxShadow = ''; }, 1800);
+        });
+    });
+    </script>
     
     <!-- ALERTAS -->
     <?php if (!empty($alertas)): ?>
@@ -1800,7 +1852,7 @@ body.solo-lectura .btn-win-success {
     <div class="col-12">
         <div class="glass-card">
             <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseResumenNominas" aria-expanded="true" aria-controls="collapseResumenNominas">
+                <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseResumenNominas" aria-expanded="false" aria-controls="collapseResumenNominas">
                     <i class="fas fa-chevron-down collapse-chevron"></i>
                     <i class="fas fa-clipboard-list me-2"></i>Resumen de Nóminas
                 </h6>
@@ -1926,7 +1978,7 @@ body.solo-lectura .btn-win-success {
                                 <tr>
                                     <th style="color: var(--muted);">Tipo</th>
                                     <th class="text-end" style="color: var(--muted);">Nóminas</th>
-                                    <th class="text-end" style="color: var(--muted);">Trabajadores</th>
+                                    <th class="text-center" style="color: var(--muted);">Trabajadores</th>
                                     <th class="text-end" style="color: var(--muted);">Registros</th>
                                     <th class="text-end" style="color: var(--muted);">Devengado</th>
                                     <th class="text-end" style="color: var(--muted);">Contribución</th>
@@ -1945,7 +1997,7 @@ body.solo-lectura .btn-win-success {
                                 <tr>
                                     <td><span class="badge bg-<?php echo $color; ?>"><?php echo htmlspecialchars($tipo); ?></span></td>
                                     <td class="text-end"><?php echo number_format($item['cantidad_nominas']); ?></td>
-                                    <td class="text-end"><?php echo number_format($item['cantidad_trabajadores']); ?></td>
+                                    <td class="text-center"><?php echo number_format($item['cantidad_trabajadores']); ?></td>
                                     <td class="text-end"><?php echo number_format($item['cantidad_registros']); ?></td>
                                     <td class="text-end text-success"><?php echo formatearMoneda($item['sum_devengado']); ?></td>
                                     <td class="text-end" style="color: var(--blue);"><?php echo formatearMoneda($item['sum_contribucion']); ?></td>
@@ -1959,7 +2011,7 @@ body.solo-lectura .btn-win-success {
                                 <tr style="border-top: 0.125rem solid var(--border-2);">
                                     <td style="font-weight: bold; color: var(--txt);">TOTAL GENERAL</td>
                                     <td class="text-end fw-bold"><?php echo number_format($totales_generales['nominas']); ?></td>
-                                    <td class="text-end fw-bold"><?php echo number_format($totales_generales['trabajadores']); ?></td>
+                                    <td class="text-center fw-bold"><?php echo number_format($totales_generales['trabajadores']); ?></td>
                                     <td class="text-end fw-bold"><?php echo number_format($totales_generales['registros']); ?></td>
                                     <td class="text-end fw-bold text-success"><?php echo formatearMoneda($totales_generales['devengado']); ?></td>
                                     <td class="text-end fw-bold" style="color: var(--blue);"><?php echo formatearMoneda($totales_generales['contribucion']); ?></td>
@@ -2006,7 +2058,7 @@ body.solo-lectura .btn-win-success {
                                 <tr>
                                     <th style="color: var(--muted);">Tipo</th>
                                     <th class="text-end" style="color: var(--muted);">Nóminas</th>
-                                    <th class="text-end" style="color: var(--muted);">Trabajadores</th>
+                                    <th class="text-center" style="color: var(--muted);">Trabajadores</th>
                                     <th class="text-end" style="color: var(--muted);">Registros</th>
                                     <th class="text-end" style="color: var(--muted);">Devengado</th>
                                     <th class="text-end" style="color: var(--muted);">Contribución</th>
@@ -2031,7 +2083,7 @@ body.solo-lectura .btn-win-success {
 										</a>
 									</td>
 									<td class="text-end"><?php echo number_format($item['cantidad_nominas']); ?></td>
-									<td class="text-end"><?php echo number_format($item['cantidad_trabajadores']); ?></td>
+									<td class="text-center"><?php echo number_format($item['cantidad_trabajadores']); ?></td>
 									<td class="text-end"><?php echo number_format($item['cantidad_registros']); ?></td>
                                     <td class="text-end text-success"><?php echo formatearMoneda($item['sum_devengado']); ?></td>
                                     <td class="text-end" style="color: var(--blue);"><?php echo formatearMoneda($item['sum_contribucion']); ?></td>
@@ -2045,7 +2097,7 @@ body.solo-lectura .btn-win-success {
                                 <tr style="border-top: 0.125rem solid var(--border-2);">
                                     <td style="font-weight: bold; color: var(--txt);">TOTAL MES</td>
                                     <td class="text-end fw-bold"><?php echo number_format($totales_generales_mes['nominas']); ?></td>
-                                    <td class="text-end fw-bold"><?php echo number_format($totales_generales_mes['trabajadores']); ?></td>
+                                    <td class="text-center fw-bold"><?php echo number_format($totales_generales_mes['trabajadores']); ?></td>
                                     <td class="text-end fw-bold"><?php echo number_format($totales_generales_mes['registros']); ?></td>
                                     <td class="text-end fw-bold text-success"><?php echo formatearMoneda($totales_generales_mes['devengado']); ?></td>
                                     <td class="text-end fw-bold" style="color: var(--blue);"><?php echo formatearMoneda($totales_generales_mes['contribucion']); ?></td>
@@ -2069,7 +2121,7 @@ body.solo-lectura .btn-win-success {
     <div class="col-6">
         <div class="glass-card">
             <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseCumpleanios" aria-expanded="true" aria-controls="collapseCumpleanios">
+                <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseCumpleanios" aria-expanded="false" aria-controls="collapseCumpleanios">
                     <i class="fas fa-chevron-down collapse-chevron"></i>
                     <i class="fas fa-birthday-cake fa-fw me-2" style="font-size:1.05rem;"></i>Cumpleaños Empleados
                 </h6>
@@ -2109,15 +2161,15 @@ body.solo-lectura .btn-win-success {
     <div class="col-6">
         <div class="glass-card" style="height:100%;">
             <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseAreaTrabajo" aria-expanded="true" aria-controls="collapseAreaTrabajo">
+                <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseAreaTrabajo" aria-expanded="false" aria-controls="collapseAreaTrabajo">
                     <i class="fas fa-chevron-down collapse-chevron"></i>
-                    <i class="fas fa-users me-2"></i>Distrib. por Área de Trabajo
+                    <i class="fas fa-users me-2"></i>Distrib. Trabajadores por Área de Trabajo
                 </h6>
                 <div>
                     <button class="btn-win btn-win-sm" onclick="exportarAreaChart()" title="Exportar gráfico a PNG" data-tooltip="Exportar gráfico a PNG" data-tooltip-theme="info">
                         <i class="fas fa-download me-1"></i> PNG
                     </button>
-                    <span class="badge-win ms-2"><i class="fas fa-user me-1"></i> <?php echo (int)$total_empleados; ?> empleados</span>
+                    <span class="badge-win ms-2"><i class="fas fa-user me-1"></i> <?php echo (int)$total_empleados; ?> </span>
                 </div>
             </div>
             <div class="p-3 collapse" id="collapseAreaTrabajo">
@@ -2145,7 +2197,7 @@ body.solo-lectura .btn-win-success {
         <div class="col-lg-8">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseEvolucionMes" aria-expanded="true" aria-controls="collapseEvolucionMes">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseEvolucionMes" aria-expanded="false" aria-controls="collapseEvolucionMes">
                         <i class="fas fa-chevron-down collapse-chevron"></i>
                         <i class="fas fa-chart-bar me-2"></i>Evolución de Nóminas por Mes
                     </h6>
@@ -2166,7 +2218,7 @@ body.solo-lectura .btn-win-success {
         <div class="col-lg-4">
             <div class="glass-card" style="height:100%;">
                 <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseDistribucionTipo" aria-expanded="true" aria-controls="collapseDistribucionTipo">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseDistribucionTipo" aria-expanded="false" aria-controls="collapseDistribucionTipo">
                         <i class="fas fa-chevron-down collapse-chevron"></i>
                         <i class="fas fa-chart-pie me-2"></i>Distribución por Tipo
                     </h6>
@@ -2195,7 +2247,7 @@ body.solo-lectura .btn-win-success {
         <div class="col-12">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseRegistroMontos" aria-expanded="true" aria-controls="collapseRegistroMontos">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseRegistroMontos" aria-expanded="false" aria-controls="collapseRegistroMontos">
                         <i class="fas fa-chevron-down collapse-chevron"></i>
                         <i class="fas fa-coins me-2"></i>Registro Histórico de Montos para Redistribución
                     </h6>
@@ -2234,6 +2286,10 @@ body.solo-lectura .btn-win-success {
                                     <canvas id="distribucionChart"></canvas>
                                 </div>
                             </div>
+                        </div>
+                        <div class="text-center mb-4">
+                            <span style="color: var(--muted);">Redistribución Total (<?php echo (int)$anio_seleccionado; ?>):</span>
+                            <span class="fw-bold" style="color: var(--color-success-soft); font-size:1.15rem;"><?php echo formatearMoneda($total_anual); ?></span>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-dark table-hover table-sm" style="color: var(--txt);">
@@ -2347,7 +2403,7 @@ body.solo-lectura .btn-win-success {
         <div class="glass-card">
             <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
                 <div>
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseCentrosCosto" aria-expanded="true" aria-controls="collapseCentrosCosto">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseCentrosCosto" aria-expanded="false" aria-controls="collapseCentrosCosto">
                         <i class="fas fa-chevron-down collapse-chevron"></i>
                         <i class="fas fa-building me-2"></i>Distribución por Centros de Costo
                     </h6>
@@ -2381,7 +2437,7 @@ body.solo-lectura .btn-win-success {
                     <span class="badge-win ms-2"><i class="fas fa-chart-bar me-1"></i> Salario vs Empleados</span>
                 </div>
             </div>
-            <div class="p-3 collapse show" id="collapseCentrosCosto">
+            <div class="p-3 collapse" id="collapseCentrosCosto">
                 <div class="row">
                     <div class="col-lg-8">
                         <div style="height:21.875rem; position: relative;">
@@ -2394,22 +2450,22 @@ body.solo-lectura .btn-win-success {
         <thead>
             <tr>
                 <th style="color: var(--muted);">Centro de Costo</th>
-                <th class="text-end" style="color: var(--muted);">Empleados</th>
+                <th class="text-center" style="color: var(--muted);">Empleados</th>
                 <th class="text-end" style="color: var(--muted);">Total Salario</th>
             </tr>
         </thead>
         <tbody>
             <?php if (!empty($centros_costo_data) || $sin_centro_empleados > 0): 
                 // Mostrar centros de costo
-                foreach ($centros_costo_data as $item):
-                    $color = $centros_colores[array_search($item, $centros_costo_data) % count($centros_colores)];
+                foreach ($centros_costo_data as $cc_index => $item):
+                    $color = $centros_colores[$cc_index % count($centros_colores)];
             ?>
             <tr>
                 <td style="color: var(--txt);">
-                    <span class="badge" style="background: <?php echo $color; ?>; width:0.625rem; height:0.625rem; display: inline-block; border-radius: 50%; margin-right:0.5rem;"></span>
+                    <span class="badge" style="background: <?php echo $color; ?> !important; width:0.625rem; height:0.625rem; display: inline-block; border-radius: 50%; margin-right:0.5rem; padding:0;"></span>
                     <?php echo htmlspecialchars($item['nombre']); ?>
                 </td>
-                <td class="text-end" style="color: var(--muted);"><?php echo number_format($item['total_empleados']); ?></td>
+                <td class="text-center" style="color: var(--muted);"><?php echo number_format($item['total_empleados']); ?></td>
                 <td class="text-end text-success fw-bold"><?php echo formatearMoneda($item['total_salario']); ?></td>
             </tr>
             <?php endforeach; ?>
@@ -2418,10 +2474,10 @@ body.solo-lectura .btn-win-success {
             <?php if ($sin_centro_empleados > 0): ?>
             <tr>
                 <td style="color: var(--muted);">
-                    <span class="badge" style="background: #64748b; width:0.625rem; height:0.625rem; display: inline-block; border-radius: 50%; margin-right:0.5rem;"></span>
+                    <span class="badge" style="background: #64748b !important; width:0.625rem; height:0.625rem; display: inline-block; border-radius: 50%; margin-right:0.5rem; padding:0;"></span>
                     Sin Asignar
                 </td>
-                <td class="text-end" style="color: var(--muted);"><?php echo number_format($sin_centro_empleados); ?></td>
+                <td class="text-center" style="color: var(--muted);"><?php echo number_format($sin_centro_empleados); ?></td>
                 <td class="text-end text-warning fw-bold"><?php echo formatearMoneda($sin_centro_salario); ?></td>
             </tr>
             <?php endif; ?>
@@ -2429,7 +2485,7 @@ body.solo-lectura .btn-win-success {
             <!-- TOTAL -->
             <tr style="border-top: 0.125rem solid var(--border-2);">
                 <td style="color: var(--txt); font-weight: bold;">TOTAL</td>
-                <td class="text-end" style="color: var(--txt); font-weight: bold;"><?php echo number_format($total_empleados_cc); ?></td>
+                <td class="text-center" style="color: var(--txt); font-weight: bold;"><?php echo number_format($total_empleados_cc); ?></td>
                 <td class="text-end text-success fw-bold"><?php echo formatearMoneda($total_salario_cc); ?></td>
             </tr>
             <?php else: ?>
@@ -2457,7 +2513,7 @@ body.solo-lectura .btn-win-success {
         <div class="col-12">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseCierresMeses" aria-expanded="false" aria-controls="collapseCierresMeses">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseCierresMeses" aria-expanded="false" aria-controls="collapseCierresMeses">
                         <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-calendar-check me-2" style="color: var(--color-success-soft, #34d399);"></i> Visor de Cuadres por Meses
                         <span class="badge ms-2" style="background: rgba(var(--color-success-rgb), 0.14); color: var(--color-success-soft, #34d399); border: 0.0625rem solid var(--color-success); font-size:0.65rem;"><?php echo $cierres_meses_total; ?> mes<?php echo $cierres_meses_total === 1 ? '' : 'es'; ?></span>
                     </h6>
@@ -2551,7 +2607,7 @@ body.solo-lectura .btn-win-success {
         <div class="col-12">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseUltimasNominas" aria-expanded="true" aria-controls="collapseUltimasNominas">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseUltimasNominas" aria-expanded="false" aria-controls="collapseUltimasNominas">
                         <i class="fas fa-chevron-down collapse-chevron"></i>
                         <i class="fas fa-history me-2"></i>Últimas Nóminas Generadas
                     </h6>
@@ -2604,7 +2660,7 @@ body.solo-lectura .btn-win-success {
                                     <th style="display: none;">Orden</th>
                                     <th>Período</th>
                                     <th>Tipo</th>
-                                    <th>Empleados</th>
+                                    <th class="text-center">Empleados</th>
                                     <th>Devengado</th>
                                     <th>Deducciones</th>
                                     <th>Neto</th>
@@ -2623,7 +2679,7 @@ body.solo-lectura .btn-win-success {
                                         <td style="display: none;"><?php echo $fecha_ordenable; ?></td>
                                         <td><strong><?php echo htmlspecialchars($nombre_mes); ?></strong></td>
                                         <td><span class="badge bg-info"><?php echo ucfirst($nomina['tipo_nomina'] ?? 'ordinaria'); ?></span></td>
-                                        <td><?php echo number_format($nomina['total_empleados']); ?></td>
+                                        <td class="text-center"><?php echo number_format($nomina['total_empleados']); ?></td>
                                         <td><?php echo formatearMoneda($nomina['total_devengado']); ?></td>
                                         <td class="text-danger"><?php echo formatearMoneda($deducciones_fila); ?></td>
                                         <td class="text-success fw-bold"><?php echo formatearMoneda($nomina['total_neto']); ?></td>
@@ -2683,31 +2739,38 @@ body.solo-lectura .btn-win-success {
         <div class="col-12">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseAccionesRapidas" aria-expanded="true" aria-controls="collapseAccionesRapidas">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseAccionesRapidas" aria-expanded="false" aria-controls="collapseAccionesRapidas">
                         <i class="fas fa-chevron-down collapse-chevron"></i>
                         <i class="fas fa-bolt me-2"></i>Acciones Rápidas
                     </h6>
                 </div>
                 <div class="p-3 collapse" id="collapseAccionesRapidas">
-                    <div class="row g-3">
-                        <div class="col-md-3 col-6">
-                            <a href="modules/empleados.php" class="btn-win w-100 text-center py-3">
+                    <div class="row g-3 flex-nowrap">
+                        <div class="col">
+                            <a href="modules/empleados.php" class="btn-win w-100 text-center py-3" title="Gestionar empleados" data-tooltip="Gestionar empleados" data-tooltip-theme="info">
                                 <i class="fas fa-user-plus fa-2x mb-2 d-block"></i> Empleados
                             </a>
                         </div>
-                        <div class="col-md-3 col-6">
-                            <a href="modules/nominas.php" class="btn-win w-100 text-center py-3">
+                        <div class="col">
+                            <a href="modules/nominas.php" class="btn-win w-100 text-center py-3" title="Generar nómina" data-tooltip="Generar nómina" data-tooltip-theme="success">
                                 <i class="fas fa-calculator fa-2x mb-2 d-block"></i> Generar Nómina
                             </a>
                         </div>
-                        <div class="col-md-3 col-6">
-                            <a href="modules/submayor_vacaciones.php" class="btn-win w-100 text-center py-3">
+                        <?php if (permiso_puede('bandecnom', 'ver')): ?>
+                        <div class="col">
+                            <a href="modules/bandecnom.php" class="btn-win w-100 text-center py-3" title="Exportar al Banco" data-tooltip="Exportar al Banco" data-tooltip-theme="primary">
+                                <i class="fas fa-university fa-2x mb-2 d-block"></i> Exportar Banco
+                            </a>
+                        </div>
+                        <?php endif; ?>
+                        <div class="col">
+                            <a href="modules/submayor_vacaciones.php" class="btn-win w-100 text-center py-3" title="Vacaciones de los trabajadores" data-tooltip="Vacaciones de los trabajadores" data-tooltip-theme="warning">
                                 <i class="fas fa-umbrella-beach fa-2x mb-2 d-block"></i> Vacaciones
                             </a>
                         </div>
                         <?php if (permiso_puede('configuracion', 'ver')): ?>
-                        <div class="col-md-3 col-6">
-                            <a href="modules/configuracion.php" class="btn-win w-100 text-center py-3">
+                        <div class="col">
+                            <a href="modules/configuracion.php" class="btn-win w-100 text-center py-3" title="Configuración del sistema" data-tooltip="Configuración del sistema" data-tooltip-theme="secondary">
                                 <i class="fas fa-cog fa-2x mb-2 d-block"></i> Configuración
                             </a>
                         </div>
@@ -4056,6 +4119,15 @@ function exportarTablaPDF() {
     // ============================================
     // CONSTRUIR HTML PARA EL PDF (TEXTO NEGRO)
     // ============================================
+    var cssExtra = `
+#pdfTbl, #pdfTbl * { color:#000000 !important; -webkit-text-fill-color:#000000 !important; line-height:1.4 !important; }
+#pdfTbl th, #pdfTbl th * { color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; }
+#pdfTbl tr:nth-child(even) td { background-color:#f5f5f5 !important; }
+#pdfTbl tfoot td { background-color:#e5e7eb !important; }
+#pdfTbl .text-success, #pdfTbl .text-success * { color:#16a34a !important; -webkit-text-fill-color:#16a34a !important; }
+#pdfTbl .text-danger, #pdfTbl .text-danger * { color:#dc2626 !important; -webkit-text-fill-color:#dc2626 !important; }
+#pdfTbl .text-center { text-align:center !important; }
+`;
     var htmlContent = `
     <html>
     <head>
@@ -4131,6 +4203,7 @@ function exportarTablaPDF() {
             .fw-bold {
                 font-weight: bold;
             }
+            ${cssExtra}
         </style>
     </head>
     <body>
@@ -4140,13 +4213,13 @@ function exportarTablaPDF() {
         <table>
             <thead>
                 <tr>
-                    <th>Período</th>
-                    <th>Tipo de Nómina</th>
+                    <th class="text-left">Período</th>
+                    <th class="text-left">Tipo de Nómina</th>
                     <th class="text-center">Empleados</th>
                     <th class="text-right">Total Devengado</th>
                     <th class="text-right">Total Deducciones</th>
                     <th class="text-right">Total Neto</th>
-                    <th class="text-center">Estado</th>
+                    <th class="text-left">Estado</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -4179,13 +4252,13 @@ function exportarTablaPDF() {
         
         htmlContent += `
             <tr>
-                <td>${periodo}</td>
-                <td>${tipo}</td>
+                <td class="text-left">${periodo}</td>
+                <td class="text-left">${tipo}</td>
                 <td class="text-center">${empleados}</td>
                 <td class="text-right">${devengadoStr}</td>
                 <td class="text-right text-danger">${deduccionesStr}</td>
                 <td class="text-right text-success fw-bold">${netoStr}</td>
-                <td class="text-center">${estado}</td>
+                <td class="text-left">${estado}</td>
             </tr>`;
     });
     
@@ -4198,7 +4271,7 @@ function exportarTablaPDF() {
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="2" class="text-right fw-bold">TOTALES GENERALES</td>
+                    <td colspan="2" class="text-left fw-bold">TOTALES GENERALES</td>
                     <td class="text-center fw-bold">${totalEmpleados}</td>
                     <td class="text-right fw-bold">${totalDevStr}</td>
                     <td class="text-right fw-bold">${totalDedStr}</td>
@@ -4222,6 +4295,7 @@ function exportarTablaPDF() {
     
     // Usar html2canvas con escala reducida para menor tamaño
     var tempDiv = document.createElement('div');
+    tempDiv.id = 'pdfTbl';
     tempDiv.innerHTML = htmlContent;
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-624.9375rem';
@@ -4239,7 +4313,12 @@ function exportarTablaPDF() {
         backgroundColor: '#ffffff',
         width: 1100,
         height: tempDiv.scrollHeight,
-        dpi: 150
+        dpi: 150,
+        onclone: function(clonedDoc) {
+            var st = clonedDoc.createElement('style');
+            st.textContent = cssExtra;
+            clonedDoc.head.appendChild(st);
+        }
     }).then(function(canvas) {
         var imgData = canvas.toDataURL('image/jpeg', 0.85);
         var imgWidth = 280;
@@ -4634,6 +4713,27 @@ function exportarDistribucionExcel() {
     worksheet.getColumn(6).width = 18;
     
     // ============================================
+    // FORMATO CONDICIONAL - BARRA DE DATOS (COLUMNA IMPORTE DE DISTRIBUCIÓN)
+    // ============================================
+    var primerDato = headerRow + 1;
+    var ultimoDato = headerRow + <?php echo count($montos_distrib); ?>;
+    if (ultimoDato >= primerDato) {
+        worksheet.addConditionalFormatting({
+            ref: 'B' + primerDato + ':B' + ultimoDato,
+            rules: [
+                {
+                    type: 'dataBar',
+                    cfvo: [
+                        { type: 'min' },
+                        { type: 'max' }
+                    ],
+                    color: { argb: 'FF5B9BD5' }
+                }
+            ]
+        });
+    }
+    
+    // ============================================
     // HOJA 2: RESUMEN ESTADÍSTICO
     // ============================================
     var sheet2 = workbook.addWorksheet('Resumen Estadístico', {
@@ -4726,6 +4826,20 @@ function exportarDistribucionPDF() {
     
     var total_anual = <?php echo $total_anual ?? 0; ?>;
     
+    var cssExtra2 = `
+#pdfTmp, #pdfTmp * { color:#000000 !important; -webkit-text-fill-color:#000000 !important; line-height:1.4 !important; }
+#pdfTmp th, #pdfTmp th * { color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; background-color:#1A56DB !important; }
+#pdfTmp tr:nth-child(even) td { background-color:#f5f5f5 !important; }
+#pdfTmp .titulo, #pdfTmp .anio { color:#1A56DB !important; -webkit-text-fill-color:#1A56DB !important; }
+#pdfTmp .subtitulo { color:#374151 !important; -webkit-text-fill-color:#374151 !important; }
+#pdfTmp .text-success, #pdfTmp .text-success * { color:#16a34a !important; -webkit-text-fill-color:#16a34a !important; }
+#pdfTmp .text-danger, #pdfTmp .text-danger * { color:#dc2626 !important; -webkit-text-fill-color:#dc2626 !important; }
+#pdfTmp .resumen-item .value { color:#1A56DB !important; -webkit-text-fill-color:#1A56DB !important; }
+#pdfTmp .text-center { text-align:center !important; }
+.barra-track { height:0.5rem; background:#dbeafe; border-radius:0.25rem; margin-top:0.25rem; width:100%; overflow:hidden; }
+.barra-fill { height:100%; background:linear-gradient(90deg,#1A56DB,#3b82f6); border-radius:0.25rem; }
+`;
+    
     // Construir HTML con todos los datos
     var htmlContent = `
     <html>
@@ -4748,10 +4862,11 @@ function exportarDistribucionPDF() {
             
             /* Estilos para el resumen */
             .resumen { margin-top:1.25rem; border-top: 0.125rem solid #1A56DB; padding-top:0.9375rem; }
-            .resumen-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:0.625rem; margin-top:0.625rem; }
-            .resumen-item { background: #f0f4ff; padding:0.625rem; border-radius: 0.5rem; text-align: center; }
+            .resumen-grid { display: flex; flex-wrap: wrap; gap:0.625rem; margin-top:0.625rem; }
+            .resumen-item { background: #f0f4ff; padding:0.625rem; border-radius: 0.5rem; text-align: center; flex: 1 1 20%; }
             .resumen-item .label { font-size:0.5625rem; color: #666; }
             .resumen-item .value { font-size:0.875rem; font-weight: bold; color: #1A56DB; }
+            ${cssExtra2}
         </style>
     </head>
     <body>
@@ -4763,12 +4878,12 @@ function exportarDistribucionPDF() {
         <table>
             <thead>
                 <tr>
-                    <th>Mes</th>
+                    <th class="text-left">Mes</th>
                     <th class="text-right">Importe de Distribución</th>
                     <th class="text-right">Variación</th>
                     <th class="text-right">% del Total</th>
-                    <th>Fecha Registro</th>
-                    <th>Hora Registro</th>
+                    <th class="text-center">Fecha Registro</th>
+                    <th class="text-center">Hora Registro</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -4778,6 +4893,7 @@ function exportarDistribucionPDF() {
     foreach ($montos_distrib as $item): 
         $importe = floatval($item['importe_dis']);
         $porcentaje = ($total_anual > 0) ? ($importe / $total_anual) * 100 : 0;
+        $ancho_barra = ($max_item['importe_dis'] > 0) ? round(($importe / $max_item['importe_dis']) * 100, 1) : 0;
         $timestamp = strtotime($item['fecha_registro']);
         $fecha = date('d/m/Y', $timestamp);
         $hora = date('h:i A', $timestamp);
@@ -4796,11 +4912,14 @@ function exportarDistribucionPDF() {
         htmlContent += `
             <tr>
                 <td class="text-left"><?php echo $mes; ?></td>
-                <td class="text-right"><?php echo number_format($importe, 2); ?></td>
+                <td class="text-right">
+                    <div><?php echo number_format($importe, 2); ?></div>
+                    <div class="barra-track"><div class="barra-fill" style="width:<?php echo $ancho_barra; ?>%"></div></div>
+                </td>
                 <td class="text-right <?php echo $variacion_class; ?>"><?php echo $variacion_str; ?></td>
                 <td class="text-right"><?php echo number_format($porcentaje, 1); ?>%</td>
-                <td class="text-left"><?php echo $fecha; ?></td>
-                <td class="text-left"><?php echo $hora; ?></td>
+                <td class="text-center"><?php echo $fecha; ?></td>
+                <td class="text-center"><?php echo $hora; ?></td>
             </tr>`;
     <?php endforeach; ?>
     
@@ -4808,7 +4927,7 @@ function exportarDistribucionPDF() {
             </tbody>
             <tfoot>
                 <tr>
-                    <th class="text-right fw-bold">TOTAL ANUAL</th>
+                    <th class="text-left fw-bold">TOTAL ANUAL</th>
                     <th class="text-right fw-bold"><?php echo number_format($total_anual, 2); ?></th>
                     <th class="text-right fw-bold"></th>
                     <th class="text-right fw-bold">100%</th>
@@ -4820,7 +4939,7 @@ function exportarDistribucionPDF() {
         
         <div class="resumen">
             <div style="font-size:0.875rem; font-weight: bold; color: #1A56DB; text-align: center; margin-bottom:0.625rem;">
-                📊 Resumen Estadístico
+                Resumen Estadístico
             </div>
             <div class="resumen-grid">
                 <div class="resumen-item">
@@ -4849,6 +4968,7 @@ function exportarDistribucionPDF() {
     var pdf = new jsPDF('l', 'mm', 'a4');
     
     var tempDiv = document.createElement('div');
+    tempDiv.id = 'pdfTmp';
     tempDiv.innerHTML = htmlContent;
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-624.9375rem';
@@ -4863,7 +4983,12 @@ function exportarDistribucionPDF() {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        dpi: 150
+        dpi: 150,
+        onclone: function(clonedDoc) {
+            var st = clonedDoc.createElement('style');
+            st.textContent = cssExtra2;
+            clonedDoc.head.appendChild(st);
+        }
     }).then(function(canvas) {
         var imgData = canvas.toDataURL('image/jpeg', 0.85);
         var imgWidth = 280;
@@ -5156,31 +5281,75 @@ function exportarCentrosCostoExcel() {
         }
     }
     
+    // Barra de datos (relleno sólido verde) sobre % del Total
+    worksheet.addConditionalFormatting({
+        ref: 'D' + dataStartRow + ':D' + dataEndRow,
+        rules: [{
+            type: 'dataBar',
+            cfvo: [{ type: 'min' }, { type: 'max' }],
+            minLength: 0,
+            maxLength: 100,
+            gradient: false,
+            border: false,
+            negativeBarColorSameAsPositive: true,
+            negativeBarBorderColorSameAsPositive: true,
+            borderColor: { argb: 'FF63BE7B' },
+            negativeFillColor: { argb: 'FF63BE7B' },
+            negativeBorderColor: { argb: 'FF63BE7B' },
+            axisColor: { argb: 'FF000000' }
+        }]
+    });
+    
     worksheet.getColumn(1).width = 40;
     worksheet.getColumn(2).width = 18;
     worksheet.getColumn(3).width = 25;
     worksheet.getColumn(4).width = 18;
     
     workbook.xlsx.writeBuffer().then(function(buffer) {
-        var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        var link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'Centros_Costo_' + new Date().toISOString().slice(0,10) + '.xlsx';
-        
-        Swal.close();
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-        
-        Swal.fire({
-            title: '<i class="fas fa-check-circle me-2" style="color: 4;"></i> Exportación Completada',
-            text: 'El archivo Excel se ha generado correctamente',
-            icon: 'success',
-            timer: 2000,
-            showConfirmButton: false,
-            background: '#1a1a2e',
-            color: '#ffffff'
+        return JSZip.loadAsync(buffer).then(function(zip) {
+            return zip.file('xl/worksheets/sheet1.xml').async('string').then(function(xml) {
+                // dataBar estándar (no-x14): añadir <color> obligatorio del XSD
+                xml = xml.replace('<dataBar><cfvo type="min"/><cfvo type="max"/></dataBar>', [
+                    '<dataBar>',
+                    '<cfvo type="min"/><cfvo type="max"/>',
+                    '<color rgb="FF63BE7B"/>',
+                    '</dataBar>'
+                ].join(''));
+                // reescribir x14:dataBar en el orden XSD correcto y con relleno verde sólido
+                xml = xml.replace(/<x14:dataBar[^>]*>[\s\S]*?<\/x14:dataBar>/, [
+                    '<x14:dataBar minLength="0" maxLength="100" gradient="0">',
+                    '<x14:cfvo type="min"/>',
+                    '<x14:cfvo type="max"/>',
+                    '<x14:fillColor rgb="FF63BE7B"/>',
+                    '<x14:borderColor rgb="FF63BE7B"/>',
+                    '<x14:negativeFillColor rgb="FF63BE7B"/>',
+                    '<x14:negativeBorderColor rgb="FF63BE7B"/>',
+                    '<x14:axisColor rgb="FF000000"/>',
+                    '</x14:dataBar>'
+                ].join(''));
+                zip.file('xl/worksheets/sheet1.xml', xml);
+                return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            });
+        }).then(function(blob) {
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Centros_Costo_' + new Date().toISOString().slice(0,10) + '.xlsx';
+            
+            Swal.close();
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            
+            Swal.fire({
+                title: '<i class="fas fa-check-circle me-2" style="color: 4;"></i> Exportación Completada',
+                text: 'El archivo Excel se ha generado correctamente',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+                background: '#1a1a2e',
+                color: '#ffffff'
+            });
         });
     });
     
@@ -5580,7 +5749,7 @@ if (!function_exists('nombreMesEspanol')) {
                             <tr>
                                 <th>Periodo</th>
                                 <th>Tipo de Nómina</th>
-                                <th class="text-end">Empleados</th>
+                                <th class="text-center">Empleados</th>
                                 <th class="text-end">Total Devengado</th>
                                 <th class="text-end">Total Deducciones</th>
                                 <th class="text-end">Total Neto</th>
@@ -5684,7 +5853,7 @@ function mostrarDetalleAlertas(tipo) {
         var tdTipo = document.createElement('td');
         tdTipo.textContent = ETIQUETAS_TIPO_NOMINA[n.tipo_nomina] || n.tipo_nomina || '-';
         var tdEmp = document.createElement('td');
-        tdEmp.className = 'text-end';
+        tdEmp.className = 'text-center';
         tdEmp.textContent = n.total_empleados || 0;
         var tdDev = document.createElement('td');
         tdDev.className = 'text-end text-success';
@@ -5814,31 +5983,71 @@ document.addEventListener('DOMContentLoaded', function () {
     var btnSi = document.getElementById('btnResetSi');
     if (btnSi) btnSi.addEventListener('click', function () {
         Swal.fire({
-            title: 'Restablecer Contraseña',
+            title: '',
             html: `
                 <div style="text-align:left;">
-                    <div style="margin-bottom:0.875rem;">
-                        <label style="display:block; color:#eee; margin-bottom:0.375rem; font-size:0.9rem;">Nueva contraseña</label>
-                        <div style="position: relative;">
-                            <input type="password" id="rpNueva" class="form-control" placeholder="Mínimo 6 caracteres" autocomplete="new-password" style="padding-right:2.75rem;">
-                            <button type="button" id="toggleRpNueva" title="Mostrar/ocultar contraseña" style="position: absolute; right:0.375rem; top:50%; transform: translateY(-50%); width:2rem; height:2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(59,130,246,0.15); border: none; cursor: pointer; color: var(--blue); z-index: 10;">
-                                <i class="fas fa-eye"></i>
-                            </button>
+                    <div style="display:flex; align-items:center; gap:0.75rem; padding:0.875rem 1.125rem; background:linear-gradient(135deg, #0f766e 0%, #134e4a 100%); border-bottom:0.0625rem solid rgba(255,255,255,0.12);">
+                        <div style="width:2.375rem; height:2.375rem; border-radius:0.625rem; background:rgba(94,234,212,0.15); border:0.0625rem solid rgba(94,234,212,0.3); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <i class="fas fa-key" style="color:#5eead4; font-size:1rem;"></i>
                         </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-size:0.9375rem; font-weight:700; color:#fff; letter-spacing:0.0188rem; line-height:1.2;">Restablecer Contraseña</div>
+                            <div style="font-size:0.6875rem; color:rgba(226,232,240,0.75); margin-top:0.1875rem;"><i class="fas fa-user-shield" style="margin-right:0.25rem;"></i>Seguridad de la cuenta · Cambio obligatorio</div>
+                        </div>
+                        <button type="button" onclick="Swal.close()" title="Cancelar" style="width:2rem; height:2rem; border:none; border-radius:0.5rem; background:rgba(255,255,255,0.12); color:#e2e8f0; font-size:1.25rem; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition: all 0.2s;" onmouseover="this.style.background='#ef4444'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.12)'; this.style.color='#e2e8f0';">&times;</button>
                     </div>
-                    <div>
-                        <label style="display:block; color:#eee; margin-bottom:0.375rem; font-size:0.9rem;">Confirmar contraseña</label>
-                        <div style="position: relative;">
-                            <input type="password" id="rpConfirma" class="form-control" placeholder="Repita la contraseña" autocomplete="new-password" style="padding-right:2.75rem;">
-                            <button type="button" id="toggleRpConfirma" title="Mostrar/ocultar contraseña" style="position: absolute; right:0.375rem; top:50%; transform: translateY(-50%); width:2rem; height:2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(59,130,246,0.15); border: none; cursor: pointer; color: var(--blue); z-index: 10;">
-                                <i class="fas fa-eye"></i>
-                            </button>
+                    <div style="padding:1.25rem 1.5rem 1.5rem;">
+                        <div style="display:flex; gap:0.625rem; padding:0.625rem 0.75rem; border-radius:0.5rem; background:rgba(245,158,11,0.08); border:0.0625rem solid rgba(245,158,11,0.22); margin-bottom:1.125rem;">
+                            <i class="fas fa-circle-info" style="color:#fbbf24; font-size:0.875rem; margin-top:0.125rem; flex-shrink:0;"></i>
+                            <span style="font-size:0.75rem; color:#fcd34d; line-height:1.5;">Cree una nueva contraseña segura. Evite usar la misma que la anterior.</span>
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; color:#94a3b8; margin-bottom:0.375rem; font-size:0.7rem; font-weight:700; letter-spacing:0.05rem;">NUEVA CONTRASEÑA</label>
+                            <div style="position:relative;">
+                                <i class="fas fa-lock" style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:#64748b; font-size:0.8rem; z-index:10;"></i>
+                                <input type="password" id="rpNueva" class="form-control" placeholder="Ingrese la nueva contraseña" autocomplete="new-password" style="padding-left:2.25rem; padding-right:2.75rem; background:rgba(255,255,255,0.05); border:0.0625rem solid rgba(255,255,255,0.12); color:#f1f5f9; height:2.5rem; font-size:0.85rem;">
+                                <button type="button" id="toggleRpNueva" title="Mostrar/ocultar contraseña" style="position:absolute; right:0.375rem; top:50%; transform:translateY(-50%); width:2rem; height:2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,0.15); border:none; cursor:pointer; color:#60a5fa; z-index:10;">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div style="margin-top:0.5rem;">
+                                <div style="display:flex; gap:0.25rem; height:0.3125rem;">
+                                    <div id="rpBar1" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                    <div id="rpBar2" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                    <div id="rpBar3" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                    <div id="rpBar4" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.375rem;">
+                                    <span id="rpFuerzaTexto" style="font-size:0.72rem; color:#94a3b8; font-weight:600;">Espere...</span>
+                                    <span id="rpFuerzaRequisitos" style="font-size:0.68rem; color:#64748b;">Longitud: 0/6</span>
+                                </div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.375rem 0.5rem; margin-top:0.625rem; padding:0.625rem 0.75rem; background:rgba(0,0,0,0.2); border-radius:0.5rem; border:0.0625rem solid rgba(255,255,255,0.06);">
+                                <div id="rpReq1" style="font-size:0.68rem; color:#64748b; display:flex; align-items:center; gap:0.375rem; transition:all .3s;"><i class="fas fa-circle" id="rpReq1I" style="font-size:0.375rem;"></i> Mínimo 6 caracteres</div>
+                                <div id="rpReq2" style="font-size:0.68rem; color:#64748b; display:flex; align-items:center; gap:0.375rem; transition:all .3s;"><i class="fas fa-circle" id="rpReq2I" style="font-size:0.375rem;"></i> Mayúscula y minúscula</div>
+                                <div id="rpReq3" style="font-size:0.68rem; color:#64748b; display:flex; align-items:center; gap:0.375rem; transition:all .3s;"><i class="fas fa-circle" id="rpReq3I" style="font-size:0.375rem;"></i> Al menos un número</div>
+                                <div id="rpReq4" style="font-size:0.68rem; color:#64748b; display:flex; align-items:center; gap:0.375rem; transition:all .3s;"><i class="fas fa-circle" id="rpReq4I" style="font-size:0.375rem;"></i> Al menos un símbolo</div>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display:block; color:#94a3b8; margin-bottom:0.375rem; font-size:0.7rem; font-weight:700; letter-spacing:0.05rem;">CONFIRMAR CONTRASEÑA</label>
+                            <div style="position:relative;">
+                                <i class="fas fa-lock" style="position:absolute; left:0.75rem; top:50%; transform:translateY(-50%); color:#64748b; font-size:0.8rem; z-index:10;"></i>
+                                <input type="password" id="rpConfirma" class="form-control" placeholder="Repita la contraseña" autocomplete="new-password" style="padding-left:2.25rem; padding-right:3.5rem; background:rgba(255,255,255,0.05); border:0.0625rem solid rgba(255,255,255,0.12); color:#f1f5f9; height:2.5rem; font-size:0.85rem;">
+                                <button type="button" id="toggleRpConfirma" title="Mostrar/ocultar contraseña" style="position:absolute; right:0.375rem; top:50%; transform:translateY(-50%); width:2rem; height:2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,0.15); border:none; cursor:pointer; color:#60a5fa; z-index:10;">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <i id="rpMatchIcon" class="fas fa-circle" style="position:absolute; right:2.75rem; top:50%; transform:translateY(-50%); color:#475569; font-size:0.625rem; z-index:10;"></i>
+                            </div>
+                            <div id="rpMatchMsg" style="font-size:0.68rem; color:#64748b; margin-top:0.375rem;">Las contraseñas deben coincidir.</div>
                         </div>
                     </div>
                 </div>`,
             background: '#0f172a',
             color: '#eee',
             width: 450,
+            padding: 0,
+            allowOutsideClick: false,
             didOpen: function () {
                 function enlazarOjo(idInput, idBoton) {
                     var input = document.getElementById(idInput);
@@ -5856,11 +6065,114 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 enlazarOjo('rpNueva', 'toggleRpNueva');
                 enlazarOjo('rpConfirma', 'toggleRpConfirma');
+
+                var inputNueva = document.getElementById('rpNueva');
+                if (!inputNueva) return;
+                setTimeout(function () { inputNueva.focus(); }, 50);
+
+                var accionesPop = document.querySelector('.swal2-actions');
+                if (accionesPop) accionesPop.style.margin = '0.75rem 1.5rem 1.25rem';
+
+                var inputConfirma = document.getElementById('rpConfirma');
+
+                function actualizarRequisitos(val) {
+                    var reqs = [
+                        { id: 'rpReq1', ic: 'rpReq1I', ok: val.length >= 6 },
+                        { id: 'rpReq2', ic: 'rpReq2I', ok: /[A-Z]/.test(val) && /[a-z]/.test(val) },
+                        { id: 'rpReq3', ic: 'rpReq3I', ok: /\d/.test(val) },
+                        { id: 'rpReq4', ic: 'rpReq4I', ok: /[^A-Za-z0-9]/.test(val) }
+                    ];
+                    reqs.forEach(function (r) {
+                        var el = document.getElementById(r.id);
+                        var ic = document.getElementById(r.ic);
+                        if (!el) return;
+                        el.style.color = r.ok ? '#34d399' : '#64748b';
+                        el.style.fontWeight = r.ok ? '600' : '400';
+                        if (ic) {
+                            ic.className = r.ok ? 'fas fa-check' : 'fas fa-circle';
+                            ic.style.fontSize = r.ok ? '0.5rem' : '0.375rem';
+                        }
+                    });
+                }
+
+                function comprobarCoincidencia() {
+                    var icono = document.getElementById('rpMatchIcon');
+                    var msg = document.getElementById('rpMatchMsg');
+                    if (!inputConfirma || !icono || !msg) return;
+                    var v1 = inputNueva.value;
+                    var v2 = inputConfirma.value;
+                    if (v2.length === 0) {
+                        icono.className = 'fas fa-circle';
+                        icono.style.color = '#475569';
+                        msg.textContent = 'Las contraseñas deben coincidir.';
+                        msg.style.color = '#64748b';
+                        inputConfirma.style.borderColor = 'rgba(255,255,255,0.12)';
+                        return;
+                    }
+                    if (v1 === v2) {
+                        icono.className = 'fas fa-check-circle';
+                        icono.style.color = '#34d399';
+                        msg.textContent = 'Coinciden correctamente.';
+                        msg.style.color = '#34d399';
+                        inputConfirma.style.borderColor = 'rgba(52,211,153,0.6)';
+                    } else {
+                        icono.className = 'fas fa-times-circle';
+                        icono.style.color = '#ef4444';
+                        msg.textContent = 'No coinciden. Revise la contraseña.';
+                        msg.style.color = '#ef4444';
+                        inputConfirma.style.borderColor = 'rgba(239,68,68,0.6)';
+                    }
+                }
+
+                inputNueva.addEventListener('input', function () {
+                    var val = inputNueva.value;
+                    actualizarRequisitos(val);
+                    comprobarCoincidencia();
+                    var puntaje = 0;
+                    if (val.length >= 6) puntaje++;
+                    if (val.length >= 10) puntaje++;
+                    if (/[A-Z]/.test(val) && /[a-z]/.test(val)) puntaje++;
+                    if (/\d/.test(val) && /[^A-Za-z0-9]/.test(val)) puntaje++;
+
+                    var configs = [
+                        { color: '#ef4444', texto: 'Muy débil' },
+                        { color: '#f59e0b', texto: 'Débil' },
+                        { color: '#eab308', texto: 'Aceptable' },
+                        { color: '#38bdf8', texto: 'Buena' },
+                        { color: '#22c55e', texto: 'Fuerte' }
+                    ];
+                    var metros = [
+                        { id: 'rpBar1', encendido: puntaje >= 1, color: '#ef4444' },
+                        { id: 'rpBar2', encendido: puntaje >= 2, color: '#f59e0b' },
+                        { id: 'rpBar3', encendido: puntaje >= 3, color: '#eab308' },
+                        { id: 'rpBar4', encendido: puntaje >= 4, color: '#22c55e' }
+                    ];
+                    metros.forEach(function (m) {
+                        var barra = document.getElementById(m.id);
+                        if (barra) barra.style.background = m.encendido ? m.color : 'rgba(255,255,255,0.08)';
+                    });
+                    var cfg = configs[puntaje];
+                    var texto = document.getElementById('rpFuerzaTexto');
+                    var requisitos = document.getElementById('rpFuerzaRequisitos');
+                    if (texto) {
+                        texto.textContent = val.length === 0 ? 'Espere...' : cfg.texto;
+                        texto.style.color = val.length === 0 ? '#94a3b8' : cfg.color;
+                        texto.style.fontWeight = '600';
+                    }
+                    if (requisitos) {
+                        requisitos.textContent = 'Longitud: ' + val.length + '/6';
+                        requisitos.style.color = val.length >= 6 ? '#34d399' : '#64748b';
+                    }
+                });
+
+                if (inputConfirma) {
+                    inputConfirma.addEventListener('input', comprobarCoincidencia);
+                }
             },
             confirmButtonText: '<i class="fas fa-save me-1"></i> Guardar',
             confirmButtonColor: '#f59e0b',
             showCancelButton: true,
-            cancelButtonText: 'Cancelar',
+            cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
             cancelButtonColor: '#475569',
             preConfirm: function () {
                 var p1 = document.getElementById('rpNueva').value;
@@ -5878,11 +6190,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }).then(function (result) {
             if (!result.isConfirmed) return;
             Swal.fire({
-                title: 'Guardando...',
-                html: '<i class="fas fa-spinner fa-spin fa-2x" style="color:var(--amber);"></i>',
-                background: '#0f172a',
+                title: '<i class="fas fa-spinner fa-spin me-2" style="color:var(--amber);"></i> Guardando...',
+                background: 'var(--panel)',
+                color: 'var(--txt)',
                 showConfirmButton: false,
-                allowOutsideClick: false
+                allowOutsideClick: false,
+                allowEscapeKey: false
             });
             fetch('ajax/pendiente_reset.php', {
                 method: 'POST',
@@ -5978,6 +6291,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function ajustarScroll() {
+        function hacer(suave) {
+            var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (window.scrollY > maxScroll + 1) {
+                if (suave) {
+                    window.scrollTo({ top: Math.max(0, maxScroll), behavior: 'smooth' });
+                } else {
+                    window.scrollTo(0, Math.max(0, maxScroll));
+                }
+            }
+        }
+        setTimeout(function () { hacer(true); }, 350);
+        setTimeout(function () { hacer(true); }, 750);
+        setTimeout(function () { hacer(false); }, 1200);
+    }
+
     function aplicar(expandir) {
         titles.forEach(function (title) {
             var target = title.getAttribute('data-bs-target');
@@ -5990,6 +6319,7 @@ document.addEventListener('DOMContentLoaded', function () {
         todasColapsadas = !expandir;
         actualizarEstado();
         if (expandir) { setTimeout(redimensionarGraficos, 400); }
+        else { setTimeout(ajustarScroll, 400); }
     }
 
     function actualizarEstado() {

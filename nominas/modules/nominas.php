@@ -4264,7 +4264,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="d-flex flex-wrap gap-3" style="font-size:0.7rem; color: rgba(255,255,255,0.7);">
 				<span><i class="text-success fas fa-money-bill-wave me-1"></i> Seleccionar Tipo de Nómina</span>
                 <span><i class="fas fa-calendar-alt me-1" style="color: #60a5fa;"></i> Seleccionar período</span>
-                <span><i class="fas fa-plus-circle me-1" style="color: var(--color-success);"></i> Consultar/Generar/Regenerar</span>
+                <span><i class="fas fa-plus-circle me-1" style="color: var(--color-success);"></i> Consultar/Generar</span>
                 <span><i class="fas fa-edit me-1" style="color: #f59e0b;"></i> Editar cálculos</span>
                 <span><i class="fas fa-chart-line me-1" style="color: #a78bfa;"></i> Estadísticas</span>
                 <span><i class="fas fa-file-export me-1" style="color: #3b82f6;"></i> Exportar</span>

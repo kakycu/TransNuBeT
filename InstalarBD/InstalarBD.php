@@ -352,7 +352,12 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (34, 'recargo_extra_nocturna', '2.00', 'decimal', 'Recargo hora extra nocturna Nt 7-23h y Nt 23-7h (multiplicador, 2.0 = 200%)', NULL, NULL),
 (35, 'recargo_doble_turno', '2.00', 'decimal', 'Recargo doble turno (multiplicador, 2.0 = 200%)', NULL, NULL),
 (36, 'googleoauth', 'true', 'booleano', 'Habilita o deshabilita el login con Google (OAuth 2.0) en el login', '2026-09-12 19:23:46', NULL),
-(37, 'especialista_nominas', 'Especialista de Nóminas', 'texto', 'Nombre del Especialista de Nóminas', NULL, NULL);
+(37, 'especialista_nominas', 'Especialista de Nóminas', 'texto', 'Nombre del Especialista de Nóminas', NULL, NULL),
+(38, 'tiempo_para_bloqueo', '10', 'entero', 'Tiempo en minutos para cerrar la sesión tras bloquearse la pantalla (por defecto 10)', '2026-09-21 00:39:51', NULL),
+(39, 'cuenta_bancaria', '', 'texto', NULL, '2026-09-21 01:53:39', NULL),
+(40, 'banco', '', 'texto', NULL, '2026-09-21 01:53:39', NULL),
+(41, 'sucursal', '', 'texto', NULL, '2026-09-21 01:53:39', NULL);
+
 
 -- --------------------------------------------------------
 
@@ -1067,7 +1072,7 @@ ALTER TABLE `clasif_usuarios`
 -- AUTO_INCREMENT de la tabla `configuracion_general`
 --
 ALTER TABLE `configuracion_general`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT de la tabla `configuracion_rangos_impuesto`

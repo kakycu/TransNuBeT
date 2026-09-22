@@ -46,6 +46,7 @@
 .tp-theme-btn.blue-theme i{color:#60a5fa;}
 .tp-theme-btn.verde-theme i{color:#34d399;}
 .tp-theme-btn.orgullo-theme i{color:#a78bfa;}
+.tp-theme-btn.win11-theme i{color:#4cc2ff;}
 
 /* Accent colors */
 .tp-accent-grid{display:flex;gap:0.5rem;flex-wrap:wrap;}
@@ -201,6 +202,33 @@
 [data-theme="orgullo"] .tp-footer{border-top-color:rgba(139,92,246,0.2);}
 [data-theme="orgullo"] .tp-btn-reset{border-color:rgba(51,38,77,0.15);color:#77689c;}
 [data-theme="orgullo"] .tp-btn-reset:hover{border-color:rgba(239,68,68,0.4);color:#dc2626;background:rgba(239,68,68,0.04);}
+/* Win11 Dark theme panel overrides — flat surfaces */
+[data-theme="win11"] .tp-panel{background:#202020;border-left-color:#3d3d3d;box-shadow:-0.5rem 0 1.5rem rgba(0,0,0,0.4);}
+[data-theme="win11"] .tp-header{border-bottom-color:#3d3d3d;}
+[data-theme="win11"] .tp-header h3{color:#ffffff;}
+[data-theme="win11"] .tp-close{color:#9d9d9d;}
+[data-theme="win11"] .tp-close:hover{background:#2d2d2d;color:#ffffff;}
+[data-theme="win11"] .tp-section-title{color:#9d9d9d;}
+[data-theme="win11"] .tp-section-title i{color:var(--accent);}
+[data-theme="win11"] .tp-theme-btn{border-color:#3d3d3d;color:#ffffff;background:transparent;}
+[data-theme="win11"] .tp-theme-btn:hover{border-color:#4d4d4d;background:#2d2d2d;}
+[data-theme="win11"] .tp-theme-btn.active{border-color:var(--accent);background:rgba(0,120,212,0.12);}
+[data-theme="win11"] .tp-theme-btn span{color:#ffffff;}
+[data-theme="win11"] .tp-radio{border-color:#3d3d3d;color:#9d9d9d;}
+[data-theme="win11"] .tp-radio:hover{border-color:#4d4d4d;color:#ffffff;}
+[data-theme="win11"] .tp-radio.active{border-color:var(--accent);background:rgba(0,120,212,0.12);color:var(--accent);}
+[data-theme="win11"] .tp-row-label{color:#ffffff;}
+[data-theme="win11"] .tp-toggle-track{background:rgba(255,255,255,0.16);}
+[data-theme="win11"] .tp-slider{background:rgba(255,255,255,0.16);}
+[data-theme="win11"] .tp-slider-val{color:var(--accent);}
+[data-theme="win11"] .tp-chip{border-color:#3d3d3d;color:#9d9d9d;}
+[data-theme="win11"] .tp-chip:hover{border-color:#4d4d4d;color:#ffffff;}
+[data-theme="win11"] .tp-chip.active{border-color:var(--accent);background:rgba(0,120,212,0.12);color:var(--accent);}
+[data-theme="win11"] .tp-divider{border-top-color:#3d3d3d;}
+[data-theme="win11"] .tp-footer{border-top-color:#3d3d3d;}
+[data-theme="win11"] .tp-btn-reset{border-color:#3d3d3d;color:#9d9d9d;}
+[data-theme="win11"] .tp-btn-reset:hover{border-color:rgba(239,68,68,0.5);color:#ef4444;background:rgba(239,68,68,0.06);}
+[data-theme="win11"] .tp-accent-dot.active{border-color:#ffffff;box-shadow:0 0 0 0.125rem #202020,0 0 0 0.25rem currentColor;}
 
 
 </style>
@@ -220,6 +248,10 @@
         <div class="tp-section">
             <div class="tp-section-title"><i class="fas fa-circle-half-stroke"></i> Tema del Sistema</div>
             <div class="tp-theme-grid">
+                <button class="tp-theme-btn win11-theme" data-tp-theme="win11">
+                    <i class="fab fa-windows"></i>
+                    <span>Win11 Dark</span>
+                </button>
                 <button class="tp-theme-btn dark-theme" data-tp-theme="dark">
                     <i class="fas fa-moon"></i>
                     <span>Oscuro</span>
@@ -250,6 +282,7 @@
             <div class="tp-section-title"><i class="fas fa-palette"></i> Color de &Eacute;nfasis</div>
             <div class="tp-accent-grid" id="tpAccentGrid">
                 <div class="tp-accent-dot" data-accent="blue" style="background:#3b82f6;" data-tooltip="Azul" data-tooltip-theme="info"></div>
+                <div class="tp-accent-dot" data-accent="winblue" style="background:#0078d4;" data-tooltip="Azul Windows 11" data-tooltip-theme="info"></div>
                 <div class="tp-accent-dot" data-accent="purple" style="background:#8b5cf6;" data-tooltip="P&uacute;rpura" data-tooltip-theme="info"></div>
                 <div class="tp-accent-dot" data-accent="green" style="background:#10b981;" data-tooltip="Verde" data-tooltip-theme="info"></div>
                 <div class="tp-accent-dot" data-accent="amber" style="background:#f59e0b;" data-tooltip="&Aacute;mbar" data-tooltip-theme="info"></div>
@@ -378,9 +411,9 @@
 (function(){
 /* ===== CONSTANTS ===== */
 var STORAGE_KEY='transnubet_theme';
-var ACCENTS={blue:{c:'#3b82f6',r:'59,130,246'},purple:{c:'#8b5cf6',r:'139,92,246'},green:{c:'#10b981',r:'16,185,129'},amber:{c:'#f59e0b',r:'245,158,11'},red:{c:'#ef4444',r:'239,68,68'},cyan:{c:'#06b6d4',r:'6,182,212'},teal:{c:'#14b8a6',r:'20,184,166'},pink:{c:'#ec4899',r:'236,72,153'},indigo:{c:'#6366f1',r:'99,102,241'},rose:{c:'#f43f5e',r:'244,63,94'},orange:{c:'#f97316',r:'249,115,22'},lime:{c:'#84cc16',r:'132,204,22'},fuchsia:{c:'#d946ef',r:'217,70,239'},slate:{c:'#64748b',r:'100,116,139'},forest:{c:'#228b22',r:'34,139,34'},navy:{c:'#1e3a8a',r:'30,58,138'}};
-var DEFAULTS={theme:'dark',radius:'10',font_size:'1.0',density:'normal',sidebar_compact:'false',sidebar_opacity:'95',content_width:'100',animations:'true',focus_mode:'false',tooltips:'true',sticky_header:'true',per_device:'true'};
-var ACCDEF={dark:'blue',light:'blue',blue:'cyan',verde:'green',orgullo:'purple'};
+var ACCENTS={blue:{c:'#3b82f6',r:'59,130,246'},winblue:{c:'#0078d4',r:'0,120,212'},purple:{c:'#8b5cf6',r:'139,92,246'},green:{c:'#10b981',r:'16,185,129'},amber:{c:'#f59e0b',r:'245,158,11'},red:{c:'#ef4444',r:'239,68,68'},cyan:{c:'#06b6d4',r:'6,182,212'},teal:{c:'#14b8a6',r:'20,184,166'},pink:{c:'#ec4899',r:'236,72,153'},indigo:{c:'#6366f1',r:'99,102,241'},rose:{c:'#f43f5e',r:'244,63,94'},orange:{c:'#f97316',r:'249,115,22'},lime:{c:'#84cc16',r:'132,204,22'},fuchsia:{c:'#d946ef',r:'217,70,239'},slate:{c:'#64748b',r:'100,116,139'},forest:{c:'#228b22',r:'34,139,34'},navy:{c:'#1e3a8a',r:'30,58,138'}};
+var DEFAULTS={theme:'win11',radius:'10',font_size:'1.0',density:'normal',sidebar_compact:'false',sidebar_opacity:'95',content_width:'100',animations:'true',focus_mode:'false',tooltips:'true',sticky_header:'true',per_device:'true'};
+var ACCDEF={dark:'blue',light:'blue',blue:'cyan',verde:'green',orgullo:'purple',win11:'winblue'};
 
 /* ===== HELPERS ===== */
 var PER_KEY='transnubet_per_device';
@@ -447,10 +480,10 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&panel.class
 /* ===== LOAD CURRENT VALUES ===== */
 function loadCurrentValues(){
     /* Theme */
-    var theme=g(STORAGE_KEY,'dark');
+    var theme=g(STORAGE_KEY,'win11');
     document.querySelectorAll('.tp-theme-btn').forEach(function(b){b.classList.toggle('active',b.dataset.tpTheme===theme);});
     /* Accent: por tema, con default propio */
-    var th=g(STORAGE_KEY,'dark');
+    var th=g(STORAGE_KEY,'win11');
     var accent=g('transnubet_accent_'+th,null)||ACCDEF[th]||'blue';
     document.querySelectorAll('.tp-accent-dot').forEach(function(d){d.classList.toggle('active',d.dataset.accent===accent);});
     /* Radius */
@@ -581,7 +614,7 @@ document.getElementById('tpPerDevice').addEventListener('change',function(){
 /* ===== APPLY FUNCTIONS ===== */
 function applyTheme(t){
     document.documentElement.setAttribute('data-theme',t);
-    if(t==='dark'||t==='blue'||t==='verde'||t==='orgullo'){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}
+    if(t==='dark'||t==='blue'||t==='verde'||t==='orgullo'||t==='win11'){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}
     var icon=document.getElementById('themeToggleIcon');
     if(icon){icon.className=(t==='light'||t==='orgullo')?'fas fa-moon':'fas fa-sun';}
     s(STORAGE_KEY,t);
@@ -657,7 +690,7 @@ function countCustom(){
         var lk=(k==='theme')?STORAGE_KEY:'transnubet_'+k;
         if(g(lk,DEFAULTS[k])!==DEFAULTS[k])n++;
     });
-    var th=g(STORAGE_KEY,'dark');
+    var th=g(STORAGE_KEY,'win11');
     if((g('transnubet_accent_'+th,null)||ACCDEF[th]||'blue')!==ACCDEF[th])n++;
     return n;
 }

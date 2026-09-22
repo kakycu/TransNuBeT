@@ -213,8 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['guardar_datos_entidad'])) {
         $params = [
             'nombre_empresa', 'direccion_empresa',
-            'reeup_empresa', 'nit_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_nominas',
-            'intendente', 'especialista_gestionRRHH',
+            'reeup_empresa', 'nit_empresa',
             'slogan', 'telefono_empresa', 'email_empresa', 'telefono_soporte', 'email_soporte'
         ];
         
@@ -227,6 +226,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             logAction('guardar_datos_entidad', 'configuracion', 'Datos de la entidad guardados', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Datos de la entidad guardados correctamente";
+            $tipo_mensaje = "success";
+        } catch (PDOException $e) {
+            $mensaje = "Error al guardar: " . $e->getMessage();
+            $tipo_mensaje = "error";
+        }
+    }
+    
+    if (isset($_POST['guardar_datos_personal'])) {
+        $params = [
+            'jefe_proyecto', 'especialista_gestion', 'especialista_nominas',
+            'especialista_gestionRRHH', 'intendente'
+        ];
+        
+        try {
+            foreach ($params as $param) {
+                if (isset($_POST[$param])) {
+                    $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
+                    $stmt->execute([$_POST[$param], $param]);
+                }
+            }
+            logAction('guardar_datos_personal', 'configuracion', 'Personal autorizado guardado', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            $mensaje = "Personal autorizado guardado correctamente";
+            $tipo_mensaje = "success";
+        } catch (PDOException $e) {
+            $mensaje = "Error al guardar: " . $e->getMessage();
+            $tipo_mensaje = "error";
+        }
+    }
+    
+    if (isset($_POST['guardar_datos_bancarios'])) {
+        $params = ['cuenta_bancaria', 'banco', 'sucursal'];
+        
+        try {
+            foreach ($params as $param) {
+                if (isset($_POST[$param])) {
+$stmt = $pdo->prepare("INSERT INTO configuracion_general (parametro, valor, tipo_dato) VALUES (?, ?, 'texto')
+                                       ON DUPLICATE KEY UPDATE valor = VALUES(valor)");
+                    $stmt->execute([$param, $_POST[$param]]);
+                }
+            }
+            logAction('guardar_datos_bancarios', 'configuracion', 'Información bancaria guardada', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            $mensaje = "Información bancaria guardada correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
             $mensaje = "Error al guardar: " . $e->getMessage();
@@ -352,12 +393,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tipo_mensaje = "error";
         }
     }
+
+    if (isset($_POST['guardar_config_sistema'])) {
+        $params_sistema = [
+            'tiempo_para_bloqueo' => max(1, (int)($_POST['tiempo_para_bloqueo'] ?? 10)),
+        ];
+        try {
+            foreach ($params_sistema as $param => $valor) {
+                $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
+                $stmt->execute([$valor, $param]);
+            }
+            logAction('guardar_configuracion_sistema', 'configuracion', 'Otras configuraciones del sistema guardadas', ['tiempo_para_bloqueo' => $params_sistema['tiempo_para_bloqueo']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            $mensaje = "Otras configuraciones del sistema guardadas correctamente";
+            $tipo_mensaje = "success";
+        } catch (PDOException $e) {
+            $mensaje = "Error al guardar configuración del sistema: " . $e->getMessage();
+            $tipo_mensaje = "error";
+        }
+    }
+    
+    // Guardado general (botón flotante): se ejecuta junto a los triggers individuales
+    if (isset($_POST['guardar_todo']) && $tipo_mensaje === 'success') {
+        logAction('guardar_todo_configuracion', 'configuracion', 'Guardado general de configuración', ['secciones' => 'general, entidad, bancaria, rangos, correo, google, sistema'], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+        $mensaje = "Toda la configuración se ha guardado correctamente";
+        $tipo_mensaje = "success";
+    }
 }
 
 // PRG (Post/Redirect/Get): tras un guardado exitoso, recargar la página para
 // que los nuevos valores se apliquen (constantes, formularios, etc.)
 if ($tipo_mensaje === 'success' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $botones_refresh = ['guardar_config_general', 'guardar_datos_entidad', 'guardar_rangos', 'guardar_config_mail', 'guardar_config_google'];
+    $botones_refresh = ['guardar_config_general', 'guardar_datos_entidad', 'guardar_datos_personal', 'guardar_datos_bancarios', 'guardar_rangos', 'guardar_config_mail', 'guardar_config_google', 'guardar_config_sistema', 'guardar_todo'];
     foreach ($botones_refresh as $b) {
         if (isset($_POST[$b])) {
             $url = strtok($_SERVER['REQUEST_URI'], '?');
@@ -373,6 +439,229 @@ $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general");
 while ($row = $stmt->fetch()) {
     $config[$row['parametro']] = $row['valor'];
 }
+
+// Catálogo de sucursales bancarias por código de banco (para la validación de cuentas)
+$sucursales = [
+    '06' => [ // BANDEC
+        '5781' => 'BANDEC Sucursal Nuevitas',
+        '0001' => 'BANDEC Sucursal Principal La Habana',
+        '1001' => 'BANDEC Sucursal Camagüey',
+        '5780' => 'BANDEC Sucursal Nuevitas Centro',
+        '8888' => 'BANDEC Banca Móvil / Virtual',
+        '9999' => 'BANDEC Dirección Nacional / Tarjetas MLC',
+        '5960' => 'BANDEC Dirección Provincial Camagüey',
+        '5961' => 'BANDEC Plaza de los Trabajadores',
+        '5971' => 'BANDEC La Vigía',
+        '5981' => 'BANDEC Calle República',
+        '5941' => 'BANDEC Av. de los Mártires',
+        '5951' => 'BANDEC Reparto Garrido',
+        '5783' => 'BANDEC Nuevitas (Calle Máximo Gómez)',
+        '5790' => 'BANDEC Playa Santa Lucía (Interno)',
+        '5791' => 'BANDEC Playa Santa Lucía (Oficial)',
+        '6021' => 'BANDEC Florida',
+        '5821' => 'BANDEC Guáimaro',
+        '6151' => 'BANDEC Santa Cruz del Sur',
+        '5751' => 'BANDEC Minas',
+        '5701' => 'BANDEC Esmeralda',
+        '6061' => 'BANDEC Vertientes',
+        '5841' => 'BANDEC Sibanicú',
+        '5731' => 'BANDEC Sierra de Cubitas',
+        '6101' => 'BANDEC Jimaguayú',
+        '6121' => 'BANDEC Najasa',
+        '0650' => 'BANDEC Sucursal Principal La Habana',
+        '0651' => 'BANDEC Plaza',
+        '0652' => 'BANDEC Cerro',
+        '0653' => 'BANDEC Boyeros',
+        '0654' => 'BANDEC Marianao',
+        '0655' => 'BANDEC Guanabacoa',
+        '0656' => 'BANDEC San Miguel',
+        '0657' => 'BANDEC 10 de Octubre',
+        '0660' => 'BANDEC Habana del Este',
+        '7291' => 'BANDEC Pinar del Río (Principal)',
+        '7281' => 'BANDEC Pinar del Río (Martí)',
+        '7251' => 'BANDEC Viñales',
+        '1651' => 'BANDEC Artemisa (Principal)',
+        '1681' => 'BANDEC Mariel',
+        '1661' => 'BANDEC San Antonio de los Baños',
+        '1751' => 'BANDEC San José de las Lajas',
+        '1781' => 'BANDEC Güines',
+        '1721' => 'BANDEC Santa Cruz del Norte',
+        '3151' => 'BANDEC Matanzas (Principal)',
+        '3181' => 'BANDEC Varadero',
+        '3191' => 'BANDEC Cárdenas',
+        '4031' => 'BANDEC Santa Clara (Principal)',
+        '4081' => 'BANDEC Sagua la Grande',
+        '4131' => 'BANDEC Placetas',
+        '5041' => 'BANDEC Cienfuegos (Prado)',
+        '5051' => 'BANDEC Cienfuegos (Principal)',
+        '5341' => 'BANDEC Sancti Spíritus (Principal)',
+        '5381' => 'BANDEC Trinidad',
+        '5531' => 'BANDEC Ciego de Ávila (Principal)',
+        '5571' => 'BANDEC Morón',
+        '5641' => 'BANDEC Cayo Coco',
+        '6431' => 'BANDEC Las Tunas (Principal)',
+        '6471' => 'BANDEC Puerto Padre',
+        '6731' => 'BANDEC Holguín (Principal)',
+        '6761' => 'BANDEC Moa',
+        '6801' => 'BANDEC Guardalavaca',
+        '7541' => 'BANDEC Bayamo (Principal)',
+        '7581' => 'BANDEC Manzanillo',
+        '8151' => 'BANDEC Santiago (Principal)',
+        '8141' => 'BANDEC Santiago (Enramadas)',
+        '9041' => 'BANDEC Guantánamo (Principal)',
+        '9071' => 'BANDEC Baracoa',
+        '9661' => 'BANDEC Nueva Gerona',
+        '9000' => 'BANDEC Oficina Central',
+    ],
+    '12' => [ // BPA
+        '0001' => 'BPA Sucursal Principal La Habana',
+        '1000' => 'BPA Banca Electrónica / Transfermóvil',
+        '1001' => 'BPA Sucursal Camagüey',
+        '5962' => 'BPA Calle República',
+        '5932' => 'BPA Av. de la Libertad',
+        '5992' => 'BPA Plaza de los Trabajadores',
+        '5942' => 'BPA La Caridad',
+        '5972' => 'BPA Previsora',
+        '5982' => 'BPA Lenin',
+        '5772' => 'BPA Nuevitas (Agramonte esq. Maceo)',
+        '5773' => 'BPA Microdistrito Nuevitas',
+        '5774' => 'BPA Puerto de Nuevitas',
+        '5782' => 'BPA Nuevitas Puerto',
+        '5785' => 'BPA Nuevitas Playa',
+        '6012' => 'BPA Florida',
+        '5812' => 'BPA Guáimaro',
+        '6142' => 'BPA Santa Cruz del Sur',
+        '5752' => 'BPA Minas',
+        '5692' => 'BPA Esmeralda',
+        '6052' => 'BPA Vertientes',
+        '5832' => 'BPA Sibanicú',
+        '5722' => 'BPA Sierra de Cubitas',
+        '6092' => 'BPA Jimaguayú',
+        '6112' => 'BPA Najasa',
+        '0100' => 'BPA Sucursal Principal (La Habana)',
+        '0101' => 'BPA Centro Habana (San Rafael)',
+        '0102' => 'BPA Habana Vieja (Obispo)',
+        '0103' => 'BPA Plaza de la Revolución',
+        '0104' => 'BPA Cerro',
+        '0105' => 'BPA 10 de Octubre',
+        '0106' => 'BPA Playa (Miramar)',
+        '0107' => 'BPA Marianao',
+        '0108' => 'BPA Boyeros',
+        '0109' => 'BPA Arroyo Naranjo',
+        '0110' => 'BPA Cotorro',
+        '0111' => 'BPA Habana del Este',
+        '0112' => 'BPA Guanabacoa',
+        '0113' => 'BPA Regla',
+        '0114' => 'BPA San Miguel del Padrón',
+        '0115' => 'BPA Lisa',
+        '0116' => 'BPA Santiago de las Vegas',
+        '0117' => 'BPA La Víbora',
+        '0118' => 'BPA Lawton',
+        '0123' => 'BPA Alamar',
+        '2012' => 'BPA Habana Vieja (Aguiar)',
+        '2052' => 'BPA Centro Habana',
+        '2132' => 'BPA Vedado (Línea)',
+        '2212' => 'BPA Miramar',
+        '7751' => 'BPA Pinar del Río (Principal)',
+        '7762' => 'BPA Viñales',
+        '7100' => 'BPA Principal Pinar del Río (Genérico)',
+        '2582' => 'BPA Artemisa',
+        '2612' => 'BPA Mariel',
+        '2532' => 'BPA San Antonio de los Baños',
+        '2422' => 'BPA San José de las Lajas',
+        '2462' => 'BPA Güines',
+        '2492' => 'BPA Santa Cruz del Norte',
+        '3412' => 'BPA Matanzas (Milanés)',
+        '3442' => 'BPA Varadero',
+        '3452' => 'BPA Cárdenas',
+        '6100' => 'BPA Matanzas (Genérico)',
+        '4232' => 'BPA Santa Clara (Cuba)',
+        '4292' => 'BPA Sagua la Grande',
+        '4100' => 'BPA Villa Clara (Genérico)',
+        '5142' => 'BPA Cienfuegos (Boulevard)',
+        '5100' => 'BPA Cienfuegos (Genérico)',
+        '5432' => 'BPA Sancti Spíritus',
+        '5472' => 'BPA Trinidad',
+        '6532' => 'BPA Ciego de Ávila',
+        '6552' => 'BPA Morón',
+        '6332' => 'BPA Las Tunas',
+        '8100' => 'BPA Las Tunas (Genérico)',
+        '6932' => 'BPA Holguín (Frexes)',
+        '6992' => 'BPA Moa',
+        '3100' => 'BPA Holguín (Genérico)',
+        '7432' => 'BPA Bayamo',
+        '7452' => 'BPA Manzanillo',
+        '9100' => 'BPA Bayamo (Genérico)',
+        '8351' => 'BPA Santiago (Plaza de Marte)',
+        '8361' => 'BPA Santiago (Garzón)',
+        '1100' => 'BPA Santiago (Genérico)',
+        '9242' => 'BPA Guantánamo',
+        '9272' => 'BPA Baracoa',
+        '9652' => 'BPA Nueva Gerona',
+        '13100' => 'BPA Isla Juventud (Genérico)',
+        '9001' => 'BPA Oficina Central',
+    ],
+    '05' => [ // BANMET
+        '0001' => 'BANMET Sucursal Principal La Habana',
+        '7000' => 'BANMET Banca Remota / Nóminas',
+        '0200' => 'Metropolitano Sucursal Principal',
+        '0201' => 'Metropolitano Vedado (23 y L)',
+        '0202' => 'Metropolitano Habana Vieja (Mercaderes)',
+        '2321' => 'BANMET Vedado (23 y J)',
+        '2341' => 'BANMET Rampa (23 y P)',
+        '2421' => 'BANMET Habana Vieja (Obispo)',
+        '2461' => 'BANMET Centro Habana (Galiano)',
+        '2581' => 'BANMET Playa (3ra y 70)',
+        '2621' => 'BANMET Marianao',
+        '2741' => 'BANMET 10 de Octubre',
+        '2781' => 'BANMET La Víbora',
+        '2821' => 'BANMET Arroyo Naranjo',
+        '2861' => 'BANMET Santiago de las Vegas',
+        '2941' => 'BANMET Cotorro',
+        '2971' => 'BANMET Guanabacoa',
+        '3021' => 'BANMET Habana del Este (Alamar)',
+        '3081' => 'BANMET Regla',
+        '3121' => 'BANMET San Miguel del Padrón',
+        '3161' => 'BANMET La Lisa',
+        '9003' => 'BANMET Oficina Central',
+    ],
+    '15' => [ // BFI
+        '0001' => 'BFI Sucursal Principal La Habana',
+        '0150' => 'BFI Sucursal Principal',
+        '0151' => 'BFI Vedado (Línea y L)',
+        '0152' => 'BFI Miramar (7ma y 78)',
+        '0154' => 'BFI Aeropuerto José Martí',
+        '8000' => 'BFI Varadero',
+        '8001' => 'BFI Cayo Coco',
+        '8005' => 'BFI Guardalavaca',
+    ],
+    '14' => [ // BEC (Banco Exterior de Cuba)
+        '1400' => 'BEC Sucursal Principal',
+        '1401' => 'BEC Santiago de Cuba',
+        '1403' => 'BEC Camagüey',
+    ],
+    '13' => [ // BISO (Banco de Inversiones)
+        '1500' => 'BISO Sucursal Principal',
+        '1503' => 'BISO Camagüey',
+    ],
+    '99' => [ // CASAS DE CAMBIO Y OTRAS INSTITUCIONES
+        '2000' => 'CADECA Principal (La Habana)',
+        '2001' => 'CADECA Obispo',
+        '2005' => 'CADECA Aeropuerto José Martí',
+        '2009' => 'CADECA Camagüey',
+        '2007' => 'CADECA Varadero',
+        '3000' => 'FINCIMEX Sucursal Principal',
+        '3001' => 'FINCIMEX Vedado',
+        '3005' => 'FINCIMEX Camagüey',
+        '0001' => 'Banco Central de Cuba',
+    ],
+    '98' => [ // BANCOS INTERNACIONALES
+        '5000' => 'Nova Scotia Bank',
+        '5001' => 'Banco Sabadell',
+        '5002' => 'BBVA',
+        '5003' => 'Santander',
+    ]
+];
 
 // Configuración de correo (SMTP)
 $config_mail = [
@@ -443,7 +732,11 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
             border: 0.0625rem solid rgba(255, 255, 255, 0.06); border-radius: 0.75rem;
             transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
         }
+        html[data-theme="win11"] .glass-card { border-radius: 0; }
         .glass-card:hover { transform: translateY(-0.125rem); background: var(--panel-2); border-color: rgba(0, 120, 212, 0.3); box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.3); }
+        html[data-theme="win11"] .glass-card:hover { border-color: rgba(0, 120, 212, 0.35); }
+        html[data-theme="win11"] .glass-card .p-3.border-bottom:has(.card-collapse-title:hover) { background: rgba(0, 0, 0, 0.55); }
+        .card-collapse-title:hover { color: #60a5fa; }
 
         .main-container { margin-left:16.25rem; transition: all 0.3s ease; min-height:100vh; padding:1.25rem; }
         .main-container.expanded { margin-left:5rem; }
@@ -798,7 +1091,6 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         .fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
         
         hr { opacity: 1; border-color: rgba(148, 163, 184, 0.25); }
-        .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); }
         
         .swal2-popup { background: var(--panel) !important; color: var(--txt) !important; }
         .swal2-title { color: #ffffff !important; }
@@ -889,26 +1181,12 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         .card-collapse-title {
             cursor: pointer;
             user-select: none;
-            display: inline-flex;
+            display: flex;
+            flex-grow: 1;
             align-items: center;
             gap:0.5rem;
             font-weight: 700;
             transition: color 0.2s ease;
-        }
-        .card-collapse-title:hover {
-            color: #60a5fa;
-        }
-        .card-collapse-title:hover .collapse-chevron {
-            color: #60a5fa;
-        }
-        .card-collapse-title .collapse-chevron {
-            font-size:0.7rem;
-            color: rgba(255, 255, 255, 0.4);
-            transition: transform 0.25s ease;
-        }
-        .card-collapse-title:not(.collapsed) .collapse-chevron {
-            transform: rotate(180deg);
-            color: #60a5fa;
         }
 
         .usuario-modal-body {
@@ -979,12 +1257,11 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         max-width: 100%;
     }
 
-    /* Botón "Expandir todo" más pequeño */
-    #btnToggleAllCards {
+    /* Botón "Acciones rápidas" más pequeño */
+    #btnAccionesRapidas {
         font-size: 0.75rem !important;
         padding: 0.4rem 0.75rem !important;
     }
-    #btnToggleAllCardsTexto { font-size: 0.75rem; }
 }
 
 /* ---------- MÓVIL (≤ 768px) ---------- */
@@ -1055,8 +1332,8 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         flex-shrink: 0;
     }
 
-    /* Botón "Expandir todo" a fila completa */
-    #btnToggleAllCards {
+    /* Acciones rápidas a fila completa en móvil */
+    #btnAccionesRapidas {
         width: 100%;
         justify-content: center;
         margin-left: 0 !important;
@@ -1065,11 +1342,13 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         grid-column: 1 / -1;
         order: 3;
     }
+    #btnAccionesRapidas.dropdown-toggle::after { margin-left: auto; }
 
     /* ---------- GLASS CARD ---------- */
     .glass-card {
         border-radius: 0.625rem;
     }
+    html[data-theme="win11"] .glass-card { border-radius: 0; }
     .glass-card .p-4 {
         padding: 0.875rem !important;
     }
@@ -1476,6 +1755,285 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         max-width: calc(50% - 0.5rem);
     }
 }
+
+/* ==================== INFORMACIÓN BANCARIA ==================== */
+/* Para campos bancarios readonly */
+input[name="banco"],
+input[name="sucursal"],
+input[name="bancocliente"] {
+    background: var(--panel-2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--txt) !important;
+    font-weight: 500 !important;
+}
+
+input.banco-desconocido {
+    border-left: 3px solid #e81123 !important;
+    animation: pulseWarning 2s infinite;
+}
+
+input.sucursal-no-identificada {
+    border-left: 3px solid #ff8c00 !important;
+    animation: pulseWarning 2s infinite;
+}
+
+@keyframes pulseWarning {
+    0% { border-left-color: rgba(232, 17, 35, 0.5); }
+    50% { border-left-color: #e81123; }
+    100% { border-left-color: rgba(232, 17, 35, 0.5); }
+}
+
+/* Contenedor de información de sucursal */
+#sucursalInfo {
+    display: none;
+    background: var(--panel-2);
+    border: 1px dashed var(--border) !important;
+    border-radius: 0.5rem;
+    padding: 0.75rem 0.875rem;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--txt);
+    line-height: 1.4;
+    animation: fadeIn 0.3s ease;
+}
+
+#sucursalInfo i {
+    color: var(--accent);
+    margin-right: 6px;
+    font-size: 14px;
+}
+
+#sucursalInfo strong {
+    font-weight: 600;
+    color: var(--txt);
+}
+
+#sucursalInfo .text-muted {
+    color: var(--muted) !important;
+    font-size: 12px;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Información adicional */
+#infoAdicional {
+    margin-top: 12px;
+}
+
+#infoAdicional .alert {
+    font-size: 12px;
+}
+
+/* ==================== DESGLOSE DE CUENTA BANCARIA ==================== */
+.desglose-overlay {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 11000 !important;
+    display: none;
+    backdrop-filter: blur(5px);
+}
+
+.desglose-overlay.open {
+    display: block;
+}
+
+.cuenta-desglose {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 11001 !important;
+    width: 480px;
+    max-width: 95vw;
+    background: var(--panel-2);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+    display: none;
+    color: var(--txt);
+}
+
+@media (max-width: 768px) {
+    .cuenta-desglose {
+        width: 95vw;
+        max-height: 85vh;
+        padding: 16px;
+    }
+}
+
+.desglose-close-btn {
+    position: absolute !important;
+    top: 12px !important;
+    right: 12px !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background: var(--panel) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--txt) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    z-index: 11001 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transition: all 0.2s ease !important;
+}
+
+.desglose-close-btn:hover {
+    background: #e81123 !important;
+    color: white !important;
+    border-color: #e81123 !important;
+    transform: scale(1.1) !important;
+}
+
+.desglose-header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.desglose-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--txt);
+    margin: 0;
+}
+
+.desglose-title i {
+    color: var(--accent);
+    font-size: 20px;
+}
+
+.desglose-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    flex-wrap: wrap;
+}
+
+.desglose-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.desglose-item span:first-child {
+    color: var(--muted);
+    flex: 1;
+    min-width: 120px;
+    font-weight: 500;
+}
+
+.desglose-valor {
+    font-weight: 500;
+    color: var(--txt);
+    text-align: right;
+    flex: 2;
+    max-width: 250px;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.desglose-numero {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 16px;
+    letter-spacing: 1px;
+    margin: 15px 0;
+    text-align: center;
+    padding: 12px;
+    background: var(--panel);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    color: var(--txt);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    word-break: break-all;
+}
+
+.cuenta-desglose .alert {
+    border-radius: 0.375rem;
+    font-size: 13px;
+    padding: 12px;
+    margin: 12px 0;
+    border-width: 1px;
+    border-style: solid;
+    line-height: 1.5;
+}
+
+.cuenta-desglose .alert-danger {
+    background: rgba(232, 17, 35, 0.1) !important;
+    border-color: rgba(232, 17, 35, 0.2) !important;
+    color: #e81123 !important;
+}
+
+.cuenta-desglose .alert-warning {
+    background: rgba(255, 140, 0, 0.1) !important;
+    border-color: rgba(255, 140, 0, 0.2) !important;
+    color: #ff8c00 !important;
+}
+
+.cuenta-desglose .alert-info {
+    background: rgba(0, 120, 212, 0.1) !important;
+    border-color: rgba(0, 120, 212, 0.2) !important;
+    color: var(--txt) !important;
+}
+
+.cuenta-desglose .alert-success {
+    background: rgba(16, 124, 16, 0.1) !important;
+    border-color: rgba(16, 124, 16, 0.2) !important;
+    color: #107c10 !important;
+}
+
+.cuenta-desglose::-webkit-scrollbar {
+    width: 6px;
+}
+
+.cuenta-desglose::-webkit-scrollbar-track {
+    background: var(--panel);
+    border-radius: 3px;
+}
+
+.cuenta-desglose::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 3px;
+}
+
+.cuenta-desglose::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--accent) 80%, #000);
+}
+
+.cuenta-desglose .btn-primary {
+    background: var(--accent) !important;
+    border: none !important;
+    border-radius: 0.375rem !important;
+    padding: 10px 20px !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+    transition: all 0.2s ease !important;
+    margin-top: 15px !important;
+    width: 100% !important;
+}
+
+.cuenta-desglose .btn-primary:hover {
+    background: color-mix(in srgb, var(--accent) 90%, #000) !important;
+    transform: translateY(-2px);
+}
+/* ==================== FIN DE INFORMACIÓN BANCARIA ==================== */
     </style>
 </head>
 <body>
@@ -1496,9 +2054,61 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                 <h1><i class="fas fa-cog me-2" style="color: #60a5fa;"></i>Configuración del Sistema</h1>
                 <p><i class="fas fa-sliders-h me-1"></i> Parámetros generales y configuración de impuestos</p>
             </div>
-            <button type="button" class="btn-win btn-win-sm ms-auto" id="btnToggleAllCards" title="Expandir o colapsar todas las secciones" data-tooltip="Expandir o colapsar todas las secciones" data-tooltip-theme="primary">
-                <i class="fas fa-expand-alt me-2"></i><span id="btnToggleAllCardsTexto">Expandir todo</span>
-            </button>
+            <div class="dropdown ms-auto">
+                <button type="button" class="btn-win btn-win-sm dropdown-toggle" id="btnAccionesRapidas" title="Acciones rápidas" data-tooltip="Acciones rápidas" data-tooltip-theme="primary" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-bolt me-2"></i>Acciones
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win">
+                    <li>
+                        <button type="button" class="dropdown-item" id="btnToggleAllCards" title="Expandir o colapsar todas las secciones">
+                            <i class="fas fa-expand-alt me-2"></i><span id="btnToggleAllCardsTexto">Expandir todo</span>
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button type="button" class="dropdown-item" id="btnDropGuardarTodo" title="Guardar toda la configuración">
+                            <i class="fas fa-save me-2" style="color: var(--color-success);"></i>Guardar toda la configuración
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item" id="btnDropRecargar" title="Recargar datos y actualizar página">
+                            <i class="fas fa-sync-alt me-2" style="color: #60a5fa;"></i>Recargar datos y actualizar página
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Exportar / Imprimir</h6></li>
+                    <li>
+                        <button type="button" class="dropdown-item" data-export="print" title="Imprimir todos los datos de configuración">
+                            <i class="fas fa-print me-2" style="color: #60a5fa;"></i>Imprimir
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item" data-export="pdf" title="Exportar a PDF (.pdf)">
+                            <i class="fas fa-file-pdf me-2" style="color: #ef4444;"></i>Exportar a PDF (.pdf)
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item" data-export="excel" title="Exportar a Excel (.xlsx)">
+                            <i class="fas fa-file-excel me-2" style="color: var(--color-success);"></i>Exportar a Excel (.xlsx)
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item" data-export="word" title="Exportar a Word (.doc)">
+                            <i class="fas fa-file-word me-2" style="color: #3b82f6;"></i>Exportar a Word (.doc)
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item" data-export="txt" title="Exportar a TXT (.txt)">
+                            <i class="fas fa-file-alt me-2" style="color: #f59e0b;"></i>Exportar a TXT (.txt)
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item" data-export="csv" title="Exportar a CSV (.csv)">
+                            <i class="fas fa-file-csv me-2" style="color: #22d3ee;"></i>Exportar a CSV (.csv)
+                        </button>
+                    </li>
+                </ul>
+            </div>
         </div>
         <?php include '../includes/user_menu.php'; ?>
     </div>
@@ -1536,7 +2146,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
     <div class="col-12 fade-in-up" style="animation-delay: 0.02s;">
         <div class="glass-card">
             <div class="p-3 border-bottom border-white-10">
-                <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseDB" aria-expanded="false" aria-controls="collapseDB">
+                <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseDB" aria-expanded="false" aria-controls="collapseDB">
                     <i class="fas fa-chevron-down collapse-chevron"></i>
                     <i class="fas fa-database me-1" style="color: #f59e0b;"></i> 
                     Base de Datos (SALVAS Y RESTAURAS)
@@ -1591,13 +2201,13 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         <div class="col-lg-6 fade-in-up" style="animation-delay: 0.05s;">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseConfigGeneral" aria-expanded="false" aria-controls="collapseConfigGeneral">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseConfigGeneral" aria-expanded="false" aria-controls="collapseConfigGeneral">
                         <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-sliders-h me-2" style="color: #60a5fa;"></i> Configuración General
                     </h6>
                 </div>
                 <div id="collapseConfigGeneral" class="collapse">
                 <div class="p-4">
-                    <form method="POST">
+                    <form method="POST" id="configGeneralForm">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Horas laborables mensuales</label>
@@ -1669,9 +2279,11 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                                 <small class="text-secondary">2.0 = 200% del salario hora</small>
                             </div>
                         </div>
-                        <button type="submit" name="guardar_config_general" class="btn-win btn-win-primary w-100" title="Guardar configuración general" data-tooltip="Guardar configuración general" data-tooltip-theme="success">
-                            <i class="fas fa-save me-1"></i> Guardar Configuración General
-                        </button>
+                        <div class="d-flex justify-content-center mt-3">
+                            <button type="submit" name="guardar_config_general" class="btn-win btn-win-primary" title="Guardar configuración general" data-tooltip="Guardar configuración general" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Configuración General
+                            </button>
+                        </div>
                     </form>
                 </div>
                 </div>
@@ -1682,7 +2294,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         <div class="col-lg-6 fade-in-up" style="animation-delay: 0.1s;">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseTasas" aria-expanded="false" aria-controls="collapseTasas">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseTasas" aria-expanded="false" aria-controls="collapseTasas">
                         <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-percent me-2" style="color: #f59e0b;"></i> Tasas del Sistema
                     </h6>
                     <button type="button" class="btn-win btn-win-sm btn-win-success" data-bs-toggle="modal" data-bs-target="#agregarTasaModal" title="Agregar nueva tasa" data-tooltip="Agregar nueva tasa" data-tooltip-theme="success">
@@ -1715,20 +2327,80 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
             </div>
         </div>
         
+        <!-- Rangos de Impuesto (Ingresos Personales) -->
+        <div class="col-12 fade-in-up" style="animation-delay: 0.11s;">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseRangos" aria-expanded="false" aria-controls="collapseRangos">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-chart-line me-2" style="color: var(--color-success);"></i> Rangos de Impuesto (Ingresos Personales)
+                    </h6>
+                </div>
+                <div id="collapseRangos" class="collapse">
+                <div class="p-4">
+                    <form method="POST" id="rangosForm">
+                        <div class="mb-3">
+                            <label class="form-label">Fecha Vigencia</label>
+                            <input type="date" class="form-control" name="fecha_vigencia" value="<?php echo $fecha_vigencia_actual; ?>" required title="Fecha de entrada en vigencia" data-tooltip="Fecha de entrada en vigencia" data-tooltip-theme="secondary">
+                            <small class="text-secondary">Fecha desde la cual aplican estos rangos</small>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="rangosTable">
+                                <thead>
+                                    <tr><th>Desde (CUP)</th><th>Hasta (CUP)</th><th>Tasa (%)</th><th>Monto Fijo</th><th style="width:2.5rem"></th></tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($rangos_impuesto)): ?>
+                                        <?php foreach ($rangos_impuesto as $index => $rango): ?>
+                                        <tr>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[<?php echo $index; ?>][desde]" value="<?php echo $rango['desde']; ?>" required></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[<?php echo $index; ?>][hasta]" value="<?php echo $rango['hasta']; ?>"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[<?php echo $index; ?>][tasa]" value="<?php echo $rango['tasa'] * 100; ?>" required></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[<?php echo $index; ?>][monto_fijo]" value="<?php echo $rango['monto_fijo']; ?>"></td>
+                                            <td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[0][desde]" value="0" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[0][hasta]" value="3260"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[0][tasa]" value="0" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[0][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
+                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[1][desde]" value="3260.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[1][hasta]" value="9510"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[1][tasa]" value="3" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[1][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
+                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[2][desde]" value="9510.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[2][hasta]" value="15000"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[2][tasa]" value="5" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[2][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
+                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[3][desde]" value="15000.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[3][hasta]" value="20000"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[3][tasa]" value="7.5" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[3][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
+                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[4][desde]" value="20000.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[4][hasta]" value="25000"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[4][tasa]" value="10" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[4][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
+                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[5][desde]" value="25000.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[5][hasta]" value="30000"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[5][tasa]" value="15" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[5][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
+                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[6][desde]" value="30000.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[6][hasta]" value=""></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[6][tasa]" value="20" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[6][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                                <tfoot><tr><td colspan="5"><button type="button" class="btn-win btn-win-sm" onclick="agregarFila()" title="Agregar nuevo rango" data-tooltip="Agregar nuevo rango" data-tooltip-theme="success"><i class="fas fa-plus-circle me-1"></i> Agregar Rango</button></td></tr></tfoot>
+                            </table>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Nota:</strong> Los rangos se aplican en orden ascendente. Dejar "Hasta" en blanco para el último rango.
+                        </div>
+                        <div class="d-flex justify-content-center mt-3">
+                            <button type="submit" name="guardar_rangos" class="btn-win btn-win-primary" title="Guardar rangos de impuesto" data-tooltip="Guardar rangos de impuesto" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Rangos de Impuesto
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Datos de la Entidad -->
         <div class="col-12 fade-in-up" style="animation-delay: 0.12s;">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseDatosEntidad" aria-expanded="false" aria-controls="collapseDatosEntidad">
-                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-building me-2" style="color: #a78bfa;"></i> Datos de la Entidad y Especialistas
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseDatosEntidad" aria-expanded="false" aria-controls="collapseDatosEntidad">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-building me-2" style="color: #a78bfa;"></i> Datos de la Entidad
                     </h6>
                 </div>
                 <div id="collapseDatosEntidad" class="collapse">
                 <div class="p-4">
-                    <form method="POST">
+                    <form method="POST" id="datosEntidadForm">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Nombre de la Empresa</label>
+                                <label class="form-label">Nombre de la Empresa/PDL/CCS/MyPime/TCP</label>
                                 <input type="text" class="form-control" name="nombre_empresa" value="<?php echo htmlspecialchars($config['nombre_empresa'] ?? COMPANY_NAME); ?>">
                             </div>
                             <div class="col-md-6 mb-3">
@@ -1777,9 +2449,31 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                                 <small class="text-secondary">Eslogan de la entidad</small>
                             </div>
                         </div>
+                        <div class="d-flex justify-content-center mt-3">
+                            <button type="submit" name="guardar_datos_entidad" class="btn-win btn-win-primary" title="Guardar datos de la entidad" data-tooltip="Guardar datos de la entidad" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Datos de la Entidad
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Personal Autorizado -->
+        <div class="col-12 fade-in-up" style="animation-delay: 0.13s;">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapsePersonal" aria-expanded="false" aria-controls="collapsePersonal">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-user-tie me-2" style="color: #f472b6;"></i> Personal Autorizado y Especialistas
+                    </h6>
+                </div>
+                <div id="collapsePersonal" class="collapse">
+                <div class="p-4">
+                    <form method="POST" id="datosPersonalForm">
                         <div class="row">
                             <div class="col-md-3 mb-3">
-                                <label class="form-label">Jefe de Proyecto</label>
+                                <label class="form-label">Jefe / Director</label>
                                 <input type="text" class="form-control" name="jefe_proyecto" value="<?php echo htmlspecialchars($config['jefe_proyecto'] ?? JEFE_PROYECTO); ?>">
                             </div>
                             <div class="col-md-3 mb-3">
@@ -1787,11 +2481,11 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                                 <input type="text" class="form-control" name="especialista_gestion" value="<?php echo htmlspecialchars($config['especialista_gestion'] ?? ESPECIALISTA); ?>">
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label class="form-label">Especialista de Nóminas</label>
+                                <label class="form-label">Especialista en Nóminas</label>
                                 <input type="text" class="form-control" name="especialista_nominas" value="<?php echo htmlspecialchars($config['especialista_nominas'] ?? ''); ?>">
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label class="form-label">Especialista de Gestión de los Recursos Humanos</label>
+                                <label class="form-label">Especialista en Gestión de los Recursos Humanos</label>
                                 <input type="text" class="form-control" name="especialista_gestionRRHH" value="<?php echo htmlspecialchars($config['especialista_gestionRRHH'] ?? ''); ?>">
                             </div>
                         </div>
@@ -1802,9 +2496,77 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
                                 <small class="text-secondary">Aprueba la plantilla de cargos</small>
                             </div>
                         </div>
-                        <button type="submit" name="guardar_datos_entidad" class="btn-win btn-win-primary w-100" title="Guardar datos de la entidad" data-tooltip="Guardar datos de la entidad" data-tooltip-theme="success">
-                            <i class="fas fa-save me-1"></i> Guardar Datos de la Entidad
-                        </button>
+                        <div class="d-flex justify-content-center mt-3">
+                            <button type="submit" name="guardar_datos_personal" class="btn-win btn-win-primary" title="Guardar personal autorizado" data-tooltip="Guardar personal autorizado" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Personal Autorizado
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información Bancaria -->
+        <div class="col-12 fade-in-up" style="animation-delay: 0.14s;">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseBancaria" aria-expanded="false" aria-controls="collapseBancaria">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-coins me-2" style="color: #60a5fa;"></i> Información Bancaria
+                        <i class="fas fa-info-circle info-icon ms-2" onclick="toggleDesgloseCuenta(event)" style="cursor:pointer; color: var(--accent); font-size:0.85rem;" title="Ver estructura de la cuenta bancaria" data-tooltip="Ver estructura de la cuenta bancaria" data-tooltip-theme="primary"></i>
+                    </h6>
+                </div>
+                <div id="collapseBancaria" class="collapse">
+                <div class="p-4">
+                    <form method="POST" id="bancariaForm">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label d-flex justify-content-between align-items-center">
+                                    <span>Cuenta Bancaria <i class="fas fa-info-circle info-icon ms-1" onclick="toggleDesgloseCuenta(event)" style="cursor:pointer; color: var(--accent);" title="Ver desglose de la cuenta" data-tooltip="Ver desglose de la cuenta" data-tooltip-theme="primary"></i></span>
+                                    <span class="badge" style="background: var(--color-success); font-size: 10px;">14/16 d&iacute;gitos</span>
+                                </label>
+                                <input type="text" class="form-control" name="cuenta_bancaria" id="cuentaBancaria"
+                                    value="<?php echo htmlspecialchars($config['cuenta_bancaria'] ?? ''); ?>"
+                                    oninput="actualizarDesglose()" maxlength="16">
+                            </div>
+
+                            <div class="col-md-8">
+                                <label class="form-label">Banco Instituci&oacute;n (Autom&aacute;tico)</label>
+                                <input type="text" class="form-control fw-bold" name="banco" id="nombreBanco"
+                                    value="<?php echo htmlspecialchars($config['banco'] ?? ''); ?>" readonly 
+                                    style="background-color: var(--panel-2); color: var(--accent) !important;">
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Sucursal</label>
+                                <input type="text" class="form-control text-center fw-bold" name="sucursal" id="nombreSucursal" readonly>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Tipo de Cuenta</label>
+                                <input type="text" class="form-control" name="tipocuenta" id="tipoCuentaInput" readonly>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">N&uacute;mero de Cliente</label>
+                                <input type="text" class="form-control fw-bold" name="bancocliente" id="nocliente" readonly>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div id="sucursalInfo" class="w-100 rounded border p-3" 
+                                     style="background-color: var(--panel-2); min-height: 45px; border-style: dashed !important;">
+                                    <span class="text-muted small">An&aacute;lisis de cuenta bancaria...</span>
+                                </div>
+                                <div id="infoAdicional" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-center mt-3">
+                            <button type="submit" name="guardar_datos_bancarios" class="btn-win btn-win-primary" title="Guardar información bancaria" data-tooltip="Guardar información bancaria" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Información Bancaria
+                            </button>
+                        </div>
                     </form>
                 </div>
                 </div>
@@ -1817,7 +2579,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         <div class="col-12 fade-in-up" style="animation-delay: 0.1s;">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseMail" aria-expanded="false" aria-controls="collapseMail">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseMail" aria-expanded="false" aria-controls="collapseMail">
                         <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-envelope-open-text me-2" style="color: #f59e0b;"></i> Configuración de Correo (SMTP)
                         <span class="badge ms-2" style="background: <?php echo $config_mail['activo'] === '1' ? 'var(--color-success)' : '#ef4444'; ?>; font-size:0.65rem;"><?php echo $config_mail['activo'] === '1' ? 'ACTIVO' : 'INACTIVO'; ?></span>
                     </h6>
@@ -1910,7 +2672,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         <div class="col-12 fade-in-up" style="animation-delay: 0.12s;">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseGoogle" aria-expanded="false" aria-controls="collapseGoogle">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseGoogle" aria-expanded="false" aria-controls="collapseGoogle">
                         <i class="fas fa-chevron-down collapse-chevron"></i><i class="fab fa-google me-2" style="color: #ea4335;"></i> Configuración Google (OAuth 2.0)
                         <span class="badge ms-2" style="background: <?php echo (!empty($config_google['client_id'])) ? 'var(--color-success)' : '#ef4444'; ?>; font-size:0.65rem;"><?php echo (!empty($config_google['client_id'])) ? 'CONFIGURADO' : 'NO CONFIGURADO'; ?></span>
                     </h6>
@@ -1954,59 +2716,33 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         </div>
     </div>
 
-    <!-- Rangos de Impuesto (Ingresos Personales) -->
+    <!-- Otras Configuraciones del Sistema -->
     <div class="row g-4 mt-1">
-        <div class="col-12 fade-in-up" style="animation-delay: 0.15s;">
+        <div class="col-12 fade-in-up" style="animation-delay: 0.14s;">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
-                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseRangos" aria-expanded="false" aria-controls="collapseRangos">
-                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-chart-line me-2" style="color: var(--color-success);"></i> Rangos de Impuesto (Ingresos Personales)
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseSistema" aria-expanded="false" aria-controls="collapseSistema">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-wrench me-2" style="color: #60a5fa;"></i> Otras Configuraciones del Sistema
+                        <span class="badge ms-2" style="background: #0078d4; font-size:0.65rem;"><?php echo (int)($config['tiempo_para_bloqueo'] ?? 10); ?> MIN</span>
                     </h6>
                 </div>
-                <div id="collapseRangos" class="collapse">
+                <div id="collapseSistema" class="collapse">
                 <div class="p-4">
-                    <form method="POST" id="rangosForm">
-                        <div class="mb-3">
-                            <label class="form-label">Fecha Vigencia</label>
-                            <input type="date" class="form-control" name="fecha_vigencia" value="<?php echo $fecha_vigencia_actual; ?>" required title="Fecha de entrada en vigencia" data-tooltip="Fecha de entrada en vigencia" data-tooltip-theme="secondary">
-                            <small class="text-secondary">Fecha desde la cual aplican estos rangos</small>
+                    <form method="POST" id="sistemaForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tiempo para bloqueo de sesión (minutos)</label>
+                                <input type="number" min="1" class="form-control" name="tiempo_para_bloqueo" id="tiempo_para_bloqueo" value="<?php echo htmlspecialchars((int)($config['tiempo_para_bloqueo'] ?? 10)); ?>">
+                            </div>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-sm" id="rangosTable">
-                                <thead>
-                                    <tr><th>Desde (CUP)</th><th>Hasta (CUP)</th><th>Tasa (%)</th><th>Monto Fijo</th><th style="width:2.5rem"></th></tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (!empty($rangos_impuesto)): ?>
-                                        <?php foreach ($rangos_impuesto as $index => $rango): ?>
-                                        <tr>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[<?php echo $index; ?>][desde]" value="<?php echo $rango['desde']; ?>" required></td>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[<?php echo $index; ?>][hasta]" value="<?php echo $rango['hasta']; ?>"></td>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[<?php echo $index; ?>][tasa]" value="<?php echo $rango['tasa'] * 100; ?>" required></td>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[<?php echo $index; ?>][monto_fijo]" value="<?php echo $rango['monto_fijo']; ?>"></td>
-                                            <td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[0][desde]" value="0" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[0][hasta]" value="3260"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[0][tasa]" value="0" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[0][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
-                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[1][desde]" value="3260.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[1][hasta]" value="9510"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[1][tasa]" value="3" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[1][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
-                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[2][desde]" value="9510.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[2][hasta]" value="15000"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[2][tasa]" value="5" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[2][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
-                                        <td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[3][desde]" value="15000.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[3][hasta]" value="20000"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[3][tasa]" value="7.5" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[3][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
-                                        <td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[4][desde]" value="20000.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[4][hasta]" value="25000"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[4][tasa]" value="10" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[4][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
-                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[5][desde]" value="25000.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[5][hasta]" value="30000"></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[5][tasa]" value="15" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[5][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
-                                        <tr><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[6][desde]" value="30000.01" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[6][hasta]" value=""></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[6][tasa]" value="20" required></td><td><input type="number" step="0.01" class="form-control form-control-sm" name="rangos[6][monto_fijo]" value="0"></td><td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarRango(this)" title="Eliminar rango" data-tooltip="Eliminar rango" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td></tr>
-                                    <?php endif; ?>
-                                </tbody>
-                                <tfoot><tr><td colspan="5"><button type="button" class="btn-win btn-win-sm" onclick="agregarFila()" title="Agregar nuevo rango" data-tooltip="Agregar nuevo rango" data-tooltip-theme="success"><i class="fas fa-plus-circle me-1"></i> Agregar Rango</button></td></tr></tfoot>
-                            </table>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="submit" name="guardar_config_sistema" class="btn-win btn-win-primary" title="Guardar otras configuraciones del sistema" data-tooltip="Guardar otras configuraciones del sistema" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Configuración
+                            </button>
                         </div>
-                        <div class="alert alert-info mt-3">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Nota:</strong> Los rangos se aplican en orden ascendente. Dejar "Hasta" en blanco para el último rango.
-                        </div>
-                        <button type="submit" name="guardar_rangos" class="btn-win btn-win-primary w-100" title="Guardar rangos de impuesto" data-tooltip="Guardar rangos de impuesto" data-tooltip-theme="success">
-                            <i class="fas fa-save me-1"></i> Guardar Rangos de Impuesto
-                        </button>
+                        <p class="text-secondary mt-3 mb-0" style="font-size:0.78rem;">
+                            <i class="fas fa-info-circle me-1"></i>Define en minutos cuánto tarda la sesión en cerrarse automáticamente después de bloquearse la pantalla. El valor se aplica la próxima vez que se bloquee la sesión (por defecto 10).
+                        </p>
                     </form>
                 </div>
                 </div>
@@ -2014,7 +2750,7 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
         </div>
     </div>
 
-    <?php include '../includes/footer.php'; ?>
+<?php include '../includes/footer.php'; ?>
 </div>
 
 <!-- Modal para agregar tasa -->
@@ -2171,10 +2907,65 @@ $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia 
     </div>
 </div>
 
+<!-- Modal de confirmación para guardado general -->
+<div class="modal fade" id="guardarTodoModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-win">
+            <div class="modal-header modal-header-win">
+                <h5 class="modal-title"><i class="fas fa-save me-2" style="color: var(--color-success);"></i> ¿Guardar configuración?</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info mb-4" style="background: rgba(96, 165, 250, 0.12); border: 0.0625rem solid rgba(96, 165, 250, 0.35); border-radius: 0.75rem;">
+                    <div style="display: flex; align-items: flex-start; gap:0.75rem;">
+                        <i class="fas fa-info-circle fa-2x" style="color: #60a5fa;"></i>
+                        <div>
+                            <strong style="color: #60a5fa;">Confirmación</strong>
+                            <p class="mb-0 mt-1" style="color: #d1d5db;">Esta acción guardará simultáneamente la configuración de todas las secciones de este módulo.</p>
+                        </div>
+                    </div>
+                </div>
+                <h6 class="mb-2" style="color: #e5e7eb;"><i class="fas fa-list-check me-2" style="color: var(--color-success);"></i> Se guardarán todos los cambios realizados en:</h6>
+                <ul class="mb-4" style="color: #d1d5db; line-height: 1.9; padding-left: 1.25rem;">
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Configuración General</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Datos de la Entidad</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Personal Autorizado</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Información Bancaria</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Rangos de Impuesto (Ingresos Personales)</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Configuración de Correo (SMTP)</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Google OAuth</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Seguridad del Sistema</li>
+                </ul>
+            </div>
+            <div class="modal-footer modal-footer-win">
+                <button type="button" class="btn-win btn-win-sm" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+                <button type="button" class="btn-win btn-win-success" id="btnConfirmarGuardarTodo" title="Sí, guardar cambios" data-tooltip="Sí, guardar cambios" data-tooltip-theme="success">
+                    <i class="fas fa-check me-1"></i> Sí, guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="../js/jquery-3.6.0.min.js"></script>
 <script src="../js/bootstrap5.3.0/bootstrap.bundle.min.js"></script>
 <script src="../js/sweetalert211.js"></script>
 <script src="../js/cropper.min.js"></script>
+<script src="../js/exceljs.min.js"></script>
+<script src="../js/jspdf.umd.min.js"></script>
+<script src="../js/jspdf.plugin.autotable.min.js"></script>
+<script>
+/* Configuración para las exportaciones (js/configuracion_export.js) */
+window.CONFIG_EXPORT = {
+    endpoint: 'exportar_configuracion.php',
+    titulo: 'Configuración del Sistema',
+    sistema: 'Sistema SisGesNom®',
+    empresa: <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom'), JSON_UNESCAPED_UNICODE); ?>
+};
+</script>
+<script src="../js/configuracion_export.js?v=<?php echo @filemtime(__DIR__ . '/../js/configuracion_export.js') ?: time(); ?>"></script>
 
 <script>
 // Clock y Sidebar
@@ -2219,6 +3010,14 @@ setInterval(updateClock, 1000); updateClock();
         });
         Swal.getTimerProgressBar && setTimeout(function () { alertMsg.remove(); }, 100);
     }, 80);
+
+    // Limpiar msg/tipo de la URL para que al recargar (o al guardar tema) no se repita el toast
+    try {
+        let url = new URL(window.location.href);
+        url.searchParams.delete('msg');
+        url.searchParams.delete('tipo');
+        history.replaceState(null, '', url.toString());
+    } catch (e) {}
 })();
 
 // Backup y Restore
@@ -2841,9 +3640,20 @@ document.getElementById('btnProbarMail')?.addEventListener('click', function() {
 }
 .scroll-quick-btn:hover { transform: translateY(-0.125rem); filter: brightness(1.15); }
 .scroll-quick-btn.hidden { opacity: 0; pointer-events: none; transform: translateY(0.5rem); }
+#btnGuardarTodo { background: linear-gradient(135deg, #059669, #10b981); }
+#btnGuardarTodo i { animation: none; }
 @media print { .scroll-quick-btns { display: none !important; } }
 </style>
 <div class="scroll-quick-btns">
+    <button type="button" class="scroll-quick-btn" id="btnGuardarTodo" title="Guardar toda la configuración" data-tooltip="Guardar toda la configuración" data-tooltip-theme="success">
+        <i class="fas fa-save"></i>
+    </button>
+    <button type="button" class="scroll-quick-btn" id="btnRecargarPagina" title="Recargar datos y actualizar página" data-tooltip="Recargar datos y actualizar página" data-tooltip-theme="primary">
+        <i class="fas fa-sync-alt"></i>
+    </button>
+    <button type="button" class="scroll-quick-btn" id="btnCollapseAll" title="Expandir todas las tarjetas" data-tooltip="Expandir todas las tarjetas" data-tooltip-theme="primary">
+        <i class="fas fa-chevron-down"></i>
+    </button>
     <button type="button" class="scroll-quick-btn" id="btnScrollTop" title="Ir al principio" data-tooltip="Ir al principio" data-tooltip-theme="primary">
         <i class="fas fa-arrow-up"></i>
     </button>
@@ -2869,13 +3679,155 @@ document.getElementById('btnProbarMail')?.addEventListener('click', function() {
 })();
 </script>
 
+<!-- Recarga de página con modal animado -->
+<style>
+.recarga-ico { font-size: 1.75rem; color: #60a5fa; margin-bottom: 0.5rem; }
+</style>
+<script>
+function recargarConfiguracion() {
+    if (window.Swal) {
+        Swal.fire({
+            title: '<div class="recarga-ico"><i class="fa-solid fa-sync fa-spin"></i></div> RECARGANDO DATOS DE CONFIGURACIÓN...',
+            html: '<div style="color:#94a3b8; font-size:0.95rem;">Se están actualizando los datos del sistema.</div>',
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            background: '#0f172a',
+            color: '#e2e8f0',
+            didOpen: function () {
+                setTimeout(function () { window.location.reload(); }, 1200);
+            }
+        });
+    } else {
+        window.location.reload();
+    }
+}
+</script>
+
+<!-- Guardado general (botón flotante de disco) -->
+<script>
+(function () {
+    var btn = document.getElementById('btnGuardarTodo');
+    if (!btn) return;
+
+    btn.addEventListener('click', function () {
+        var modalEl = document.getElementById('guardarTodoModal');
+        if (!modalEl) return;
+        var modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    });
+
+    var recargar = document.getElementById('btnRecargarPagina');
+    if (recargar) {
+        recargar.addEventListener('click', recargarConfiguracion);
+    }
+
+    var confirmar = document.getElementById('btnConfirmarGuardarTodo');
+    if (!confirmar) return;
+
+    confirmar.addEventListener('click', function () {
+        var formIds = ['configGeneralForm', 'rangosForm', 'datosEntidadForm', 'datosPersonalForm', 'bancariaForm', 'mailForm', 'googleForm', 'sistemaForm'];
+        var hiddenForm = document.createElement('form');
+        hiddenForm.method = 'POST';
+        hiddenForm.style.display = 'none';
+        document.body.appendChild(hiddenForm);
+
+        formIds.forEach(function (id) {
+            var f = document.getElementById(id);
+            if (!f) return;
+            var elements = f.elements;
+            for (var i = 0; i < elements.length; i++) {
+                var el = elements[i];
+                if (!el.name) continue;
+                if (el.type === 'submit' || el.type === 'button' || el.tagName === 'FIELDSET') continue;
+                var inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = el.name;
+                inp.value = (el.type === 'checkbox' || el.type === 'radio') ? (el.checked ? (el.value || '1') : '') : el.value;
+                hiddenForm.appendChild(inp);
+            }
+            var submitBtn = f.querySelector('button[type="submit"][name^="guardar_"]');
+            if (submitBtn && submitBtn.name) {
+                var tr = document.createElement('input');
+                tr.type = 'hidden';
+                tr.name = submitBtn.name;
+                tr.value = submitBtn.value || '1';
+                hiddenForm.appendChild(tr);
+            }
+        });
+
+        var todo = document.createElement('input');
+        todo.type = 'hidden';
+        todo.name = 'guardar_todo';
+        todo.value = '1';
+        hiddenForm.appendChild(todo);
+
+        hiddenForm.submit();
+    });
+})();
+</script>
+
+<!-- Expandir / Colapsar todos los cards (botón flotante) -->
+<script>
+(function () {
+    var btn = document.getElementById('btnCollapseAll');
+    if (!btn) return;
+    var titles = document.querySelectorAll('.card-collapse-title');
+    var todasColapsadas = true;
+
+    function aplicar(expandir) {
+        titles.forEach(function (title) {
+            var target = title.getAttribute('data-bs-target');
+            if (!target) return;
+            var el = document.querySelector(target);
+            if (!el) return;
+            var inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+            if (expandir) { inst.show(); } else { inst.hide(); }
+        });
+        todasColapsadas = !expandir;
+        actualizarEstado();
+    }
+
+    function actualizarEstado() {
+        var icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = todasColapsadas ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+        }
+        btn.title = todasColapsadas ? 'Expandir todas las tarjetas' : 'Colapsar todas las tarjetas';
+    }
+
+    btn.addEventListener('click', function () { aplicar(todasColapsadas); });
+    actualizarEstado();
+})();
+</script>
+
+<!-- Items del dropdown de acciones rápidas (delegan en los botones flotantes) -->
+<script>
+(function () {
+    var dropGuardar = document.getElementById('btnDropGuardarTodo');
+    if (dropGuardar) {
+        dropGuardar.addEventListener('click', function () {
+            var guardar = document.getElementById('btnGuardarTodo');
+            if (guardar) guardar.click();
+        });
+    }
+    var dropRecargar = document.getElementById('btnDropRecargar');
+    if (dropRecargar) {
+        dropRecargar.addEventListener('click', function () {
+            var recargar = document.getElementById('btnRecargarPagina');
+            if (recargar) recargar.click();
+        });
+    }
+})();
+</script>
+
 <!-- Expandir / Colapsar todos los cards -->
 <script>
 (function () {
     var btn = document.getElementById('btnToggleAllCards');
     var texto = document.getElementById('btnToggleAllCardsTexto');
     if (!btn || !texto) return;
-    var selectores = ['#collapseDB', '#collapseConfigGeneral', '#collapseTasas', '#collapseDatosEntidad', '#collapseMail', '#collapseRangos'];
+    var selectores = ['#collapseDB', '#collapseConfigGeneral', '#collapseTasas', '#collapseDatosEntidad', '#collapsePersonal', '#collapseBancaria', '#collapseMail', '#collapseRangos'];
 
     function todosAbiertos() {
         return selectores.every(function (sel) {
@@ -2911,6 +3863,715 @@ document.getElementById('btnProbarMail')?.addEventListener('click', function() {
 
     actualizarBoton();
 })();
+</script>
+
+<!-- Popup de desglose de cuenta bancaria -->
+<div class="desglose-overlay" id="desgloseOverlay"></div>
+<div class="cuenta-desglose" id="desgloseCuenta" style="display: none;"></div>
+
+<script>
+// ==================== INFORMACIÓN BANCARIA ====================
+let desgloseVisible = false;
+let cuentaValida = false;
+
+const bancosCuba = {
+    '01': 'Banco Nacional de Cuba (BNC)',
+    '03': 'Banco de Crédito y Comercio (BANDEC)',
+    '05': 'Banco Metropolitano S.A. (BANMET)',
+    '06': 'Banco de Crédito y Comercio (BANDEC)',
+    '08': 'Banco Financiero Internacional S.A. (BFI)',
+    '09': 'Banco Exterior de Cuba (BEC)',
+    '10': 'Banco Internacional de Comercio S.A. (BICSA)',
+    '12': 'Banco Popular de Ahorro (BPA)',
+    '13': 'Banco de Inversiones (BISO)',
+    '14': 'Banco Exterior de Cuba (BEC)',
+    '15': 'Banco Financiero Internacional (BFI)',
+    '20': 'Banco Central de Cuba (BCC)',
+    '21': 'Banco de Cuba para el Comercio Exterior (BANCEC)',
+    '22': 'Banco de Desarrollo Local (BDL)',
+    '23': 'Banco de Inversiones de Holguín',
+    '25': 'Banco de la Construcción',
+    '30': 'Caja de Ahorros',
+    '35': 'Financiera Nacional (FINATUR)',
+    '40': 'Banco de la Industria Alimentaria (BINAL)',
+    '45': 'Banco de la Industria Ligera (BANIL)',
+    '50': 'Banco de la Industria Sidero-Mecánica (BANISME)',
+    '55': 'Banco de la Industria Químico-Farmacéutica (BANIQ)',
+    '60': 'Banco de la Industria de Materiales de Construcción (BANIMAT)',
+    '65': 'Banco de la Industria de Bienes de Consumo (BANICON)',
+    '70': 'Banco de la Industria Agropecuaria (BANAGRO)',
+    '75': 'Banco de la Industria Forestal (BANIF)',
+    '80': 'Banco de la Industria Pesquera (BANIPES)',
+    '85': 'Banco de la Industria del Turismo (BANITUR)',
+    '90': 'Banco de la Industria de Transporte (BANITRANS)',
+    '95': 'Banco de la Industria de Comunicaciones (BANICOM)',
+    '98': 'Bancos Internacionales',
+    '99': 'Casas de Cambio y Otras Instituciones'
+};
+
+const tiposCuenta = {
+    '01': 'Cuenta de Ahorro CUP (Básica)',
+    '02': 'Cuenta de Ahorro para la Vivienda',
+    '03': 'Cuenta de Ahorro a Plazo Fijo CUP',
+    '04': 'Cuenta en Dólares Estadounidenses (USD)',
+    '05': 'Cuenta en Moneda Libremente Convertible (MLC)',
+    '06': 'Cuenta en Euros (EUR)',
+    '07': 'Cuenta Mixta (CUP/USD)',
+    '08': 'Cuenta de Ahorro Joven (BPA)',
+    '09': 'Cuenta de Ahorro Escolar',
+    '10': 'Cuenta Corriente Empresarial CUP',
+    '11': 'Cuenta Corriente Persona Natural CUP',
+    '12': 'Cuenta Corriente USD (BFI/BICSA)',
+    '13': 'Cuenta Corriente EUR',
+    '14': 'Cuenta Corriente MLC',
+    '15': 'Cuenta Corriente para TCP/Empresa',
+    '16': 'Cuenta Corriente Mixta',
+    '17': 'Cuenta Corriente para Inversiones',
+    '18': 'Cuenta Corriente Offshore',
+    '19': 'Cuenta Corriente Internacional',
+    '20': 'Ahorro a Plazo Fijo Largo',
+    '21': 'Ahorro para el Retiro',
+    '22': 'Ahorro para la Vivienda Especial',
+    '23': 'Ahorro para Estudios',
+    '24': 'Ahorro para Salud',
+    '25': 'Ahorro USD a Plazo Fijo',
+    '26': 'Tarjeta Magnética CUP / Jubilados',
+    '27': 'Ahorro EUR a Plazo Fijo',
+    '28': 'Ahorro MLC a Plazo Fijo',
+    '29': 'Ahorro para Emergencias',
+    '30': 'Tarjeta de Débito CUP',
+    '31': 'Tarjeta de Débito USD',
+    '32': 'Tarjeta de Débito MLC',
+    '33': 'Tarjeta de Crédito Nacional',
+    '34': 'Tarjeta de Crédito Internacional',
+    '35': 'Tarjeta Prepago',
+    '36': 'Tarjeta Virtual',
+    '37': 'Tarjeta MLC (BANDEC Nacional)',
+    '38': 'Banca Móvil / Virtual',
+    '39': 'Cuenta Digital',
+    '40': 'Cuenta Gubernamental',
+    '41': 'Cuenta de Organizaciones Sociales',
+    '42': 'Cuenta de Gastos Institucionales',
+    '43': 'Cuenta de Empresa Estatal',
+    '44': 'Cuenta de Empresa Mixta',
+    '45': 'Cuenta de Inversión Extranjera',
+    '46': 'Cuenta de Proyectos de Desarrollo',
+    '47': 'Cuenta de ONG/Organismos',
+    '48': 'Cuenta de Fondos Especiales',
+    '49': 'Cuenta de Asociaciones',
+    '50': 'Cuenta de Nómina Estatal',
+    '51': 'Cuenta de Nómina Empresa Mixta',
+    '52': 'Cuenta de Nómina TCP',
+    '53': 'Cuenta de Remesas',
+    '54': 'Cuenta para Pensionados',
+    '55': 'Cuenta para Beneficiarios Sociales',
+    '56': 'Cuenta de Subsidios',
+    '57': 'Banca Remota / Nóminas (BANMET)',
+    '58': 'Cuenta de Incentivos',
+    '59': 'Cuenta de Bonificaciones',
+    '60': 'Cuenta de Inversión Corto Plazo',
+    '61': 'Cuenta de Inversión Largo Plazo',
+    '62': 'Cuenta de Fondos Mutuos',
+    '63': 'Cuenta de Valores',
+    '64': 'Cuenta de Bonos',
+    '65': 'Cuenta de Acciones',
+    '66': 'Cuenta de Fondo de Inversión',
+    '67': 'Cuenta de Capital de Riesgo',
+    '68': 'Cuenta de Inversión Extranjera Directa',
+    '69': 'Cuenta de Portafolio',
+    '70': 'Cuenta de Corresponsalía Bancaria',
+    '71': 'Cuenta para Importaciones',
+    '72': 'Cuenta para Exportaciones',
+    '73': 'Cuenta de Financiamiento Externo',
+    '74': 'Cuenta de Cartas de Crédito',
+    '75': 'Cuenta de Garantías',
+    '76': 'Cuenta de Operaciones Cambiarias',
+    '77': 'Cuenta de Divisas',
+    '78': 'Cuenta de Transferencias Internacionales',
+    '79': 'Cuenta de Compensación',
+    '80': 'Cuenta MLC Persona Natural',
+    '81': 'Cuenta MLC Empresa',
+    '82': 'Tarjeta MLC con Cuenta',
+    '83': 'Cuenta USD Persona Natural',
+    '84': 'Cuenta EUR Persona Natural',
+    '85': 'Cuenta en Libras Esterlinas (GBP)',
+    '86': 'Cuenta en Dólares Canadienses (CAD)',
+    '87': 'Cuenta en Dólares Australianos (AUD)',
+    '88': 'Cuenta en Yuanes Chinos (CNY)',
+    '89': 'Cuenta en Dólares Caribeños (XCD)',
+    '90': 'Cuenta de Casa de Cambio (CADECA)',
+    '91': 'Cuenta de FinCimex',
+    '92': 'Cuenta de Operaciones Especiales',
+    '93': 'Cuenta de Fideicomiso',
+    '94': 'Cuenta de Garantía',
+    '95': 'Cuenta de Depósito Judicial',
+    '96': 'Cuenta de Secuestro',
+    '97': 'Cuenta de Administración',
+    '98': 'Cuenta Temporal',
+    '99': 'Otras Cuentas Especiales'
+};
+
+const sucursalesCubaJS = <?php echo json_encode($sucursales, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+function obtenerNombreSucursal(codigoBanco, codigoSucursal) {
+    if (!codigoBanco || !codigoSucursal || codigoSucursal.length !== 4) {
+        return 'Sucursal no identificada para ese banco';
+    }
+    const sucursalesBanco = sucursalesCubaJS[codigoBanco];
+    if (!sucursalesBanco) {
+        return 'Sucursal no identificada para ese banco';
+    }
+    return sucursalesBanco[codigoSucursal] || 'Sucursal no identificada para ese banco';
+}
+
+function actualizarDesglose() {
+    const cuentaInput = document.getElementById('cuentaBancaria');
+    let cuenta = cuentaInput.value.trim();
+    
+    const cuentaLimpia = cuenta.replace(/\D/g, '');
+    const longitud = cuentaLimpia.length;
+    
+    const codigoBanco = longitud >= 2 ? cuentaLimpia.substring(0, 2) : '';
+    const codigoSucursal = longitud >= 6 ? cuentaLimpia.substring(2, 6) : '';
+    const codigoTipoCuenta = longitud >= 8 ? cuentaLimpia.substring(6, 8) : '';
+    const numeroCuenta = longitud >= 8 ? cuentaLimpia.substring(8) : '';
+    
+    const nombreBanco = bancosCuba[codigoBanco] || 'Banco Desconocido';
+    const nombreSucursal = obtenerNombreSucursal(codigoBanco, codigoSucursal);
+    const descripcionTipo = tiposCuenta[codigoTipoCuenta] || 'Tipo de cuenta desconocido';
+    
+    const nombreBancoInput = document.getElementById('nombreBanco');
+    const nombreSucursalInput = document.getElementById('nombreSucursal');
+    const noClienteInput = document.getElementById('nocliente');
+    const tipoCuentaInput = document.getElementById('tipoCuentaInput');
+    const sucursalInfo = document.getElementById('sucursalInfo');
+    const infoAdicional = document.getElementById('infoAdicional');
+    const cuentaError = document.getElementById('cuentaError');
+    
+    const esValida = validarCuentaBancariaCompleta(cuentaLimpia);
+    cuentaValida = esValida;
+    
+    if (cuentaLimpia.length > 0) {
+        if (esValida) {
+            cuentaInput.classList.remove('is-invalid');
+            cuentaInput.classList.add('is-valid');
+            if (cuentaError) cuentaError.style.display = 'none';
+        } else {
+            cuentaInput.classList.remove('is-valid');
+            cuentaInput.classList.add('is-invalid');
+            if (cuentaError) cuentaError.style.display = 'block';
+            
+            if (!esValida && longitud >= 8) {
+                const desglose = document.getElementById('desgloseCuenta');
+                if (desglose && desglose.style.display !== 'block') {
+                    desglose.style.display = 'block';
+                    desgloseVisible = true;
+                }
+            }
+        }
+    } else {
+        cuentaInput.classList.remove('is-valid', 'is-invalid');
+        if (cuentaError) cuentaError.style.display = 'none';
+    }
+    
+    if (nombreBancoInput) {
+        nombreBancoInput.value = (longitud >= 2) ? nombreBanco : '';
+        if (nombreBanco === 'Banco Desconocido' && longitud >= 2) {
+            nombreBancoInput.classList.add('banco-desconocido');
+            nombreBancoInput.style.color = '#e81123';
+            nombreBancoInput.style.fontWeight = '600';
+        } else {
+            nombreBancoInput.classList.remove('banco-desconocido');
+            nombreBancoInput.style.color = '';
+            nombreBancoInput.style.fontWeight = '';
+        }
+    }
+    
+    if (nombreSucursalInput) {
+        nombreSucursalInput.value = codigoSucursal;
+        if (nombreSucursal === 'Sucursal no identificada para ese banco' && longitud >= 6) {
+            nombreSucursalInput.classList.add('sucursal-no-identificada');
+            nombreSucursalInput.style.color = '#ff8c00';
+            nombreSucursalInput.style.fontWeight = '600';
+        } else {
+            nombreSucursalInput.classList.remove('sucursal-no-identificada');
+            nombreSucursalInput.style.color = '';
+            nombreSucursalInput.style.fontWeight = '';
+        }
+    }
+    
+    if (sucursalInfo && codigoSucursal) {
+        let icono, color, estilo;
+        if (nombreSucursal === 'Sucursal no identificada para ese banco') {
+            icono = 'fa-exclamation-triangle';
+            color = 'text-warning';
+            estilo = 'sucursal-no-identificada';
+        } else {
+            icono = 'fa-building';
+            color = 'text-primary';
+            estilo = '';
+        }
+        
+        sucursalInfo.innerHTML = `
+            <div class="d-inline-flex align-items-center">
+                <i class="fas ${icono} me-2 ${color}"></i>
+                <span class="${estilo} me-2">
+                    <strong>${nombreSucursal}</strong>
+                </span>
+                <span class="text-muted">|</span>
+                <small class="text-muted ms-2">Código Sucursal: ${codigoSucursal}</small>
+            </div>
+        `;
+        sucursalInfo.style.display = 'flex';
+    } else if (sucursalInfo) {
+        sucursalInfo.innerHTML = '<span class="text-muted small">Esperando datos de cuenta...</span>';
+    }
+    
+    if (noClienteInput) {
+        if (longitud === 16) {
+            noClienteInput.value = numeroCuenta;
+        } else if (longitud === 14) {
+            noClienteInput.value = numeroCuenta + ' (6 dígitos)';
+        } else {
+            noClienteInput.value = '';
+        }
+    }
+    
+    if (tipoCuentaInput) {
+        if (codigoTipoCuenta) {
+            tipoCuentaInput.value = `${codigoTipoCuenta} → ${descripcionTipo}`;
+            if (descripcionTipo === 'Tipo de cuenta desconocido') {
+                tipoCuentaInput.style.color = '#ff8c00';
+                tipoCuentaInput.style.fontWeight = '600';
+            } else {
+                tipoCuentaInput.style.color = '';
+                tipoCuentaInput.style.fontWeight = '';
+            }
+        } else {
+            tipoCuentaInput.value = '';
+        }
+    }
+    
+    if (infoAdicional) {
+        let mensajes = [];
+        if (esValida) {
+            if (nombreBanco === 'Banco Desconocido') {
+                mensajes.push(`<i class="fas fa-exclamation-triangle text-warning me-1"></i> Banco no reconocido`);
+            }
+            if (nombreSucursal === 'Sucursal no identificada para ese banco') {
+                mensajes.push(`<i class="fas fa-exclamation-triangle text-warning me-1"></i> Sucursal no registrada`);
+            }
+            if (descripcionTipo === 'Tipo de cuenta desconocido') {
+                mensajes.push(`<i class="fas fa-exclamation-triangle text-warning me-1"></i> Tipo de cuenta no reconocido`);
+            }
+            
+            if (mensajes.length > 0) {
+                infoAdicional.innerHTML = `
+                    <div class="alert alert-warning p-2 mb-2 w-100">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Cuenta válida pero con advertencias:</strong>
+                        <ul class="mb-0 mt-1">${mensajes.map(msg => `<li style="font-size: 12px;">${msg}</li>`).join('')}</ul>
+                    </div>
+                    <div class="alert alert-success p-2 mb-0 w-100">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Cuenta válida:</strong> ${longitud} dígitos - Formato ${longitud === 16 ? 'estándar' : 'antiguo'}
+                    </div>`;
+            } else {
+                infoAdicional.innerHTML = `
+                    <div class="alert alert-success p-2 mb-0 w-100">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Cuenta válida:</strong> ${longitud} dígitos - Formato ${longitud === 16 ? 'estándar' : 'antiguo'}
+                    </div>`;
+            }
+        } else if (cuentaLimpia.length > 0) {
+            infoAdicional.innerHTML = `
+                <div class="alert alert-warning p-2 mb-0 w-100">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Validación:</strong> ${getMensajeError(cuentaLimpia)}
+                </div>`;
+        } else {
+            infoAdicional.innerHTML = '';
+        }
+    }
+    
+    actualizarDesglosePopup(cuentaLimpia, longitud, codigoBanco, nombreBanco, 
+                           codigoSucursal, nombreSucursal, 
+                           codigoTipoCuenta, descripcionTipo, numeroCuenta);
+    
+    if ((nombreBanco === 'Banco Desconocido' || nombreSucursal === 'Sucursal no identificada para ese banco') && cuentaLimpia.length >= 6) {
+        if (!desgloseVisible) {
+            abrirDesglose(null);
+        }
+    }
+}
+
+function actualizarDesglosePopup(cuenta, longitud, codigoBanco, nombreBanco, 
+                                codigoSucursal, nombreSucursal, 
+                                codigoTipoCuenta, descripcionTipo, numeroCuenta) {
+    const desglose = document.getElementById('desgloseCuenta');
+    if (!desglose) return;
+    
+    const esValida = validarCuentaBancariaCompleta(cuenta);
+    
+    let badgeClass, badgeText;
+    if (cuenta.length === 0) {
+        badgeClass = 'bg-secondary';
+        badgeText = 'Sin datos';
+    } else if (esValida) {
+        badgeClass = longitud === 16 ? 'bg-success' : 'bg-warning';
+        badgeText = longitud + ' dígitos - ' + (longitud === 16 ? 'Estándar' : 'Antiguo');
+    } else {
+        badgeClass = 'bg-danger';
+        badgeText = longitud + ' dígitos - Inválido';
+    }
+    
+    let visualizacion = '';
+    if (cuenta.length >= 2) {
+        visualizacion = cuenta.substring(0, 2);
+        if (cuenta.length >= 6) {
+            visualizacion += ' - ' + cuenta.substring(2, 6);
+            if (cuenta.length >= 8) {
+                visualizacion += ' - ' + cuenta.substring(6, 8);
+                if (cuenta.length > 8) {
+                    visualizacion += ' - ' + cuenta.substring(8);
+                }
+            }
+        }
+    }
+    
+    let contenido = `
+        <button type="button" class="desglose-close-btn" onclick="cerrarDesglose(event)" title="Cerrar">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div class="desglose-header">
+            <div class="desglose-title">
+                <i class="fas fa-credit-card"></i>
+                <span>Desglose de Cuenta Bancaria</span>
+            </div>
+        </div>
+        
+        <div class="desglose-numero">
+            ${visualizacion || 'No ingresado'}
+            <span class="badge ${badgeClass} ms-2">${badgeText}</span>
+        </div>
+        
+        <div class="desglose-item">
+            <span>Número completo:</span>
+            <span class="desglose-valor">${cuenta || 'No ingresado'}</span>
+        </div>`;
+    
+    if (codigoBanco) {
+        contenido += `
+        <div class="desglose-item">
+            <span>Banco (AA):</span>
+            <span class="desglose-valor ${nombreBanco === 'Banco Desconocido' ? 'banco-desconocido' : ''}">
+                <i class="fas ${nombreBanco === 'Banco Desconocido' ? 'fa-exclamation-triangle text-danger' : 'fa-bank'} me-1"></i>
+                ${codigoBanco} → ${nombreBanco}
+            </span>
+        </div>`;
+    }
+    
+    if (codigoSucursal) {
+        contenido += `
+        <div class="desglose-item">
+            <span>Sucursal (BBBB):</span>
+            <span class="desglose-valor ${nombreSucursal.includes('no identificada') ? 'sucursal-no-identificada' : ''}">
+                <i class="fas ${nombreSucursal.includes('no identificada') ? 'fa-exclamation-circle text-warning' : 'fa-building'} me-1"></i>
+                ${codigoSucursal} → ${nombreSucursal}
+            </span>
+        </div>`;
+    }
+    
+    if (codigoTipoCuenta) {
+        contenido += `
+        <div class="desglose-item">
+            <span>Tipo cuenta (CC):</span>
+            <span class="desglose-valor ${descripcionTipo === 'Tipo de cuenta desconocido' ? 'text-warning' : ''}">
+                <i class="fas fa-credit-card me-1"></i>
+                ${codigoTipoCuenta} → ${descripcionTipo}
+            </span>
+        </div>`;
+    }
+    
+    if (numeroCuenta) {
+        const digitos = longitud === 16 ? '8 dígitos' : 
+                       longitud === 14 ? '6 dígitos' : 
+                       numeroCuenta.length + ' dígitos';
+        contenido += `
+        <div class="desglose-item">
+            <span>Número cuenta:</span>
+            <span class="desglose-valor">${numeroCuenta} <small class="text-muted">(${digitos})</small></span>
+        </div>`;
+    }
+    
+    if (nombreBanco === 'Banco Desconocido') {
+        contenido += `
+        <div class="alert alert-danger mt-2">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Banco Desconocido:</strong> El código <strong>${codigoBanco}</strong> no está registrado en el sistema.
+        </div>`;
+    }
+    
+    if (nombreSucursal.includes('no identificada')) {
+        contenido += `
+        <div class="alert alert-warning mt-2">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong>Sucursal no identificada:</strong> La sucursal <strong>${codigoSucursal}</strong> no está registrada para este banco.
+        </div>`;
+    }
+    
+    if (descripcionTipo === 'Tipo de cuenta desconocido') {
+        contenido += `
+        <div class="alert alert-warning mt-2">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Tipo de cuenta desconocido:</strong> El código <strong>${codigoTipoCuenta}</strong> no está registrado.
+        </div>`;
+    }
+    
+    if (!esValida && cuenta.length > 0) {
+        contenido += `
+        <div class="alert alert-danger mt-2">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong>Error de validación:</strong> ${getMensajeError(cuenta)}
+        </div>`;
+    }
+    
+    if (cuenta.length >= 6) {
+        contenido += `
+        <div class="alert alert-info mt-2">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Nota:</strong> El sistema valida bancos, sucursales y tipos de cuenta según los registros oficiales.
+        </div>`;
+    }
+    
+    contenido += `
+    <div class="d-grid gap-2 mt-3">
+        <button type="button" class="btn btn-primary" onclick="cerrarDesglose(event)">
+            <i class="fas fa-check me-2"></i>Entendido
+        </button>
+    </div>`;
+    
+    desglose.innerHTML = contenido;
+}
+
+function validarCuentaBancariaCompleta(cuenta) {
+    const longitud = cuenta.length;
+    
+    if (longitud !== 14 && longitud !== 16) {
+        return false;
+    }
+    
+    if (!/^\d+$/.test(cuenta)) {
+        return false;
+    }
+    
+    const codigoBanco = cuenta.substring(0, 2);
+    if (!bancosCuba[codigoBanco]) {
+        return false;
+    }
+    
+    if (longitud >= 8) {
+        const codigoTipo = cuenta.substring(6, 8);
+        if (!tiposCuenta[codigoTipo]) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+function toggleDesgloseCuenta(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    const desglose = document.getElementById('desgloseCuenta');
+    const overlay = document.getElementById('desgloseOverlay');
+    
+    if (!desglose || !overlay) return false;
+    
+    if (desgloseVisible) {
+        cerrarDesglose();
+        return false;
+    }
+    
+    actualizarDesglose();
+    
+    overlay.classList.add('open');
+    desglose.style.display = 'block';
+    desgloseVisible = true;
+    
+    document.addEventListener('keydown', cerrarDesgloseConESC);
+    overlay.addEventListener('click', cerrarDesglose);
+    
+    return false;
+}
+
+function cerrarDesglose(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    const desglose = document.getElementById('desgloseCuenta');
+    const overlay = document.getElementById('desgloseOverlay');
+    
+    if (desglose) {
+        desglose.style.display = 'none';
+    }
+    
+    if (overlay) {
+        overlay.classList.remove('open');
+        overlay.removeEventListener('click', cerrarDesglose);
+    }
+    
+    desgloseVisible = false;
+    document.removeEventListener('keydown', cerrarDesgloseConESC);
+    
+    return false;
+}
+
+function cerrarDesgloseConESC(event) {
+    if (event.key === 'Escape' && desgloseVisible) {
+        cerrarDesglose();
+    }
+}
+
+function getMensajeError(cuenta) {
+    const longitud = cuenta.length;
+    
+    if (longitud === 0) {
+        return 'Ingrese una cuenta bancaria';
+    }
+    
+    if (!/^\d+$/.test(cuenta)) {
+        return 'Solo se permiten números';
+    }
+    
+    if (longitud < 14) {
+        return 'Faltan ' + (14 - longitud) + ' dígitos (mínimo 14)';
+    }
+    
+    if (longitud > 16) {
+        return 'Sobran ' + (longitud - 16) + ' dígitos (máximo 16)';
+    }
+    
+    if (longitud !== 14 && longitud !== 16) {
+        return 'Debe tener 14 o 16 dígitos exactos';
+    }
+    
+    const codigoBanco = cuenta.substring(0, 2);
+    if (!bancosCuba[codigoBanco]) {
+        return 'Código de banco ' + codigoBanco + ' no reconocido (Banco Desconocido)';
+    }
+    
+    if (longitud >= 8) {
+        const codigoTipo = cuenta.substring(6, 8);
+        if (!tiposCuenta[codigoTipo]) {
+            return 'Tipo de cuenta ' + codigoTipo + ' no reconocido';
+        }
+    }
+    
+    return 'Formato de cuenta inválido';
+}
+
+function abrirDesglose(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    const desglose = document.getElementById('desgloseCuenta');
+    const overlay = document.getElementById('desgloseOverlay');
+    
+    if (!desglose || !overlay) return false;
+    
+    actualizarDesglose();
+    
+    overlay.classList.add('open');
+    desglose.style.display = 'block';
+    desgloseVisible = true;
+    
+    overlay.addEventListener('click', cerrarDesglose);
+    document.addEventListener('keydown', cerrarDesgloseConESC);
+    
+    return false;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const cuentaInput = document.getElementById('cuentaBancaria');
+    if (cuentaInput) {
+        actualizarDesglose();
+        cuentaInput.addEventListener('input', actualizarDesglose);
+    }
+});
+
+document.addEventListener('click', function(event) {
+    const desglose = document.getElementById('desgloseCuenta');
+    const overlay = document.getElementById('desgloseOverlay');
+    
+    if (event.target.closest('.desglose-close-btn')) {
+        event.preventDefault();
+        event.stopPropagation();
+        cerrarDesglose();
+        return false;
+    }
+    
+    if (event.target === overlay && desgloseVisible) {
+        cerrarDesglose();
+        return false;
+    }
+    
+    if (desgloseVisible && event.target.closest('.btn-primary')) {
+        const btn = event.target.closest('.btn-primary');
+        if (btn && btn.textContent.includes('Entendido')) {
+            event.preventDefault();
+            event.stopPropagation();
+            cerrarDesglose();
+            return false;
+        }
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (desgloseVisible && event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        cerrarDesglose();
+    }
+});
+
+// Validación al guardar la información bancaria
+document.getElementById('bancariaForm')?.addEventListener('submit', function(e) {
+    const cuentaInput = document.getElementById('cuentaBancaria');
+    const cuenta = (cuentaInput?.value.trim().replace(/\D/g, '') || '');
+    if (cuenta && !validarCuentaBancariaCompleta(cuenta)) {
+        e.preventDefault();
+        Swal.fire({
+            icon: 'error',
+            title: 'Error en cuenta bancaria',
+            html: `
+                <div style="text-align: left; font-size: 14px;">
+                    <p><strong>La cuenta bancaria no es válida.</strong></p>
+                    <div class="alert alert-danger mt-3">
+                        <strong>Error:</strong> ${getMensajeError(cuenta)}
+                    </div>
+                    <p class="mt-3">Por favor, corrija la cuenta bancaria antes de guardar.</p>
+                </div>
+            `,
+            confirmButtonText: '<i class="fas fa-check me-1"></i>Entendido',
+            width: 550,
+            background: 'var(--panel)',
+            color: 'var(--txt)'
+        });
+        cuentaInput?.focus();
+        cuentaInput?.classList.add('is-invalid');
+        cuentaInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+});
+// ==================== FIN DE INFORMACIÓN BANCARIA ====================
 </script>
 
 </body>

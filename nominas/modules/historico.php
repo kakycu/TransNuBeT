@@ -583,6 +583,7 @@ $filtros_resumen = empty($filtros_resumen)
                 </ul>
             </div>
 
+            <button type="button" class="btn-win" data-export="print" title="Imprimir la vista filtrada (paginada, con numeración)" data-tooltip="Imprimir" data-tooltip-theme="primary" aria-label="Imprimir"><i class="fas fa-print"></i></button>
             <div class="dropdown audit-dropdown">
                 <button type="button" class="btn-win dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Exportar los registros filtrados" data-tooltip="Exportar" data-tooltip-theme="success">
                     <i class="fas fa-file-export"></i> Exportar
@@ -594,8 +595,6 @@ $filtros_resumen = empty($filtros_resumen)
                     <li><a class="dropdown-item" href="javascript:void(0)" data-export="pdf" title="Todos los campos en PDF horizontal" data-tooltip="PDF (.pdf)" data-tooltip-theme="danger"><i class="fas fa-file-pdf text-danger"></i> PDF (.pdf)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-export="csv" title="Todos los campos en CSV" data-tooltip="CSV (.csv)" data-tooltip-theme="info"><i class="fas fa-file-csv text-info"></i> CSV (.csv)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-export="txt" title="Todos los campos en TXT" data-tooltip="TXT (.txt)" data-tooltip-theme="secondary"><i class="fas fa-file-alt text-warning"></i> TXT (.txt)</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" data-export="print" title="Imprimir la vista filtrada (paginada, con numeración)" data-tooltip="Imprimir" data-tooltip-theme="primary"><i class="fas fa-print"></i> Imprimir</a></li>
                 </ul>
             </div>
 

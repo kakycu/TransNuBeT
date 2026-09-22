@@ -311,6 +311,21 @@ html[data-theme="orgullo"] {
     --win-sidebar-logo-small:rgba(109, 91, 145, 0.55);
     --win-sidebar-submenu-border:rgba(139, 92, 246, 0.12);
 }
+html[data-theme="win11"] {
+    --win-sidebar-bg:#202020;
+    --win-sidebar-border:#3d3d3d;
+    --win-sidebar-text:rgba(255, 255, 255, 0.78);
+    --win-sidebar-text-dim:rgba(255, 255, 255, 0.5);
+    --win-sidebar-cat-color:rgba(255, 255, 255, 0.4);
+    --win-sidebar-item-bg:rgba(255, 255, 255, 0.04);
+    --win-sidebar-item-border:#3d3d3d;
+    --win-sidebar-profile-bg:rgba(255, 255, 255, 0.04);
+    --win-sidebar-profile-border:#3d3d3d;
+    --win-sidebar-scrollbar:#3d3d3d;
+    --win-sidebar-scrollbar-hover:#4d4d4d;
+    --win-sidebar-logo-small:rgba(255, 255, 255, 0.5);
+    --win-sidebar-submenu-border:#3d3d3d;
+}
 
 .win-sidebar {
     position: fixed;

@@ -152,7 +152,7 @@ $areas_stats = $pdo->query("
 ")->fetchAll();
 
 // Estadísticas por centro de costo (período del filtro global Año/Mes, o todos los meses)
-// masa = salario escalar de los trabajadores que tienen nómina en el período
+// masa = total salario devengado de los trabajadores que tienen nómina en el período (activos o no)
 $centros_stats = [];
 $anio_masa_seleccionado = $anio_tot_seleccionado;
 $mes_masa_seleccionado = $num_mes_seleccionado;
@@ -160,50 +160,74 @@ try {
     if ($es_todos_meses) {
         $stmt_cs = $pdo->prepare("
             SELECT cc.id, cc.codigo, cc.nombre,
-                   (SELECT COUNT(DISTINCT n2.trabajador_id)
-                    FROM nominas n2
-                    WHERE n2.estado != 'borrador'
-                      AND YEAR(n2.periodo_desde) = ?
-                      AND n2.trabajador_id IN (SELECT t2.id FROM trabajadores t2 WHERE t2.centro_costo_id = cc.id)) as total,
-                   (SELECT COALESCE(SUM(e2.salario_mensual), 0)
-                    FROM (SELECT DISTINCT n3.trabajador_id
-                          FROM nominas n3
-                          WHERE n3.estado != 'borrador' AND YEAR(n3.periodo_desde) = ?) tc
-                    JOIN trabajadores t3 ON t3.id = tc.trabajador_id
-                    JOIN escalas_salariales e2 ON t3.escala_salarial_id = e2.id
-                    WHERE t3.centro_costo_id = cc.id) as masa_salarial
+                   COUNT(DISTINCT n.trabajador_id) as total,
+                   COALESCE(SUM(n.total_salario_devengado), 0) as masa_salarial
             FROM centros_costo cc
+            LEFT JOIN trabajadores t ON t.centro_costo_id = cc.id
+            LEFT JOIN nominas n ON n.trabajador_id = t.id
+                AND n.estado != 'borrador'
+                AND YEAR(n.periodo_desde) = ?
             WHERE cc.activo = 1
-            ORDER BY total DESC
-            LIMIT 10
+            GROUP BY cc.id, cc.codigo, cc.nombre
+            HAVING COUNT(DISTINCT n.trabajador_id) > 0
+            ORDER BY masa_salarial DESC
         ");
-        $stmt_cs->execute([$anio_masa_seleccionado, $anio_masa_seleccionado]);
+        $stmt_cs->execute([$anio_masa_seleccionado]);
     } else {
         $stmt_cs = $pdo->prepare("
             SELECT cc.id, cc.codigo, cc.nombre,
-                   (SELECT COUNT(DISTINCT n2.trabajador_id)
-                    FROM nominas n2
-                    WHERE n2.estado != 'borrador'
-                      AND YEAR(n2.periodo_desde) = ?
-                      AND MONTH(n2.periodo_desde) = ?
-                      AND n2.trabajador_id IN (SELECT t2.id FROM trabajadores t2 WHERE t2.centro_costo_id = cc.id)) as total,
-                   (SELECT COALESCE(SUM(e2.salario_mensual), 0)
-                    FROM (SELECT DISTINCT n3.trabajador_id
-                          FROM nominas n3
-                          WHERE n3.estado != 'borrador'
-                            AND YEAR(n3.periodo_desde) = ?
-                            AND MONTH(n3.periodo_desde) = ?) tc
-                    JOIN trabajadores t3 ON t3.id = tc.trabajador_id
-                    JOIN escalas_salariales e2 ON t3.escala_salarial_id = e2.id
-                    WHERE t3.centro_costo_id = cc.id) as masa_salarial
+                   COUNT(DISTINCT n.trabajador_id) as total,
+                   COALESCE(SUM(n.total_salario_devengado), 0) as masa_salarial
             FROM centros_costo cc
+            LEFT JOIN trabajadores t ON t.centro_costo_id = cc.id
+            LEFT JOIN nominas n ON n.trabajador_id = t.id
+                AND n.estado != 'borrador'
+                AND YEAR(n.periodo_desde) = ?
+                AND MONTH(n.periodo_desde) = ?
             WHERE cc.activo = 1
-            ORDER BY total DESC
-            LIMIT 10
+            GROUP BY cc.id, cc.codigo, cc.nombre
+            HAVING COUNT(DISTINCT n.trabajador_id) > 0
+            ORDER BY masa_salarial DESC
         ");
-        $stmt_cs->execute([$anio_masa_seleccionado, $mes_masa_seleccionado, $anio_masa_seleccionado, $mes_masa_seleccionado]);
+        $stmt_cs->execute([$anio_masa_seleccionado, $mes_masa_seleccionado]);
     }
     $centros_stats = $stmt_cs->fetchAll();
+
+    // Trabajadores con nómina en el período sin centro de costo asignado ("Sin Asignar")
+    if ($es_todos_meses) {
+        $stmt_sa = $pdo->prepare("
+            SELECT COUNT(DISTINCT n.trabajador_id) as total,
+                   COALESCE(SUM(n.total_salario_devengado), 0) as masa_salarial
+            FROM trabajadores t
+            JOIN nominas n ON n.trabajador_id = t.id
+                AND n.estado != 'borrador'
+                AND YEAR(n.periodo_desde) = ?
+            WHERE t.centro_costo_id IS NULL OR t.centro_costo_id = 0
+        ");
+        $stmt_sa->execute([$anio_masa_seleccionado]);
+    } else {
+        $stmt_sa = $pdo->prepare("
+            SELECT COUNT(DISTINCT n.trabajador_id) as total,
+                   COALESCE(SUM(n.total_salario_devengado), 0) as masa_salarial
+            FROM trabajadores t
+            JOIN nominas n ON n.trabajador_id = t.id
+                AND n.estado != 'borrador'
+                AND YEAR(n.periodo_desde) = ?
+                AND MONTH(n.periodo_desde) = ?
+            WHERE t.centro_costo_id IS NULL OR t.centro_costo_id = 0
+        ");
+        $stmt_sa->execute([$anio_masa_seleccionado, $mes_masa_seleccionado]);
+    }
+    $sin_asignar = $stmt_sa->fetch(PDO::FETCH_ASSOC);
+    if (intval($sin_asignar['total'] ?? 0) > 0) {
+        $centros_stats[] = [
+            'id' => null,
+            'codigo' => null,
+            'nombre' => 'Sin Asignar',
+            'total' => intval($sin_asignar['total']),
+            'masa_salarial' => floatval($sin_asignar['masa_salarial']),
+        ];
+    }
 } catch (PDOException $e) {
     $centros_stats = [];
 }
@@ -1788,7 +1812,10 @@ $ultimas_bajas = $pdo->query("
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                             <h6 class="mb-0"><i class="fas fa-scale-balanced me-2" style="color: #818cf8;"></i> Redistribución de Montos por Mes <small style="font-weight:400; opacity:0.7;">(Año <?php echo (int)$anio_tot_seleccionado; ?>)</small></h6>
                         </div>
-                        <?php if (!empty($montos_distrib_mensual)): ?>
+                        <?php if (!empty($montos_distrib_mensual)):
+                            $total_importe_dis = 0.0;
+                            foreach ($montos_distrib_mensual as $md_tot) { $total_importe_dis += (float)$md_tot['importe_dis']; }
+                        ?>
                         <table class="table table-sm table-dark">
                             <thead>
                                 <tr><th>Mes</th><th style="width:40%;">Distribución</th><th class="text-end">Importe Distribuido</th></tr>
@@ -1810,6 +1837,12 @@ $ultimas_bajas = $pdo->query("
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
+                            <tfoot>
+                                <tr style="border-top: 0.125rem solid rgba(255,255,255,0.1);">
+                                    <td colspan="2" style="font-weight: bold; color: #e2e8f0;">TOTAL</td>
+                                    <td class="text-end fw-bold text-info">$<?php echo number_format($total_importe_dis, 2); ?></td>
+                                </tr>
+                            </tfoot>
                         </table>
                         <?php else: ?>
                         <div class="text-muted">No hay montos redistribuidos para el año seleccionado.</div>
@@ -1825,20 +1858,35 @@ $ultimas_bajas = $pdo->query("
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                             <h6 class="mb-0"><i class="fas fa-chart-bar me-2" style="color: var(--color-success);"></i> Masa Salarial por Centro de Costo <small style="font-weight:400; opacity:0.7;">(<?php echo htmlspecialchars($etiqueta_masa_periodo); ?>)</small></h6>
                         </div>
+                        <?php
+                        $total_centros_cantidad = 0;
+                        $total_centros_masa = 0.0;
+                        foreach ($centros_stats as $cs_tot) {
+                            $total_centros_cantidad += (int)$cs_tot['total'];
+                            $total_centros_masa += (float)($cs_tot['masa_salarial'] ?? 0);
+                        }
+                        ?>
                         <div style="max-height:18.75rem; overflow-x:auto; overflow-y:auto;">
                             <table class="table table-sm table-dark">
                                 <thead>
-                                    <tr><th>Centro de Costo</th><th>Cantidad</th><th class="text-end">Masa Salarial</th></tr>
+                                    <tr><th>Centro de Costo</th><th class="text-center">Cantidad</th><th class="text-end">Masa Salarial</th></tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($centros_stats as $cs): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($cs['nombre']); ?></td>
-                                        <td><?php echo $cs['total']; ?></td>
-                                        <td class="text-end text-success">$<?php echo number_format($cs['masa_salarial'] ?? 0, 0); ?></td>
+                                        <td class="text-center"><?php echo $cs['total']; ?></td>
+                                        <td class="text-end text-success">$<?php echo number_format($cs['masa_salarial'] ?? 0, 2); ?></td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
+                                <tfoot>
+                                    <tr style="border-top: 0.125rem solid rgba(255,255,255,0.1);">
+                                        <td style="font-weight: bold; color: #e2e8f0;">TOTAL</td>
+                                        <td class="text-center fw-bold"><?php echo number_format($total_centros_cantidad); ?></td>
+                                        <td class="text-end fw-bold text-success">$<?php echo number_format($total_centros_masa, 2); ?></td>
+                                    </tr>
+                                </tfoot>
                              </table>
                         </div>
                     </div>
@@ -1884,7 +1932,7 @@ $ultimas_bajas = $pdo->query("
                                     <tr>
                                         <th style="color: #94a3b8;">Tipo</th>
                                         <th class="text-end" style="color: #94a3b8;">Nóminas</th>
-                                        <th class="text-end" style="color: #94a3b8;">Trabajadores</th>
+                                        <th class="text-center" style="color: #94a3b8;">Trabajadores</th>
                                         <th class="text-end" style="color: #94a3b8;">Registros</th>
                                         <th class="text-end" style="color: #94a3b8;">Devengado</th>
                                         <th class="text-end" style="color: #94a3b8;">Contribución</th>
@@ -1901,7 +1949,7 @@ $ultimas_bajas = $pdo->query("
                                     <tr>
                                         <td><span class="badge bg-<?php echo $color; ?>"><?php echo htmlspecialchars($tipo); ?></span></td>
                                         <td class="text-end"><?php echo number_format($item['cantidad_nominas']); ?></td>
-                                        <td class="text-end"><?php echo number_format($item['cantidad_trabajadores']); ?></td>
+                                        <td class="text-center"><?php echo number_format($item['cantidad_trabajadores']); ?></td>
                                         <td class="text-end"><?php echo number_format($item['cantidad_registros']); ?></td>
                                         <td class="text-end text-success"><?php echo number_format($item['sum_devengado'], 2); ?></td>
                                         <td class="text-end" style="color: #60a5fa;"><?php echo number_format($item['sum_contribucion'], 2); ?></td>
@@ -1915,7 +1963,7 @@ $ultimas_bajas = $pdo->query("
                                     <tr style="border-top: 0.125rem solid rgba(255,255,255,0.1);">
                                         <td style="font-weight: bold; color: #e2e8f0;">TOTAL GENERAL</td>
                                         <td class="text-end fw-bold"><?php echo number_format($totales_generales['nominas']); ?></td>
-                                        <td class="text-end fw-bold"><?php echo number_format($totales_generales['trabajadores']); ?></td>
+                                        <td class="text-center fw-bold"><?php echo number_format($totales_generales['trabajadores']); ?></td>
                                         <td class="text-end fw-bold"><?php echo number_format($totales_generales['registros']); ?></td>
                                         <td class="text-end fw-bold text-success"><?php echo number_format($totales_generales['devengado'], 2); ?></td>
                                         <td class="text-end fw-bold" style="color: #60a5fa;"><?php echo number_format($totales_generales['contribucion'], 2); ?></td>
@@ -1940,7 +1988,7 @@ $ultimas_bajas = $pdo->query("
                                         <tr>
                                             <th style="color: #94a3b8;">Tipo</th>
                                             <th class="text-end" style="color: #94a3b8;">Nóminas</th>
-                                            <th class="text-end" style="color: #94a3b8;">Trabajadores</th>
+                                            <th class="text-center" style="color: #94a3b8;">Trabajadores</th>
                                             <th class="text-end" style="color: #94a3b8;">Registros</th>
                                             <th class="text-end" style="color: #94a3b8;">Devengado</th>
                                             <th class="text-end" style="color: #94a3b8;">Contribución</th>
@@ -1959,7 +2007,7 @@ $ultimas_bajas = $pdo->query("
                                         <tr>
                                             <td><span class="badge bg-<?php echo $color; ?>"><?php echo htmlspecialchars($tipo); ?></span></td>
                                             <td class="text-end"><?php echo number_format($item['cantidad_nominas']); ?></td>
-                                            <td class="text-end"><?php echo number_format($item['cantidad_trabajadores']); ?></td>
+                                            <td class="text-center"><?php echo number_format($item['cantidad_trabajadores']); ?></td>
                                             <td class="text-end"><?php echo number_format($item['cantidad_registros']); ?></td>
                                             <td class="text-end text-success"><?php echo number_format($item['sum_devengado'], 2); ?></td>
                                             <td class="text-end" style="color: #60a5fa;"><?php echo number_format($item['sum_contribucion'], 2); ?></td>
@@ -1973,7 +2021,7 @@ $ultimas_bajas = $pdo->query("
                                         <tr style="border-top: 0.125rem solid rgba(255,255,255,0.1);">
                                             <td style="font-weight: bold; color: #e2e8f0;">TOTAL MES</td>
                                             <td class="text-end fw-bold"><?php echo number_format($totales_generales_mes['nominas']); ?></td>
-                                            <td class="text-end fw-bold"><?php echo number_format($totales_generales_mes['trabajadores']); ?></td>
+                                            <td class="text-center fw-bold"><?php echo number_format($totales_generales_mes['trabajadores']); ?></td>
                                             <td class="text-end fw-bold"><?php echo number_format($totales_generales_mes['registros']); ?></td>
                                             <td class="text-end fw-bold text-success"><?php echo number_format($totales_generales_mes['devengado'], 2); ?></td>
                                             <td class="text-end fw-bold" style="color: #60a5fa;"><?php echo number_format($totales_generales_mes['contribucion'], 2); ?></td>
@@ -2003,7 +2051,7 @@ $ultimas_bajas = $pdo->query("
                         <div class="table-responsive">
                             <table class="table table-sm table-dark">
                                 <thead>
-                                    <tr><th>Fecha Cierre</th><th>Número Nómina</th><th>Período</th><th>Trabajadores</th><th class="text-end">Total Devengado</th><th class="text-end">Total Neto</th><th>Estado</th></tr>
+                                    <tr><th>Fecha Cierre</th><th>Número Nómina</th><th>Período</th><th class="text-center">Trabajadores</th><th class="text-end">Total Devengado</th><th class="text-end">Total Neto</th><th>Estado</th></tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($cierres_nomina as $cn): ?>
@@ -2011,7 +2059,7 @@ $ultimas_bajas = $pdo->query("
                                         <td><?php echo date('d/m/Y h:i A', strtotime($cn['fecha_cierre'])); ?></td>
                                         <td><?php echo htmlspecialchars($cn['numero_nomina'] ?? '-'); ?></td>
                                         <td><?php echo date('d/m/Y', strtotime($cn['periodo_desde'])); ?> - <?php echo date('d/m/Y', strtotime($cn['periodo_hasta'])); ?></td>
-                                        <td><?php echo $cn['total_trabajadores']; ?></td>
+                                        <td class="text-center"><?php echo $cn['total_trabajadores']; ?></td>
                                         <td class="text-end">$<?php echo number_format($cn['total_devengado'] ?? 0, 2); ?></td>
                                         <td class="text-end">$<?php echo number_format($cn['total_neto'] ?? 0, 2); ?></td>
                                         <td><span class="badge-custom badge-success"><?php echo $cn['estado']; ?></span></td>
@@ -2707,6 +2755,9 @@ function construirHtmlInformeGeneral(opts) {
     data.financiero.centros.forEach(cs => {
         centrosHtml += `<tr><td>${escapeHtml(cs.nombre)}</td><td style="text-align: center;">${cs.total}</td><td style="text-align: right;">${fmt(cs.masa_salarial || 0)}</td></tr>`;
     });
+    const centrosTotalEmp = (data.financiero.centros || []).reduce((a, cs) => a + (parseInt(cs.total, 10) || 0), 0);
+    const centrosTotalMasa = (data.financiero.centros || []).reduce((a, cs) => a + (parseFloat(cs.masa_salarial) || 0), 0);
+    centrosHtml += `<tr style="border-top:0.0625rem solid #94a3b8;"><td style="font-weight:bold;">TOTAL</td><td style="text-align:center; font-weight:bold;">${centrosTotalEmp}</td><td style="text-align:right; font-weight:bold;">${fmt(centrosTotalMasa)}</td></tr>`;
 
     // Renderizar cierres de nómina
     let cierresHtml = '';

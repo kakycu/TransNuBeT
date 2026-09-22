@@ -157,8 +157,13 @@ $bloqueo_brand    = 'SISGESNOM';
 $bloqueo_version  = defined('SITE_VERSION') ? SITE_VERSION : 'v2.0.1';
 $bloqueo_company  = defined('COMPANY_NAME') ? COMPANY_NAME : 'PDL TransNuBeT®';
 
-// Duración del cierre automático (segundos)
-$LOCK_SEGUNDOS = 600;
+// Duración del cierre automático (segundos), configurable en configuracion_general (tiempo_para_bloqueo, en minutos; default 10)
+$tiempo_bloqueo_min = 10;
+if (isset($pdo) && function_exists('getConfigValue')) {
+    $v = getConfigValue($pdo, 'tiempo_para_bloqueo', 10);
+    if (is_numeric($v) && (int)$v > 0) $tiempo_bloqueo_min = (int)$v;
+}
+$LOCK_SEGUNDOS = $tiempo_bloqueo_min * 60;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -327,6 +332,7 @@ $LOCK_SEGUNDOS = 600;
     .lock-container.collapsed { padding-bottom: 1rem; }
     .lock-container.collapsed .lock-top,
     .lock-container.collapsed .user-info-card,
+    .lock-container.collapsed .user-meta-row,
     .lock-container.collapsed .status-box,
     .lock-container.collapsed .unlock-form,
     .lock-container.collapsed .lock-footer { display: none; }
@@ -361,13 +367,34 @@ $LOCK_SEGUNDOS = 600;
         text-align: left;
     }
 
-    /* ===== TARJETA DE USUARIO ===== */
+    /* ===== TARJETA DE USUARIO (dos columnas: perfil + reloj analógico) ===== */
     .user-info-card {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 2.25rem;
+        margin-bottom: 0;
+        padding: 0 0.25rem;
+    }
+
+    .user-info-left {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 0.5rem;
-        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    /* Reloj analógico plano (igual que solic_userinfo) */
+    .user-clock { flex: 0 0 auto; }
+
+    .user-clock svg {
+        width: 7.5rem;
+        height: 7.5rem;
+        display: block;
+        filter: drop-shadow(0 0.3rem 0.55rem rgba(0,0,0,0.4));
     }
 
     .user-avatar-large {
@@ -428,8 +455,8 @@ $LOCK_SEGUNDOS = 600;
         border-radius: 2rem;
     }
 
-    /* Hora - Fecha en una misma línea */
-    .user-meta {
+    /* Hora - Fecha digital: fila aparte centrada debajo de las columnas */
+    .user-meta-row {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -437,10 +464,10 @@ $LOCK_SEGUNDOS = 600;
         gap: 0.5rem;
         font-size: 0.9rem;
         color: #94a3b8;
-        margin-top: 0.25rem;
+        margin: 0.75rem auto 1.5rem;
     }
 
-    .user-meta .meta-sep { color: #475569; }
+    .user-meta-row .meta-sep { color: #475569; }
 
     /* ===== ESTADO (verde, con punto pulsante) ===== */
     .status-box {
@@ -730,6 +757,9 @@ $LOCK_SEGUNDOS = 600;
         .lock-title { font-size: 1.2rem; }
         .session-time { top: 0.5rem; right: 0.5rem; min-width: 10rem; padding: 0.5rem 0.75rem; }
         .session-time-value { font-size: 0.95rem; }
+        .user-info-card { gap: 1.25rem; }
+        .user-clock svg { width: 6.25rem; height: 6.25rem; }
+        .user-avatar-large { width: 5.25rem; height: 5.25rem; min-width: 5.25rem; min-height: 5.25rem; font-size: 1.5rem; }
     }
 </style>
 </head>
@@ -770,31 +800,45 @@ $LOCK_SEGUNDOS = 600;
                 <h1 class="lock-title">Sesión Bloqueada</h1>
             </div>
 
-            <!-- FOTO + NOMBRE + ROL + HORA - FECHA -->
+            <!-- FOTO + NOMBRE + ROL (columna izquierda) | RELOJ ANALÓGICO (columna derecha) -->
             <div class="user-info-card">
-                <div class="user-avatar-large <?php echo !empty($foto_usuario) ? 'has-photo' : ''; ?>" id="userAvatar">
-                    <?php if (!empty($foto_usuario)): ?>
-                        <img class="avatar-img"
-                             src="<?php echo htmlspecialchars($foto_usuario); ?>"
-                             alt="Foto de perfil"
-                             onerror="this.remove(); var p=this.parentElement; if(p&&p.querySelector('.avatar-iniciales')){p.querySelector('.avatar-iniciales').style.display='flex';}">
-                    <?php endif; ?>
-                    <span class="avatar-iniciales" style="<?php echo !empty($foto_usuario) ? 'display:none;' : 'display:flex;'; ?>"><?php echo htmlspecialchars($iniciales); ?></span>
+                <div class="user-info-left">
+                    <div class="user-avatar-large <?php echo !empty($foto_usuario) ? 'has-photo' : ''; ?>" id="userAvatar">
+                        <?php if (!empty($foto_usuario)): ?>
+                            <img class="avatar-img"
+                                 src="<?php echo htmlspecialchars($foto_usuario); ?>"
+                                 alt="Foto de perfil"
+                                 onerror="this.remove(); var p=this.parentElement; if(p&&p.querySelector('.avatar-iniciales')){p.querySelector('.avatar-iniciales').style.display='flex';}">
+                        <?php endif; ?>
+                        <span class="avatar-iniciales" style="<?php echo !empty($foto_usuario) ? 'display:none;' : 'display:flex;'; ?>"><?php echo htmlspecialchars($iniciales); ?></span>
+                    </div>
+
+                    <div class="user-name"><?php echo htmlspecialchars($nombre_completo); ?></div>
+
+                    <div class="user-role">
+                        <i class="fas fa-user-tag"></i>
+                        <span><?php echo htmlspecialchars($rol_descripcion); ?></span>
+                    </div>
                 </div>
 
-                <div class="user-name"><?php echo htmlspecialchars($nombre_completo); ?></div>
-
-                <div class="user-role">
-                    <i class="fas fa-user-tag"></i>
-                    <span><?php echo htmlspecialchars($rol_descripcion); ?></span>
+                <!-- Reloj analógico plano (estilo solic_userinfo) -->
+                <div class="user-clock" aria-hidden="true">
+                    <svg viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="47" fill="rgba(10,20,40,0.72)" stroke="#06b6d4" stroke-width="2.5"/>
+                        <g id="lockRelojTicks"></g>
+                        <line id="lockManecillaHora" x1="50" y1="52" x2="50" y2="29" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+                        <line id="lockManecillaMinuto" x1="50" y1="52" x2="50" y2="19" stroke="#67e8f9" stroke-width="3" stroke-linecap="round"/>
+                        <line id="lockManecillaSegundo" x1="50" y1="56" x2="50" y2="16" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"/>
+                        <circle cx="50" cy="50" r="3.2" fill="#06b6d4" stroke="#ffffff" stroke-width="1"/>
+                    </svg>
                 </div>
+            </div>
 
-                <!-- Hora - Fecha en una misma línea -->
-                <div class="user-meta">
-                    <span id="currentTime"><?php echo date('h:i:s A'); ?></span>
-                    <span class="meta-sep">-</span>
-                    <span id="currentDate"><?php echo _fechaBloqueoLarga(time()); ?></span>
-                </div>
+            <!-- Hora - Fecha digital: fila aparte centrada debajo de las dos columnas -->
+            <div class="user-meta-row">
+                <span id="currentTime"><?php echo date('h:i:s A'); ?></span>
+                <span class="meta-sep">-</span>
+                <span id="currentDate"><?php echo _fechaBloqueoLarga(time()); ?></span>
             </div>
 
             <!-- ESTADO VERDE CON PUNTO PULSANTE -->
@@ -1236,6 +1280,44 @@ $LOCK_SEGUNDOS = 600;
             var remaining = updateDateTime();
             if (remaining === 0) { cerrarPorInactividad(); }
         }, 1000);
+
+        // ============================================================
+        // RELOJ ANALÓGICO (estilo solic_userinfo): marcas + manecillas
+        // ============================================================
+        var lockSvgNS = 'http://www.w3.org/2000/svg';
+        var lockTicks = document.getElementById('lockRelojTicks');
+        if (lockTicks) {
+            for (var i = 0; i < 12; i++) {
+                var mayor = (i % 3 === 0);
+                var lnt = document.createElementNS(lockSvgNS, 'line');
+                lnt.setAttribute('x1', '50');
+                lnt.setAttribute('y1', '7');
+                lnt.setAttribute('x2', '50');
+                lnt.setAttribute('y2', mayor ? '13' : '11');
+                lnt.setAttribute('stroke', mayor ? '#67e8f9' : 'rgba(103,232,249,0.45)');
+                lnt.setAttribute('stroke-width', mayor ? '2.5' : '1.5');
+                lnt.setAttribute('stroke-linecap', 'round');
+                lnt.setAttribute('transform', 'rotate(' + (i * 30) + ' 50 50)');
+                lockTicks.appendChild(lnt);
+            }
+        }
+
+        function actualizarRelojAnalogico() {
+            var fa = new Date();
+            var hs = fa.getHours();
+            var seg = fa.getSeconds();
+            var min = fa.getMinutes() + seg / 60;
+            var hro = (hs % 12) + min / 60;
+            var mh = document.getElementById('lockManecillaHora');
+            var mm = document.getElementById('lockManecillaMinuto');
+            var ms = document.getElementById('lockManecillaSegundo');
+            if (ms) ms.setAttribute('transform', 'rotate(' + (seg * 6) + ' 50 50)');
+            if (mm) mm.setAttribute('transform', 'rotate(' + (min * 6) + ' 50 50)');
+            if (mh) mh.setAttribute('transform', 'rotate(' + (hro * 30) + ' 50 50)');
+        }
+
+        actualizarRelojAnalogico();
+        setInterval(actualizarRelojAnalogico, 1000);
 
         setTimeout(function () {
             if (passwordInput && !passwordInput.disabled) passwordInput.focus();

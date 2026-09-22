@@ -28,9 +28,20 @@ if ($id == $_SESSION['user_id']) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT CONCAT(nombre, ' ', apellidos) AS nombre_completo, usuario FROM clasif_usuarios WHERE id = ?");
+$stmt = $pdo->prepare("SELECT CONCAT(nombre, ' ', apellidos) AS nombre_completo, usuario, foto FROM clasif_usuarios WHERE id = ?");
 $stmt->execute([$id]);
 $eliminado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Eliminar el archivo de foto del usuario (guardada en assets/imagenes/usuarios)
+if (!empty($eliminado['foto'])) {
+    $foto_bd = $eliminado['foto'];
+    if (strpos($foto_bd, 'assets/imagenes/usuarios/') === 0) {
+        $ruta_foto = $_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_bd;
+        if (file_exists($ruta_foto)) {
+            unlink($ruta_foto);
+        }
+    }
+}
 
 $stmt = $pdo->prepare("DELETE FROM clasif_usuarios WHERE id = ?");
 $stmt->execute([$id]);
@@ -40,7 +51,7 @@ logAction(
     'eliminar_usuario',
     'usuarios',
     'Eliminación de usuario',
-    ['user_id' => (int)$id, 'usuario' => $eliminado['usuario'] ?? null],
+    ['user_id' => (int)$id, 'usuario' => $eliminado['usuario'] ?? null, 'foto' => $eliminado['foto'] ?? null],
     null,
     'success',
     null,

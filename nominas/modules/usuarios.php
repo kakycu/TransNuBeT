@@ -70,6 +70,8 @@ $stats_inactivos = 0;
 $stats_roles = [];
 $stats_edad_rangos = ['<= 30' => 0, '31 - 40' => 0, '41 - 50' => 0, '51 - 60' => 0, '> 60' => 0];
 $stats_sin_edad = 0;
+$stats_genero = ['Femenino' => 0, 'Masculino' => 0];
+$stats_sin_genero = 0;
 
 // La edad se deriva del Carnet de Identidad cubano (11 dígitos: AAMMDD...)
 function edadUsuarioDesdeCI($ci) {
@@ -90,10 +92,23 @@ function edadUsuarioDesdeCI($ci) {
     }
 }
 
+// El género se deriva del CI cubano (11 dígitos): el 7mo dígito es impar = Masculino, par = Femenino
+function generoUsuarioDesdeCI($ci) {
+    $ci = preg_replace('/\D/', '', (string)$ci);
+    if (strlen($ci) !== 11) return null;
+    return ((int)substr($ci, 6, 1) % 2) === 0 ? 'Femenino' : 'Masculino';
+}
+
 foreach ($usuarios_lista as $u) {
     if (!empty($u['activo'])) $stats_activos++; else $stats_inactivos++;
     $rol = $u['rol_nombre'] ?: 'Sin rol';
     $stats_roles[$rol] = ($stats_roles[$rol] ?? 0) + 1;
+    $genero = generoUsuarioDesdeCI($u['no_ci'] ?? '');
+    if ($genero === null) {
+        $stats_sin_genero++;
+    } else {
+        $stats_genero[$genero]++;
+    }
     $edad = edadUsuarioDesdeCI($u['no_ci'] ?? '');
     if ($edad === null) {
         $stats_sin_edad++;
@@ -113,6 +128,11 @@ arsort($stats_roles);
 $stats_roles_resumen = implode(' · ', array_map(fn($r, $c) => $r . ': ' . $c, array_keys($stats_roles), $stats_roles));
 $stats_edades_resumen = implode(' · ', array_map(fn($r, $c) => $r . ': ' . $c, array_keys($stats_edad_rangos), $stats_edad_rangos));
 
+// Nombre corto para el rol Administrador del Sistema
+function rolCorto($desc) {
+    return ($desc === 'Administrador del Sistema') ? 'Admin. Sistema' : $desc;
+}
+
 // Todos los roles con su cantidad (incluyendo los que no tienen usuarios)
 $stats_roles_todos = [];
 $stmt_roles_stats = $pdo->query("SELECT r.id, r.descripcion, COUNT(u.id) AS total 
@@ -121,7 +141,7 @@ $stmt_roles_stats = $pdo->query("SELECT r.id, r.descripcion, COUNT(u.id) AS tota
                                  GROUP BY r.id, r.descripcion 
                                  ORDER BY total DESC, r.descripcion");
 foreach ($stmt_roles_stats->fetchAll() as $rs) {
-    $stats_roles_todos[] = ['descripcion' => $rs['descripcion'], 'total' => (int)$rs['total']];
+    $stats_roles_todos[] = ['descripcion' => rolCorto($rs['descripcion']), 'total' => (int)$rs['total']];
 }
 
 $puede_crear_usuario = permiso_puede('usuarios', 'crear');
@@ -447,6 +467,17 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
             font-size:0.7rem;
             padding:0.25rem 0.5rem;
         }
+        #tablaUsuarios td.col-email,
+        #tablaUsuarios th.col-email {
+            max-width: 10rem;
+            width: 10rem;
+        }
+        #tablaUsuarios td.col-email .email-link {
+            display:block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         #tablaUsuarios .btn-group-sm .btn-win-sm {
             padding:0.25rem 0.5rem;
             font-size:0.65rem;
@@ -556,7 +587,6 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
         .fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
         
         hr { opacity: 1; border-color: rgba(148, 163, 184, 0.25); }
-        .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); }
         
         .swal2-popup { background: var(--panel) !important; color: var(--txt) !important; }
         .swal2-title { color: #ffffff !important; }
@@ -634,6 +664,7 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
         .mode-badge.edit { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 0.0625rem solid rgba(59, 130, 246, 0.4); }
 
         .modal-subtitle { font-size:0.75rem; color: rgba(255, 255, 255, 0.5); }
+        .modal-subtitle.nombre-completo { font-size:1rem; color: rgba(255, 255, 255, 0.9); font-weight: 600; }
 
         .section-title {
             display: flex; align-items: center; gap:0.5rem;
@@ -644,28 +675,17 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
         }
         .section-title i { color: #60a5fa; font-size:0.85rem; }
 
+        @media (min-width: 992px) {
+            .border-end-lg { border-right: 0.0625rem solid rgba(255, 255, 255, 0.12); }
+        }
+
         .card-collapse-title {
             cursor: pointer;
             user-select: none;
-            display: inline-flex;
+            display: flex;
             align-items: center;
             gap:0.5rem;
             transition: color 0.2s ease;
-        }
-        .card-collapse-title:hover {
-            color: #60a5fa;
-        }
-        .card-collapse-title:hover .collapse-chevron {
-            color: #60a5fa;
-        }
-        .card-collapse-title .collapse-chevron {
-            font-size:0.7rem;
-            color: rgba(255, 255, 255, 0.4);
-            transition: transform 0.25s ease;
-        }
-        .card-collapse-title:not(.collapsed) .collapse-chevron {
-            transform: rotate(180deg);
-            color: #60a5fa;
         }
 
         .usuario-modal-body {
@@ -674,6 +694,16 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
         }
         .usuario-modal-body::-webkit-scrollbar { width:0.375rem; }
         .usuario-modal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 0.625rem; }
+
+        #modalUsuario .form-control,
+        #modalUsuario .form-select,
+        #modalUsuario .input-group-text,
+        #modalUsuario input.form-control,
+        #modalUsuario textarea.form-control,
+        #modalUsuario select.form-select {
+            border-radius: 0 !important;
+        }
+        #modalUsuario .btn-outline-secondary { border-radius: 0 !important; }
 
         .password-wrapper { position: relative; }
         .password-wrapper .form-control { padding-right:2.625rem !important; }
@@ -1189,6 +1219,22 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
         max-height: 16rem;
     }
 }
+
+        /* ===== PORT DE FACTURACIÓN: Resumen y Distribución por Rol ===== */
+        .progress-bar-container { margin-bottom: 1.5rem; }
+        .progress-bar-wrapper { margin-bottom: 1rem; }
+        .progress-bar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .progress-bar-label { font-weight: 600; color: var(--txt); font-size: 0.9rem; flex: 1; }
+        .progress-bar-stats { display: flex; gap: 0.75rem; align-items: center; font-size: 0.8rem; margin-left: 1rem; }
+        .progress-bar-count { color: var(--accent); font-weight: 600; min-width: 3.125rem; text-align: right; }
+        .progress-bar-percentage { color: var(--muted); min-width: 3.125rem; text-align: right; }
+        .progress-bar-track { height: 0.625rem; background: var(--panel-2); border-radius: 0.3125rem; overflow: hidden; position: relative; }
+        .progress-bar-fill { height: 100%; border-radius: 0.3125rem; background: var(--accent); width: 0; transition: width 1.5s ease-in-out; position: relative; box-shadow: 0 0 0.625rem rgba(var(--accent-rgb), 0.3); }
+        .progress-bar-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%); animation: shimmer-fill 2s infinite; }
+        @keyframes shimmer-fill { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .resumen-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .resumen-row .resumen-label { color: var(--muted); }
+        .resumen-row .resumen-valor { font-weight: 700; }
     </style>
 </head>
 <body>
@@ -1213,54 +1259,231 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
         <?php include '../includes/user_menu.php'; ?>
     </div>
 
-    <!-- Estadísticas de usuarios -->
-    <div class="stats-grid fade-in-up" style="animation-delay: 0.06s;">
-        <div class="glass-card stat-card">
-            <div>
-                <h6><i class="fas fa-users me-1"></i> Total Usuarios</h6>
-                <h3><?php echo $stats_total; ?></h3>
-                <div style="display: flex; align-items: baseline; gap:0.5rem; margin-top:0.25rem;">
-                    <span class="badge" style="font-size:0.75rem; background: rgba(var(--color-success-soft-rgb),0.12); color: var(--color-success-soft); font-weight: 600;"><i class="fas fa-user-check me-1"></i><?php echo $stats_activos; ?> Activos</span>
-                    <span class="badge" style="font-size:0.75rem; background: rgba(248,113,113,0.12); color: #f87171; font-weight: 600;"><i class="fas fa-user-slash me-1"></i><?php echo $stats_inactivos; ?> Inactivos</span>
+    <!-- Resumen de Usuarios, Rangos de Edad y Distribución por Rol -->
+    <?php
+    // Resumen de Usuarios: totales por rol (nombres reales del clasif_rol de NOMINAS)
+    $admin_count_r      = $stats_roles['Administrador del Sistema'] ?? 0;
+    $supervisor_count_r = $stats_roles['Supervisor General'] ?? 0;
+    $programador_count_r= $stats_roles['Programador'] ?? 0;
+    $editor_count_r     = $stats_roles['Contador / Editor'] ?? 0;
+    $visualizador_count_r = $stats_roles['Visualizador'] ?? 0;
+    $todos_roles_completos = [];
+    foreach ($stats_roles_todos as $rt) {
+        $todos_roles_completos[$rt['descripcion']] = $rt['total'];
+    }
+    if (isset($stats_roles['Sin rol'])) {
+        $todos_roles_completos['Sin rol'] = $stats_roles['Sin rol'];
+    }
+    arsort($todos_roles_completos);
+    function rolColor($idx) {
+        $colores = ['#0078d4', '#107c10', '#5c2d91', '#e81123', '#ff8c00', '#0099bc', '#e3008c', '#8764b8'];
+        return $colores[$idx % count($colores)];
+    }
+    function edadColor($idx) {
+        $colores = ['#0099bc', '#0078d4', '#5c2d91', '#ff8c00', '#e81123', '#107c10'];
+        return $colores[$idx % count($colores)];
+    }
+    ?>
+    <div class="row g-3 mb-3 fade-in-up" style="animation-delay: 0.09s;">
+        <!-- COLUMNA IZQUIERDA: Resumen de Usuarios -->
+        <div class="col-md-4">
+            <div class="glass-card h-100">
+                <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseResumenUsuarios" aria-expanded="true" aria-controls="collapseResumenUsuarios" style="color: var(--txt);">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-chart-pie me-2" style="color: var(--accent);"></i>Resumen de Usuarios
+                    </h6>
+                    <span class="badge" style="background-color: var(--accent); color: #fff;"><i class="fas fa-user"></i></span>
+                </div>
+                <div id="collapseResumenUsuarios" class="collapse show">
+                <div class="p-4">
+                    <div class="mb-4">
+                        <div class="resumen-row"><span class="resumen-label">Usuarios Activos</span><span class="resumen-valor" style="color: var(--color-success);"><?php echo $stats_activos; ?></span></div>
+                        <div class="resumen-row"><span class="resumen-label">Admin. Sistema</span><span class="resumen-valor" style="color: var(--amber, #f59e0b);"><?php echo $admin_count_r; ?></span></div>
+                        <div class="resumen-row"><span class="resumen-label">Supervisores</span><span class="resumen-valor" style="color: var(--amber, #f59e0b);"><?php echo $supervisor_count_r; ?></span></div>
+                        <div class="resumen-row"><span class="resumen-label">Programadores</span><span class="resumen-valor" style="color: var(--amber, #f59e0b);"><?php echo $programador_count_r; ?></span></div>
+                        <div class="resumen-row"><span class="resumen-label">Contadores / Editores</span><span class="resumen-valor" style="color: var(--accent);"><?php echo $editor_count_r; ?></span></div>
+                        <div class="resumen-row mb-3"><span class="resumen-label">Visualizadores</span><span class="resumen-valor" style="color: var(--accent);"><?php echo $visualizador_count_r; ?></span></div>
+                        <div class="progress" style="height: 0.375rem; background-color: var(--panel-2);">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: <?php echo $stats_total > 0 ? ($stats_activos / $stats_total * 100) : 0; ?>%"></div>
+                        </div>
+                        <small class="text-muted d-block mt-1"><?php echo $stats_activos; ?> de <?php echo $stats_total; ?> activos</small>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <h6 class="mb-3" style="color: var(--txt); font-size: 0.9rem;">
+                        <i class="fas fa-bolt me-1" style="color: var(--accent);"></i>Acciones Rápidas
+                    </h6>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <?php if ($puede_crear_usuario): ?>
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalUsuario" onclick="limpiarFormularioUsuario()" title="Nuevo usuario" data-tooltip="Nuevo usuario" data-tooltip-theme="success"><i class="fas fa-user-plus me-1"></i>Nuevo</button>
+                            <?php else: ?>
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100" disabled title="Sin permiso para crear usuarios" data-tooltip="Sin permiso para crear usuarios" data-tooltip-theme="danger"><i class="fas fa-user-plus me-1"></i>Nuevo</button>
+                            <?php endif; ?>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-sm btn-outline-success w-100" onclick="exportarUsuariosExcel()" title="Exportar a Excel" data-tooltip="Exportar a Excel" data-tooltip-theme="success"><i class="fas fa-download me-1"></i>Exportar</button>
+                        </div>
+                        <div class="col-6">
+                            <a href="configuracion.php" class="btn btn-sm btn-outline-info w-100" title="Gestión de Roles" data-tooltip="Gestión de Roles" data-tooltip-theme="info"><i class="fas fa-user-tag me-1"></i>Gestionar Roles</a>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-sm btn-outline-secondary w-100" onclick="imprimirUsuarios()" title="Imprimir reporte" data-tooltip="Imprimir reporte" data-tooltip-theme="secondary"><i class="fas fa-print me-1"></i>Imprimir</button>
+                        </div>
+                    </div>
+                </div>
                 </div>
             </div>
-            <div class="stat-icon" style="color: #60a5fa;"><i class="fas fa-users"></i></div>
         </div>
-        <div class="glass-card stat-card">
-            <div style="min-width:0;">
-                <h6><i class="fas fa-user-shield me-1"></i> Roles</h6>
-                <div style="display: flex; flex-wrap: wrap; gap:0.375rem 0.875rem; margin-top:0.375rem;">
-                    <?php foreach ($stats_roles_todos as $rol_stat): ?>
-                    <span class="badge" style="font-size:0.78rem; background: rgba(255,255,255,0.08); color: #d1d5db; font-weight: 500;">
-                        <?php echo htmlspecialchars($rol_stat['descripcion']); ?>
-                        <b style="color: #60a5fa; margin-left:0.25rem;"><?php echo $rol_stat['total']; ?></b>
-                    </span>
-                    <?php endforeach; ?>
+
+        <!-- COLUMNA CENTRO: Distribución por Rangos de Edad -->
+        <div class="col-md-4">
+            <div class="glass-card h-100">
+                <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseRangosEdad" aria-expanded="true" aria-controls="collapseRangosEdad" style="color: var(--txt);">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-people-arrows me-2" style="color: var(--cyan, #06b6d4);"></i>Distribución por Rangos de Edad
+                        <small class="text-muted">(Total usuarios: <?php echo $stats_total; ?>)</small>
+                    </h6>
+                </div>
+                <div id="collapseRangosEdad" class="collapse show">
+                <div class="p-4">
+                    <div class="progress-bar-container">
+                        <?php
+                        $idx_e = 0;
+                        foreach ($stats_edad_rangos as $rango_e => $cantidad_e):
+                            $porcentaje_e = $stats_total > 0 ? round(($cantidad_e / $stats_total) * 100, 1) : 0;
+                            $color_e = edadColor($idx_e);
+                            $idx_e++;
+                        ?>
+                        <div class="progress-bar-wrapper" data-percentage="<?php echo $porcentaje_e; ?>">
+                            <div class="progress-bar-header">
+                                <span class="progress-bar-label">
+                                    <?php echo htmlspecialchars($rango_e); ?> años
+                                    <?php if ($cantidad_e == 0): ?><small class="text-muted ms-1">(sin usuarios)</small><?php endif; ?>
+                                </span>
+                                <div class="progress-bar-stats">
+                                    <span class="progress-bar-count"><?php echo $cantidad_e; ?> usuario<?php echo $cantidad_e != 1 ? 's' : ''; ?></span>
+                                    <span class="progress-bar-percentage"><?php echo $porcentaje_e; ?>%</span>
+                                </div>
+                            </div>
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill" style="background-color: <?php echo $color_e; ?>; --target-width: <?php echo $porcentaje_e; ?>%;<?php echo $cantidad_e == 0 ? ' opacity: 0.3;' : ''; ?>"></div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <h6 class="mb-3" style="color: var(--txt); font-size: 0.9rem;">
+                        <i class="fas fa-venus-mars me-1" style="color: var(--cyan, #06b6d4);"></i>Distribución por Género
+                    </h6>
+                    <div class="progress-bar-container">
+                        <?php
+                        foreach ($stats_genero as $genero_nombre => $genero_cantidad):
+                            $porcentaje_g = $stats_total > 0 ? round(($genero_cantidad / $stats_total) * 100, 1) : 0;
+                            $color_g = $genero_nombre === 'Femenino' ? '#e3008c' : '#0078d4';
+                        ?>
+                        <div class="progress-bar-wrapper" data-percentage="<?php echo $porcentaje_g; ?>">
+                            <div class="progress-bar-header">
+                                <span class="progress-bar-label">
+                                    <?php echo $genero_nombre; ?>
+                                    <?php if ($genero_cantidad == 0): ?><small class="text-muted ms-1">(sin usuarios)</small><?php endif; ?>
+                                </span>
+                                <div class="progress-bar-stats">
+                                    <span class="progress-bar-count"><?php echo $genero_cantidad; ?> usuario<?php echo $genero_cantidad != 1 ? 's' : ''; ?></span>
+                                    <span class="progress-bar-percentage"><?php echo $porcentaje_g; ?>%</span>
+                                </div>
+                            </div>
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill" style="background-color: <?php echo $color_g; ?>; --target-width: <?php echo $porcentaje_g; ?>%;<?php echo $genero_cantidad == 0 ? ' opacity: 0.3;' : ''; ?>"></div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php if ($stats_sin_genero > 0): ?>
+                        <div class="progress-bar-wrapper" data-percentage="0">
+                            <div class="progress-bar-header">
+                                <span class="progress-bar-label">Sin CI válido</span>
+                                <div class="progress-bar-stats">
+                                    <span class="progress-bar-count"><?php echo $stats_sin_genero; ?> usuario<?php echo $stats_sin_genero != 1 ? 's' : ''; ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                </div>
                 </div>
             </div>
-            <div class="stat-icon" style="color: #a78bfa;"><i class="fas fa-user-shield"></i></div>
         </div>
-        <div class="glass-card stat-card">
-            <div style="min-width:0;">
-                <h6><i class="fas fa-cake-candles me-1"></i> Rangos de Edad</h6>
-                <div style="display: flex; flex-wrap: wrap; gap:0.375rem 0.875rem; margin-top:0.375rem;">
-                    <?php foreach ($stats_edad_rangos as $rango => $cant): ?>
-                    <span class="badge" style="font-size:0.78rem; background: rgba(255,255,255,0.08); color: #d1d5db; font-weight: 500;">
-                        <?php echo $rango; ?> años
-                        <b style="color: var(--color-success-soft); margin-left:0.25rem;"><?php echo $cant; ?></b>
-                    </span>
-                    <?php endforeach; ?>
-                    <?php if ($stats_sin_edad > 0): ?>
-                    <span class="badge" style="font-size:0.78rem; background: rgba(248,113,113,0.12); color: #f87171; font-weight: 500;">
-                        Sin CI
-                        <b style="margin-left:0.25rem;"><?php echo $stats_sin_edad; ?></b>
-                    </span>
+
+        <!-- COLUMNA DERECHA: Distribución de Usuarios por Rol -->
+        <div class="col-md-4">
+            <div class="glass-card h-100">
+                <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-semibold card-collapse-title" data-bs-toggle="collapse" data-bs-target="#collapseDistribucionRol" aria-expanded="true" aria-controls="collapseDistribucionRol" style="color: var(--txt);">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-chart-bar me-2" style="color: var(--accent);"></i>Distribución de Usuarios por Rol
+                        <small class="text-muted">(Total usuarios: <?php echo $stats_total; ?>)</small>
+                    </h6>
+                </div>
+                <div id="collapseDistribucionRol" class="collapse show">
+                <div class="p-4">
+                    <?php if (!empty($todos_roles_completos)): ?>
+                    <div class="progress-bar-container">
+                        <?php
+                        $idx_r = 0;
+                        foreach ($todos_roles_completos as $rol_nombre => $cantidad):
+                            $porcentaje_r = $stats_total > 0 ? round(($cantidad / $stats_total) * 100, 1) : 0;
+                            $color_r = rolColor($idx_r);
+                            $idx_r++;
+                        ?>
+                        <div class="progress-bar-wrapper" data-percentage="<?php echo $porcentaje_r; ?>">
+                            <div class="progress-bar-header">
+                                <span class="progress-bar-label">
+                                    <?php echo htmlspecialchars($rol_nombre); ?>
+                                    <?php if ($cantidad == 0): ?><small class="text-muted ms-1">(sin usuarios)</small><?php endif; ?>
+                                </span>
+                                <div class="progress-bar-stats">
+                                    <span class="progress-bar-count"><?php echo $cantidad; ?> usuario<?php echo $cantidad != 1 ? 's' : ''; ?></span>
+                                    <span class="progress-bar-percentage"><?php echo $porcentaje_r; ?>%</span>
+                                </div>
+                            </div>
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill" style="background-color: <?php echo $color_r; ?>; --target-width: <?php echo $porcentaje_r; ?>%;<?php echo $cantidad == 0 ? ' opacity: 0.3;' : ''; ?>"></div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div class="row mt-4 pt-3 border-top">
+                        <div class="col-3"><div class="text-center"><div class="h5 mb-1" style="color: var(--color-success);"><?php echo $stats_activos; ?></div><small class="text-muted">Activos</small></div></div>
+                        <div class="col-3"><div class="text-center"><div class="h5 mb-1" style="color: var(--red, #ef4444);"><?php echo $stats_inactivos; ?></div><small class="text-muted">Inactivos</small></div></div>
+                        <div class="col-3"><div class="text-center"><div class="h5 mb-1" style="color: var(--cyan, #06b6d4);"><?php echo count($todos_roles_completos); ?></div><small class="text-muted">Roles totales</small></div></div>
+                        <div class="col-3"><div class="text-center"><div class="h5 mb-1" style="color: var(--accent);"><?php echo count(array_filter($todos_roles_completos, function ($c) { return $c > 0; })); ?></div><small class="text-muted">Roles con usuarios</small></div></div>
+                    </div>
+                    <?php else: ?>
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-2x text-muted mb-3"></i>
+                        <p class="text-muted mb-2">No hay roles definidos en el sistema</p>
+                    </div>
                     <?php endif; ?>
                 </div>
+                </div>
             </div>
-            <div class="stat-icon" style="color: var(--color-success-soft);"><i class="fas fa-cake-candles"></i></div>
         </div>
     </div>
+    <script>
+    (function () {
+        var fills = document.querySelectorAll('.progress-bar-fill');
+        var delay = 150;
+        fills.forEach(function (bar) {
+            var target = bar.style.getPropertyValue('--target-width') || '0%';
+            setTimeout(function () { bar.style.width = target; }, delay);
+            delay += 80;
+        });
+    })();
+    </script>
 
     <!-- Gestión de Usuarios -->
     <div class="glass-card fade-in-up" style="animation-delay: 0.12s;">
@@ -1320,9 +1543,9 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
             </div>
             
             <div class="table-responsive" style="max-height:25rem; overflow-y: auto;">
-                <table class="table table-sm table-hover" id="tablaUsuarios" style="min-width:50rem;">
+                <table class="table table-sm table-hover" id="tablaUsuarios" style="min-width:58rem;">
                     <thead style="position: sticky; top:0; background: rgba(22, 22, 30, 0.95); z-index: 10;">
-                        <tr><th>Avatar</th><th>Usuario</th><th>Nombre Completo</th><th>CI</th><th>Rol</th><th>Email</th><th>Estado</th><th>Acciones</th></tr>
+                        <tr><th>Avatar</th><th>Usuario</th><th>Nombre Completo</th><th>CI</th><th>Rol</th><th class="col-email">Email</th><th>Estado</th><th>Fecha Registro</th><th>Acciones</th></tr>
                     </thead>
                     <tbody id="tablaUsuariosBody">
 <?php foreach ($usuarios_lista as $usr):
@@ -1363,13 +1586,13 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
             elseif ($usr['rol_nombre'] == 'Supervisor General') echo 'bg-warning text-dark';
             elseif ($usr['rol_nombre'] == 'Facturador / Editor') echo 'bg-info';
             else echo 'bg-secondary';
-        ?>">
-            <?php echo htmlspecialchars($usr['rol_nombre'] ?? 'Sin rol'); ?>
+        ?>" title="<?php echo htmlspecialchars($usr['rol_nombre'] ?? 'Sin rol'); ?>">
+            <?php echo htmlspecialchars(($usr['rol_nombre'] ?? 'Sin rol') === 'Administrador del Sistema' ? 'Admin. Sistema' : ($usr['rol_nombre'] ?? 'Sin rol')); ?>
         </span>
     </td>
-<td style="color: inherit; text-decoration: none;">
+<td class="col-email">
     <?php if (!empty($usr['email'])): ?>
-        <a href="mailto:<?php echo rawurlencode($usr['email']); ?>?subject=<?php echo rawurlencode('Correo desde la Página del Registro de usuarios Sistema de Nominas'); ?>" style="color: inherit; text-decoration: none;">
+        <a class="email-link" href="mailto:<?php echo rawurlencode($usr['email']); ?>?subject=<?php echo rawurlencode('Correo desde la Página del Registro de usuarios Sistema de Nominas'); ?>" title="<?php echo htmlspecialchars($usr['email']); ?>" style="color: inherit; text-decoration: none;">
             <?php echo htmlspecialchars($usr['email']); ?>
         </a>
     <?php else: ?>
@@ -1381,6 +1604,7 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
             <?php echo $usr['activo'] ? 'Activo' : 'Inactivo'; ?>
         </span>
     </td>
+    <td class="text-nowrap"><?php echo !empty($usr['fecha_registro']) ? date('d/m/Y', strtotime($usr['fecha_registro'])) : '-'; ?></td>
     <td>
         <div class="btn-group btn-group-sm">
             <a class="btn-win btn-win-sm" href="users.php?id=<?php echo $usr['id']; ?>" title="Ver perfil" data-tooltip="Ver perfil" data-tooltip-theme="info"><i class="fas fa-user"></i></a>
@@ -1410,7 +1634,7 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
 
 <!-- Modal para crear/editar usuarios con crop -->
 <div class="modal fade" id="modalUsuario" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content modal-content-win">
             <div class="modal-header modal-header-win d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center gap-3">
@@ -1428,7 +1652,7 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"></button>
             </div>
-            <form id="formUsuario" method="POST" autocomplete="off">
+            <form id="formUsuario" method="POST" autocomplete="off" novalidate>
                 <input type="hidden" name="action" id="usuarioAction" value="crear">
                 <input type="hidden" name="usuario_id" id="usuarioId" value="">
                 <input type="hidden" name="imagen_recortada" id="imagen_recortada_usuario" value="">
@@ -1439,8 +1663,9 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
                         <span id="formUsuarioStatusText">Creando un nuevo usuario para el sistema</span>
                     </div>
                     <div class="row g-4">
-                        <div class="col-md-3">
-                            <div class="text-center">
+                        <!-- Columna Izquierda: Foto + Datos de Acceso -->
+                        <div class="col-md-4 pe-lg-4 border-end-lg" style="border-color: rgba(255,255,255,0.12) !important;">
+                            <div class="text-center mb-4">
                                 <div class="avatar-preview mb-2" id="avatarPreviewUsuario" onclick="abrirEditorFotoUsuario()" style="width:7.5rem; height:7.5rem;" title="Editar foto de perfil" data-tooltip="Editar foto de perfil" data-tooltip-theme="gradient">
                                     <div id="fotoPlaceholderUsuario" class="avatar-placeholder"><i class="fas fa-camera"></i><small style="font-size:0.6rem; margin-top:0.25rem;">Foto</small></div>
                                     <img id="imagePreviewUsuario" src="" style="display: none; width:100%; height:100%; object-fit: cover;">
@@ -1450,47 +1675,83 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
                                     <label class="btn-win btn-win-sm py-1" style="font-size:0.7rem;" title="Subir foto" data-tooltip="Subir foto" data-tooltip-theme="info"><i class="fas fa-upload me-1"></i> Subir Foto<input type="file" id="imageUploadUsuario" accept="image/jpeg,image/png" hidden onchange="cargarImagenUsuario(this)"></label>
                                     <button type="button" class="btn-win btn-win-danger btn-win-sm py-1" id="btnEliminarFotoUsuario" style="display: none;" onclick="window.eliminarFotoUsuario()" title="Eliminar foto" data-tooltip="Eliminar foto" data-tooltip-theme="danger"><i class="fas fa-trash-alt me-1"></i> Eliminar</button>
                                 </div>
-                                <div class="form-check form-switch d-flex justify-content-center mt-3 mb-1">
-                                    <input type="checkbox" class="form-check-input" name="activo" id="activo_usuario" checked>
-                                    <label class="form-check-label" for="activo_usuario" id="estadoUsuarioLabel">Usuario Activo</label>
-                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-9">
+
                             <div class="section-title"><i class="fas fa-key"></i> Datos de Acceso</div>
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-6">
-                                    <label class="form-label">Usuario <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" name="usuario" id="usuario" required title="Nombre de usuario para acceso" data-tooltip="Nombre de usuario para acceso" data-tooltip-theme="info">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label">Nombre de Usuario <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                        <input type="text" class="form-control" name="usuario" id="usuario" required title="Nombre de usuario para acceso" data-tooltip="Nombre de usuario para acceso" data-tooltip-theme="info">
+                                    </div>
                                     <small class="text-muted" id="usuarioFeedback"></small>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-12">
                                     <label class="form-label">Contraseña <span class="text-danger" id="passRequired">*</span></label>
-                                    <div class="password-wrapper">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
                                         <input type="password" class="form-control" name="password" id="password" autocomplete="new-password" title="Contraseña de acceso" data-tooltip="Contraseña de acceso" data-tooltip-theme="warning">
-                                        <button type="button" class="password-toggle" id="togglePasswordBtn" onclick="togglePassword()" tabindex="-1" title="Mostrar/ocultar contraseña" data-tooltip="Mostrar/ocultar contraseña" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary" id="togglePasswordBtn" onclick="togglePassword()" tabindex="-1" title="Mostrar/ocultar contraseña" data-tooltip="Mostrar/ocultar contraseña" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                    <div style="margin-top:0.5rem;" id="rpMeterWrapper">
+                                        <div style="display:flex; gap:0.3125rem; height:0.375rem;">
+                                            <div id="rpBar1" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                            <div id="rpBar2" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                            <div id="rpBar3" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                            <div id="rpBar4" style="flex:1; border-radius:0.1875rem; background:rgba(255,255,255,0.08); transition:background .3s;"></div>
+                                        </div>
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.3125rem;">
+                                            <span id="rpFuerzaTexto" style="font-size:0.72rem; color:#94a3b8;">Ingrese una contraseña</span>
+                                            <span id="rpFuerzaRequisitos" style="font-size:0.68rem; color:#64748b;">Mín. 6 caracteres</span>
+                                        </div>
                                     </div>
                                     <small class="text-muted" id="passHelp">Dejar en blanco para mantener la actual</small>
                                 </div>
+                                <div class="col-12" id="confirmPasswordField">
+                                    <label class="form-label">Confirmar Contraseña <span class="text-danger" id="confirmPassRequired">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                        <input type="password" class="form-control" name="confirm_password" id="confirm_password" autocomplete="new-password" title="Confirmar contraseña" data-tooltip="Confirmar contraseña" data-tooltip-theme="warning">
+                                        <button type="button" class="btn btn-outline-secondary" id="togglePasswordConfirmBtn" onclick="toggleConfirmPassword()" tabindex="-1" title="Mostrar/ocultar contraseña" data-tooltip="Mostrar/ocultar contraseña" data-tooltip-theme="warning"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                    <small class="text-danger" id="confirmPasswordFeedback" style="display:none;"></small>
+                                </div>
                             </div>
-                            <div class="section-title"><i class="fas fa-id-card"></i> Datos Personales</div>
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-4"><label class="form-label">Nombre <span class="text-danger">*</span></label><input type="text" class="form-control" name="nombre" id="nombre" required><small class="text-muted" id="nombreFeedback"></small></div>
-                                <div class="col-md-4"><label class="form-label">Primer Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="primer_apellido" id="primer_apellido" required><small class="text-muted" id="apellido1Feedback"></small></div>
-                                <div class="col-md-4"><label class="form-label">Segundo Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="segundo_apellido" id="segundo_apellido" required><small class="text-muted" id="apellido2Feedback"></small></div>
+                        </div>
+
+                        <!-- Columna Derecha: Información Personal -->
+                        <div class="col-md-8">
+                            <div class="section-title"><i class="fas fa-id-card"></i> Información Personal</div>
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">Nombre(s) <span class="text-danger">*</span></label><input type="text" class="form-control" name="nombre" id="nombre" required><small class="text-muted" id="nombreFeedback"></small></div>
+                                <div class="col-md-6"><label class="form-label">Primer Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="primer_apellido" id="primer_apellido" required><small class="text-muted" id="apellido1Feedback"></small></div>
+                                <div class="col-md-6"><label class="form-label">Segundo Apellido <span class="text-danger">*</span></label><input type="text" class="form-control" name="segundo_apellido" id="segundo_apellido" required><small class="text-muted" id="apellido2Feedback"></small></div>
                                 <div class="col-md-6"><label class="form-label">Carnet de Identidad <span class="text-danger">*</span></label><input type="text" class="form-control" name="no_ci" id="no_ci" maxlength="11" required><small class="text-muted" id="ciFeedbackUsuario"></small></div>
                                 <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" id="email"><small class="text-muted" id="emailFeedback"></small></div>
-                                <div class="col-md-6"><label class="form-label">Teléfono de Contacto</label><input type="text" class="form-control" name="telefono_contacto" id="telefono_contacto" maxlength="15"><small class="text-muted" id="telefonoFeedback"></small></div>
+                                <div class="col-md-6"><label class="form-label">Teléfono</label><input type="tel" class="form-control" name="telefono_contacto" id="telefono_contacto" maxlength="15" placeholder="+535xxxxxxx" oninput="this.value = this.value.replace(/[^0-9+]/g, '')"><small class="text-muted" id="telefonoFeedback"></small></div>
+                                <div class="col-12"><label class="form-label">Dirección Particular</label><textarea class="form-control" name="direccion_particular" id="direccion_particular" rows="3"></textarea></div>
+                            </div>
+                            <div class="section-title mt-4"><i class="fas fa-user-shield"></i> Rol y Estado</div>
+                            <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Rol <span class="text-danger">*</span></label>
+                                    <label class="form-label">Rol para los permisos <span class="text-danger">*</span></label>
                                     <select class="form-select" name="rol_id" id="rol_id" required title="Asignar rol al usuario" data-tooltip="Asignar rol al usuario" data-tooltip-theme="primary">
-                                        <option value="">-- Seleccione un rol --</option>
+                                        <option value="">Seleccionar Rol...</option>
                                         <?php $stmt_roles2 = $pdo->query("SELECT id, descripcion FROM clasif_rol ORDER BY id"); while ($rol2 = $stmt_roles2->fetch()): ?>
                                         <option value="<?php echo $rol2['id']; ?>"><?php echo htmlspecialchars($rol2['descripcion']); ?></option>
                                         <?php endwhile; ?>
                                     </select>
                                 </div>
-                                <div class="col-md-12"><label class="form-label">Dirección Particular</label><textarea class="form-control" name="direccion_particular" id="direccion_particular" rows="2"></textarea></div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" class="form-check-input" name="activo" id="activo_usuario" checked>
+                                        <label class="form-check-label" for="activo_usuario" id="estadoUsuarioLabel">
+                                            Usuario Activo
+                                            <small class="text-muted d-block" style="font-size:0.7rem;">Permitir acceso al sistema</small>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1598,6 +1859,44 @@ function togglePassword() {
     }
 }
 
+function toggleConfirmPassword() {
+    const pass = document.getElementById('confirm_password');
+    const btn = document.getElementById('togglePasswordConfirmBtn');
+    if (pass.type === 'password') {
+        pass.type = 'text';
+        if (btn) btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+    } else {
+        pass.type = 'password';
+        if (btn) btn.innerHTML = '<i class="fas fa-eye"></i>';
+    }
+}
+
+function medirFortalezaPassword(valor) {
+    const barras = ['rpBar1', 'rpBar2', 'rpBar3', 'rpBar4'].map(function (id) { return document.getElementById(id); });
+    const texto = document.getElementById('rpFuerzaTexto');
+    const requisitos = document.getElementById('rpFuerzaRequisitos');
+    if (!barras[0]) return;
+    let puntaje = 0;
+    if (valor.length >= 6) puntaje++;
+    if (valor.length >= 10) puntaje++;
+    if (/[A-Z]/.test(valor) && /[a-z]/.test(valor)) puntaje++;
+    if (/\d/.test(valor) && /[^A-Za-z0-9]/.test(valor)) puntaje++;
+    const colores = ['#ef4444', '#f59e0b', '#eab308', '#38bdf8', '#22c55e'];
+    const etiquetas = ['Muy débil', 'Débil', 'Aceptable', 'Buena', 'Fuerte'];
+    barras.forEach(function (barra, i) {
+        if (barra) barra.style.background = puntaje > i ? colores[i] : 'rgba(255,255,255,0.08)';
+    });
+    if (texto) { texto.textContent = etiquetas[puntaje]; texto.style.color = colores[puntaje]; texto.style.fontWeight = '600'; }
+    if (requisitos) {
+        if (valor.length === 0) requisitos.textContent = 'Mín. 6 caracteres';
+        else if (valor.length < 6) requisitos.textContent = 'Faltan ' + (6 - valor.length) + ' caracteres';
+        else requisitos.textContent = puntaje === 4 ? 'Contraseña fuerte' : 'Sugerencia: usa mayúsculas, números y símbolos';
+    }
+}
+document.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'password') medirFortalezaPassword(e.target.value);
+});
+
 function validarUsuario(value, feedbackId) {
     const limpio = value.trim();
     if (limpio.length === 0) { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Obligatorio').show(); return false; }
@@ -1607,9 +1906,24 @@ function validarUsuario(value, feedbackId) {
 }
 
 function validarCI(value, feedbackId) {
-    const limpio = value.trim();
-    if (limpio.length !== 11 || !/^\d{11}$/.test(limpio)) { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Debe tener 11 dígitos').show(); return false; }
-    $(feedbackId).html('<i class="fas fa-check-circle text-success me-1"></i> Válido').show(); return true;
+    const ci = (value || '').replace(/[\s-]/g, '');
+    if (!/^\d{11}$/.test(ci)) { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Debe tener 11 dígitos').show(); return false; }
+    const año = ci.substr(0, 2);
+    const mes = ci.substr(2, 2);
+    const dia = ci.substr(4, 2);
+    if (mes < '01' || mes > '12') { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Mes inválido').show(); return false; }
+    const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    const maxDias = diasPorMes[parseInt(mes) - 1];
+    if (parseInt(mes) === 2 && parseInt(dia) === 29) {
+        const añoCompletoB = parseInt(año) < 30 ? 2000 + parseInt(año) : 1900 + parseInt(año);
+        const esBisiesto = (añoCompletoB % 4 === 0 && añoCompletoB % 100 !== 0) || (añoCompletoB % 400 === 0);
+        if (!esBisiesto) { $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> 29/02 solo válido en años bisiestos').show(); return false; }
+    } else if (dia < '01' || parseInt(dia) > maxDias) {
+        $(feedbackId).html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Día inválido').show(); return false;
+    }
+    const genero = parseInt(ci.charAt(9)) % 2 === 0 ? 'Masculino' : 'Femenino';
+    const iconoGenero = genero === 'Masculino' ? '<i class="fas fa-mars me-1"></i>' : '<i class="fas fa-venus me-1"></i>';
+    $(feedbackId).html('<i class="fas fa-check-circle text-success me-1"></i> CI válido: ' + iconoGenero + ' ' + genero).show(); return true;
 }
 
 function validarEmail(value, feedbackId) {
@@ -1640,7 +1954,25 @@ $(document).ready(function() {
     $('#no_ci').on('blur', function() { validarCI(this.value, '#ciFeedbackUsuario'); });
     $('#email').on('blur', function() { validarEmail(this.value, '#emailFeedback'); });
     $('#telefono_contacto').on('blur', function() { validarTelefono(this.value, '#telefonoFeedback'); });
-    $('#password').on('blur', function() { validarPassword(this.value, '#passHelp'); });
+    $('#password').on('blur', function() {
+        if (this.value.length === 0 && $('#usuarioAction').val() !== 'crear') {
+            const ph = document.getElementById('passHelp');
+            if (ph) { ph.textContent = 'Dejar en blanco para mantener la actual'; ph.style.display = 'block'; }
+            return;
+        }
+        validarPassword(this.value, '#passHelp');
+    });
+    $('#password, #confirm_password').on('input', function() {
+        const p = document.getElementById('password').value;
+        const c = document.getElementById('confirm_password').value;
+        if (c.length === 0) { $('#confirmPasswordFeedback').html('').hide(); return; }
+        if (c !== p) { $('#confirmPasswordFeedback').html('<i class="fas fa-exclamation-circle text-danger me-1"></i> Las contraseñas no coinciden').show(); }
+        else { $('#confirmPasswordFeedback').html('<i class="fas fa-check-circle text-success me-1"></i> Coinciden').show(); }
+    });
+
+    $('#modalUsuario').on('shown.bs.modal', function() {
+        setTimeout(function() { $('#usuario').trigger('focus'); }, 150);
+    });
 
     // Chevron del select: arriba mientras el dropdown está abierto, abajo al cerrar
     $(document)
@@ -1819,7 +2151,7 @@ function limpiarFormularioUsuario() {
     document.getElementById('imagen_recortada_usuario').value = '';
     document.getElementById('eliminarFotoUsuarioInput').value = '0';
     
-    $('#usuarioFeedback, #nombreFeedback, #apellido1Feedback, #apellido2Feedback, #ciFeedbackUsuario, #emailFeedback, #telefonoFeedback, #passHelp').html('').hide();
+    $('#usuarioFeedback, #nombreFeedback, #apellido1Feedback, #apellido2Feedback, #ciFeedbackUsuario, #emailFeedback, #telefonoFeedback').html('').hide();
     
     const title = document.getElementById('modalUsuarioTitle');
     const subtitle = document.getElementById('modalUsuarioSubtitle');
@@ -1830,7 +2162,7 @@ function limpiarFormularioUsuario() {
     const passRequired = document.getElementById('passRequired');
     
     if (title) title.innerHTML = '<i class="fas fa-user-plus me-2"></i> Nuevo Usuario';
-    if (subtitle) subtitle.textContent = 'Registre un nuevo usuario del sistema';
+    if (subtitle) { subtitle.textContent = 'Registre un nuevo usuario del sistema'; subtitle.classList.remove('nombre-completo'); }
     if (badge) { badge.className = 'mode-badge create'; badge.innerHTML = '<i class="fas fa-plus-circle"></i> Crear'; }
     if (status) { status.className = 'form-usuario-status create'; status.querySelector('i').className = 'fas fa-user-plus'; }
     if (statusText) statusText.textContent = 'Creando un nuevo usuario para el sistema';
@@ -1838,11 +2170,21 @@ function limpiarFormularioUsuario() {
     if (passRequired) passRequired.style.display = '';
     
     const passHelp = document.getElementById('passHelp');
-    if (passHelp) passHelp.textContent = 'Dejar en blanco para mantener la actual';
+    if (passHelp) { passHelp.textContent = 'Obligatorio para nuevos usuarios'; passHelp.style.display = 'block'; }
+    const rpFuerzaRequisitos = document.getElementById('rpFuerzaRequisitos');
+    if (rpFuerzaRequisitos) rpFuerzaRequisitos.textContent = 'Obligatorio';
     const pass = document.getElementById('password');
     if (pass) { pass.value = ''; pass.type = 'password'; }
+    const confirmPass = document.getElementById('confirm_password');
+    if (confirmPass) { confirmPass.value = ''; confirmPass.type = 'password'; }
+    const confirmPassField = document.getElementById('confirmPasswordField');
+    if (confirmPassField) confirmPassField.style.display = '';
+    const confirmPassFeedback = document.getElementById('confirmPasswordFeedback');
+    if (confirmPassFeedback) confirmPassFeedback.style.display = 'none';
     const toggleBtn = document.getElementById('togglePasswordBtn');
     if (toggleBtn) toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+    const toggleConfirmBtn = document.getElementById('togglePasswordConfirmBtn');
+    if (toggleConfirmBtn) toggleConfirmBtn.innerHTML = '<i class="fas fa-eye"></i>';
     
     const headerImg = document.getElementById('headerAvatarImg');
     const headerIniciales = document.getElementById('headerAvatarIniciales');
@@ -1884,6 +2226,11 @@ function editarUsuario(id) {
         
         document.getElementById('usuario').value = u.usuario || '';
         document.getElementById('password').value = '';
+        document.getElementById('confirm_password').value = '';
+        const confirmPassFeedbackEdit = document.getElementById('confirmPasswordFeedback');
+        if (confirmPassFeedbackEdit) confirmPassFeedbackEdit.style.display = 'none';
+        const confirmPassFieldEdit = document.getElementById('confirmPasswordField');
+        if (confirmPassFieldEdit) confirmPassFieldEdit.style.display = 'none';
         document.getElementById('nombre').value = u.nombre || '';
         
         const apellidos = (u.apellidos || '').split(' ');
@@ -1919,7 +2266,7 @@ function editarUsuario(id) {
         
         const nombreCompleto = (u.nombre || '') + ' ' + (u.apellidos || '');
         if (title) title.innerHTML = '<i class="fas fa-user-edit me-2"></i> Editar Usuario';
-        if (subtitle) subtitle.textContent = nombreCompleto;
+        if (subtitle) { subtitle.textContent = nombreCompleto; subtitle.classList.add('nombre-completo'); }
         if (badge) { badge.className = 'mode-badge edit'; badge.innerHTML = '<i class="fas fa-edit"></i> Editar'; }
         if (status) { status.className = 'form-usuario-status edit'; status.querySelector('i').className = 'fas fa-user-edit'; }
         if (statusText) statusText.textContent = 'Editando el usuario ' + (u.usuario || '');
@@ -1927,7 +2274,9 @@ function editarUsuario(id) {
         if (passRequired) passRequired.style.display = 'none';
         
         const passHelp = document.getElementById('passHelp');
-        if (passHelp) passHelp.textContent = 'Dejar en blanco para mantener la contraseña actual';
+        if (passHelp) { passHelp.textContent = 'Dejar en blanco para mantener la actual'; passHelp.style.display = 'block'; }
+        const rpFuerzaRequisitos = document.getElementById('rpFuerzaRequisitos');
+        if (rpFuerzaRequisitos) rpFuerzaRequisitos.textContent = 'Mín. 6 caracteres';
         const toggleBtn = document.getElementById('togglePasswordBtn');
         if (toggleBtn) toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
         const pass = document.getElementById('password');
@@ -2014,6 +2363,69 @@ function toggleEstadoUsuario(id, estadoActual, nombre) {
     });
 }
 
+var SISGESNOM_NOMBRE_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom')); ?>;
+
+function construirContenidoReset(nombre, usuario, password) {
+    const d = new Date();
+    const pad = (n) => (n < 10 ? '0' : '') + n;
+    const dia  = pad(d.getDate());
+    const mes  = pad(d.getMonth() + 1);
+    const anio = String(d.getFullYear());
+    const hh24 = d.getHours();
+    const hh12 = hh24 % 12 || 12;
+    const hh = pad(hh12);
+    const mm = pad(d.getMinutes());
+    const ss = pad(d.getSeconds());
+    const ampm = hh24 >= 12 ? 'pm' : 'am';
+    const marca = dia + mes + anio + '-' + hh + mm + ss + ampm;
+    const fecha = dia + '/' + mes + '/' + anio + ' ' + hh + ':' + mm + ':' + ss + ' ' + ampm;
+    const empresa = typeof SISGESNOM_NOMBRE_EMPRESA !== 'undefined' ? String(SISGESNOM_NOMBRE_EMPRESA) : '';
+    const texto =
+        'SISTEMA DE GESTION DE NOMINAS - SISGESNOM\r\n' +
+        'EMPRESA: ' + empresa + '\r\n' +
+        'CONTRASENA RESETEADA\r\n' +
+        '\r\n' +
+        '========================================================\r\n' +
+        'Nombre: ' + nombre + '\r\n' +
+        'Usuario: ' + usuario + '\r\n' +
+        'Nueva contraseña: ' + password + '\r\n' +
+        'Fecha de reseteo: ' + fecha + '\r\n' +
+        '========================================================\r\n' +
+        'Guarde este archivo en un lugar seguro.\r\n' +
+        '\r\n' +
+        'Equipo de SisGesNom®\r\n';
+    return { texto: texto, marca: marca };
+}
+
+function descargarPasswordReset(nombre, usuario, password) {
+    const r = construirContenidoReset(nombre, usuario, password);
+    const sane = String(nombre).replace(/[<>:"/\\|?*\u0000-\u001F]/g, '').replace(/\s+/g, ' ').trim();
+    const filename = 'Reset_contrasena_' + sane + '_' + r.marca + '.txt';
+    const blob = new Blob([r.texto], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function imprimirPasswordReset(nombre, usuario, password) {
+    const r = construirContenidoReset(nombre, usuario, password);
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const w = window.open('', '_blank', 'width=560,height=500,scrollbars=yes');
+    if (!w) return;
+    w.document.write(
+        '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">' +
+        '<title>Contraseña reseteada - SisGesNom</title>' +
+        '<style>body{font-family:"Cascadia Code",Consolas,monospace;margin:2rem;color:#111;}pre{white-space:pre;font-family:inherit;font-size:.9rem;}</style>' +
+        '</head><body onload="window.print()"><pre>' + esc(r.texto) + '</pre></body></html>'
+    );
+    w.document.close();
+}
+
 function resetPasswordUsuario(id, nombre) {
     Swal.fire({
         title: '<i class="fas fa-key text-primary me-2"></i> Resetear contraseña',
@@ -2045,10 +2457,35 @@ function resetPasswordUsuario(id, nombre) {
                     icon: 'success',
                     title: '<i class="fas fa-check-circle me-2"></i> Contraseña reseteada',
                     html: 'Nueva contraseña de <strong>' + nombre + '</strong>:<br><code style="font-size:1.2rem; background:rgba(255,255,255,.1); padding:.25rem .6rem; border-radius:.4rem; display:inline-block; margin-top:.5rem;">' + data.nueva_password + '</code><br><small style="display:block; margin-top:.5rem; color:#94a3b8;"><i class="fas fa-info-circle me-1"></i> Copie y guarde esta contraseña ahora.</small>' + htmlInfo,
+                    showCancelButton: false,
+                    showConfirmButton: true,
                     confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
                     confirmButtonColor: '#10b981',
                     background: 'var(--panel)',
-                    color: 'var(--txt)'
+                    color: 'var(--txt)',
+                    didRender: function () {
+                        const actions = document.querySelector('.swal2-actions');
+                        if (!actions) return;
+                        const crearBoton = function (id, icono, texto, bg, borde, color) {
+                            const b = document.createElement('button');
+                            b.type = 'button';
+                            b.id = id;
+                            b.innerHTML = icono + ' ' + texto;
+                            b.className = 'swal2-styled';
+                            b.style.cssText = 'border:1px solid ' + borde + ';background-color:' + bg + ';color:' + color + ';font-weight:500;padding:.625em 1.1em;font-size:1.0625em;border-radius:.25em;';
+                            const confirmBtn = actions.querySelector('.swal2-confirm');
+                            if (confirmBtn) { actions.insertBefore(b, confirmBtn); } else { actions.appendChild(b); }
+                            return b;
+                        };
+                        const btnExp = crearBoton('btnExportarReset', '<i class="fas fa-download"></i>', 'Exportar', 'rgba(245,158,11,.15)', 'rgba(245,158,11,.55)', '#fbbf24');
+                        btnExp.addEventListener('click', function () {
+                            descargarPasswordReset(data.nombre || nombre, data.usuario || '', data.nueva_password);
+                        });
+                        const btnImp = crearBoton('btnImprimirReset', '<i class="fas fa-print"></i>', 'Imprimir', 'rgba(96,165,250,.15)', 'rgba(96,165,250,.5)', '#60a5fa');
+                        btnImp.addEventListener('click', function () {
+                            imprimirPasswordReset(data.nombre || nombre, data.usuario || '', data.nueva_password);
+                        });
+                    }
                 });
             } else {
                 Swal.fire({ icon: 'error', title: '<i class="fas fa-check-circle me-2"></i> Error', text: data.message, confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido', background: 'var(--panel)', color: 'var(--txt)' });
@@ -2149,11 +2586,19 @@ document.getElementById('formUsuario').addEventListener('submit', function(e) {
     } else if (passwordVal) {
         okPassword = validarPassword(passwordVal, '#passHelp');
     }
+
+    let okConfirmPass = true;
+    const confirmPassVal = document.getElementById('confirm_password').value;
+    if (action === 'crear') {
+        if (!confirmPassVal) { $('#confirmPasswordFeedback').html('<i class="fas fa-exclamation-circle me-1"></i> Confirmación obligatoria').show(); okConfirmPass = false; }
+        else if (confirmPassVal !== passwordVal) { $('#confirmPasswordFeedback').html('<i class="fas fa-exclamation-circle me-1"></i> Las contraseñas no coinciden').show(); okConfirmPass = false; }
+        else { $('#confirmPasswordFeedback').html('').hide(); }
+    }
     
     const rolVal = document.getElementById('rol_id').value;
-    if (!rolVal) { Swal.fire({ icon: 'warning', title: '<i class="fas fa-exclamation-triangle me-2" style="color: #f59e0b;"></i> Seleccione un rol', text: 'Debe seleccionar el rol del usuario', background: 'var(--panel)', color: 'var(--txt)' }); return; }
+    if (!rolVal) { Swal.fire({ icon: 'warning', title: '<i class="fas fa-exclamation-triangle me-2" style="color: #f59e0b;"></i> Seleccione un rol', text: 'Debe seleccionar el rol del usuario', confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido', background: 'var(--panel)', color: 'var(--txt)' }); return; }
     
-    if (!okUsuario || !okNombre || !okAp1 || !okAp2 || !okCI || !okEmail || !okTel || !okPassword) {
+    if (!okUsuario || !okNombre || !okAp1 || !okAp2 || !okCI || !okEmail || !okTel || !okPassword || !okConfirmPass) {
         Swal.fire({ icon: 'error', title: '<i class="fas fa-exclamation-circle me-2"></i> Campos inválidos', text: 'Revise los campos marcados en rojo', background: 'var(--panel)', color: 'var(--txt)' });
         return;
     }

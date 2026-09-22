@@ -508,7 +508,7 @@ $base_prefix = $is_in_modules ? '../' : '';
         <div class="d-flex flex-wrap justify-content-center justify-content-md-between align-items-center gap-3">
             <div class="copyright-logo">
                 <img src="<?php echo $base_prefix; ?>../images/Unicorn.png" alt="Unicornio" width="20" height="20" class="corporate-logo-img" onerror="this.style.display='none';">
-                <span>Copyright © <?php echo date('Y'); ?> <strong><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></strong> · Todos los derechos reservados</span>
+                <span>Copyright © <strong>SisGesnom</strong> <?php echo date('Y'); ?> &bull; <strong><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></strong> · Todos los derechos reservados</span>
             </div>
             <div class="copyright-links">
                 <a href="<?php echo $base_prefix; ?>../../terminos.php" class="copyright-link" data-tooltip="Términos y Condiciones" data-tooltip-theme="secondary"><i class="fas fa-file-contract"></i> Términos</a>
@@ -631,7 +631,7 @@ document.addEventListener('keydown', function (e) {
      Crea tooltips DOM para TODOS los elementos
      ============================================ -->
 <style>
-.tt-box{position:absolute;z-index:999999;padding:0.5rem 0.875rem;background:linear-gradient(135deg,#0f172a,#1e293b);color:#f1f5f9;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;font-size:.75rem;font-weight:500;line-height:1.5;white-space:nowrap;border-radius:0.5rem;box-shadow:0 0.25rem 1.25rem rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;transform:translateY(0.25rem) scale(.95);border:none;margin:0;max-width:17.5rem}
+.tt-box{position:fixed;z-index:999999;padding:0.5rem 0.875rem;background:linear-gradient(135deg,#0f172a,#1e293b);color:#f1f5f9;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;font-size:.75rem;font-weight:500;line-height:1.5;white-space:nowrap;border-radius:0.5rem;box-shadow:0 0.25rem 1.25rem rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;transform:translateY(0.25rem) scale(.95);border:none;margin:0;max-width:17.5rem}
 .tt-box.visible{opacity:1;transform:translateY(0) scale(1)}
 .tt-box::after{content:'';position:absolute;bottom:-0.375rem;left:50%;transform:translateX(-50%);border:0.375rem solid transparent;border-top:0.375rem solid #1e293b}
 .tt-box.tt-bottom::after{bottom:auto;top:-0.375rem;border-top:none;border-bottom:0.375rem solid #1e293b}
@@ -697,16 +697,16 @@ html.no-tooltips .tt-box{display:none!important}
         var gap=10;
         var top,left;
 
-        if(pos==='bottom'){top=rect.bottom+gap+window.scrollY}
-        else if(pos==='left'){top=rect.top+(rect.height/2)-(bh/2)+window.scrollY;left=rect.left-bw-gap+window.scrollX}
-        else if(pos==='right'){top=rect.top+(rect.height/2)-(bh/2)+window.scrollY;left=rect.right+gap+window.scrollX}
-        else{top=rect.top-bh-gap+window.scrollY}
+        if(pos==='bottom'){top=rect.bottom+gap}
+        else if(pos==='left'){top=rect.top+(rect.height/2)-(bh/2);left=rect.left-bw-gap}
+        else if(pos==='right'){top=rect.top+(rect.height/2)-(bh/2);left=rect.right+gap}
+        else{top=rect.top-bh-gap}
 
-        if(pos!=='left'&&pos!=='right'){left=rect.left+(rect.width/2)-(bw/2)+window.scrollX}
+        if(pos!=='left'&&pos!=='right'){left=rect.left+(rect.width/2)-(bw/2)}
 
         if(left<8)left=8;
         if(left+bw>window.innerWidth-8)left=window.innerWidth-bw-8;
-        if(top<8)top=rect.bottom+gap+window.scrollY;
+        if(top<8)top=rect.bottom+gap;
 
         b.style.top=top+'px';
         b.style.left=left+'px';

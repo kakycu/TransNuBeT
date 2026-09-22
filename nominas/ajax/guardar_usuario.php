@@ -75,11 +75,17 @@ try {
             exit;
         }
         
-        // Verificar duplicados
-        $check = $pdo->prepare("SELECT id FROM clasif_usuarios WHERE usuario = ? OR no_ci = ?");
-        $check->execute([$usuario, $no_ci]);
-        if ($check->fetch()) {
-            echo json_encode(['success' => false, 'message' => 'El usuario o Carnet de Identidad ya existe']);
+        // Verificar duplicados: diferenciar usuario vs carnet de identidad
+        $checkU = $pdo->prepare("SELECT id FROM clasif_usuarios WHERE usuario = ?");
+        $checkU->execute([$usuario]);
+        if ($checkU->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'El nombre de usuario ya existe']);
+            exit;
+        }
+        $checkC = $pdo->prepare("SELECT id FROM clasif_usuarios WHERE no_ci = ?");
+        $checkC->execute([$no_ci]);
+        if ($checkC->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'El Carnet de Identidad ya existe']);
             exit;
         }
         
@@ -144,11 +150,17 @@ try {
             exit;
         }
         
-        // Verificar duplicados excluyendo el usuario actual
-        $check = $pdo->prepare("SELECT id FROM clasif_usuarios WHERE (usuario = ? OR no_ci = ?) AND id != ?");
-        $check->execute([$usuario, $no_ci, $id]);
-        if ($check->fetch()) {
-            echo json_encode(['success' => false, 'message' => 'El usuario o Carnet de Identidad ya existe en otro registro']);
+        // Verificar duplicados excluyendo el usuario actual: diferenciar usuario vs carnet de identidad
+        $checkU = $pdo->prepare("SELECT id FROM clasif_usuarios WHERE usuario = ? AND id != ?");
+        $checkU->execute([$usuario, $id]);
+        if ($checkU->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'El nombre de usuario ya existe en otro registro']);
+            exit;
+        }
+        $checkC = $pdo->prepare("SELECT id FROM clasif_usuarios WHERE no_ci = ? AND id != ?");
+        $checkC->execute([$no_ci, $id]);
+        if ($checkC->fetch()) {
+            echo json_encode(['success' => false, 'message' => 'El Carnet de Identidad ya existe en otro registro']);
             exit;
         }
         

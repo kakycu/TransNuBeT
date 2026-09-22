@@ -54,6 +54,11 @@
         Swal.fire = function (arg) {
             var opts = (typeof arg === 'string') ? { title: arg } : (arg || {});
             var merged = Object.assign({}, DARK_THEME, opts);
+            // Avisos/errores con botón único de confirmación: usar "Entendido" por defecto
+            if (!opts.confirmButtonText && !opts.showCancelButton && !opts.html &&
+                (merged.icon === 'error' || merged.icon === 'warning' || merged.icon === 'info')) {
+                merged.confirmButtonText = '<i class="fas fa-check me-2"></i> Entendido';
+            }
             if (opts.customClass && typeof opts.customClass === 'object') {
                 merged.customClass = Object.assign({}, DARK_CUSTOM_CLASS, opts.customClass);
             } else {

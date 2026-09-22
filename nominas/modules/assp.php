@@ -409,7 +409,6 @@ $nombre_mes_actual = nombreMesEspanol($mes);
 
         .text-muted, .text-secondary { color: #9ca3af !important; }
         hr { opacity: 1; border-color: rgba(148, 163, 184, 0.25); }
-        .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); }
 
         ::-webkit-scrollbar { width:0.5rem; height:0.5rem; }
         ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 0.625rem; }

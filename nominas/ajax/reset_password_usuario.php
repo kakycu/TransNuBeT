@@ -332,7 +332,7 @@ try {
                 $stmtUpd2->execute([$id]);
             }
         }
-    $respuesta = ['success' => true, 'message' => 'Contraseña reseteada correctamente', 'nueva_password' => $nueva_password];
+    $respuesta = ['success' => true, 'message' => 'Contraseña reseteada correctamente', 'nueva_password' => $nueva_password, 'usuario' => $usr['usuario'] ?? '', 'nombre' => $nombre_completo];
     if ($correo_enviado) {
         $respuesta['correo'] = 'enviado';
         $respuesta['correo_texto'] = 'Se envió la nueva contraseña al correo del usuario.';
