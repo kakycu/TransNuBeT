@@ -771,3 +771,156 @@ html.no-tooltips .tt-box{display:none!important}
     });
 })();
 </script>
+<?php
+// ===== Bloqueo automático por inactividad (cliente) =====
+if (!empty($_SESSION['logged_in'])) {
+    $idle_close_cfg  = isset($_SESSION['idle_close']) ? (int)$_SESSION['idle_close'] : 1;
+    $idle_min_cfg    = isset($_SESSION['idle_minutes']) ? max(1, (int)$_SESSION['idle_minutes']) : 10;
+    if (isset($pdo) && $pdo instanceof PDO) {
+        try {
+            $idle_uid_cfg = (int)($_SESSION['user_id'] ?? $_SESSION['usuario_id'] ?? 0);
+            if ($idle_uid_cfg > 0) {
+                $idle_q = $pdo->prepare('SELECT close_inactiv, time_inac FROM clasif_usuarios WHERE id = ?');
+                $idle_q->execute([$idle_uid_cfg]);
+                if ($idle_r = $idle_q->fetch()) {
+                    $idle_close_cfg = (int)$idle_r['close_inactiv'];
+                    $idle_min_cfg   = max(1, (int)$idle_r['time_inac']);
+                    $_SESSION['idle_close']   = $idle_close_cfg;
+                    $_SESSION['idle_minutes'] = $idle_min_cfg;
+                }
+            }
+        } catch (Throwable $e) {}
+    }
+    $idle_lock_url = $base_prefix . 'bloquear_sesion.php';
+    $idle_ping_url = $base_prefix . 'ajax/idle_ping.php';
+    ?>
+<script>
+(function () {
+    var cfg = {
+        enabled: <?php echo $idle_close_cfg === 1 ? 'true' : 'false'; ?>,
+        minutes: <?php echo (int)$idle_min_cfg; ?>,
+        lockUrl: <?php echo json_encode($idle_lock_url); ?>,
+        pingUrl: <?php echo json_encode($idle_ping_url); ?>
+    };
+    window.__IDLE_LOCK__ = cfg;
+
+    var lastAct = Date.now();
+    var lastPing = 0;
+    var locking = false;
+    var PING_MS = 20000;
+    var idleEl = document.getElementById('sidebarIdleCountdown');
+    var idleTimeEl = document.getElementById('sidebarIdleCdTime');
+
+    function pad2(n) {
+        return n < 10 ? '0' + n : String(n);
+    }
+
+    function idleMs() {
+        return Date.now() - lastAct;
+    }
+
+    function remainingMs() {
+        return Math.max(0, cfg.minutes * 60000 - idleMs());
+    }
+
+    function renderDisabledCountdown() {
+        if (!idleEl || !idleTimeEl) return;
+        idleEl.hidden = false;
+        idleEl.classList.remove('is-warning', 'is-critical');
+        idleEl.classList.add('is-disabled');
+        idleTimeEl.textContent = '--:--';
+    }
+
+    function renderCountdown() {
+        if (!idleEl || !idleTimeEl) return;
+        idleEl.hidden = false;
+        idleEl.classList.remove('is-disabled');
+        var rem = remainingMs();
+        var totalSec = Math.ceil(rem / 1000);
+        var m = Math.floor(totalSec / 60);
+        var s = totalSec % 60;
+        idleTimeEl.textContent = pad2(m) + ':' + pad2(s);
+        idleEl.classList.remove('is-warning', 'is-critical');
+        if (rem <= 15000) idleEl.classList.add('is-critical');
+        else if (rem <= 60000) idleEl.classList.add('is-warning');
+    }
+
+    function render() {
+        if (cfg.enabled && cfg.minutes > 0) renderCountdown();
+        else renderDisabledCountdown();
+    }
+
+    function lockNow() {
+        if (!cfg.enabled || locking) return;
+        locking = true;
+        try { window.location.href = cfg.lockUrl; } catch (e) {}
+    }
+
+    function markActive() {
+        lastAct = Date.now();
+        if (cfg.enabled) ping(false);
+    }
+
+    function ping(force) {
+        if (!cfg.enabled) return;
+        if (!force && Date.now() - lastPing < PING_MS) return;
+        lastPing = Date.now();
+        try {
+            fetch(cfg.pingUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                keepalive: true,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function (r) {
+                return r.json().catch(function () { return null; });
+            }).then(function (d) {
+                if (d && d.locked) lockNow();
+            }).catch(function () {});
+        } catch (e) {}
+    }
+
+    cfg.apply = function (enabled, minutes) {
+        cfg.enabled = !!enabled;
+        if (minutes != null && isFinite(minutes)) {
+            minutes = Math.max(1, Math.round(Number(minutes)));
+            if (minutes > 0) cfg.minutes = minutes;
+        }
+        if (cfg.enabled) {
+            lastAct = Date.now();
+            locking = false;
+            render();
+            ping(true);
+        } else {
+            renderDisabledCountdown();
+        }
+        return cfg;
+    };
+
+    var evts = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'touchend', 'scroll', 'wheel', 'click', 'input', 'keyup', 'pointerdown'];
+    for (var i = 0; i < evts.length; i++) {
+        window.addEventListener(evts[i], markActive, { passive: true, capture: true });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (!cfg.enabled || document.hidden) return;
+        if (idleMs() >= cfg.minutes * 60000) lockNow();
+    });
+
+    window.addEventListener('focus', function () {
+        if (!cfg.enabled) return;
+        if (idleMs() >= cfg.minutes * 60000) lockNow();
+    });
+
+    setInterval(function () {
+        if (!cfg.enabled || locking) return;
+        render();
+        if (idleMs() >= cfg.minutes * 60000) lockNow();
+    }, 1000);
+
+    render();
+    if (cfg.enabled) ping(true);
+})();
+</script>
+    <?php
+}
+

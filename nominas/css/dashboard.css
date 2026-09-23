@@ -276,6 +276,14 @@
             font-size:1.5rem;
         }
 
+        #kpiActualizacion.gira-icono .stat-icon i {
+            display:inline-block;
+            animation: statSyncGiro 0.9s linear infinite;
+        }
+        @keyframes statSyncGiro {
+            to { transform: rotate(360deg); }
+        }
+
         .stat-card .stat-label {
             font-size:0.75rem;
             text-transform: uppercase;

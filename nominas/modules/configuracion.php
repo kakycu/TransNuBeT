@@ -398,12 +398,15 @@ $stmt = $pdo->prepare("INSERT INTO configuracion_general (parametro, valor, tipo
         $params_sistema = [
             'tiempo_para_bloqueo' => max(1, (int)($_POST['tiempo_para_bloqueo'] ?? 10)),
         ];
+        $subsistema_nominas = (($_POST['subsistema_nominas'] ?? '0') === '1') ? 1 : 0;
         try {
             foreach ($params_sistema as $param => $valor) {
                 $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
                 $stmt->execute([$valor, $param]);
             }
-            logAction('guardar_configuracion_sistema', 'configuracion', 'Otras configuraciones del sistema guardadas', ['tiempo_para_bloqueo' => $params_sistema['tiempo_para_bloqueo']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            $stmt = $pdo->prepare("UPDATE subsistemas SET estado = ? WHERE codigo = '0001'");
+            $stmt->execute([$subsistema_nominas]);
+            logAction('guardar_configuracion_sistema', 'configuracion', 'Otras configuraciones del sistema guardadas', ['tiempo_para_bloqueo' => $params_sistema['tiempo_para_bloqueo'], 'subsistema_nominas' => $subsistema_nominas], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Otras configuraciones del sistema guardadas correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -695,6 +698,15 @@ $fecha_vigencia_actual = !empty($rangos_impuesto) ? $rangos_impuesto[0]['fecha_v
 
 // Obtener tasas
 $tasas = $pdo->query("SELECT * FROM configuracion_tasas ORDER BY fecha_vigencia DESC")->fetchAll();
+
+// Estado del subsistema de Nóminas
+$subsistema_nominas_activo = false;
+try {
+    $stmt = $pdo->query("SELECT estado FROM subsistemas WHERE codigo = '0001' LIMIT 1");
+    if ($row = $stmt->fetch()) {
+        $subsistema_nominas_activo = (int)$row['estado'] === 1;
+    }
+} catch (PDOException $e) {}
 ?>
 
 <!DOCTYPE html>
@@ -2034,6 +2046,33 @@ input.sucursal-no-identificada {
     transform: translateY(-2px);
 }
 /* ==================== FIN DE INFORMACIÓN BANCARIA ==================== */
+
+/* Selector de minutos tipo reloj analógico */
+.lock-clock { display:flex; flex-direction:column; align-items:center; gap:0.5rem; }
+.lock-clock-svg { width:4.75rem; height:4.75rem; display:block; cursor:pointer; touch-action:none; border-radius:50%; }
+.lock-clock-svg:focus-visible { outline:0.125rem solid #60a5fa; outline-offset:0.1875rem; }
+.lock-clock-face { fill:var(--panel); stroke:rgba(255,255,255,0.14); stroke-width:3; }
+.lock-clock-tick { stroke:rgba(255,255,255,0.45); stroke-width:2.5; }
+.lock-clock-tick.major { stroke:#60a5fa; stroke-width:3.5; }
+.lock-clock-num { fill:rgba(255,255,255,0.7); font-size:22px; font-weight:600; }
+.lock-clock-hand { stroke:#60a5fa; stroke-width:6; stroke-linecap:round; }
+.lock-clock-hub { fill:#60a5fa; }
+.lock-clock-readout { font-size:0.85rem; font-weight:700; color:#60a5fa; background:rgba(0,120,212,0.15); border:0.0625rem solid rgba(96,165,250,0.35); border-radius:0.5rem; padding:0.15rem 0.6rem; }
+#sistemaForm .row > .border { border-color:var(--border) !important; }
+html[data-theme="light"] .lock-clock-face { fill:#ffffff; stroke:rgba(0,0,0,0.25); }
+html[data-theme="light"] .lock-clock-tick { stroke:rgba(0,0,0,0.4); }
+html[data-theme="light"] .lock-clock-tick.major { stroke:var(--accent-dark, #0078d4); }
+html[data-theme="light"] .lock-clock-num { fill:rgba(0,0,0,0.65); }
+html[data-theme="light"] .lock-clock-hand { stroke:var(--accent-dark, #0078d4); fill:none; }
+html[data-theme="light"] .lock-clock-hub { fill:var(--accent-dark, #0078d4); }
+html[data-theme="light"] .lock-clock-readout { color:var(--accent-dark, #0078d4); background:rgba(0,120,212,0.12); border:0.0625rem solid rgba(0,120,212,0.3); }
+html[data-theme="orgullo"] .lock-clock-face { fill:#ffffff; stroke:rgba(84,52,142,0.35); }
+html[data-theme="orgullo"] .lock-clock-tick { stroke:rgba(84,52,142,0.45); }
+html[data-theme="orgullo"] .lock-clock-tick.major { stroke:#7c3aed; }
+html[data-theme="orgullo"] .lock-clock-num { fill:rgba(51,38,77,0.7); }
+html[data-theme="orgullo"] .lock-clock-hand { stroke:#7c3aed; fill:none; }
+html[data-theme="orgullo"] .lock-clock-hub { fill:#7c3aed; }
+html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(139,92,246,0.15); border:0.0625rem solid rgba(167,139,250,0.35); }
     </style>
 </head>
 <body>
@@ -2723,26 +2762,48 @@ input.sucursal-no-identificada {
                 <div class="p-3 border-bottom border-white-10">
                     <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseSistema" aria-expanded="false" aria-controls="collapseSistema">
                         <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-wrench me-2" style="color: #60a5fa;"></i> Otras Configuraciones del Sistema
-                        <span class="badge ms-2" style="background: #0078d4; font-size:0.65rem;"><?php echo (int)($config['tiempo_para_bloqueo'] ?? 10); ?> MIN</span>
+                        <span class="badge ms-2" id="badgeSistemaEstado" style="background: <?php echo $subsistema_nominas_activo ? 'var(--color-success)' : '#ef4444'; ?>; font-size:0.65rem;">SISTEMA/<?php echo $subsistema_nominas_activo ? 'ACTIVO' : 'INACTIVO'; ?></span>
+                        <span class="badge ms-2" id="badgeSistemaMin" style="background: #0078d4; font-size:0.65rem;"><?php echo (int)($config['tiempo_para_bloqueo'] ?? 10); ?> MIN</span>
                     </h6>
                 </div>
                 <div id="collapseSistema" class="collapse">
                 <div class="p-4">
                     <form method="POST" id="sistemaForm">
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tiempo para bloqueo de sesión (minutos)</label>
-                                <input type="number" min="1" class="form-control" name="tiempo_para_bloqueo" id="tiempo_para_bloqueo" value="<?php echo htmlspecialchars((int)($config['tiempo_para_bloqueo'] ?? 10)); ?>">
+                            <div class="col-md-4 mb-3 border rounded p-3 text-center">
+                                <label class="form-label d-block">Subsistema de Nóminas</label>
+                                <div class="form-check form-switch" style="display:flex; align-items:center; justify-content:center; gap:0.625rem; padding-left:0; margin-bottom:0;">
+                                    <input type="checkbox" class="form-check-input" style="width:2.4em; height:1.25em; cursor:pointer; margin-left:0;" name="subsistema_nominas" id="subsistema_nominas" value="1" <?php echo $subsistema_nominas_activo ? 'checked' : ''; ?>>
+                                    <label class="form-check-label mb-0" for="subsistema_nominas" style="color:#d1d5db; cursor:pointer; font-size:0.9rem;"><i class="fas fa-power-off me-1"></i> Activar/Desactivar</label>
+                                </div>
                             </div>
+                            <div class="col-md-4 mb-3 border rounded p-3 text-center">
+                                <label class="form-label d-block">Tiempo antes de cerrarse la sesión<br>al estar el bloqueo de pantalla</label>
+                                <div class="lock-clock mx-auto">
+                                    <svg class="lock-clock-svg" id="lockClockSvg" viewBox="0 0 200 200" tabindex="0" role="slider" aria-label="Minutos para bloqueo de sesión" aria-valuemin="1" aria-valuemax="60" aria-valuenow="<?php echo (int)($config['tiempo_para_bloqueo'] ?? 10); ?>">
+                                        <circle cx="100" cy="100" r="94" class="lock-clock-face"></circle>
+                                        <g id="lockClockTicks"></g>
+                                        <text x="100" y="42" class="lock-clock-num" text-anchor="middle">60</text>
+                                        <text x="160" y="105" class="lock-clock-num" text-anchor="middle">15</text>
+                                        <text x="100" y="170" class="lock-clock-num" text-anchor="middle">30</text>
+                                        <text x="40" y="105" class="lock-clock-num" text-anchor="middle">45</text>
+                                        <line id="lockClockHand" x1="100" y1="100" x2="100" y2="30" class="lock-clock-hand"></line>
+                                        <circle cx="100" cy="100" r="6" class="lock-clock-hub"></circle>
+                                    </svg>
+                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                        <div class="lock-clock-readout" id="lockClockReadout">10 min</div>
+                                        <button type="button" id="btnSistemaDefault" class="btn-win" style="padding:0.3rem 0.55rem; font-size:0.75rem; line-height:1; border-radius:8px;" title="Restaurar valor por defecto" data-tooltip="Restaurar valor por defecto" data-tooltip-theme="primary"><i class="fas fa-undo"></i></button>
+                                    </div>
+                                    <input type="hidden" name="tiempo_para_bloqueo" id="tiempo_para_bloqueo" value="<?php echo (int)($config['tiempo_para_bloqueo'] ?? 10); ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3 border rounded"></div>
                         </div>
                         <div class="d-flex gap-2 flex-wrap">
                             <button type="submit" name="guardar_config_sistema" class="btn-win btn-win-primary" title="Guardar otras configuraciones del sistema" data-tooltip="Guardar otras configuraciones del sistema" data-tooltip-theme="success">
                                 <i class="fas fa-save me-1"></i> Guardar Configuración
                             </button>
                         </div>
-                        <p class="text-secondary mt-3 mb-0" style="font-size:0.78rem;">
-                            <i class="fas fa-info-circle me-1"></i>Define en minutos cuánto tarda la sesión en cerrarse automáticamente después de bloquearse la pantalla. El valor se aplica la próxima vez que se bloquee la sesión (por defecto 10).
-                        </p>
                     </form>
                 </div>
                 </div>
@@ -3022,22 +3083,666 @@ setInterval(updateClock, 1000); updateClock();
 
 // Backup y Restore
 function realizarBackupManual() {
+    Swal.close();
+
+    // ---- Estilos ----
+    if (!document.getElementById('sr-orb-backup-styles')) {
+        var st = document.createElement('style');
+        st.id = 'sr-orb-backup-styles';
+        st.textContent = `
+        .sr-ob-popup{
+            font-family:inherit!important;
+            background:transparent!important;
+            border:none!important;
+            box-shadow:none!important;
+            padding:0!important;
+            overflow:visible!important;
+            animation:none!important;
+        }
+        .sr-ob-popup .swal2-html-container{
+            margin:0!important; padding:0!important; overflow:visible!important;
+        }
+        .sr-ob-popup .swal2-actions{ display:none!important; }
+
+        .sr-ob{
+            position:relative;
+            background:var(--bg);
+            color:var(--txt);
+            border-radius:1.25rem;
+            border:1px solid rgba(var(--blue-soft-rgb),.18);
+            padding:2rem 1.75rem 1.75rem;
+            overflow:hidden;
+            box-shadow:
+                0 2rem 4rem rgba(0,0,0,.35),
+                0 0 0 1px rgba(255,255,255,.03) inset;
+            text-align:left;
+            animation:srObIn .4s cubic-bezier(.2,.8,.2,1) both;
+        }
+        @keyframes srObIn{
+            from{opacity:0;transform:scale(.94) translateY(10px);filter:blur(4px)}
+            to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}
+        }
+
+        .sr-ob::before,
+        .sr-ob::after{
+            content:'';position:absolute;border-radius:50%;
+            filter:blur(70px);opacity:.28;pointer-events:none;z-index:0;
+        }
+        .sr-ob::before{
+            width:16rem;height:16rem;
+            top:-8rem;left:-5rem;
+            background:radial-gradient(circle,
+                rgba(var(--color-success-soft-rgb),.9), transparent 70%);
+        }
+        .sr-ob::after{
+            width:14rem;height:14rem;
+            bottom:-7rem;right:-4rem;
+            background:radial-gradient(circle,
+                rgba(var(--blue-soft-rgb),.7), transparent 70%);
+        }
+
+        .sr-ob-close{
+            position:absolute;top:.875rem;right:.875rem;z-index:3;
+            width:2rem;height:2rem;border-radius:.5rem;
+            border:none;background:transparent;
+            color:var(--muted);cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.8125rem;
+            transition:background .15s,color .15s,transform .2s;
+        }
+        .sr-ob-close:hover{
+            background:rgba(var(--red-rgb),.12);
+            color:var(--red);
+            transform:rotate(90deg);
+        }
+
+        .sr-ob-head{
+            position:relative;z-index:2;
+            display:flex;flex-direction:column;align-items:center;
+            text-align:center;
+            margin-bottom:1.75rem;
+        }
+        .sr-ob-badge{
+            display:inline-flex;align-items:center;gap:.5rem;
+            padding:.375rem .875rem;
+            border-radius:999px;
+            background:rgba(var(--color-success-soft-rgb),.1);
+            border:1px solid rgba(var(--color-success-soft-rgb),.22);
+            font-size:.6875rem;font-weight:600;
+            color:var(--txt);
+            letter-spacing:.02em;
+            margin-bottom:.875rem;
+        }
+        .sr-ob-badge-icon{
+            color:var(--color-success-soft);
+            font-size:.75rem;
+        }
+        .sr-ob-badge-dot{
+            width:.375rem;height:.375rem;border-radius:50%;
+            background:var(--color-success-soft);
+            box-shadow:0 0 0 0 rgba(var(--color-success-soft-rgb),.5);
+            animation:srObDot 2s cubic-bezier(.4,0,.6,1) infinite;
+        }
+        @keyframes srObDot{
+            0%,100%{ box-shadow:0 0 0 0 rgba(var(--color-success-soft-rgb),.5); }
+            50%    { box-shadow:0 0 0 .3125rem rgba(var(--color-success-soft-rgb),0); }
+        }
+        .sr-ob-title{
+            font-size:1.5rem;font-weight:700;
+            color:var(--txt);
+            letter-spacing:-.025em;
+            line-height:1.1;
+            margin:0;
+        }
+        .sr-ob-sub{
+            font-size:.8125rem;color:var(--muted);
+            margin-top:.375rem;
+            line-height:1.4;
+            max-width:24rem;
+        }
+
+        .sr-ob-grid{
+            position:relative;z-index:2;
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:.75rem;
+            margin-bottom:1rem;
+        }
+        @media (max-width:540px){
+            .sr-ob-grid{ grid-template-columns:1fr; }
+        }
+
+        .sr-ob-block{
+            display:flex;align-items:flex-start;gap:.75rem;
+            padding:1rem;
+            border-radius:.875rem;
+            border:1px solid rgba(var(--blue-soft-rgb),.15);
+            background:rgba(var(--blue-soft-rgb),.04);
+        }
+        .sr-ob-block--full{ grid-column:1 / -1; }
+        .sr-ob-block-icon{
+            width:2.25rem;height:2.25rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.9375rem;
+            color:var(--sb-accent);
+            background:var(--sb-icon-bg);
+        }
+        .sr-ob-block--success{
+            --sb-accent:var(--color-success-soft);
+            --sb-icon-bg:rgba(var(--color-success-soft-rgb),.14);
+        }
+        .sr-ob-block--warning{
+            --sb-accent:var(--amber);
+            --sb-icon-bg:rgba(var(--amber-soft-rgb),.14);
+        }
+        .sr-ob-block--info{
+            --sb-accent:var(--blue);
+            --sb-icon-bg:rgba(var(--blue-soft-rgb),.14);
+        }
+        .sr-ob-block-txt{flex:1;min-width:0}
+        .sr-ob-block-title{
+            font-size:.8125rem;font-weight:700;
+            color:var(--txt);
+            line-height:1.2;
+            margin:0 0 .25rem;
+        }
+        .sr-ob-block-desc{
+            font-size:.6875rem;color:var(--muted);
+            line-height:1.4;
+            margin:0;
+        }
+
+        .sr-ob-list{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:.375rem .875rem;
+            list-style:none;
+            padding:0;margin:0;
+            font-size:.75rem;
+            color:var(--muted);
+        }
+        .sr-ob-list li{
+            display:flex;align-items:center;gap:.5rem;
+            line-height:1.4;
+        }
+        .sr-ob-list i{
+            color:var(--color-success-soft);
+            font-size:.6875rem;
+            flex-shrink:0;
+        }
+        @media (max-width:540px){
+            .sr-ob-list{ grid-template-columns:1fr; }
+        }
+
+        .sr-ob-footer{
+            position:relative;z-index:2;
+            display:flex;align-items:center;justify-content:flex-end;
+            gap:.5rem;
+            margin-top:1.25rem;
+            padding-top:1.25rem;
+            border-top:1px solid rgba(var(--blue-soft-rgb),.15);
+        }
+
+        .sr-ob-btn{
+            display:inline-flex;align-items:center;justify-content:center;gap:.375rem;
+            padding:.625rem 1.125rem;
+            border-radius:.5rem;
+            font-size:.75rem;font-weight:600;
+            font-family:inherit;
+            cursor:pointer;
+            border:1px solid rgba(var(--blue-soft-rgb),.2);
+            background:transparent;
+            color:var(--txt);
+            transition:background .12s,border-color .12s,filter .12s;
+        }
+        .sr-ob-btn:hover{
+            background:rgba(var(--blue-soft-rgb),.08);
+            border-color:rgba(var(--blue-soft-rgb),.35);
+        }
+        .sr-ob-btn:active{ background:rgba(var(--blue-soft-rgb),.15); }
+        .sr-ob-btn i{ font-size:.6875rem;opacity:.85; }
+        .sr-ob-btn--primary{
+            background:var(--color-success-soft);
+            border-color:var(--color-success-soft);
+            color:#fff;
+        }
+        .sr-ob-btn--primary:hover{
+            background:var(--color-success-soft);
+            border-color:var(--color-success-soft);
+            filter:brightness(1.08);
+        }
+        .sr-ob-btn--primary i{ opacity:1; }
+        .sr-ob-btn--danger{
+            background:var(--red);
+            border-color:var(--red);
+            color:#fff;
+        }
+        .sr-ob-btn--danger:hover{
+            background:var(--red);
+            border-color:var(--red);
+            filter:brightness(1.08);
+        }
+
+        .sr-ob-spinner{
+            position:relative;
+            width:5rem;height:5rem;margin:0 auto 1.25rem;
+            border-radius:50%;
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.75rem;
+            color:var(--color-success-soft);
+            background:rgba(var(--color-success-soft-rgb),.1);
+            border:1px solid rgba(var(--color-success-soft-rgb),.25);
+        }
+        .sr-ob-spinner::before,
+        .sr-ob-spinner::after{
+            content:'';position:absolute;inset:-.25rem;
+            border-radius:50%;
+            border:2px solid transparent;
+            border-top-color:var(--color-success-soft);
+            animation:srObSpin 1.4s linear infinite;
+        }
+        .sr-ob-spinner::after{
+            inset:-.5rem;
+            border-top-color:rgba(var(--color-success-soft-rgb),.35);
+            animation-duration:1.8s;
+            animation-direction:reverse;
+        }
+        @keyframes srObSpin{
+            to{ transform:rotate(360deg); }
+        }
+
+        .sr-ob-detail{
+            display:flex;justify-content:space-between;
+            align-items:center;
+            padding:.5rem 0;
+            font-size:.75rem;
+            border-bottom:1px solid rgba(var(--blue-soft-rgb),.1);
+        }
+        .sr-ob-detail:last-child{ border-bottom:none; }
+        .sr-ob-detail-lbl{
+            color:var(--muted);
+            display:flex;align-items:center;gap:.375rem;
+        }
+        .sr-ob-detail-val{
+            color:var(--txt);
+            font-weight:600;
+            word-break:break-all;text-align:right;
+            max-width:60%;
+        }
+
+        .sr-ob.sr-pulse{
+            animation:srObPulse .5s ease-in-out both;
+        }
+        @keyframes srObPulse{
+            0%   { transform:scale(1); }
+            35%  { transform:scale(1.03); }
+            65%  { transform:scale(.985); }
+            100% { transform:scale(1); }
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .sr-ob,
+            .sr-ob-badge-dot,
+            .sr-ob-spinner::before,
+            .sr-ob-spinner::after,
+            .sr-ob.sr-pulse{ animation:none; }
+        }
+        `;
+        document.head.appendChild(st);
+    }
+
+    // ---- HTML confirmación ----
+    var html = '';
+    html += '<div class="sr-ob">';
+
+    html +=   '<button type="button" class="sr-ob-close" id="srObmClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+
+    html +=   '<div class="sr-ob-head">';
+    html +=     '<div class="sr-ob-badge">';
+    html +=       '<span class="sr-ob-badge-dot"></span>';
+    html +=       '<i class="fas fa-database sr-ob-badge-icon"></i>';
+    html +=       'Backup del sistema';
+    html +=     '</div>';
+    html +=     '<h1 class="sr-ob-title">Salva del Sistema Manual</h1>';
+    html +=     '<p class="sr-ob-sub">Se creará una copia de seguridad completa de tu sistema.</p>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-grid">';
+
+    // Contenido
+    html +=     '<div class="sr-ob-block sr-ob-block--full">';
+    html +=       '<div class="sr-ob-block-icon" style="color:var(--blue);background:rgba(var(--blue-soft-rgb),.14);"><i class="fas fa-list-check"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title">Contenido de la copia</p>';
+    html +=         '<ul class="sr-ob-list">';
+    html +=           '<li><i class="fas fa-circle-check"></i> Estructura completa de la BD</li>';
+    html +=           '<li><i class="fas fa-circle-check"></i> Datos de empleados y nóminas</li>';
+    html +=           '<li><i class="fas fa-circle-check"></i> Configuración y tasas del sistema</li>';
+    html +=           '<li><i class="fas fa-circle-check"></i> Historial de vacaciones y submayores</li>';
+    html +=         '</ul>';
+    html +=       '</div>';
+    html +=     '</div>';
+
+    // Formato
+    html +=     '<div class="sr-ob-block sr-ob-block--success">';
+    html +=       '<div class="sr-ob-block-icon"><i class="fas fa-file-zipper"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title">Formato</p>';
+    html +=         '<p class="sr-ob-block-desc">ZIP comprimido</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+
+    // Duración
+    html +=     '<div class="sr-ob-block sr-ob-block--warning">';
+    html +=       '<div class="sr-ob-block-icon"><i class="fas fa-hourglass-half"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title">Duración</p>';
+    html +=         '<p class="sr-ob-block-desc">Unos segundos</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-footer">';
+    html +=     '<button type="button" class="sr-ob-btn" id="srObmCancel"><i class="fas fa-ban me-1"></i> Cancelar</button>';
+    html +=     '<button type="button" class="sr-ob-btn sr-ob-btn--primary" id="srObmConfirm"><i class="fas fa-download me-1"></i> Generar Backup</button>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    // ---- Modal confirmación ----
     Swal.fire({
-        title: '<i class="fas fa-database me-2" style="color: #fbbf24;"></i> Salva del Sistema Manual',
-        html: '<div style="text-align: left;"><p><i class="fas fa-info-circle me-2"></i> Se creará una copia de seguridad completa.</p><p><small>La copia incluirá: empleados, nóminas, configuración y vacaciones.</small></p><div class="alert alert-info mt-2"><i class="fas fa-clock me-1"></i> El archivo se guardará en formato ZIP</div></div>',
-        icon: 'info', showCancelButton: true, confirmButtonColor: '#10b981', confirmButtonText: '<i class="fas fa-download me-2"></i>Generar Backup',
-        background: 'var(--panel)', color: 'var(--txt)'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire({ title: '<i class="fas fa-spinner fa-pulse me-2"></i> Generando Backup...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: 'var(--panel)', color: 'var(--txt)' });
-            fetch('../ajax/backup_db.php', { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({ title: '<i class="fas fa-check-circle me-2"></i> Backup Completado', html: `<p>Archivo: ${data.filename}</p><p>Tamaño: ${data.size}</p><a href="../${data.download_url}" class="btn btn-success" download><i class="fas fa-download me-2"></i> Descargar</a>`, icon: 'success', background: 'var(--panel)', color: 'var(--txt)', confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'});
-                } else { Swal.fire({ title: '<i class="fas fa-exclamation-triangle me-2"></i> Error', text: data.message, icon: 'error', background: 'var(--panel)', color: 'var(--txt)' }); }
-            })
-            .catch(() => { Swal.fire({ title: 'Error', text: 'Error de conexión', icon: 'error', background: 'var(--panel)', color: 'var(--txt)' }); });
+        html: html,
+        width: '42rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        padding: '0',
+        customClass: { popup: 'sr-ob-popup' },
+        didOpen: function () {
+            var cont  = Swal.getContainer();
+            var popup = Swal.getPopup();
+
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.55)';
+                cont.style.backdropFilter = 'blur(8px)';
+                cont.style.alignItems = 'center';
+            }
+            if (popup) {
+                popup.style.border = 'none';
+                popup.style.padding = '0';
+                popup.style.overflow = 'visible';
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
+            }
+
+            var close   = document.getElementById('srObmClose');
+            var cancel  = document.getElementById('srObmCancel');
+            var confirm = document.getElementById('srObmConfirm');
+
+            if (close)  close.addEventListener('click',  function (e) { e.preventDefault(); e.stopPropagation(); Swal.close(); });
+            if (cancel) cancel.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); Swal.close(); });
+            if (confirm) confirm.addEventListener('click', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                Swal.close();
+                ejecutarBackupManualOrb();
+            });
+
+            // Pulse al clic fuera
+            if (!window.__srObmOutside) {
+                window.__srObmOutside = function (e) {
+                    var pop = (typeof Swal.getPopup === 'function') ? Swal.getPopup() : null;
+                    if (!pop) return;
+                    if (!pop.contains(e.target)) {
+                        var box = pop.querySelector('.sr-ob');
+                        if (!box) return;
+                        box.classList.remove('sr-pulse');
+                        void box.offsetWidth;
+                        box.classList.add('sr-pulse');
+                        setTimeout(function () { box.classList.remove('sr-pulse'); }, 520);
+                    }
+                };
+                document.addEventListener('click', window.__srObmOutside, true);
+            }
+            if (!window.__srObmCleanup) {
+                window.__srObmCleanup = function () {
+                    if (window.__srObmOutside) {
+                        document.removeEventListener('click', window.__srObmOutside, true);
+                        window.__srObmOutside = null;
+                    }
+                    window.__srObmCleanup = null;
+                };
+                var check = setInterval(function () {
+                    if (typeof Swal.isVisible !== 'function' || !Swal.isVisible()) {
+                        clearInterval(check);
+                        if (window.__srObmCleanup) window.__srObmCleanup();
+                    }
+                }, 300);
+            }
+        }
+    });
+}
+
+/* ============================================================
+   Progreso + resultado del backup manual (Glass Orb)
+   ============================================================ */
+
+function ejecutarBackupManualOrb() {
+    mostrarProgresoBackupManualOrb();
+
+    fetch('../ajax/backup_db.php', {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        Swal.close();
+        if (data.success) {
+            mostrarExitoBackupManualOrb(data);
+        } else {
+            mostrarErrorBackupManualOrb(data.message);
+        }
+    })
+    .catch(function () {
+        Swal.close();
+        mostrarErrorBackupManualOrb('Error de conexión con el servidor');
+    });
+}
+
+function mostrarProgresoBackupManualOrb() {
+    var html = '';
+    html += '<div class="sr-ob">';
+
+    html +=   '<div class="sr-ob-head">';
+    html +=     '<div class="sr-ob-badge">';
+    html +=       '<span class="sr-ob-badge-dot"></span>';
+    html +=       '<i class="fas fa-database sr-ob-badge-icon"></i>';
+    html +=       'Backup del sistema';
+    html +=     '</div>';
+    html +=     '<h1 class="sr-ob-title">Generando Backup…</h1>';
+    html +=     '<p class="sr-ob-sub">Este proceso puede tardar unos segundos. No cierres esta ventana.</p>';
+    html +=   '</div>';
+
+    html +=   '<div style="position:relative;z-index:2;text-align:center;">';
+    html +=     '<div class="sr-ob-spinner"><i class="fas fa-file-zipper"></i></div>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-grid" style="margin-top:1.25rem;">';
+    html +=     '<div class="sr-ob-block sr-ob-block--full">';
+    html +=       '<div class="sr-ob-block-icon" style="color:var(--color-success-soft);background:rgba(var(--color-success-soft-rgb),.14);"><i class="fas fa-hourglass-half"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title">Creando copia completa</p>';
+    html +=         '<p class="sr-ob-block-desc">Empaquetando base de datos y configuraciones en un archivo ZIP.</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    Swal.fire({
+        html: html,
+        width: '42rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        padding: '0',
+        customClass: { popup: 'sr-ob-popup' },
+        didOpen: function () {
+            var cont  = Swal.getContainer();
+            var popup = Swal.getPopup();
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.55)';
+                cont.style.backdropFilter = 'blur(8px)';
+                cont.style.alignItems = 'center';
+            }
+            if (popup) {
+                popup.style.border = 'none';
+                popup.style.padding = '0';
+                popup.style.overflow = 'visible';
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
+            }
+        }
+    });
+}
+
+function mostrarExitoBackupManualOrb(data) {
+    var html = '';
+    html += '<div class="sr-ob">';
+
+    html +=   '<button type="button" class="sr-ob-close" id="srObmOkClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+
+    html +=   '<div class="sr-ob-head">';
+    html +=     '<div class="sr-ob-badge">';
+    html +=       '<span class="sr-ob-badge-dot"></span>';
+    html +=       '<i class="fas fa-circle-check sr-ob-badge-icon"></i>';
+    html +=       'Backup completado';
+    html +=     '</div>';
+    html +=     '<h1 class="sr-ob-title">¡Listo!</h1>';
+    html +=     '<p class="sr-ob-sub">La copia se generó correctamente. Puedes descargarla ahora.</p>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-grid">';
+    html +=     '<div class="sr-ob-block sr-ob-block--full">';
+    html +=       '<div class="sr-ob-block-icon" style="color:var(--color-success-soft);background:rgba(var(--color-success-soft-rgb),.14);"><i class="fas fa-file-zipper"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<div class="sr-ob-detail">';
+    html +=           '<span class="sr-ob-detail-lbl"><i class="fas fa-file me-1"></i> Archivo</span>';
+    html +=           '<span class="sr-ob-detail-val">' + (data.filename || '—') + '</span>';
+    html +=         '</div>';
+    html +=         '<div class="sr-ob-detail">';
+    html +=           '<span class="sr-ob-detail-lbl"><i class="fas fa-weight-hanging me-1"></i> Tamaño</span>';
+    html +=           '<span class="sr-ob-detail-val">' + (data.size || '—') + '</span>';
+    html +=         '</div>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-footer">';
+    html +=     '<a href="../' + data.download_url + '" download class="sr-ob-btn sr-ob-btn--primary" style="text-decoration:none;"><i class="fas fa-download me-1"></i> Descargar</a>';
+    html +=     '<button type="button" class="sr-ob-btn" id="srObmOkDone"><i class="fas fa-check me-1"></i> Entendido</button>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    Swal.fire({
+        html: html,
+        width: '42rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        padding: '0',
+        customClass: { popup: 'sr-ob-popup' },
+        didOpen: function () {
+            var cont  = Swal.getContainer();
+            var popup = Swal.getPopup();
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.55)';
+                cont.style.backdropFilter = 'blur(8px)';
+                cont.style.alignItems = 'center';
+            }
+            if (popup) {
+                popup.style.border = 'none';
+                popup.style.padding = '0';
+                popup.style.overflow = 'visible';
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
+            }
+            var close = document.getElementById('srObmOkClose');
+            var done  = document.getElementById('srObmOkDone');
+            if (close) close.addEventListener('click', function () { Swal.close(); });
+            if (done)  done.addEventListener('click',  function () { Swal.close(); });
+        }
+    });
+}
+
+function mostrarErrorBackupManualOrb(mensaje) {
+    var html = '';
+    html += '<div class="sr-ob">';
+
+    html +=   '<button type="button" class="sr-ob-close" id="srObmErrClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+
+    html +=   '<div class="sr-ob-head">';
+    html +=     '<div class="sr-ob-badge" style="background:rgba(var(--red-rgb),.1);border-color:rgba(var(--red-rgb),.22);">';
+    html +=       '<span class="sr-ob-badge-dot" style="background:var(--red);box-shadow:0 0 0 0 rgba(var(--red-rgb),.5);"></span>';
+    html +=       '<i class="fas fa-triangle-exclamation sr-ob-badge-icon" style="color:var(--red);"></i>';
+    html +=       'Error';
+    html +=     '</div>';
+    html +=     '<h1 class="sr-ob-title">No se pudo completar</h1>';
+    html +=     '<p class="sr-ob-sub">Ocurrió un problema al generar el backup.</p>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-grid">';
+    html +=     '<div class="sr-ob-block sr-ob-block--full" style="border-color:rgba(var(--red-rgb),.22);background:rgba(var(--red-rgb),.06);">';
+    html +=       '<div class="sr-ob-block-icon" style="color:var(--red);background:rgba(var(--red-rgb),.14);"><i class="fas fa-circle-exclamation"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title" style="color:var(--red);">Detalles del error</p>';
+    html +=         '<p class="sr-ob-block-desc" style="word-break:break-word;">' + (mensaje || 'Error desconocido') + '</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-footer">';
+    html +=     '<button type="button" class="sr-ob-btn sr-ob-btn--danger" id="srObmErrDone"><i class="fas fa-check me-1"></i> Entendido</button>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    Swal.fire({
+        html: html,
+        width: '42rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        padding: '0',
+        customClass: { popup: 'sr-ob-popup' },
+        didOpen: function () {
+            var cont  = Swal.getContainer();
+            var popup = Swal.getPopup();
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.55)';
+                cont.style.backdropFilter = 'blur(8px)';
+                cont.style.alignItems = 'center';
+            }
+            if (popup) {
+                popup.style.border = 'none';
+                popup.style.padding = '0';
+                popup.style.overflow = 'visible';
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
+            }
+            var close = document.getElementById('srObmErrClose');
+            var done  = document.getElementById('srObmErrDone');
+            if (close) close.addEventListener('click', function () { Swal.close(); });
+            if (done)  done.addEventListener('click',  function () { Swal.close(); });
         }
     });
 }
@@ -3191,64 +3896,6 @@ document.getElementById('backupNombreInput')?.addEventListener('keypress', funct
 // ==========================================
 // FUNCIONES EXISTENTES (mantener las que ya tienes)
 // ==========================================
-
-function realizarBackupManual() {
-    Swal.fire({
-        title: '<i class="fas fa-database me-2" style="color: #fbbf24;"></i> Salva del Sistema Manual',
-        html: '<div style="text-align: left;"><p><i class="fas fa-info-circle me-2"></i> Se creará una copia de seguridad completa.</p><p><small>La copia incluirá: empleados, nóminas, configuración y vacaciones.</small></p><div class="alert alert-info mt-2"><i class="fas fa-clock me-1"></i> El archivo se guardará en formato ZIP</div></div>',
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        confirmButtonText: '<i class="fas fa-download me-2"></i>Generar Backup',
-        cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
-        background: '#1a1a2e',
-        color: '#fff'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: '<i class="fas fa-spinner fa-pulse me-2"></i> Generando Backup...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-                background: '#1a1a2e',
-                color: '#fff'
-            });
-            fetch('../ajax/backup_db.php', {
-                method: 'GET',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        title: '<i class="fas fa-check-circle me-2"></i> Backup Completado',
-                        html: `<p>Archivo: ${data.filename}</p><p>Tamaño: ${data.size}</p><a href="../${data.download_url}" class="btn btn-success" download><i class="fas fa-download me-2"></i> Descargar</a>`,
-                        icon: 'success',
-                        background: '#1a1a2e',
-                        color: '#fff',
-                        confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
-                    });
-                } else {
-                    Swal.fire({
-                        title: '<i class="fas fa-exclamation-triangle me-2"></i> Error',
-                        text: data.message,
-                        icon: 'error',
-                        background: '#1a1a2e',
-                        color: '#fff'
-                    });
-                }
-            })
-            .catch(() => {
-                Swal.fire({
-                    title: 'Error',
-                    text: 'Error de conexión',
-                    icon: 'error',
-                    background: '#1a1a2e',
-                    color: '#fff'
-                });
-            });
-        }
-    });
-}
 
 
 // Event listeners para los botones
@@ -4572,6 +5219,90 @@ document.getElementById('bancariaForm')?.addEventListener('submit', function(e) 
     }
 });
 // ==================== FIN DE INFORMACIÓN BANCARIA ====================
+
+(function() {
+    const svg = document.getElementById('lockClockSvg');
+    if (!svg) return;
+    const hand = document.getElementById('lockClockHand');
+    const ticks = document.getElementById('lockClockTicks');
+    const readout = document.getElementById('lockClockReadout');
+    const input = document.getElementById('tiempo_para_bloqueo');
+    let minutes = parseInt(input.value, 10);
+    minutes = isNaN(minutes) ? 10 : Math.min(60, Math.max(1, minutes));
+
+    const NS = 'http://www.w3.org/2000/svg';
+    for (let i = 0; i < 60; i++) {
+        const major = i % 5 === 0;
+        const a = (i * 6 - 90) * Math.PI / 180;
+        const r1 = major ? 76 : 84;
+        const line = document.createElementNS(NS, 'line');
+        line.setAttribute('x1', (100 + Math.cos(a) * r1).toFixed(2));
+        line.setAttribute('y1', (100 + Math.sin(a) * r1).toFixed(2));
+        line.setAttribute('x2', (100 + Math.cos(a) * 90).toFixed(2));
+        line.setAttribute('y2', (100 + Math.sin(a) * 90).toFixed(2));
+        line.setAttribute('class', major ? 'lock-clock-tick major' : 'lock-clock-tick');
+        ticks.appendChild(line);
+    }
+
+    function setMinutes(m) {
+        minutes = ((Math.round(m) - 1) % 60 + 60) % 60 + 1;
+        input.value = minutes;
+        hand.setAttribute('transform', 'rotate(' + (minutes * 6) + ' 100 100)');
+        readout.textContent = minutes + ' min';
+        svg.setAttribute('aria-valuenow', minutes);
+        const badgeMin = document.getElementById('badgeSistemaMin');
+        if (badgeMin) badgeMin.textContent = minutes + ' MIN';
+    }
+
+    function minutesFromEvent(e) {
+        const rect = svg.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        let deg = Math.atan2(x, -y) * 180 / Math.PI;
+        if (deg < 0) deg += 360;
+        let m = Math.round(deg / 6) % 60;
+        return m === 0 ? 60 : m;
+    }
+
+    let dragging = false;
+    svg.addEventListener('pointerdown', function(e) {
+        dragging = true;
+        svg.setPointerCapture(e.pointerId);
+        setMinutes(minutesFromEvent(e));
+        e.preventDefault();
+    });
+    svg.addEventListener('pointermove', function(e) {
+        if (dragging) setMinutes(minutesFromEvent(e));
+    });
+    svg.addEventListener('pointerup', function() { dragging = false; });
+    svg.addEventListener('pointercancel', function() { dragging = false; });
+    svg.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setMinutes(minutes + 1); e.preventDefault(); }
+        else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setMinutes(minutes - 1); e.preventDefault(); }
+    });
+
+    window.__lockSetMinutes = setMinutes;
+    setMinutes(minutes);
+})();
+
+(function() {
+    const btn = document.getElementById('btnSistemaDefault');
+    if (!btn) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (typeof window.__lockSetMinutes === 'function') window.__lockSetMinutes(10);
+    });
+})();
+
+(function() {
+    const chk = document.getElementById('subsistema_nominas');
+    const badge = document.getElementById('badgeSistemaEstado');
+    if (!chk || !badge) return;
+    chk.addEventListener('change', function() {
+        badge.textContent = 'SISTEMA/' + (chk.checked ? 'ACTIVO' : 'INACTIVO');
+        badge.style.background = chk.checked ? 'var(--color-success)' : '#ef4444';
+    });
+})();
 </script>
 
 </body>

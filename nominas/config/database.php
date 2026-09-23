@@ -195,6 +195,62 @@ try {
 }
 
 // ============================================
+// BLOQUEO AUTOMÁTICO POR INACTIVIDAD (server-side)
+// Preferencias: clasif_usuarios.close_inactiv / time_inac
+// ============================================
+if (!empty($_SESSION['logged_in']) && !defined('BLOQUEO_SESION_PERMITIDO')) {
+    $idle_pagina   = basename($_SERVER['SCRIPT_NAME'] ?? '', '?*');
+    $idle_exentas  = ['bloquear_sesion.php', 'logout.php', 'login.php', 'verificar_contrasena_bloqueo.php', 'limpiar_bloqueo.php'];
+    $idle_accept   = $_SERVER['HTTP_ACCEPT'] ?? '';
+    $idle_xhr      = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+    $idle_es_ajax  = $idle_xhr || (strpos($idle_accept, 'text/html') === false);
+
+    if (!in_array($idle_pagina, $idle_exentas, true) && empty($_SESSION['sesion_bloqueada'])) {
+        $idle_uid = (int)($_SESSION['user_id'] ?? $_SESSION['usuario_id'] ?? 0);
+        if ($idle_uid > 0) {
+            $idle_close  = 1;
+            $idle_min    = 10;
+            try {
+                $idle_stmt = $pdo->prepare('SELECT close_inactiv, time_inac FROM clasif_usuarios WHERE id = ?');
+                $idle_stmt->execute([$idle_uid]);
+                $idle_row = $idle_stmt->fetch();
+                if ($idle_row) {
+                    $idle_close = (int)$idle_row['close_inactiv'];
+                    $idle_min   = max(1, (int)$idle_row['time_inac']);
+                }
+            } catch (Throwable $e) {
+                $idle_close = 0;
+            }
+
+            $idle_ahora = time();
+            if (!isset($_SESSION['idle_last'])) {
+                $_SESSION['idle_last'] = $idle_ahora;
+            } elseif ($idle_close === 1 && ($idle_ahora - (int)$_SESSION['idle_last']) >= ($idle_min * 60)) {
+                $_SESSION['sesion_bloqueada']        = true;
+                $_SESSION['sesion_bloqueada_tiempo'] = $idle_ahora;
+                $_SESSION['bloqueo_motivo']          = 'inactividad';
+
+                $idle_dir  = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+                $idle_niv  = max(0, substr_count($idle_dir, '/') - 1);
+                $idle_dest = str_repeat('../', $idle_niv) . 'bloquear_sesion.php';
+
+                if ($idle_es_ajax) {
+                    header('Content-Type: application/json; charset=utf-8');
+                    http_response_code(423);
+                    exit(json_encode(['ok' => false, 'locked' => true, 'redirect' => $idle_dest, 'msg' => 'Sesión bloqueada por inactividad']));
+                }
+                header('Location: ' . $idle_dest);
+                exit;
+            }
+
+            if (!$idle_es_ajax) {
+                $_SESSION['idle_last'] = $idle_ahora;
+            }
+        }
+    }
+}
+
+// ============================================
 // CARGAR CONFIGURACIÓN DESDE LA BASE DE DATOS
 // ============================================
 

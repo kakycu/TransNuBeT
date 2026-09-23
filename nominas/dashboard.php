@@ -4470,6 +4470,12 @@ function exportarGraficoTorta() {
 // ACTUALIZAR DASHBOARD (RECARGAR DATOS)
 // ============================================
 function actualizarDashboard() {
+    // Gira el icono de sincronización mientras se actualiza
+    var cardActualizacion = document.getElementById('kpiActualizacion');
+    if (cardActualizacion) {
+        cardActualizacion.classList.add('gira-icono');
+    }
+    
     // Mostrar animación de carga en el KPI
     var kpiElement = document.getElementById('ultimaActualizacion');
     if (kpiElement) {
@@ -4477,7 +4483,9 @@ function actualizarDashboard() {
     }
     
     // Recargar la página completa para obtener datos frescos
-    window.location.reload();
+    setTimeout(function() {
+        window.location.reload();
+    }, 700);
 }
 
 // Evento click en la tarjeta de "Última Actualización"

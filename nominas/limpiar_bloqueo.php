@@ -8,5 +8,7 @@ header('Content-Type: application/json; charset=utf-8');
 unset($_SESSION['sesion_bloqueada']);
 unset($_SESSION['sesion_bloqueada_tiempo']);
 unset($_SESSION['bloqueo_origen']);
+unset($_SESSION['bloqueo_motivo']);
+$_SESSION['idle_last'] = time();
 
 exit(json_encode(['success' => true]));

@@ -157,13 +157,15 @@ $bloqueo_brand    = 'SISGESNOM';
 $bloqueo_version  = defined('SITE_VERSION') ? SITE_VERSION : 'v2.0.1';
 $bloqueo_company  = defined('COMPANY_NAME') ? COMPANY_NAME : 'PDL TransNuBeT®';
 
-// Duración del cierre automático (segundos), configurable en configuracion_general (tiempo_para_bloqueo, en minutos; default 10)
+// En pantalla de bloqueo: espera configuracion_general.tiempo_para_bloqueo → "Sesión expirada"
+// (close_inactiv/time_inac solo gobiernan el bloqueo por inactividad, no este contador)
 $tiempo_bloqueo_min = 10;
 if (isset($pdo) && function_exists('getConfigValue')) {
     $v = getConfigValue($pdo, 'tiempo_para_bloqueo', 10);
     if (is_numeric($v) && (int)$v > 0) $tiempo_bloqueo_min = (int)$v;
 }
-$LOCK_SEGUNDOS = $tiempo_bloqueo_min * 60;
+$auto_close_activo = ($tiempo_bloqueo_min > 0);
+$LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -769,10 +771,10 @@ $LOCK_SEGUNDOS = $tiempo_bloqueo_min * 60;
     <div class="session-time" id="sessionTimer">
         <div class="session-time-head">
             <i class="fas fa-hourglass-half"></i>
-            <span>Cierra en:</span>
+            <span><?php echo $auto_close_activo ? 'Expira en:' : 'Cierre auto.:'; ?></span>
         </div>
         <div class="session-time-value">
-            <span id="timerDisplay">00:10:00</span><span class="mts">mts</span>
+            <span id="timerDisplay"><?php echo $auto_close_activo ? '00:' . str_pad((string)$tiempo_bloqueo_min, 2, '0', STR_PAD_LEFT) . ':00' : '--:--:--'; ?></span><span class="mts">mts</span>
         </div>
         <div class="session-time-progress"><div id="timerProgress"></div></div>
     </div>
@@ -847,7 +849,11 @@ $LOCK_SEGUNDOS = $tiempo_bloqueo_min * 60;
                 <div>
                     <div class="status-title">Sesión bloqueada</div>
                     <div class="status-sub">
-                        A los <span class="fw-bold" id="closeInLabel">00:10:00</span> la sesión se cerrará automáticamente.
+                        <?php if ($auto_close_activo): ?>
+                        A los <span class="fw-bold" id="closeInLabel">00:<?php echo str_pad((string)$tiempo_bloqueo_min, 2, '0', STR_PAD_LEFT); ?>:00</span> la sesión se cerrará automáticamente.
+                        <?php else: ?>
+                        La espera antes de expirar está <span class="fw-bold">desactivada</span> en la configuración del sistema.
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -948,6 +954,14 @@ $LOCK_SEGUNDOS = $tiempo_bloqueo_min * 60;
             if (elTime) elTime.textContent = hora12(now);
             if (elDate) elDate.textContent = fechaLargaES(now);
 
+            // Sin tiempo_para_bloqueo en configuración: sin cuenta regresiva
+            if (LOCK_SEGUNDOS <= 0) {
+                if (timerDisplayEl) timerDisplayEl.textContent = '--:--:--';
+                if (closeInLabelEl) closeInLabelEl.textContent = '--:--:--';
+                if (timerProgressEl) timerProgressEl.style.width = '0%';
+                return -1;
+            }
+
             // Cuenta regresiva (HH:MM:SS) y barra de progreso
             var elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
             var remaining = Math.max(0, LOCK_SEGUNDOS - elapsed);
@@ -1034,7 +1048,7 @@ $LOCK_SEGUNDOS = $tiempo_bloqueo_min * 60;
             '</div>' +
             '<div class="lock-info-row">' +
             '  <i class="fas fa-hourglass-half"></i>' +
-            '  <div class="lock-info-body"><strong>Cierre automático</strong><span>La sesión se cerrará al cabo de <?php echo (int)($LOCK_SEGUNDOS / 60); ?> minutos si no se desbloquea.</span></div>' +
+            '  <div class="lock-info-body"><strong>Cierre automático</strong><span><?php echo $auto_close_activo ? 'La sesión expirará al cabo de ' . (int)($LOCK_SEGUNDOS / 60) . ' minutos si no se desbloquea.' : 'La espera antes de expirar está desactivada en la configuración del sistema.'; ?></span></div>' +
             '</div>' +
             '</div>';
 
@@ -1278,7 +1292,7 @@ $LOCK_SEGUNDOS = $tiempo_bloqueo_min * 60;
         updateDateTime();
         setInterval(function () {
             var remaining = updateDateTime();
-            if (remaining === 0) { cerrarPorInactividad(); }
+            if (LOCK_SEGUNDOS > 0 && remaining === 0) { cerrarPorInactividad(); }
         }, 1000);
 
         // ============================================================

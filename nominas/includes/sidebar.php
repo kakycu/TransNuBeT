@@ -793,6 +793,73 @@ body:has(.win-sidebar.collapsed) .main-container {
     transform: scale(1.15) rotate(-10deg);
 }
 
+#sidebarIdleCountdown {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.4375rem 0.625rem;
+    border-radius: 0.375rem;
+    background: rgba(var(--accent-rgb), 0.08);
+    border: 1px solid rgba(var(--accent-rgb), 0.15);
+    color: var(--muted);
+    font-size: 0.6875rem;
+    line-height: 1.3;
+}
+
+#sidebarIdleCountdown.is-warning {
+    background: rgba(var(--amber-rgb, 245, 158, 11), 0.12);
+    border-color: rgba(var(--amber-rgb, 245, 158, 11), 0.35);
+    color: var(--amber, #f59e0b);
+}
+
+#sidebarIdleCountdown.is-critical {
+    background: rgba(var(--red-rgb, 239, 68, 68), 0.14);
+    border-color: rgba(var(--red-rgb, 239, 68, 68), 0.4);
+    color: var(--red, #ef4444);
+}
+
+#sidebarIdleCountdown .idle-cd-icon {
+    flex: 0 0 auto;
+    font-size: 0.8125rem;
+    opacity: 0.9;
+}
+
+#sidebarIdleCountdown .idle-cd-label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#sidebarIdleCountdown .idle-cd-time {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--txt);
+    font-size: 0.75rem;
+}
+
+#sidebarIdleCountdown.is-warning .idle-cd-time,
+#sidebarIdleCountdown.is-critical .idle-cd-time {
+    color: inherit;
+}
+
+#sidebarIdleCountdown.is-disabled,
+#sidebarIdleCountdown.is-disabled.is-warning,
+#sidebarIdleCountdown.is-disabled.is-critical {
+    background: rgba(var(--txt, 255, 255, 255), 0.04);
+    border-color: rgba(var(--txt, 255, 255, 255), 0.08);
+    color: var(--faint, var(--muted));
+    opacity: 0.65;
+}
+
+#sidebarIdleCountdown.is-disabled .idle-cd-icon,
+#sidebarIdleCountdown.is-disabled .idle-cd-label,
+#sidebarIdleCountdown.is-disabled .idle-cd-time {
+    color: var(--faint, var(--muted));
+    opacity: 1;
+}
+
 .sidebar-nav::-webkit-scrollbar {
     width:0.25rem;
 }
@@ -1218,6 +1285,11 @@ html.focus-mode .fluid-container {
         <div class="nav-item" id="logoutSidebarBtn" data-tooltip="Cerrar Sesión" data-tooltip-theme="danger">
             <i class="fas fa-sign-out-alt"></i>
             <span class="sidebar-text">Cerrar Sesión</span>
+        </div>
+        <div id="sidebarIdleCountdown" class="sidebar-text" hidden data-tooltip="Tiempo restante antes del bloqueo por inactividad" data-tooltip-theme="primary">
+            <i class="fas fa-hourglass-half idle-cd-icon"></i>
+            <span class="idle-cd-label">Bloqueo en</span>
+            <span class="idle-cd-time" id="sidebarIdleCdTime">--:--</span>
         </div>
     </div>
 </div>

@@ -36,6 +36,49 @@ if (strlen($ci_logueado) >= 6) {
     }
 }
 
+// Guardado de preferencia de cierre por inactividad en vivo (perfil propio; de otros solo con permiso de edición)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_inactividad'])) {
+    $es_ajax = (isset($_GET['ajax']) && (int)$_GET['ajax'] === 1);
+    $id_destino = isset($_GET['id']) ? (int)$_GET['id'] : $usuario_actual_id;
+    if ($id_destino <= 0) {
+        $id_destino = (int)$usuario_actual_id;
+    }
+    $es_propio_post = ($id_destino === (int)$usuario_actual_id);
+    $url_retorno = strtok($_SERVER['REQUEST_URI'], '?');
+    $qs_retorno = $es_propio_post ? '' : 'id=' . $id_destino . '&';
+    $responder = function ($ok, $msg) use ($es_ajax, $url_retorno, $qs_retorno) {
+        if ($es_ajax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => (bool)$ok, 'msg' => $msg]);
+        } else {
+            header('Location: ' . $url_retorno . '?' . $qs_retorno . 'msg=' . urlencode($msg) . '&tipo=' . ($ok ? 'success' : 'error'));
+        }
+        exit;
+    };
+    if (!$es_propio_post && !permiso_puede('usuarios', 'editar')) {
+        $responder(false, 'No tiene permiso para modificar la configuración de este usuario');
+    }
+    $close_inactiv_nuevo = (isset($_POST['close_inactiv']) && $_POST['close_inactiv'] === '1') ? 1 : 0;
+    $time_inac_nuevo = max(1, (int)($_POST['time_inac'] ?? 10));
+    try {
+        $stmtInac = $pdo->prepare("UPDATE clasif_usuarios SET close_inactiv = ?, time_inac = ? WHERE id = ?");
+        $stmtInac->execute([$close_inactiv_nuevo, $time_inac_nuevo, $id_destino]);
+    } catch (PDOException $e) {
+        $responder(false, 'Error al guardar: ' . $e->getMessage());
+    }
+    if (function_exists('logAction')) {
+        try {
+            logAction('guardar_cierre_inactividad', 'usuarios', 'Preferencia de bloqueo por inactividad guardada', ['usuario_afectado' => $id_destino, 'close_inactiv' => $close_inactiv_nuevo, 'time_inac' => $time_inac_nuevo], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+        } catch (Throwable $e) {}
+    }
+    if ($es_propio_post) {
+        $_SESSION['idle_close']  = $close_inactiv_nuevo;
+        $_SESSION['idle_minutes'] = $time_inac_nuevo;
+        $_SESSION['idle_last']   = time();
+    }
+    $responder(true, 'Configuración de bloqueo por inactividad guardada correctamente');
+}
+
 // El permiso para ver perfiles de otros se evalúa con permiso_puede('usuarios', 'ver')
 
 // Configuración de empresa (consistente con el resto de módulos)
@@ -406,22 +449,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         /* Dropdown de acciones del perfil */
         .perfil-acciones { position: relative; }
         .perfil-acciones .dropdown-menu {
-            --bs-dropdown-bg:#16161f;
-            --bs-dropdown-color:#e2e8f0;
-            --bs-dropdown-border-color:rgba(96, 165, 250, 0.35);
-            --bs-dropdown-link-color:#e2e8f0;
-            --bs-dropdown-link-hover-color:#ffffff;
-            --bs-dropdown-link-hover-bg:rgba(96, 165, 250, 0.2);
-            --bs-dropdown-link-active-color:#ffffff;
-            --bs-dropdown-link-active-bg:rgba(96, 165, 250, 0.35);
-            background-color: #16161f !important;
-            background-image: none !important;
-            backdrop-filter: none;
-            border: 0.0625rem solid rgba(96, 165, 250, 0.35);
-            border-radius: 0.75rem;
             min-width:13.125rem;
-            padding:0.375rem;
-            box-shadow: 0 0.75rem 2.5rem rgba(0, 0, 0, 0.55);
             z-index: 1080 !important;
         }
         .perfil-acciones .dropdown-item {
@@ -569,6 +597,11 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
             .border-end-lg { border-right: 0.0625rem solid rgba(255, 255, 255, 0.12); }
         }
 
+        #modalCambiarPassword .form-control,
+        #modalCambiarPassword input.form-control,
+        #modalCambiarPassword textarea.form-control,
+        #modalCambiarPassword .input-group-text,
+        #modalCambiarPassword .pass-toggle,
         #modalUsuario .form-control,
         #modalUsuario .form-select,
         #modalUsuario .input-group-text,
@@ -1211,6 +1244,52 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
     #modalCambiarPassword .pass-strength-bar[data-level="5"] .pass-strength-seg:nth-child(-n+5) {
         background: var(--strength-color, #fbbf24);
     }
+
+    /* ===== Selector de cierre por inactividad: reloj analógico ===== */
+    .lock-clock { display:flex; flex-direction:column; align-items:center; gap:0.5rem; transition: opacity 0.2s ease; }
+    .lock-clock.desactivado { opacity:0.45; pointer-events:none; }
+    .lock-clock.desactivado #btnInacDefaultM { pointer-events:auto; opacity:1; }
+    .lock-clock-svg { width:4.75rem; height:4.75rem; display:block; cursor:pointer; touch-action:none; border-radius:50%; }
+    .lock-clock-svg:focus-visible { outline:0.125rem solid #60a5fa; outline-offset:0.1875rem; }
+    .lock-clock-face { fill:var(--panel); stroke:rgba(255,255,255,0.14); stroke-width:3; }
+    .lock-clock-tick { stroke:rgba(255,255,255,0.45); stroke-width:2.5; }
+    .lock-clock-tick.major { stroke:#60a5fa; stroke-width:3.5; }
+    .lock-clock-num { fill:rgba(255,255,255,0.7); font-size:22px; font-weight:600; }
+    .lock-clock-hand { stroke:#60a5fa; stroke-width:6; stroke-linecap:round; }
+    .lock-clock-hub { fill:#60a5fa; }
+    .lock-clock-readout { font-size:0.85rem; font-weight:700; color:#60a5fa; background:rgba(0,120,212,0.15); border:0.0625rem solid rgba(96,165,250,0.35); border-radius:0.5rem; padding:0.15rem 0.6rem; }
+    html[data-theme="light"] .lock-clock-face { fill:#ffffff; stroke:rgba(0,0,0,0.25); }
+    html[data-theme="light"] .lock-clock-tick { stroke:rgba(0,0,0,0.4); }
+    html[data-theme="light"] .lock-clock-tick.major { stroke:var(--accent-dark, #0078d4); }
+    html[data-theme="light"] .lock-clock-num { fill:rgba(0,0,0,0.65); }
+    html[data-theme="light"] .lock-clock-hand { stroke:var(--accent-dark, #0078d4); fill:none; }
+    html[data-theme="light"] .lock-clock-hub { fill:var(--accent-dark, #0078d4); }
+    html[data-theme="orgullo"] .lock-clock-face { fill:#ffffff; stroke:rgba(84,52,142,0.35); }
+    html[data-theme="orgullo"] .lock-clock-tick { stroke:rgba(84,52,142,0.45); }
+    html[data-theme="orgullo"] .lock-clock-tick.major { stroke:#7c3aed; }
+    html[data-theme="orgullo"] .lock-clock-num { fill:rgba(51,38,77,0.7); }
+    html[data-theme="orgullo"] .lock-clock-hand { stroke:#7c3aed; fill:none; }
+    html[data-theme="orgullo"] .lock-clock-hub { fill:#7c3aed; }
+
+    /* ===== Toggle Sí/No: cierre por inactividad ===== */
+    .inac-toggle { position:relative; display:inline-block; width:2.75rem; height:1.5rem; cursor:pointer; flex-shrink:0; --sw-on:#60a5fa; --sw-off:rgba(255,255,255,0.15); }
+    .inac-toggle input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
+    .inac-toggle-track { position:absolute; inset:0; background:var(--sw-off); border-radius:0.75rem; transition:background 0.3s ease; pointer-events:none; }
+    .inac-toggle input:checked ~ .inac-toggle-track { background:var(--sw-on); }
+    .inac-toggle-knob { position:absolute; top:0.1875rem; left:0.1875rem; width:1.125rem; height:1.125rem; background:#fff; border-radius:50%; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); box-shadow:0 0.0625rem 0.1875rem rgba(0,0,0,0.25); pointer-events:none; }
+    .inac-toggle input:checked ~ .inac-toggle-knob { transform:translateX(1.25rem); }
+    .inac-toggle input:focus-visible ~ .inac-toggle-track { outline:0.125rem solid var(--sw-on); outline-offset:0.125rem; }
+    .inac-toggle-state { font-size:0.8rem; font-weight:700; color:#60a5fa; min-width:1.5rem; }
+    html[data-theme="light"] .inac-toggle { --sw-on:#0078d4; --sw-off:rgba(0,0,0,0.12); }
+    html[data-theme="light"] .inac-toggle-state { color:#0078d4; }
+    html[data-theme="blue"] .inac-toggle { --sw-on:#3b82f6; --sw-off:rgba(130,190,255,0.15); }
+    html[data-theme="blue"] .inac-toggle-state { color:#3b82f6; }
+    html[data-theme="verde"] .inac-toggle { --sw-on:#34d399; --sw-off:rgba(120,200,130,0.15); }
+    html[data-theme="verde"] .inac-toggle-state { color:#34d399; }
+    html[data-theme="orgullo"] .inac-toggle { --sw-on:#7c3aed; --sw-off:rgba(51,38,77,0.15); }
+    html[data-theme="orgullo"] .inac-toggle-state { color:#7c3aed; }
+    html[data-theme="win11"] .inac-toggle { --sw-on:#0078d4; --sw-off:rgba(255,255,255,0.16); }
+    html[data-theme="win11"] .inac-toggle-state { color:#4cc2ff; }
     </style>
 </head>
 <body>
@@ -1311,9 +1390,11 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
 					</div>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2 pb-1">
+                <span style="font-size:0.72rem; color:rgba(255,255,255,0.6); font-weight:500;">ROL:</span>
                 <span class="badge badge-rol <?php echo $rol_badge_clase; ?>">
                     <i class="fas fa-user-tag me-1"></i><?php echo htmlspecialchars($usuario['rol_nombre'] ?? 'Sin rol'); ?>
                 </span>
+                <span style="font-size:0.72rem; color:rgba(255,255,255,0.6); font-weight:500;">Estado:</span>
                 <span class="badge badge-rol <?php echo $usuario['activo'] ? 'bg-success' : 'bg-danger'; ?>">
                     <i class="fas fa-<?php echo $usuario['activo'] ? 'check-circle' : 'ban'; ?> me-1"></i>
                     <?php echo $usuario['activo'] ? 'Activo' : 'Inactivo'; ?>
@@ -1323,8 +1404,12 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
     <button type="button" class="btn-win btn-win-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Acciones" data-tooltip="Acciones" data-tooltip-theme="primary">
         <i class="fas fa-ellipsis-vertical me-1"></i> Acciones
     </button>
-    <ul class="dropdown-menu dropdown-menu-end">
+    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win">
         <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); editarUsuario(<?php echo (int)$id; ?>);"><i class="fas fa-user-edit me-2" style="color:#60a5fa;"></i>Editar Perfil</a></li>
+        <?php if ($es_propio || $es_admin): ?>
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalConfiguraciones"><i class="fas fa-gear me-2" style="color:#60a5fa;"></i>Configuraciones</a></li>
+        <?php endif; ?>
+        <li><hr class="dropdown-divider"></li>
         <li>
             <?php if ($perfil_pass_habilitado): ?>
                 <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalCambiarPassword">
@@ -1340,7 +1425,6 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
                 </a>
             <?php endif; ?>
         </li>
-        <li><hr class="dropdown-divider"></li>
         <li>
             <?php if ($perfil_pass_habilitado): ?>
                 <a class="dropdown-item" href="#" onclick="event.preventDefault(); resetPasswordUsuario(<?php echo (int)$id; ?>, '<?php echo addslashes($nombre_completo); ?>');"><i class="fas fa-rotate-left me-2" style="color:#60a5fa;"></i>Resetear Contraseña</a>
@@ -1359,6 +1443,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         <li><a class="dropdown-item" href="usuarios.php"><i class="fas fa-user-cog me-2" style="color:#a78bfa;"></i>Gestionar Usuarios</a></li>
         <?php endif; ?>
         <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>bloquear_sesion.php"><i class="fas fa-user-lock me-2" style="color:#f59e0b;"></i>Bloquear Sesión</a></li>
         <li><a class="dropdown-item text-danger" href="#" id="btnCerrarSesionPerfil"><i class="fas fa-sign-out-alt me-2"></i>Cerrar sesión</a></li>
     </ul>
 </div>
@@ -1526,8 +1611,68 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
 	
 	</div>
 
-
-
+    <?php if ($es_propio || $es_admin): ?>
+    <!-- Modal: Configuraciones (ventana estilo Windows 11) -->
+    <div class="modal fade" id="modalConfiguraciones" tabindex="-1" aria-labelledby="modalConfiguracionesLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-win">
+                <div class="modal-header modal-header-win">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <h5 class="modal-title mb-0" id="modalConfiguracionesLabel" style="font-size:0.9rem;"><i class="fas fa-gear me-2"></i>Configuraciones</h5>
+                        <span class="badge" id="badgeInactividadM" style="background: <?php echo ((int)($usuario['close_inactiv'] ?? 1) === 1) ? 'var(--color-success)' : '#ef4444'; ?>; font-size:0.65rem;"><?php echo ((int)($usuario['close_inactiv'] ?? 1) === 1) ? 'ACTIVO' : 'INACTIVO'; ?></span>
+                        <span class="badge" id="badgeInacMinM" style="background: #0078d4; font-size:0.65rem;"><?php echo (int)($usuario['time_inac'] ?? 10); ?> MIN</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"></button>
+                </div>
+                <form id="modalConfigForm">
+                    <div class="modal-body">
+                        <div class="d-flex align-items-center gap-2 mb-3 fw-semibold" style="font-size:0.8rem; color: var(--txt);">
+                            <i class="fas fa-hourglass-half" style="color: #60a5fa;"></i>
+                            Bloqueo de Sesión Automático por Inactividad
+                        </div>
+                        <div class="d-flex flex-wrap align-items-start gap-4">
+                            <div>
+                                <span class="form-label d-block">Activar Bloqueo Automático por Inactividad</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="inac-toggle" for="closeInactivM" title="Activar/Desactivar cierre por inactividad">
+                                        <input type="checkbox" id="closeInactivM" value="1" <?php echo ((int)($usuario['close_inactiv'] ?? 1) === 1) ? 'checked' : ''; ?>>
+                                        <span class="inac-toggle-track"></span>
+                                        <span class="inac-toggle-knob"></span>
+                                    </label>
+                                    <span class="inac-toggle-state" id="inacToggleStateM"><?php echo ((int)($usuario['close_inactiv'] ?? 1) === 1) ? 'Sí' : 'No'; ?></span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label d-block">Tiempo antes de bloquearse la sesión<br>al estar el bloque de pantalla</label>
+                                <div class="lock-clock" id="modalClockWrap">
+                                    <svg class="lock-clock-svg" id="modalClockSvg" viewBox="0 0 200 200" tabindex="0" role="slider" aria-label="Minutos de bloqueo por inactividad" aria-valuemin="1" aria-valuemax="60" aria-valuenow="<?php echo (int)($usuario['time_inac'] ?? 10); ?>">
+                                        <circle cx="100" cy="100" r="94" class="lock-clock-face"></circle>
+                                        <g id="modalClockTicks"></g>
+                                        <text x="100" y="42" class="lock-clock-num" text-anchor="middle">60</text>
+                                        <text x="160" y="105" class="lock-clock-num" text-anchor="middle">15</text>
+                                        <text x="100" y="170" class="lock-clock-num" text-anchor="middle">30</text>
+                                        <text x="40" y="105" class="lock-clock-num" text-anchor="middle">45</text>
+                                        <line id="modalClockHand" x1="100" y1="100" x2="100" y2="30" class="lock-clock-hand"></line>
+                                        <circle cx="100" cy="100" r="6" class="lock-clock-hub"></circle>
+                                    </svg>
+                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                        <div class="lock-clock-readout" id="modalClockReadout">10 min</div>
+                                        <button type="button" id="btnInacDefaultM" class="btn-win" style="padding:0.3rem 0.55rem; font-size:0.75rem; line-height:1; border-radius:8px;" title="Restaurar valor predeterminado" data-tooltip="Restaurar valor predeterminado" data-tooltip-theme="primary"><i class="fas fa-undo"></i></button>
+                                    </div>
+                                    <input type="hidden" id="time_inacM" value="<?php echo (int)($usuario['time_inac'] ?? 10); ?>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer modal-footer-win">
+                        <button type="button" class="btn-win btn-win-sm" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="secondary"><i class="fas fa-times me-1"></i> Cancelar</button>
+                        <button type="button" id="btnGuardarConfigCambios" class="btn-win btn-win-primary btn-win-sm" title="Guardar cambios" data-tooltip="Guardar cambios" data-tooltip-theme="success"><i class="fas fa-save me-1"></i> Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Sección de Datos Personales completa (oculta) -->
     <div class="glass-card fade-in-up p-4 mb-4" style="animation-delay: 0.42s; display:none;">
@@ -1606,6 +1751,17 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
             </div>
         </div>
     </div>
+
+    <script>
+    (function () {
+        var modalEl = document.getElementById('modalCambiarPassword');
+        if (!modalEl) return;
+        modalEl.addEventListener('shown.bs.modal', function () {
+            var input = modalEl.querySelector('.modal-body input:not([type="hidden"])');
+            if (input) input.focus();
+        });
+    })();
+    </script>
 
     <?php if ($es_propio): ?>
     <!-- Abrir el modal automáticamente si se llega con ?cambiar_pass=1 -->
@@ -1803,6 +1959,72 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
     <?php include '../includes/footer.php'; ?>
 </div>
 
+<!-- Botón flotante: menú Acciones del perfil -->
+<?php if (!isset($perfil_pass_habilitado)) { $perfil_pass_habilitado = !$is_google_auth || $es_admin; } ?>
+<style>
+.perfil-acciones-fab { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 1080; }
+.perfil-acciones-fab .fab-btn {
+    width: 3rem; height: 3rem; border-radius: 50%; border: none; cursor: pointer;
+    background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0.625rem 1.875rem rgba(0, 0, 0, 0.5);
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+.perfil-acciones-fab .fab-btn:hover { transform: translateY(-0.125rem); filter: brightness(1.15); }
+.perfil-acciones-fab .dropdown-menu {
+    position: absolute !important;
+    top: auto !important;
+    right: 0 !important;
+    bottom: calc(100% + 0.625rem) !important;
+    left: auto !important;
+    transform: none !important;
+    margin: 0 !important;
+    min-width: 13.125rem;
+    max-width: calc(100vw - 2rem);
+    z-index: 1081 !important;
+}
+@media print { .perfil-acciones-fab { display: none !important; } }
+</style>
+<div class="dropdown perfil-acciones perfil-acciones-fab">
+    <button type="button" class="fab-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Acciones" data-tooltip="Acciones" data-tooltip-theme="primary" aria-label="Acciones">
+        <i class="fas fa-ellipsis-vertical"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win">
+        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); editarUsuario(<?php echo (int)$id; ?>);"><i class="fas fa-user-edit me-2" style="color:#60a5fa;"></i>Editar Perfil</a></li>
+        <?php if ($es_propio || $es_admin): ?>
+        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalConfiguraciones"><i class="fas fa-gear me-2" style="color:#60a5fa;"></i>Configuraciones</a></li>
+        <?php endif; ?>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <?php if ($perfil_pass_habilitado): ?>
+                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalCambiarPassword">
+                    <i class="fas fa-key me-2" style="color:#fbbf24;"></i>Cambiar Contraseña
+                </a>
+            <?php else: ?>
+                <a class="dropdown-item disabled text-muted fst-italic" href="#" tabindex="-1" aria-disabled="true" style="pointer-events: none; cursor: default; opacity: 0.6;">
+                    <i class="fas fa-key me-2" style="color:#9ca3af;"></i>Cambiar Contraseña
+                </a>
+            <?php endif; ?>
+        </li>
+        <li>
+            <?php if ($perfil_pass_habilitado): ?>
+                <a class="dropdown-item" href="#" onclick="event.preventDefault(); resetPasswordUsuario(<?php echo (int)$id; ?>, '<?php echo addslashes($nombre_completo); ?>');"><i class="fas fa-rotate-left me-2" style="color:#60a5fa;"></i>Resetear Contraseña</a>
+            <?php else: ?>
+                <a class="dropdown-item disabled text-muted fst-italic" href="#" tabindex="-1" aria-disabled="true" style="pointer-events: none; cursor: default; opacity: 0.6;">
+                    <i class="fas fa-rotate-left me-2" style="color:#9ca3af;"></i>Resetear Contraseña
+                </a>
+            <?php endif; ?>
+        </li>
+        <?php if (($es_propio && $es_admin) || !$es_propio): ?>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="usuarios.php"><i class="fas fa-user-cog me-2" style="color:#a78bfa;"></i>Gestionar Usuarios</a></li>
+        <?php endif; ?>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>bloquear_sesion.php"><i class="fas fa-user-lock me-2" style="color:#f59e0b;"></i>Bloquear Sesión</a></li>
+        <li><a class="dropdown-item text-danger" href="#" id="btnCerrarSesionPerfilFab"><i class="fas fa-sign-out-alt me-2"></i>Cerrar sesión</a></li>
+    </ul>
+</div>
+
 <script src="../js/jquery-3.6.0.min.js"></script>
 <script src="../js/bootstrap5.3.0/bootstrap.bundle.min.js"></script>
 <script src="../js/sweetalert2.all.min.js"></script>
@@ -1821,14 +2043,206 @@ function togglePassVisibility(id, btn) {
 </script>
 
 <script>
+// ===== Cierre por inactividad: toast de PRG + reloj + habilitar/deshabilitar =====
+(function() {
+    var msg = <?php echo json_encode($_GET['msg'] ?? ''); ?>;
+    var tipo = <?php echo json_encode($_GET['tipo'] ?? 'success'); ?>;
+    if (msg && typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: tipo === 'success' ? 'success' : 'error',
+            title: msg,
+            timer: 2200,
+            showConfirmButton: false,
+            background: 'var(--panel)',
+            color: 'var(--txt)'
+        });
+        if (window.history && history.replaceState) {
+            history.replaceState(null, '', window.location.pathname);
+        }
+    }
+})();
+
+// ===== Control de bloqueo por inactividad (modal de Configuraciones) =====
+
+function toastInac(tipo, texto) {
+    if (typeof Swal === 'undefined') return;
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: tipo,
+        title: texto,
+        showConfirmButton: false,
+        timer: 1800,
+        backdrop: false,
+        background: 'var(--panel)',
+        color: 'var(--txt)'
+    });
+}
+
+function guardarInactividad(valores, alExito) {
+    if (!valores) return;
+    var fd = new FormData();
+    fd.append('guardar_inactividad', '1');
+    fd.append('close_inactiv', valores.close);
+    fd.append('time_inac', valores.time);
+    var url = window.location.pathname + '?id=<?php echo (int)$id; ?>&ajax=1';
+    fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function (r) {
+            return r.json()
+                .then(function (d) { return { httpOk: r.ok, data: d }; })
+                .catch(function () { return { httpOk: false, data: null }; });
+        })
+        .then(function (res) {
+            if (res.httpOk && res.data && res.data.ok) {
+                toastInac('success', res.data.msg || 'Configuración guardada correctamente');
+                var idle = window.__IDLE_LOCK__;
+                if (idle && typeof idle.apply === 'function' && <?php echo $es_propio ? 'true' : 'false'; ?>) {
+                    idle.apply(valores.close === '1' || valores.close === 1, valores.time);
+                }
+                if (typeof alExito === 'function') alExito(valores);
+            } else {
+                toastInac('error', (res.data && res.data.msg) ? res.data.msg : 'Error al guardar');
+            }
+        })
+        .catch(function () {
+            toastInac('error', 'Error de conexión al guardar');
+        });
+}
+
+function crearControlInactividad(cfg) {
+    var svg = document.getElementById(cfg.svg);
+    var input = document.getElementById(cfg.input);
+    if (!svg || !input) return null;
+    var cb = document.getElementById(cfg.cb);
+    var wrap = document.getElementById(cfg.wrap);
+    var hand = document.getElementById(cfg.hand);
+    var ticks = document.getElementById(cfg.ticks);
+    var readout = document.getElementById(cfg.readout);
+    var badgeEstado = cfg.badgeEstado ? document.getElementById(cfg.badgeEstado) : null;
+    var badgeMin = cfg.badgeMin ? document.getElementById(cfg.badgeMin) : null;
+    var state = cfg.state ? document.getElementById(cfg.state) : null;
+    var minutes = parseInt(input.value, 10);
+    minutes = isNaN(minutes) ? 10 : Math.min(60, Math.max(1, minutes));
+
+    var NS = 'http://www.w3.org/2000/svg';
+    for (var i = 0; i < 60; i++) {
+        var major = i % 5 === 0;
+        var a = (i * 6 - 90) * Math.PI / 180;
+        var r1 = major ? 76 : 84;
+        var line = document.createElementNS(NS, 'line');
+        line.setAttribute('x1', (100 + Math.cos(a) * r1).toFixed(2));
+        line.setAttribute('y1', (100 + Math.sin(a) * r1).toFixed(2));
+        line.setAttribute('x2', (100 + Math.cos(a) * 90).toFixed(2));
+        line.setAttribute('y2', (100 + Math.sin(a) * 90).toFixed(2));
+        line.setAttribute('class', major ? 'lock-clock-tick major' : 'lock-clock-tick');
+        ticks.appendChild(line);
+    }
+
+    function setMinutes(m) {
+        minutes = ((Math.round(m) - 1) % 60 + 60) % 60 + 1;
+        input.value = minutes;
+        hand.setAttribute('transform', 'rotate(' + (minutes * 6) + ' 100 100)');
+        readout.textContent = minutes + ' min';
+        svg.setAttribute('aria-valuenow', minutes);
+        if (badgeMin) badgeMin.textContent = minutes + ' MIN';
+    }
+
+    function actualizar() {
+        if (!cb) return;
+        var activo = cb.checked;
+        if (wrap) wrap.classList.toggle('desactivado', !activo);
+        svg.tabIndex = activo ? 0 : -1;
+        if (state) state.textContent = activo ? 'Sí' : 'No';
+        if (badgeEstado) {
+            badgeEstado.textContent = activo ? 'ACTIVO' : 'INACTIVO';
+            badgeEstado.style.background = activo ? 'var(--color-success)' : '#ef4444';
+        }
+    }
+
+    if (cb) cb.addEventListener('change', actualizar);
+
+    function minutesFromEvent(e) {
+        var rect = svg.getBoundingClientRect();
+        var x = e.clientX - rect.left - rect.width / 2;
+        var y = e.clientY - rect.top - rect.height / 2;
+        var deg = Math.atan2(x, -y) * 180 / Math.PI;
+        if (deg < 0) deg += 360;
+        var m = Math.round(deg / 6) % 60;
+        return m === 0 ? 60 : m;
+    }
+
+    var dragging = false;
+    svg.addEventListener('pointerdown', function(e) {
+        if (svg.tabIndex === -1) return;
+        dragging = true;
+        svg.setPointerCapture(e.pointerId);
+        setMinutes(minutesFromEvent(e));
+        e.preventDefault();
+    });
+    svg.addEventListener('pointermove', function(e) {
+        if (dragging) {
+            setMinutes(minutesFromEvent(e));
+        }
+    });
+    svg.addEventListener('pointerup', function() { dragging = false; });
+    svg.addEventListener('pointercancel', function() { dragging = false; });
+    svg.addEventListener('keydown', function(e) {
+        if (svg.tabIndex === -1) return;
+        if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setMinutes(minutes + 1); e.preventDefault(); }
+        else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setMinutes(minutes - 1); e.preventDefault(); }
+    });
+
+    var btnDef = cfg.defaultBtn ? document.getElementById(cfg.defaultBtn) : null;
+    if (btnDef) {
+        btnDef.addEventListener('click', function () {
+            if (cb) cb.checked = true;
+            setMinutes(10);
+            actualizar();
+        });
+    }
+
+    setMinutes(minutes);
+    actualizar();
+
+    return {
+        setMinutes: setMinutes,
+        getMinutos: function () { return minutes; },
+        estaActivo: function () { return cb ? cb.checked : false; },
+        aplicar: function (activo, min) {
+            if (cb) cb.checked = !!activo;
+            setMinutes(min);
+            actualizar();
+        },
+        leer: function () {
+            return { close: (cb && cb.checked) ? '1' : '0', time: input.value };
+        }
+    };
+}
+
+var ctrlInacModal = crearControlInactividad({
+    cb: 'closeInactivM', wrap: 'modalClockWrap', svg: 'modalClockSvg', hand: 'modalClockHand',
+    ticks: 'modalClockTicks', readout: 'modalClockReadout', input: 'time_inacM',
+    badgeEstado: 'badgeInactividadM', badgeMin: 'badgeInacMinM', state: 'inacToggleStateM',
+    defaultBtn: 'btnInacDefaultM'
+});
+
+var btnGuardarConfigCambios = document.getElementById('btnGuardarConfigCambios');
+if (btnGuardarConfigCambios && ctrlInacModal) {
+    btnGuardarConfigCambios.addEventListener('click', function () {
+        guardarInactividad(ctrlInacModal.leer());
+    });
+}
+</script>
+
+<script>
 // ===== Gestión de Perfil (réplica del modal de usuarios.php) =====
 const usuarioActualId = <?php echo (int)$usuario_actual_id; ?>;
 const puedeEditarUsuario = <?php echo $puede_editar_usuario ? 'true' : 'false'; ?>;
 
 // Logout desde el menú de acciones del perfil
-const btnCerrarSesionPerfil = document.getElementById('btnCerrarSesionPerfil');
-if (btnCerrarSesionPerfil) {
-    btnCerrarSesionPerfil.addEventListener('click', function(e) {
+function bindCerrarSesionPerfil(btn) {
+    if (!btn) return;
+    btn.addEventListener('click', function(e) {
         e.preventDefault();
         if (typeof Swal !== 'undefined') {
             Swal.fire({
@@ -1852,6 +2266,8 @@ if (btnCerrarSesionPerfil) {
         }
     });
 }
+bindCerrarSesionPerfil(document.getElementById('btnCerrarSesionPerfil'));
+bindCerrarSesionPerfil(document.getElementById('btnCerrarSesionPerfilFab'));
 
 let cropperUsuario = null, previewCanvasUsuario = null, previewCtxUsuario = null;
 

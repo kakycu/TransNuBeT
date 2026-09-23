@@ -458,6 +458,74 @@ html[data-theme="orgullo"] .dropdown-menu-win .dropdown-footer small span.ultimo
 .disabled-submenu:focus-within > .dropdown-submenu-menu {
     display: none !important;
 }
+
+/* ===== Selector de minutos tipo reloj analógico (global, por tema) ===== */
+.lock-clock { display:flex; flex-direction:column; align-items:center; gap:0.5rem; }
+.lock-clock-svg { width:4.75rem; height:4.75rem; display:block; cursor:pointer; touch-action:none; border-radius:50%; }
+.lock-clock-face { fill:var(--panel); stroke:rgba(255,255,255,0.14); stroke-width:3; }
+.lock-clock-tick { stroke:rgba(255,255,255,0.45); stroke-width:2.5; }
+.lock-clock-tick.major { stroke:#60a5fa; stroke-width:3.5; }
+.lock-clock-num { fill:rgba(255,255,255,0.7); font-size:22px; font-weight:600; }
+.lock-clock-hand { stroke:#60a5fa; stroke-width:6; stroke-linecap:round; }
+.lock-clock-hub { fill:#60a5fa; }
+.lock-clock-readout { font-size:0.85rem; font-weight:700; border-radius:0.5rem; padding:0.15rem 0.6rem; }
+
+/* Tema: light */
+html[data-theme="light"] .lock-clock-svg:focus-visible { outline:0.125rem solid var(--accent-dark, #0078d4); outline-offset:0.1875rem; }
+html[data-theme="light"] .lock-clock-face { fill:#ffffff; stroke:rgba(0,0,0,0.25); }
+html[data-theme="light"] .lock-clock-tick { stroke:rgba(0,0,0,0.4); }
+html[data-theme="light"] .lock-clock-tick.major { stroke:var(--accent-dark, #0078d4); }
+html[data-theme="light"] .lock-clock-num { fill:rgba(0,0,0,0.65); }
+html[data-theme="light"] .lock-clock-hand { stroke:var(--accent-dark, #0078d4); fill:none; }
+html[data-theme="light"] .lock-clock-hub { fill:var(--accent-dark, #0078d4); }
+html[data-theme="light"] .lock-clock-readout { color:var(--accent-dark, #0078d4); background:rgba(0,120,212,0.12); border:0.0625rem solid rgba(0,120,212,0.3); }
+
+/* Tema: blue */
+html[data-theme="blue"] .lock-clock-svg:focus-visible { outline:0.125rem solid #06b6d4; outline-offset:0.1875rem; }
+html[data-theme="blue"] .lock-clock-face { fill:#131c2b; stroke:rgba(103,232,249,0.22); }
+html[data-theme="blue"] .lock-clock-tick { stroke:rgba(255,255,255,0.35); }
+html[data-theme="blue"] .lock-clock-tick.major { stroke:#06b6d4; }
+html[data-theme="blue"] .lock-clock-num { fill:rgba(255,255,255,0.7); }
+html[data-theme="blue"] .lock-clock-hand { stroke:#06b6d4; fill:none; }
+html[data-theme="blue"] .lock-clock-hub { fill:#06b6d4; }
+html[data-theme="blue"] .lock-clock-readout { color:#22d3ee; background:rgba(6,182,212,0.15); border:0.0625rem solid rgba(34,211,238,0.35); }
+
+/* Tema: verde */
+html[data-theme="verde"] .lock-clock-svg:focus-visible { outline:0.125rem solid #10b981; outline-offset:0.1875rem; }
+html[data-theme="verde"] .lock-clock-face { fill:#12251c; stroke:rgba(110,231,183,0.22); }
+html[data-theme="verde"] .lock-clock-tick { stroke:rgba(255,255,255,0.35); }
+html[data-theme="verde"] .lock-clock-tick.major { stroke:#10b981; }
+html[data-theme="verde"] .lock-clock-num { fill:rgba(255,255,255,0.7); }
+html[data-theme="verde"] .lock-clock-hand { stroke:#10b981; fill:none; }
+html[data-theme="verde"] .lock-clock-hub { fill:#10b981; }
+html[data-theme="verde"] .lock-clock-readout { color:#34d399; background:rgba(16,185,129,0.15); border:0.0625rem solid rgba(52,211,153,0.35); }
+
+/* Tema: orgullo */
+html[data-theme="orgullo"] .lock-clock-svg:focus-visible { outline:0.125rem solid #6d28d9; outline-offset:0.1875rem; }
+html[data-theme="orgullo"] .lock-clock-face { fill:#f3e8ff; stroke:#7c3aed; }
+html[data-theme="orgullo"] .lock-clock-tick { stroke:#4c1d95; }
+html[data-theme="orgullo"] .lock-clock-tick.major { stroke:#6d28d9; }
+html[data-theme="orgullo"] .lock-clock-num { fill:#4c1d95; }
+html[data-theme="orgullo"] .lock-clock-hand { stroke:#6d28d9; fill:none; }
+html[data-theme="orgullo"] .lock-clock-hub { fill:#6d28d9; }
+html[data-theme="orgullo"] .lock-clock-readout { color:#6d28d9; background:rgba(109,40,217,0.22); border:0.0625rem solid #6d28d9; }
+
+/* Tema: win11 */
+html[data-theme="win11"] .lock-clock-svg:focus-visible { outline:0.125rem solid rgba(0,120,212,0.7); outline-offset:0.1875rem; }
+html[data-theme="win11"] .lock-clock-face { fill:#202020; stroke:rgba(0,120,212,0.35); }
+html[data-theme="win11"] .lock-clock-tick { stroke:rgba(255,255,255,0.35); }
+html[data-theme="win11"] .lock-clock-tick.major { stroke:#0078d4; }
+html[data-theme="win11"] .lock-clock-num { fill:rgba(255,255,255,0.7); }
+html[data-theme="win11"] .lock-clock-hand { stroke:#0078d4; fill:none; }
+html[data-theme="win11"] .lock-clock-hub { fill:#0078d4; }
+html[data-theme="win11"] .lock-clock-readout { color:#4cc2ff; background:rgba(0,120,212,0.15); border:0.0625rem solid rgba(76,194,255,0.35); }
+
+/* Tema: dark (por defecto) */
+html[data-theme="dark"] .lock-clock-svg:focus-visible { outline:0.125rem solid #60a5fa; outline-offset:0.1875rem; }
+html[data-theme="dark"] .lock-clock-tick.major { stroke:#60a5fa; }
+html[data-theme="dark"] .lock-clock-hand { stroke:#60a5fa; }
+html[data-theme="dark"] .lock-clock-hub { fill:#60a5fa; }
+html[data-theme="dark"] .lock-clock-readout { color:#60a5fa; background:rgba(59,130,246,0.15); border:0.0625rem solid rgba(96,165,250,0.35); }
 </style>
 
 <!-- ===== SISTEMA DE TEMA CLARO / OSCURO (TransNuBeT) ===== -->
@@ -479,7 +547,9 @@ html[data-theme="orgullo"] .dropdown-menu-win .dropdown-footer small span.ultimo
     --violet:var(--accent-light);
     --green:var(--color-success);
     --amber:#f59e0b;
+    --amber-rgb:245, 158, 11;
     --red:#ef4444;
+    --red-rgb:239, 68, 68;
     --cyan:#06b6d4;
     --shadow:0 0.75rem 2.125rem rgba(0, 0, 0, 0.35);
     --color-success:#10b981;
@@ -545,7 +615,9 @@ html[data-theme="light"] {
     --violet:var(--accent-light);
     --green:#059669;
     --amber:#d97706;
+    --amber-rgb:217, 119, 6;
     --red:#dc2626;
+    --red-rgb:220, 38, 38;
     --cyan:#0891b2;
     --shadow:0 0.75rem 2.125rem rgba(0,0,0,0.12);
     --color-success:#047857;
@@ -827,7 +899,7 @@ html[data-theme="light"] {
     box-shadow: 0 0.5rem 2rem rgba(0,0,0,0.15) !important;
 }
 [data-theme="light"] .dropdown-menu-win .dropdown-item { color: #1f2937 !important; transition: all 0.15s ease; }
-[data-theme="light"] .dropdown-menu-win .dropdown-item:hover { background: rgba(var(--accent-rgb),0.22) !important; color: var(--accent-dark) !important; }
+[data-theme="light"] .dropdown-menu-win .dropdown-item:hover { background: rgba(var(--accent-rgb),0.38) !important; color: var(--accent-dark) !important; }
 [data-theme="light"] .dropdown-menu-win .dropdown-item.text-danger:hover { background: rgba(239,68,68,0.12) !important; color: #b91c1c !important; }
 [data-theme="light"] .dropdown-divider { border-top: 0.0625rem solid rgba(0,0,0,0.18) !important; border-color: rgba(0,0,0,0.18) !important; }
 [data-theme="light"] .dropdown-menu-win .dropdown-divider { border-top: 0.0625rem solid rgba(0,0,0,0.18) !important; border-color: rgba(0,0,0,0.18) !important; }
@@ -1112,7 +1184,7 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
 /* ===== DROPDOWNS (base Bootstrap) ===== */
 [data-theme="light"] .dropdown-menu { background: #ffffff !important; color: #1f2937 !important; border: 0.0625rem solid rgba(0,0,0,0.12) !important; }
 [data-theme="light"] .dropdown-item { color: #1f2937 !important; }
-[data-theme="light"] .dropdown-item:hover { background: rgba(var(--accent-rgb),0.22) !important; color: #111827 !important; }
+[data-theme="light"] .dropdown-item:hover { background: rgba(var(--accent-rgb),0.38) !important; color: #111827 !important; }
 [data-theme="light"] .dropdown-item-text { color: #1f2937 !important; }
 
 /* ===== DROPDOWN EXPORT PERSONALIZADO (bandecnom.php) ===== */
@@ -1638,7 +1710,7 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
 [data-theme="light"] .info-item { background: rgba(0,0,0,0.03) !important; border-color: rgba(0,0,0,0.08) !important; }
 [data-theme="light"] .info-item:hover { background: rgba(var(--accent-rgb),0.06) !important; border-color: rgba(var(--accent-rgb),0.2) !important; }
 [data-theme="light"] .perfil-acciones .dropdown-item { color: #1f2937 !important; }
-[data-theme="light"] .perfil-acciones .dropdown-item:hover { background: rgba(var(--accent-rgb),0.22) !important; color: #1f2937 !important; }
+[data-theme="light"] .perfil-acciones .dropdown-item:hover { background: rgba(var(--accent-rgb),0.38) !important; color: #1f2937 !important; }
 [data-theme="light"] .perfil-acciones .dropdown-item.text-danger { color: #dc2626 !important; }
 [data-theme="light"] .perfil-acciones .dropdown-item.text-danger:hover { background: rgba(239,68,68,0.12) !important; color: #dc2626 !important; }
 [data-theme="light"] .perfil-acciones .dropdown-divider { border-color: rgba(0,0,0,0.12) !important; }
@@ -1878,31 +1950,45 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
 .win-modal-titlebar-btns .win-modal-btn-close:hover { background: #e81123; color: #fff; }
 
 .win-modal-body {
-    background: #1e1e2e;
+    background: var(--panel);
     border: none;
     border-radius: 0 0 0.5rem 0.5rem;
     padding: 1.25rem;
-    color: #e2e8f0;
+    color: var(--txt);
 }
 .win-modal-footer {
-    border-top: 0.0625rem solid rgba(255,255,255,0.06);
+    border-top: 0.0625rem solid var(--border);
     margin-top: 0.875rem;
     padding-top: 0.75rem;
     text-align: center;
     font-size: 0.7188rem;
-    color: rgba(255,255,255,0.35);
+    color: var(--muted);
 }
+/* Superficies dentro de SweetAlert: siempre variables del tema activo */
+.swal2-popup .form-control,
+.swal2-popup input[type="file"] {
+    background: var(--panel-2) !important;
+    border: 0.0625rem solid var(--border) !important;
+    color: var(--txt) !important;
+}
+.swal2-popup .form-control::placeholder { color: var(--faint) !important; }
+.swal2-popup pre {
+    background: var(--panel-2) !important;
+    color: var(--txt) !important;
+}
+.swal2-popup .restore-progress-track { background: var(--panel-2) !important; }
+.swal2-popup .restore-spinner { border-color: var(--border) !important; border-top-color: var(--accent) !important; }
+.swal2-popup pre.sr-pre-error { color: var(--red) !important; }
+.swal2-popup .sr-tint { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 /* ===== Light theme ===== */
 [data-theme="light"] .salva-restaura-popup { border-radius: 0 !important; }
-[data-theme="light"] .win-modal-titlebar { background: var(--accent); }
-[data-theme="light"] .win-modal-titlebar-icon { color: #fff; }
-[data-theme="light"] .win-modal-titlebar-text { color: #fff; }
-[data-theme="light"] .win-modal-titlebar-btns button { color: rgba(255,255,255,0.7); }
-[data-theme="light"] .win-modal-titlebar-btns button:hover { background: rgba(255,255,255,0.2); color: #fff; }
-[data-theme="light"] .win-modal-titlebar-btns .win-modal-btn-close:hover { background: #e81123; color: #fff; }
-[data-theme="light"] .win-modal-body { background: #ffffff; color: #1f2937; }
-[data-theme="light"] .win-modal-footer { border-color: rgba(0,0,0,0.06); color: #9ca3af; }
+[data-theme="light"] .win-modal-body { background: var(--panel); color: var(--txt); }
+[data-theme="light"] .win-modal-footer { border-color: var(--border); color: var(--muted); }
+[data-theme="light"] .win-modal-titlebar-icon,
+[data-theme="light"] .win-modal-titlebar-text,
+[data-theme="light"] .win-modal-titlebar-text * { color: #fff !important; }
+[data-theme="light"] .win-modal-titlebar-btns button { color: rgba(255,255,255,0.7) !important; }
 [data-theme="light"] .permisos-leyenda { background: rgba(0,0,0,0.03) !important; border-color: rgba(0,0,0,0.1) !important; color: #4b5563 !important; }
 [data-theme="light"] .permisos-leyenda { background: rgba(0,0,0,0.03) !important; border-color: rgba(0,0,0,0.1) !important; color: #4b5563 !important; }
 [data-theme="light"] .table-custom th,
@@ -1964,8 +2050,8 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
 
 /* ===== Hover más oscuro (tema claro): menús, botones, tarjetas ===== */
 [data-theme="light"] .dropdown-item:hover,
-[data-theme="light"] .dropdown-menu-win .dropdown-item:hover { background: rgba(var(--accent-rgb),0.22) !important; }
-[data-theme="light"] .perfil-acciones .dropdown-item:hover { background: rgba(var(--accent-rgb),0.22) !important; }
+[data-theme="light"] .dropdown-menu-win .dropdown-item:hover { background: rgba(var(--accent-rgb),0.38) !important; }
+[data-theme="light"] .perfil-acciones .dropdown-item:hover { background: rgba(var(--accent-rgb),0.38) !important; }
 [data-theme="light"] .btn-win:not(.btn-win-primary):hover { background: rgba(0,0,0,0.08) !important; color: #1f2937 !important; }
 [data-theme="light"] .info-item:hover { background: rgba(0,0,0,0.08) !important; }
 [data-theme="light"] .clasificador-btn:hover { background: rgba(0,0,0,0.10) !important; color: #1f2937 !important; }
@@ -2772,7 +2858,7 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
     border: 0.0625rem solid rgba(139,92,246,0.2) !important;
 }
 [data-theme="orgullo"] .dropdown-menu-win .dropdown-item { color: rgba(51,38,77,0.85) !important; }
-[data-theme="orgullo"] .dropdown-menu-win .dropdown-item:hover { background: rgba(139,92,246,0.08) !important; color: var(--accent-dark) !important; }
+[data-theme="orgullo"] .dropdown-menu-win .dropdown-item:hover { background: rgba(139,92,246,0.32) !important; color: var(--accent-dark) !important; }
 [data-theme="orgullo"] .dropdown-menu-win .dropdown-divider { border-top-color: rgba(139,92,246,0.14) !important; }
 [data-theme="orgullo"] hr { border-top: 0.0625rem solid rgba(139,92,246,0.15) !important; opacity: 1 !important; }
 [data-theme="orgullo"] .dropdown-divider { border-top: 0.0625rem solid rgba(139,92,246,0.14) !important; opacity: 1 !important; }
@@ -2966,13 +3052,13 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
     box-shadow:0 0.5rem 2rem rgba(76,29,149,0.15) !important;
 }
 [data-theme="orgullo"] .dropdown-menu-win .dropdown-item { color:#33264d !important; transition:all 0.15s ease; }
-[data-theme="orgullo"] .dropdown-menu-win .dropdown-item:hover { background:rgba(124,58,237,0.18) !important; color:#4c1d95 !important; }
+[data-theme="orgullo"] .dropdown-menu-win .dropdown-item:hover { background:rgba(124,58,237,0.32) !important; color:#4c1d95 !important; }
 [data-theme="orgullo"] .dropdown-menu-win .dropdown-item.text-danger:hover { background:rgba(239,68,68,0.14) !important; color:#b91c1c !important; }
 [data-theme="orgullo"] .dropdown-menu-win .dropdown-item-text { color:#33264d !important; }
 [data-theme="orgullo"] .dropdown-menu-win .dropdown-item-text small { color:var(--accent-dark) !important; }
 [data-theme="orgullo"] .perfil-acciones .dropdown-menu { background:#ffffff !important; }
 [data-theme="orgullo"] .perfil-acciones .dropdown-item { color:#33264d !important; }
-[data-theme="orgullo"] .perfil-acciones .dropdown-item:hover { background:rgba(124,58,237,0.2) !important; color:#4c1d95 !important; }
+[data-theme="orgullo"] .perfil-acciones .dropdown-item:hover { background:rgba(124,58,237,0.32) !important; color:#4c1d95 !important; }
 [data-theme="orgullo"] .perfil-acciones .dropdown-item.text-danger { color:#dc2626 !important; }
 [data-theme="orgullo"] .perfil-acciones .dropdown-item.text-danger:hover { background:rgba(239,68,68,0.14) !important; color:#b91c1c !important; }
 [data-theme="orgullo"] .perfil-acciones .dropdown-divider { border-color:rgba(139,92,246,0.25) !important; }
@@ -3424,8 +3510,8 @@ html[data-theme="orgullo"] .table-snc td a { color:var(--accent-dark) !important
 [data-theme="orgullo"] .btn-close-custom:hover { background-color:#ef4444 !important; border-color:#ef4444 !important; color:#ffffff !important; opacity:1; }
 /* ===== ORGULLO: MODAL SALVA/RESTAURA (Windows 11 style) ===== */
 [data-theme="orgullo"] .win-modal-titlebar { background:var(--accent); }
-[data-theme="orgullo"] .win-modal-body { background:#cbc3e3; color:#33264d; }
-[data-theme="orgullo"] .win-modal-footer { border-color:rgba(51,38,77,0.25); color:#493a66; }
+[data-theme="orgullo"] .win-modal-body { background:var(--panel-2); color:var(--txt); }
+[data-theme="orgullo"] .win-modal-footer { border-color:var(--border); color:var(--muted); }
 [data-theme="orgullo"] .permisos-leyenda { background:rgba(255,255,255,0.5) !important; border-color:rgba(51,38,77,0.2) !important; color:#33264d !important; }
 [data-theme="orgullo"] .filter-label { color:#33264d !important; }
 /* ===== SIDEBAR: SIN BORDES EN REPOSO, SOLO AL HOVER (todos los temas) ===== */
@@ -3464,7 +3550,9 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
     --violet:var(--accent-light);
     --green:var(--color-success);
     --amber:#f59e0b;
+    --amber-rgb:245, 158, 11;
     --red:#ef4444;
+    --red-rgb:239, 68, 68;
     --cyan:#06b6d4;
     --shadow:0 0.25rem 0.75rem rgba(0,0,0,0.25);
     --color-success:#10b981;
@@ -3671,8 +3759,8 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 [data-theme="win11"] .stat-card-prof .stat-bar { background:#3d3d3d !important; }
 [data-theme="win11"] .ajuste-seccion { background:#262626 !important; border-color:#3d3d3d !important; }
 [data-theme="win11"] .ajuste-seccion div:not(.stat-value) { color:#9d9d9d !important; }
-[data-theme="win11"] .win-modal-body { background:#262626; color:#ffffff; }
-[data-theme="win11"] .win-modal-footer { border-color:#3d3d3d; color:#ffffff; }
+[data-theme="win11"] .win-modal-body { background:var(--panel-2); color:var(--txt); }
+[data-theme="win11"] .win-modal-footer { border-color:var(--border); color:var(--muted); }
 [data-theme="win11"] .permisos-leyenda { background:rgba(255,255,255,0.04) !important; border-color:#3d3d3d !important; color:#ffffff !important; }
 [data-theme="win11"] .filter-label { color:#ffffff !important; }
 [data-theme="win11"] .inline-totals,
@@ -3869,7 +3957,7 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 					<i class="fas fa-user me-3 text-primary" style="width: 20px;"></i>
 					<div>
 						<span class="d-block" style="color: var(--win-text-primary);">Mi Perfil</span>
-						<small class="text-muted d-block" style="font-size: 12px;">Ver y editar tu información</small>
+						<small class="text-muted d-block" style="font-size: 12px;">Ver, editar y Configurar tu información</small>
 					</div>
 				</a>
 			</li>
@@ -4161,6 +4249,45 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
         if (icon) { icon.className = (t === 'light' || t === 'orgullo') ? 'fas fa-moon' : 'fas fa-sun'; }
         window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: t } }));
     };
+})();
+</script>
+
+<script>
+// Atajos de teclado globales (CTRL+ALT+S / CTRL+ALT+W / CTRL+ALT+X).
+// Bloque independiente: se registra al inicio para no depender de que el
+// bloque grande de abajo termine de ejecutarse sin errores. Usa e.code
+// (inmune a layout/AltGr) con e.key como respaldo, y capture en window para
+// que se ejecute primero aunque algún elemento intermedio haga stopPropagation.
+(function () {
+    function esEditable(t) {
+        return t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement ||
+            t instanceof HTMLSelectElement || (t && t.isContentEditable);
+    }
+    window.addEventListener('keydown', function (e) {
+        if (!e.ctrlKey) return;
+        var code = e.code || '';
+        var key = (e.key || '').toUpperCase();
+        if (e.altKey) {
+            if (code === 'KeyS' || key === 'S') {
+                e.preventDefault(); e.stopPropagation();
+                if (typeof mostrarModalSalvaRestaura === 'function') mostrarModalSalvaRestaura();
+                return;
+            }
+            if (code === 'KeyW' || key === 'W') {
+                e.preventDefault(); e.stopPropagation();
+                if (typeof solicitarBloqueoSesion === 'function') solicitarBloqueoSesion();
+                return;
+            }
+            if (code === 'KeyX' || key === 'X') {
+                e.preventDefault(); e.stopPropagation();
+                if (typeof solicitarCerrarSesion === 'function') solicitarCerrarSesion();
+                return;
+            }
+        } else if (!e.altKey && !e.shiftKey && (code === 'KeyX' || key === 'X') && !esEditable(e.target)) {
+            e.preventDefault(); e.stopPropagation();
+            if (typeof solicitarCerrarSesion === 'function') solicitarCerrarSesion();
+        }
+    }, true);
 })();
 </script>
 
@@ -4569,6 +4696,8 @@ function mostrarPermisosRol() {
     });
 }
 
+
+
 function mostrarModalSalvaRestaura() {
     if (typeof Swal === 'undefined' || typeof Swal.fire !== 'function') {
         var s = document.createElement('script');
@@ -4577,227 +4706,1585 @@ function mostrarModalSalvaRestaura() {
         document.head.appendChild(s);
         return;
     }
+
     var restoreDisabled = !PUEDE_RESTAURAR;
-    var html = '';
-    html += '<div class="win-modal-titlebar">';
-    html += '<div class="win-modal-titlebar-icon"><i class="fas fa-database"></i></div>';
-    html += '<div class="win-modal-titlebar-text">';
-    html += '<div style="font-size:0.8125rem;font-weight:600;">Salva / Restaura</div>';
-    html += '<div style="font-size:0.6875rem;font-weight:400;opacity:0.7;">Gestión de copias de seguridad del sistema</div>';
-    html += '</div>';
-    html += '<div class="win-modal-titlebar-btns">';
-    html += '<button type="button" class="win-modal-btn-close" onclick="Swal.close();" title="Cerrar"><i class="fas fa-times"></i></button>';
-    html += '</div>';
-    html += '</div>';
-    html += '<div class="win-modal-body">';
-    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.625rem;">';
 
-    html += '<button type="button" onclick="accionSalvaOrdinaria()" data-tooltip="Salva Ordinaria" data-tooltip-theme="success" style="display:flex;flex-direction:column;align-items:flex-start;gap:0.625rem;text-align:left;padding:1rem;border-radius:0.875rem;border:0.0625rem solid rgba(var(--color-success-soft-rgb),0.35);background:rgba(var(--color-success-soft-rgb),0.06);color:var(--txt);cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background=\'rgba(var(--color-success-soft-rgb),0.25)\';this.style.borderColor=\'rgba(var(--color-success-soft-rgb),0.6)\'" onmouseout="this.style.background=\'rgba(var(--color-success-soft-rgb),0.06)\';this.style.borderColor=\'rgba(var(--color-success-soft-rgb),0.35)\'">' +
-        '<span style="width:2.375rem;height:2.375rem;border-radius:0.625rem;display:flex;align-items:center;justify-content:center;font-size:1.0625rem;color:var(--color-success-soft);background:rgba(var(--color-success-soft-rgb),0.15);"><i class="fas fa-download"></i></span>' +
-        '<span style="font-weight:700;font-size:0.8125rem;">Salva Ordinaria</span>' +
-        '<span style="font-size:0.6875rem;color:var(--muted);line-height:1.3;">Copia completa del sistema</span>' +
-        '</button>';
+    if (!document.getElementById('sr-flat-styles')) {
+        var st = document.createElement('style');
+        st.id = 'sr-flat-styles';
+        st.textContent = `
+        /* ===== Popup ===== */
+        .sr-flat-popup{
+            font-family:inherit!important;
+            border-radius:.75rem!important;
+            overflow:hidden!important;
+            background:transparent!important;
+            border:none!important;
+            box-shadow:none!important;
+            padding:0!important;
+            animation:none!important;
+        }
+        .sr-flat-popup .swal2-html-container{
+            margin:0!important; padding:0!important; overflow:visible!important;
+        }
 
-    html += '<button type="button" onclick="accionSalvaConNombre()" data-tooltip="Salva con nombre" data-tooltip-theme="info" style="display:flex;flex-direction:column;align-items:flex-start;gap:0.625rem;text-align:left;padding:1rem;border-radius:0.875rem;border:0.0625rem solid rgba(var(--blue-soft-rgb),0.35);background:rgba(var(--blue-soft-rgb),0.06);color:var(--txt);cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background=\'rgba(var(--blue-soft-rgb),0.25)\';this.style.borderColor=\'rgba(var(--blue-soft-rgb),0.6)\'" onmouseout="this.style.background=\'rgba(var(--blue-soft-rgb),0.06)\';this.style.borderColor=\'rgba(var(--blue-soft-rgb),0.35)\'">' +
-        '<span style="width:2.375rem;height:2.375rem;border-radius:0.625rem;display:flex;align-items:center;justify-content:center;font-size:1.0625rem;color:var(--blue);background:rgba(var(--blue-soft-rgb),0.15);"><i class="fas fa-file-export"></i></span>' +
-        '<span style="font-weight:700;font-size:0.8125rem;">Salva con nombre (Recomendada)</span>' +
-        '<span style="font-size:0.6875rem;color:var(--muted);line-height:1.3;">Backup con etiqueta</span>' +
-        '</button>';
+        /* ===== Ventana plana ===== */
+        .sr-flat{
+            position:relative;
+            background:var(--bg);
+            color:var(--txt);
+            border-radius:.75rem;
+            border:1px solid rgba(var(--blue-soft-rgb),.2);
+            padding:1.5rem;
+            transform-origin:center center;
+            will-change:transform;
+        }
 
-    if (restoreDisabled) {
-        html += '<div style="display:flex;flex-direction:column;align-items:flex-start;gap:0.625rem;text-align:left;padding:1rem;border-radius:0.875rem;border:0.0625rem solid rgba(148,163,184,0.2);background:rgba(148,163,184,0.04);color:var(--faint);">' +
-            '<span style="width:2.375rem;height:2.375rem;border-radius:0.625rem;display:flex;align-items:center;justify-content:center;font-size:1.0625rem;background:rgba(148,163,184,0.12);"><i class="fas fa-upload"></i></span>' +
-            '<span style="font-weight:700;font-size:0.8125rem;">Restaurar</span>' +
-            '<span style="font-size:0.6875rem;line-height:1.3;">Solo Admin/Soft/Editor</span>' +
-            '</div>';
-    } else {
-        html += '<button type="button" onclick="accionRestaurar()" data-tooltip="Restaurar" data-tooltip-theme="warning" style="display:flex;flex-direction:column;align-items:flex-start;gap:0.625rem;text-align:left;padding:1rem;border-radius:0.875rem;border:0.0625rem solid rgba(var(--amber-soft-rgb),0.35);background:rgba(var(--amber-soft-rgb),0.06);color:var(--txt);cursor:pointer;font-family:inherit;transition:.15s;" onmouseover="this.style.background=\'rgba(var(--amber-soft-rgb),0.25)\';this.style.borderColor=\'rgba(var(--amber-soft-rgb),0.6)\'" onmouseout="this.style.background=\'rgba(var(--amber-soft-rgb),0.06)\';this.style.borderColor=\'rgba(var(--amber-soft-rgb),0.35)\'">' +
-            '<span style="width:2.375rem;height:2.375rem;border-radius:0.625rem;display:flex;align-items:center;justify-content:center;font-size:1.0625rem;color:var(--amber);background:rgba(var(--amber-soft-rgb),0.15);"><i class="fas fa-upload"></i></span>' +
-            '<span style="font-weight:700;font-size:0.8125rem;">Restaurar</span>' +
-            '<span style="font-size:0.6875rem;color:var(--muted);line-height:1.3;">Recuperar desde copia</span>' +
-            '</button>';
+        /* ===== Botón cerrar (solo ×) ===== */
+        .sr-flat-close{
+            position:absolute;top:1rem;right:1rem;
+            width:2rem;height:2rem;border-radius:.5rem;
+            border:none;background:transparent;
+            color:var(--muted);cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.875rem;
+            transition:background .12s,color .12s,transform .12s;
+            z-index:2;
+        }
+        .sr-flat-close:hover{
+            background:rgba(var(--blue-soft-rgb),.12);
+            color:var(--txt);
+            transform:rotate(90deg);
+        }
+        .sr-flat-close:active{
+            background:rgba(var(--blue-soft-rgb),.2);
+        }
+
+        /* ===== Barra de título ===== */
+        .sr-flat-titlebar{
+            display:flex;align-items:center;gap:.75rem;
+            margin-bottom:1.5rem;
+            padding-right:2.5rem;
+        }
+        .sr-flat-titlebar-icon{
+            width:2.25rem;height:2.25rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:1rem;
+            color:var(--blue);
+            background:rgba(var(--blue-soft-rgb),.14);
+        }
+        .sr-flat-titlebar-txt{min-width:0}
+
+        .sr-flat-title{
+            font-size:1.25rem;font-weight:700;
+            color:var(--txt);
+            letter-spacing:-.02em;
+            line-height:1.2;
+            margin:0;
+        }
+        .sr-flat-sub{
+            font-size:.8125rem;color:var(--muted);
+            line-height:1.4;
+            margin:.125rem 0 0;
+        }
+
+        /* ===== Filas ===== */
+        .sr-flat-row{
+            position:relative;
+            display:flex;align-items:center;gap:1rem;
+            width:100%;
+            padding:1.125rem 1.25rem;
+            border-radius:.625rem;
+            border:2px solid rgba(var(--blue-soft-rgb),.15);
+            background:transparent;
+            color:var(--txt);font-family:inherit;text-align:left;
+            cursor:pointer;
+            transition:border-color .18s,background .18s,transform .18s,box-shadow .18s;
+            animation:srFlatIn .3s ease both;
+        }
+        .sr-flat-row + .sr-flat-row{margin-top:.625rem}
+
+        .sr-flat-row:hover{
+            border-color:var(--sr-accent);
+            background:var(--sr-icon-bg);
+            transform:translateX(4px);
+            box-shadow:
+                0 0 0 3px var(--sr-icon-bg),
+                0 .5rem 1.25rem rgba(0,0,0,.12);
+        }
+        .sr-flat-row:active{
+            background:var(--sr-icon-bg);
+            transform:translateX(2px) scale(.995);
+        }
+        .sr-flat-row:focus-visible{
+            outline:2px solid var(--sr-accent);
+            outline-offset:2px;
+        }
+
+        .sr-flat-icon{
+            width:2.75rem;height:2.75rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.125rem;
+            color:var(--sr-accent);
+            background:var(--sr-icon-bg);
+            transition:transform .18s cubic-bezier(.2,.8,.2,1),
+                       background .18s,
+                       color .18s;
+        }
+        .sr-flat-row:hover .sr-flat-icon{
+            transform:scale(1.12);
+            color:#fff;
+            background:var(--sr-accent);
+        }
+
+        .sr-flat-txt{flex:1;min-width:0}
+        .sr-flat-row-title{
+            font-size:.9375rem;font-weight:600;
+            color:var(--txt);
+            display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
+            line-height:1.2;
+        }
+        .sr-flat-row-desc{
+            font-size:.8125rem;color:var(--muted);
+            margin-top:.25rem;line-height:1.4;
+        }
+
+        .sr-flat-badge{
+            display:inline-flex;align-items:center;gap:.25rem;
+            font-size:.625rem;font-weight:700;
+            letter-spacing:.04em;text-transform:uppercase;
+            padding:.1875rem .5rem;border-radius:.3125rem;
+            background:var(--sr-icon-bg);
+            color:var(--sr-accent);
+        }
+        .sr-flat-badge i{font-size:.5rem}
+
+        .sr-flat-chev{
+            font-size:.875rem;
+            color:var(--muted);
+            flex-shrink:0;
+            transition:transform .15s,color .15s;
+        }
+        .sr-flat-row:hover .sr-flat-chev{
+            color:var(--sr-accent);
+            transform:translateX(3px);
+        }
+
+        /* Variantes */
+        .sr-flat-row--success{
+            --sr-accent:var(--color-success-soft);
+            --sr-icon-bg:rgba(var(--color-success-soft-rgb),.14);
+        }
+        .sr-flat-row--info{
+            --sr-accent:var(--blue);
+            --sr-icon-bg:rgba(var(--blue-soft-rgb),.14);
+        }
+        .sr-flat-row--warning{
+            --sr-accent:var(--amber);
+            --sr-icon-bg:rgba(var(--amber-soft-rgb),.14);
+        }
+
+        /* Deshabilitado */
+        .sr-flat-row--disabled{
+            cursor:not-allowed;opacity:.45;
+            --sr-accent:var(--faint);
+            --sr-icon-bg:rgba(148,163,184,.1);
+        }
+        .sr-flat-row--disabled:hover{
+            border-color:rgba(var(--blue-soft-rgb),.15);
+            background:transparent;
+            transform:none;
+            box-shadow:none;
+        }
+        .sr-flat-row--disabled:hover .sr-flat-icon{
+            transform:none;
+            color:var(--faint);
+            background:rgba(148,163,184,.1);
+        }
+        .sr-flat-row--disabled:hover .sr-flat-chev{transform:none;color:var(--muted)}
+
+        /* ===== Footer ===== */
+        .sr-flat-footer{
+            display:flex;align-items:center;justify-content:space-between;
+            gap:.75rem;
+            margin-top:1.5rem;
+            padding-top:1.25rem;
+            border-top:1px solid rgba(var(--blue-soft-rgb),.15);
+        }
+        .sr-flat-footer-info{
+            font-size:.75rem;color:var(--muted);
+            display:flex;align-items:center;gap:.5rem;
+        }
+        .sr-flat-footer-info i{font-size:.8125rem;opacity:.7}
+        .sr-flat-footer-info .sep{opacity:.4}
+
+        .sr-flat-btns{
+            display:flex;align-items:center;gap:.5rem;
+        }
+        .sr-flat-btn{
+            display:inline-flex;align-items:center;justify-content:center;gap:.375rem;
+            padding:.625rem 1.25rem;
+            border-radius:.5rem;
+            font-size:.8125rem;font-weight:600;
+            font-family:inherit;
+            cursor:pointer;
+            border:1px solid rgba(var(--blue-soft-rgb),.2);
+            background:transparent;
+            color:var(--txt);
+            transition:background .12s,border-color .12s;
+        }
+        .sr-flat-btn:hover{
+            background:rgba(var(--blue-soft-rgb),.08);
+            border-color:rgba(var(--blue-soft-rgb),.35);
+        }
+        .sr-flat-btn:active{background:rgba(var(--blue-soft-rgb),.15)}
+        .sr-flat-btn i{font-size:.75rem;opacity:.8}
+        .sr-flat-btn:hover i{opacity:1}
+
+        .sr-flat-btn--primary{
+            background:var(--blue);
+            border-color:var(--blue);
+            color:#fff;
+        }
+        .sr-flat-btn--primary:hover{
+            background:var(--blue);
+            border-color:var(--blue);
+            filter:brightness(1.1);
+        }
+        .sr-flat-btn--primary i{opacity:1}
+
+        /* ===== Animaciones ===== */
+        .sr-flat-row:nth-child(1){animation-delay:.03s}
+        .sr-flat-row:nth-child(2){animation-delay:.08s}
+        .sr-flat-row:nth-child(3){animation-delay:.13s}
+        @keyframes srFlatIn{
+            from{opacity:0;transform:translateY(6px)}
+            to{opacity:1;transform:translateY(0)}
+        }
+
+        /* Pulse al clic fuera */
+        .sr-flat.sr-pulse{
+            animation:srFlatPulse .5s ease-in-out both;
+        }
+        @keyframes srFlatPulse{
+            0%   { transform:scale(1); }
+            35%  { transform:scale(1.03); }
+            65%  { transform:scale(.985); }
+            100% { transform:scale(1); }
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .sr-flat-row,
+            .sr-flat.sr-pulse{ animation:none; }
+        }
+        `;
+        document.head.appendChild(st);
     }
 
-    html += '</div>';
-    html += '<div class="win-modal-footer"><i class="fas fa-info-circle me-1"></i> Incluye toda la Base de Datos y configuraciones. (formato ZIP).</div>';
+    // ---- HTML ----
+    var html = '';
+    html += '<div class="sr-flat" role="dialog" aria-label="Salva / Restaura">';
+
+    // Botón cerrar (solo ×)
+    html +=   '<button type="button" class="sr-flat-close" onclick="Swal.close();" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+
+    // Barra de título con icono de base de datos
+    html +=   '<div class="sr-flat-titlebar">';
+    html +=     '<div class="sr-flat-titlebar-icon"><i class="fas fa-database"></i></div>';
+    html +=     '<div class="sr-flat-titlebar-txt">';
+    html +=       '<h2 class="sr-flat-title">Salva / Restaura</h2>';
+    html +=       '<p class="sr-flat-sub">Gestiona las copias de seguridad del sistema.</p>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    // Fila 1: Salva Ordinaria
+    html += '<button type="button" class="sr-flat-row sr-flat-row--success" onclick="accionSalvaOrdinaria()" data-tooltip="Salva Ordinaria" data-tooltip-theme="success">' +
+              '<span class="sr-flat-icon"><i class="fas fa-download"></i></span>' +
+              '<span class="sr-flat-txt">' +
+                '<span class="sr-flat-row-title">Salva Ordinaria</span>' +
+                '<span class="sr-flat-row-desc">Copia completa del sistema sin etiqueta</span>' +
+              '</span>' +
+              '<i class="fas fa-chevron-right sr-flat-chev"></i>' +
+            '</button>';
+
+    // Fila 2: Salva con nombre
+    html += '<button type="button" class="sr-flat-row sr-flat-row--info" onclick="accionSalvaConNombre()" data-tooltip="Salva con nombre" data-tooltip-theme="info">' +
+              '<span class="sr-flat-icon"><i class="fas fa-file-export"></i></span>' +
+              '<span class="sr-flat-txt">' +
+                '<span class="sr-flat-row-title">Salva con nombre <span class="sr-flat-badge"><i class="fas fa-star"></i> Recomendada</span></span>' +
+                '<span class="sr-flat-row-desc">Backup con etiqueta personalizada para identificarlo fácilmente</span>' +
+              '</span>' +
+              '<i class="fas fa-chevron-right sr-flat-chev"></i>' +
+            '</button>';
+
+    // Fila 3: Restaurar
+    if (restoreDisabled) {
+        html += '<div class="sr-flat-row sr-flat-row--disabled" aria-disabled="true" title="Solo Admin / Soft / Editor">' +
+                  '<span class="sr-flat-icon"><i class="fas fa-lock"></i></span>' +
+                  '<span class="sr-flat-txt">' +
+                    '<span class="sr-flat-row-title">Restaurar</span>' +
+                    '<span class="sr-flat-row-desc">Requiere rol Admin / Soft / Editor</span>' +
+                  '</span>' +
+                '</div>';
+    } else {
+        html += '<button type="button" class="sr-flat-row sr-flat-row--warning" onclick="accionRestaurar()" data-tooltip="Restaurar" data-tooltip-theme="warning">' +
+                  '<span class="sr-flat-icon"><i class="fas fa-upload"></i></span>' +
+                  '<span class="sr-flat-txt">' +
+                    '<span class="sr-flat-row-title">Restaurar</span>' +
+                    '<span class="sr-flat-row-desc">Recuperar el sistema desde una copia de seguridad</span>' +
+                  '</span>' +
+                  '<i class="fas fa-chevron-right sr-flat-chev"></i>' +
+                '</button>';
+    }
+
+    // Footer
+    html +=   '<div class="sr-flat-footer">';
+    html +=     '<div class="sr-flat-footer-info">' +
+                  '<i class="fas fa-file-zipper"></i> ZIP' +
+                  '<span class="sep">·</span>' +
+                  '<i class="fas fa-database"></i> BD' +
+                  '<span class="sep">·</span>' +
+                  '<i class="fas fa-cog"></i> Config' +
+                '</div>';
+    html +=     '<div class="sr-flat-btns">';
+    html +=       '<button type="button" class="sr-flat-btn" onclick="Swal.close();">' +
+                    '<i class="fas fa-ban"></i> Cancelar' +
+                  '</button>';
+    html +=       '<button type="button" class="sr-flat-btn sr-flat-btn--primary" onclick="accionSalvaConNombre()">' +
+                    '<i class="fas fa-arrow-right"></i> Continuar' +
+                  '</button>';
+    html +=     '</div>';
+    html +=   '</div>';
+
     html += '</div>';
 
     Swal.fire({
         html: html,
-        width:'37.5rem',
+        width: '40rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        padding: '0',
+        customClass: { popup: 'sr-flat-popup' },
+        didOpen: function () {
+            var cont  = Swal.getContainer();
+            var popup = Swal.getPopup();
+
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.5)';
+                cont.style.alignItems = 'center';
+            }
+            if (popup) {
+                popup.style.border = 'none';
+                popup.style.padding = '0';
+                popup.style.overflow = 'visible';
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
+            }
+
+            var first = popup && popup.querySelector('.sr-flat-row');
+            if (first) first.focus({ preventScroll: true });
+
+            // Animación al clic fuera
+            if (!window.__srFlatOutside) {
+                window.__srFlatOutside = function (e) {
+                    var pop = (typeof Swal.getPopup === 'function') ? Swal.getPopup() : null;
+                    if (!pop) return;
+                    if (!pop.contains(e.target)) {
+                        var box = pop.querySelector('.sr-flat');
+                        if (!box) return;
+                        box.classList.remove('sr-pulse');
+                        void box.offsetWidth;
+                        box.classList.add('sr-pulse');
+                        setTimeout(function () {
+                            box.classList.remove('sr-pulse');
+                        }, 520);
+                    }
+                };
+                document.addEventListener('click', window.__srFlatOutside, true);
+            }
+
+            if (!window.__srFlatCleanup) {
+                window.__srFlatCleanup = function () {
+                    if (window.__srFlatOutside) {
+                        document.removeEventListener('click', window.__srFlatOutside, true);
+                        window.__srFlatOutside = null;
+                    }
+                    window.__srFlatCleanup = null;
+                };
+                var check = setInterval(function () {
+                    if (typeof Swal.isVisible !== 'function' || !Swal.isVisible()) {
+                        clearInterval(check);
+                        if (window.__srFlatCleanup) window.__srFlatCleanup();
+                    }
+                }, 300);
+            }
+        }
+    });
+}
+
+
+function accionSalvaOrdinaria() {
+    Swal.close();
+
+    // ---- Estilos ----
+    if (!document.getElementById('sr-orb-backup-styles')) {
+        var st = document.createElement('style');
+        st.id = 'sr-orb-backup-styles';
+        st.textContent = `
+        .sr-ob-popup{
+            font-family:inherit!important;
+            background:transparent!important;
+            border:none!important;
+            box-shadow:none!important;
+            padding:0!important;
+            overflow:visible!important;
+            animation:none!important;
+        }
+        .sr-ob-popup .swal2-html-container{
+            margin:0!important; padding:0!important; overflow:visible!important;
+        }
+        .sr-ob-popup .swal2-actions{ display:none!important; }
+
+        .sr-ob{
+            position:relative;
+            background:var(--bg);
+            color:var(--txt);
+            border-radius:1.25rem;
+            border:1px solid rgba(var(--blue-soft-rgb),.18);
+            padding:2rem 1.75rem 1.75rem;
+            overflow:hidden;
+            box-shadow:
+                0 2rem 4rem rgba(0,0,0,.35),
+                0 0 0 1px rgba(255,255,255,.03) inset;
+            text-align:left;
+            animation:srObIn .4s cubic-bezier(.2,.8,.2,1) both;
+        }
+        @keyframes srObIn{
+            from{opacity:0;transform:scale(.94) translateY(10px);filter:blur(4px)}
+            to{opacity:1;transform:scale(1) translateY(0);filter:blur(0)}
+        }
+
+        /* Orbes de fondo */
+        .sr-ob::before,
+        .sr-ob::after{
+            content:'';position:absolute;border-radius:50%;
+            filter:blur(70px);opacity:.28;pointer-events:none;z-index:0;
+        }
+        .sr-ob::before{
+            width:16rem;height:16rem;
+            top:-8rem;left:-5rem;
+            background:radial-gradient(circle,
+                rgba(var(--color-success-soft-rgb),.9), transparent 70%);
+        }
+        .sr-ob::after{
+            width:14rem;height:14rem;
+            bottom:-7rem;right:-4rem;
+            background:radial-gradient(circle,
+                rgba(var(--blue-soft-rgb),.7), transparent 70%);
+        }
+
+        /* Botón cerrar */
+        .sr-ob-close{
+            position:absolute;top:.875rem;right:.875rem;z-index:3;
+            width:2rem;height:2rem;border-radius:.5rem;
+            border:none;background:transparent;
+            color:var(--muted);cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.8125rem;
+            transition:background .15s,color .15s,transform .2s;
+        }
+        .sr-ob-close:hover{
+            background:rgba(var(--red-rgb),.12);
+            color:var(--red);
+            transform:rotate(90deg);
+        }
+
+        /* Cabecera */
+        .sr-ob-head{
+            position:relative;z-index:2;
+            display:flex;flex-direction:column;align-items:center;
+            text-align:center;
+            margin-bottom:1.75rem;
+        }
+        .sr-ob-badge{
+            display:inline-flex;align-items:center;gap:.5rem;
+            padding:.375rem .875rem;
+            border-radius:999px;
+            background:rgba(var(--color-success-soft-rgb),.1);
+            border:1px solid rgba(var(--color-success-soft-rgb),.22);
+            font-size:.6875rem;font-weight:600;
+            color:var(--txt);
+            letter-spacing:.02em;
+            margin-bottom:.875rem;
+        }
+        .sr-ob-badge-icon{
+            color:var(--color-success-soft);
+            font-size:.75rem;
+        }
+        .sr-ob-badge-dot{
+            width:.375rem;height:.375rem;border-radius:50%;
+            background:var(--color-success-soft);
+            box-shadow:0 0 0 0 rgba(var(--color-success-soft-rgb),.5);
+            animation:srObDot 2s cubic-bezier(.4,0,.6,1) infinite;
+        }
+        @keyframes srObDot{
+            0%,100%{ box-shadow:0 0 0 0 rgba(var(--color-success-soft-rgb),.5); }
+            50%    { box-shadow:0 0 0 .3125rem rgba(var(--color-success-soft-rgb),0); }
+        }
+        .sr-ob-title{
+            font-size:1.5rem;font-weight:700;
+            color:var(--txt);
+            letter-spacing:-.025em;
+            line-height:1.1;
+            margin:0;
+        }
+        .sr-ob-sub{
+            font-size:.8125rem;color:var(--muted);
+            margin-top:.375rem;
+            line-height:1.4;
+            max-width:24rem;
+        }
+
+        /* Grid de bloques */
+        .sr-ob-grid{
+            position:relative;z-index:2;
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:.75rem;
+            margin-bottom:1rem;
+        }
+        @media (max-width:540px){
+            .sr-ob-grid{ grid-template-columns:1fr; }
+        }
+
+        .sr-ob-block{
+            display:flex;align-items:flex-start;gap:.75rem;
+            padding:1rem;
+            border-radius:.875rem;
+            border:1px solid rgba(var(--blue-soft-rgb),.15);
+            background:rgba(var(--blue-soft-rgb),.04);
+        }
+        .sr-ob-block--full{ grid-column:1 / -1; }
+        .sr-ob-block-icon{
+            width:2.25rem;height:2.25rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.9375rem;
+            color:var(--sb-accent);
+            background:var(--sb-icon-bg);
+        }
+        .sr-ob-block--success{
+            --sb-accent:var(--color-success-soft);
+            --sb-icon-bg:rgba(var(--color-success-soft-rgb),.14);
+        }
+        .sr-ob-block--warning{
+            --sb-accent:var(--amber);
+            --sb-icon-bg:rgba(var(--amber-soft-rgb),.14);
+        }
+        .sr-ob-block--info{
+            --sb-accent:var(--blue);
+            --sb-icon-bg:rgba(var(--blue-soft-rgb),.14);
+        }
+        .sr-ob-block-txt{flex:1;min-width:0}
+        .sr-ob-block-title{
+            font-size:.8125rem;font-weight:700;
+            color:var(--txt);
+            line-height:1.2;
+            margin:0 0 .25rem;
+        }
+        .sr-ob-block-desc{
+            font-size:.6875rem;color:var(--muted);
+            line-height:1.4;
+            margin:0;
+        }
+
+        /* Lista de contenido */
+        .sr-ob-list{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:.375rem .875rem;
+            list-style:none;
+            padding:0;margin:0;
+            font-size:.75rem;
+            color:var(--muted);
+        }
+        .sr-ob-list li{
+            display:flex;align-items:center;gap:.5rem;
+            line-height:1.4;
+        }
+        .sr-ob-list i{
+            color:var(--color-success-soft);
+            font-size:.6875rem;
+            flex-shrink:0;
+        }
+        @media (max-width:540px){
+            .sr-ob-list{ grid-template-columns:1fr; }
+        }
+
+        /* Footer con botones */
+        .sr-ob-footer{
+            position:relative;z-index:2;
+            display:flex;align-items:center;justify-content:flex-end;
+            gap:.5rem;
+            margin-top:1.25rem;
+            padding-top:1.25rem;
+            border-top:1px solid rgba(var(--blue-soft-rgb),.15);
+        }
+
+        .sr-ob-btn{
+            display:inline-flex;align-items:center;justify-content:center;gap:.375rem;
+            padding:.625rem 1.125rem;
+            border-radius:.5rem;
+            font-size:.75rem;font-weight:600;
+            font-family:inherit;
+            cursor:pointer;
+            border:1px solid rgba(var(--blue-soft-rgb),.2);
+            background:transparent;
+            color:var(--txt);
+            transition:background .12s,border-color .12s,filter .12s;
+        }
+        .sr-ob-btn:hover{
+            background:rgba(var(--blue-soft-rgb),.08);
+            border-color:rgba(var(--blue-soft-rgb),.35);
+        }
+        .sr-ob-btn:active{ background:rgba(var(--blue-soft-rgb),.15); }
+        .sr-ob-btn i{ font-size:.6875rem;opacity:.85; }
+        .sr-ob-btn--primary{
+            background:var(--color-success-soft);
+            border-color:var(--color-success-soft);
+            color:#fff;
+        }
+        .sr-ob-btn--primary:hover{
+            background:var(--color-success-soft);
+            border-color:var(--color-success-soft);
+            filter:brightness(1.08);
+        }
+        .sr-ob-btn--primary i{ opacity:1; }
+        .sr-ob-btn--danger{
+            background:var(--red);
+            border-color:var(--red);
+            color:#fff;
+        }
+        .sr-ob-btn--danger:hover{
+            background:var(--red);
+            border-color:var(--red);
+            filter:brightness(1.08);
+        }
+
+        /* Spinner grande para progreso */
+        .sr-ob-spinner{
+            position:relative;
+            width:5rem;height:5rem;margin:0 auto 1.25rem;
+            border-radius:50%;
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.75rem;
+            color:var(--color-success-soft);
+            background:rgba(var(--color-success-soft-rgb),.1);
+            border:1px solid rgba(var(--color-success-soft-rgb),.25);
+        }
+        .sr-ob-spinner::before,
+        .sr-ob-spinner::after{
+            content:'';position:absolute;inset:-.25rem;
+            border-radius:50%;
+            border:2px solid transparent;
+            border-top-color:var(--color-success-soft);
+            animation:srObSpin 1.4s linear infinite;
+        }
+        .sr-ob-spinner::after{
+            inset:-.5rem;
+            border-top-color:rgba(var(--color-success-soft-rgb),.35);
+            animation-duration:1.8s;
+            animation-direction:reverse;
+        }
+        @keyframes srObSpin{
+            to{ transform:rotate(360deg); }
+        }
+
+        /* Barra de progreso (para cuando se active) */
+        .sr-ob-progress{
+            position:relative;
+            height:.5rem;
+            border-radius:999px;
+            background:rgba(var(--blue-soft-rgb),.15);
+            overflow:hidden;
+            margin-top:1rem;
+        }
+        .sr-ob-progress-fill{
+            position:absolute;inset:0 auto 0 0;
+            width:0%;
+            border-radius:999px;
+            background:linear-gradient(90deg,var(--color-success-soft),rgba(var(--color-success-soft-rgb),.85));
+            transition:width .4s cubic-bezier(.4,0,.2,1);
+        }
+
+        /* Detalles del éxito */
+        .sr-ob-detail{
+            display:flex;justify-content:space-between;
+            align-items:center;
+            padding:.5rem 0;
+            font-size:.75rem;
+            border-bottom:1px solid rgba(var(--blue-soft-rgb),.1);
+        }
+        .sr-ob-detail:last-child{ border-bottom:none; }
+        .sr-ob-detail-lbl{
+            color:var(--muted);
+            display:flex;align-items:center;gap:.375rem;
+        }
+        .sr-ob-detail-val{
+            color:var(--txt);
+            font-weight:600;
+            word-break:break-all;text-align:right;
+            max-width:60%;
+        }
+
+        /* Pulse al clic fuera */
+        .sr-ob.sr-pulse{
+            animation:srObPulse .5s ease-in-out both;
+        }
+        @keyframes srObPulse{
+            0%   { transform:scale(1); }
+            35%  { transform:scale(1.03); }
+            65%  { transform:scale(.985); }
+            100% { transform:scale(1); }
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .sr-ob,
+            .sr-ob-badge-dot,
+            .sr-ob-spinner::before,
+            .sr-ob-spinner::after,
+            .sr-ob.sr-pulse{ animation:none; }
+        }
+        `;
+        document.head.appendChild(st);
+    }
+
+    // ---- HTML de confirmación ----
+    var html = '';
+    html += '<div class="sr-ob">';
+
+    html +=   '<button type="button" class="sr-ob-close" id="srObClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+
+    html +=   '<div class="sr-ob-head">';
+    html +=     '<div class="sr-ob-badge">';
+    html +=       '<span class="sr-ob-badge-dot"></span>';
+    html +=       '<i class="fas fa-database sr-ob-badge-icon"></i>';
+    html +=       'Backup del sistema';
+    html +=     '</div>';
+    html +=     '<h1 class="sr-ob-title">Salva del Sistema Manual</h1>';
+    html +=     '<p class="sr-ob-sub">Se creará una copia de seguridad completa de tu sistema.</p>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-grid">';
+
+    // Bloque de contenido
+    html +=     '<div class="sr-ob-block sr-ob-block--full">';
+    html +=       '<div class="sr-ob-block-icon" style="color:var(--blue);background:rgba(var(--blue-soft-rgb),.14);"><i class="fas fa-list-check"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title">Contenido de la copia</p>';
+    html +=         '<ul class="sr-ob-list">';
+    html +=           '<li><i class="fas fa-circle-check"></i> Estructura completa de la BD</li>';
+    html +=           '<li><i class="fas fa-circle-check"></i> Datos de empleados y nóminas</li>';
+    html +=           '<li><i class="fas fa-circle-check"></i> Configuración y tasas del sistema</li>';
+    html +=           '<li><i class="fas fa-circle-check"></i> Historial de vacaciones y submayores</li>';
+    html +=         '</ul>';
+    html +=       '</div>';
+    html +=     '</div>';
+
+    // Bloque formato
+    html +=     '<div class="sr-ob-block sr-ob-block--success">';
+    html +=       '<div class="sr-ob-block-icon"><i class="fas fa-file-zipper"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title">Formato</p>';
+    html +=         '<p class="sr-ob-block-desc">ZIP comprimido</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+
+    // Bloque tiempo estimado
+    html +=     '<div class="sr-ob-block sr-ob-block--warning">';
+    html +=       '<div class="sr-ob-block-icon"><i class="fas fa-hourglass-half"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title">Duración</p>';
+    html +=         '<p class="sr-ob-block-desc">Unos segundos</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+
+    html +=   '</div>'; // grid
+
+    html +=   '<div class="sr-ob-footer">';
+    html +=     '<button type="button" class="sr-ob-btn" id="srObCancel"><i class="fas fa-ban me-1"></i> Cancelar</button>';
+    html +=     '<button type="button" class="sr-ob-btn sr-ob-btn--primary" id="srObConfirm"><i class="fas fa-download me-1"></i> Generar Backup</button>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    // ---- Modal de confirmación ----
+    Swal.fire({
+        html: html,
+        width: '42rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        padding: '0',
+        customClass: { popup: 'sr-ob-popup' },
+        didOpen: function () {
+            var cont  = Swal.getContainer();
+            var popup = Swal.getPopup();
+
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.55)';
+                cont.style.backdropFilter = 'blur(8px)';
+                cont.style.alignItems = 'center';
+            }
+            if (popup) {
+                popup.style.border = 'none';
+                popup.style.padding = '0';
+                popup.style.overflow = 'visible';
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
+            }
+
+            var close   = document.getElementById('srObClose');
+            var cancel  = document.getElementById('srObCancel');
+            var confirm = document.getElementById('srObConfirm');
+
+            if (close)  close.addEventListener('click',  function (e) { e.preventDefault(); e.stopPropagation(); Swal.close(); });
+            if (cancel) cancel.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); Swal.close(); });
+            if (confirm) confirm.addEventListener('click', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                Swal.close();
+                ejecutarBackupOrdinarioOrb();
+            });
+
+            // Pulse al clic fuera
+            if (!window.__srObOutside) {
+                window.__srObOutside = function (e) {
+                    var pop = (typeof Swal.getPopup === 'function') ? Swal.getPopup() : null;
+                    if (!pop) return;
+                    if (!pop.contains(e.target)) {
+                        var box = pop.querySelector('.sr-ob');
+                        if (!box) return;
+                        box.classList.remove('sr-pulse');
+                        void box.offsetWidth;
+                        box.classList.add('sr-pulse');
+                        setTimeout(function () { box.classList.remove('sr-pulse'); }, 520);
+                    }
+                };
+                document.addEventListener('click', window.__srObOutside, true);
+            }
+            if (!window.__srObCleanup) {
+                window.__srObCleanup = function () {
+                    if (window.__srObOutside) {
+                        document.removeEventListener('click', window.__srObOutside, true);
+                        window.__srObOutside = null;
+                    }
+                    window.__srObCleanup = null;
+                };
+                var check = setInterval(function () {
+                    if (typeof Swal.isVisible !== 'function' || !Swal.isVisible()) {
+                        clearInterval(check);
+                        if (window.__srObCleanup) window.__srObCleanup();
+                    }
+                }, 300);
+            }
+        }
+    });
+}
+
+/* ============================================================
+   Progreso + resultado del backup (estilo Glass Orb)
+   ============================================================ */
+
+function ejecutarBackupOrdinarioOrb() {
+    mostrarProgresoBackupOrb();
+
+    fetch(AJAX_BACKUP_URL, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        Swal.close();
+        if (data.success) {
+            mostrarExitoBackupOrb(data);
+        } else {
+            mostrarErrorBackupOrb(data.message);
+        }
+    })
+    .catch(function () {
+        Swal.close();
+        mostrarErrorBackupOrb('Error de conexión con el servidor');
+    });
+}
+
+function mostrarProgresoBackupOrb() {
+    var html = '';
+    html += '<div class="sr-ob">';
+
+    html +=   '<div class="sr-ob-head">';
+    html +=     '<div class="sr-ob-badge">';
+    html +=       '<span class="sr-ob-badge-dot"></span>';
+    html +=       '<i class="fas fa-database sr-ob-badge-icon"></i>';
+    html +=       'Backup del sistema';
+    html +=     '</div>';
+    html +=     '<h1 class="sr-ob-title">Generando Backup…</h1>';
+    html +=     '<p class="sr-ob-sub">Este proceso puede tardar unos segundos. No cierres esta ventana.</p>';
+    html +=   '</div>';
+
+    html +=   '<div style="position:relative;z-index:2;text-align:center;">';
+    html +=     '<div class="sr-ob-spinner"><i class="fas fa-file-zipper"></i></div>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-grid" style="margin-top:1.25rem;">';
+    html +=     '<div class="sr-ob-block sr-ob-block--full">';
+    html +=       '<div class="sr-ob-block-icon" style="color:var(--color-success-soft);background:rgba(var(--color-success-soft-rgb),.14);"><i class="fas fa-hourglass-half"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title">Creando copia completa</p>';
+    html +=         '<p class="sr-ob-block-desc">Empaquetando base de datos y configuraciones en un archivo ZIP.</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    Swal.fire({
+        html: html,
+        width: '42rem',
         showConfirmButton: false,
         showCancelButton: false,
         showCloseButton: false,
         allowOutsideClick: false,
         allowEscapeKey: false,
-        background: 'transparent',
-        color: '#e2e8f0',
-        customClass: { popup: 'salva-restaura-popup', container: 'salva-restaura-container' },
-        padding:'0',
+        padding: '0',
+        customClass: { popup: 'sr-ob-popup' },
         didOpen: function () {
-            var cont = (typeof Swal.getContainer === 'function') ? Swal.getContainer() : document.querySelector('.swal2-container');
-            if (cont) { cont.style.background = 'transparent'; cont.style.alignItems = 'center'; }
+            var cont  = Swal.getContainer();
             var popup = Swal.getPopup();
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.55)';
+                cont.style.backdropFilter = 'blur(8px)';
+                cont.style.alignItems = 'center';
+            }
             if (popup) {
                 popup.style.border = 'none';
-                popup.style.background = 'transparent';
-                popup.style.boxShadow = 'none';
                 popup.style.padding = '0';
                 popup.style.overflow = 'visible';
-            }
-            if (cont) {
-                cont.addEventListener('click', function (e) {
-                    if (e.target === cont && popup) {
-                        popup.classList.remove('win-modal-pulse');
-                        void popup.offsetWidth;
-                        popup.classList.add('win-modal-pulse');
-                    }
-                });
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
             }
         }
     });
 }
 
-function accionSalvaOrdinaria() {
-    Swal.close();
+function mostrarExitoBackupOrb(data) {
+    var html = '';
+    html += '<div class="sr-ob">';
+
+    html +=   '<button type="button" class="sr-ob-close" id="srObOkClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+
+    html +=   '<div class="sr-ob-head">';
+    html +=     '<div class="sr-ob-badge">';
+    html +=       '<span class="sr-ob-badge-dot"></span>';
+    html +=       '<i class="fas fa-circle-check sr-ob-badge-icon"></i>';
+    html +=       'Backup completado';
+    html +=     '</div>';
+    html +=     '<h1 class="sr-ob-title">¡Listo!</h1>';
+    html +=     '<p class="sr-ob-sub">La copia se generó correctamente. Puedes descargarla ahora.</p>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-grid">';
+    html +=     '<div class="sr-ob-block sr-ob-block--full">';
+    html +=       '<div class="sr-ob-block-icon" style="color:var(--color-success-soft);background:rgba(var(--color-success-soft-rgb),.14);"><i class="fas fa-file-zipper"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<div class="sr-ob-detail">';
+    html +=           '<span class="sr-ob-detail-lbl"><i class="fas fa-file me-1"></i> Archivo</span>';
+    html +=           '<span class="sr-ob-detail-val">' + (data.filename || '—') + '</span>';
+    html +=         '</div>';
+    html +=         '<div class="sr-ob-detail">';
+    html +=           '<span class="sr-ob-detail-lbl"><i class="fas fa-weight-hanging me-1"></i> Tamaño</span>';
+    html +=           '<span class="sr-ob-detail-val">' + (data.size || '—') + '</span>';
+    html +=         '</div>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-footer">';
+    html +=     '<a href="' + AJAX_PREFIX + data.download_url + '" download class="sr-ob-btn sr-ob-btn--primary" style="text-decoration:none;"><i class="fas fa-download me-1"></i> Descargar</a>';
+    html +=     '<button type="button" class="sr-ob-btn" id="srObOkDone"><i class="fas fa-check me-1"></i> Entendido</button>';
+    html +=   '</div>';
+
+    html += '</div>';
+
     Swal.fire({
-        title: '<i class="fas fa-database me-2" style="color: #fbbf24;"></i> Salva del Sistema Manual',
-        html: '<div style="text-align: left;"><p><i class="fas fa-info-circle me-2"></i> Se creará una copia de seguridad completa.</p><p><small>La copia incluirá: empleados, nóminas, configuración y vacaciones.</small></p><div class="alert alert-info mt-2"><i class="fas fa-clock me-1"></i> El archivo se guardará en formato ZIP</div></div>',
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        cancelButtonColor: '#64748b',
-        cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
-        confirmButtonText: '<i class="fas fa-download me-2"></i>Generar Backup',
-        background: '#1a1a2e',
-        color: '#fff'
-    }).then(function (result) {
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: '<i class="fas fa-spinner fa-pulse me-2"></i> Generando Backup...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-                background: '#1a1a2e',
-                color: '#fff'
-            });
-            fetch(AJAX_BACKUP_URL, {
-                method: 'GET',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        title: '<i class="fas fa-check-circle me-2"></i> Backup Completado',
-                        html: `<p>Archivo: ${data.filename}</p><p>Tamaño: ${data.size}</p><a href="${AJAX_PREFIX}${data.download_url}" class="btn btn-success" download><i class="fas fa-download me-2"></i> Descargar</a>`,
-                        icon: 'success',
-                        background: '#1a1a2e',
-                        color: '#fff',
-                        confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
-                    });
-                } else {
-                    Swal.fire({
-                        title: '<i class="fas fa-exclamation-triangle me-2"></i> Error',
-                        text: data.message,
-                        icon: 'error',
-                        background: '#1a1a2e',
-                        color: '#fff'
-                    });
-                }
-            })
-            .catch(() => {
-                Swal.fire({
-                    title: 'Error',
-                    text: 'Error de conexión',
-                    icon: 'error',
-                    background: '#1a1a2e',
-                    color: '#fff'
-                });
-            });
+        html: html,
+        width: '42rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        padding: '0',
+        customClass: { popup: 'sr-ob-popup' },
+        didOpen: function () {
+            var cont  = Swal.getContainer();
+            var popup = Swal.getPopup();
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.55)';
+                cont.style.backdropFilter = 'blur(8px)';
+                cont.style.alignItems = 'center';
+            }
+            if (popup) {
+                popup.style.border = 'none';
+                popup.style.padding = '0';
+                popup.style.overflow = 'visible';
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
+            }
+            var close = document.getElementById('srObOkClose');
+            var done  = document.getElementById('srObOkDone');
+            if (close) close.addEventListener('click', function () { Swal.close(); });
+            if (done)  done.addEventListener('click',  function () { Swal.close(); });
         }
     });
 }
+
+function mostrarErrorBackupOrb(mensaje) {
+    var html = '';
+    html += '<div class="sr-ob">';
+
+    html +=   '<button type="button" class="sr-ob-close" id="srObErrClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+
+    html +=   '<div class="sr-ob-head">';
+    html +=     '<div class="sr-ob-badge" style="background:rgba(var(--red-rgb),.1);border-color:rgba(var(--red-rgb),.22);">';
+    html +=       '<span class="sr-ob-badge-dot" style="background:var(--red);box-shadow:0 0 0 0 rgba(var(--red-rgb),.5);"></span>';
+    html +=       '<i class="fas fa-triangle-exclamation sr-ob-badge-icon" style="color:var(--red);"></i>';
+    html +=       'Error';
+    html +=     '</div>';
+    html +=     '<h1 class="sr-ob-title">No se pudo completar</h1>';
+    html +=     '<p class="sr-ob-sub">Ocurrió un problema al generar el backup.</p>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-grid">';
+    html +=     '<div class="sr-ob-block sr-ob-block--full" style="border-color:rgba(var(--red-rgb),.22);background:rgba(var(--red-rgb),.06);">';
+    html +=       '<div class="sr-ob-block-icon" style="color:var(--red);background:rgba(var(--red-rgb),.14);"><i class="fas fa-circle-exclamation"></i></div>';
+    html +=       '<div class="sr-ob-block-txt">';
+    html +=         '<p class="sr-ob-block-title" style="color:var(--red);">Detalles del error</p>';
+    html +=         '<p class="sr-ob-block-desc" style="word-break:break-word;">' + (mensaje || 'Error desconocido') + '</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-ob-footer">';
+    html +=     '<button type="button" class="sr-ob-btn sr-ob-btn--danger" id="srObErrDone"><i class="fas fa-check me-1"></i> Entendido</button>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    Swal.fire({
+        html: html,
+        width: '42rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: true,
+        padding: '0',
+        customClass: { popup: 'sr-ob-popup' },
+        didOpen: function () {
+            var cont  = Swal.getContainer();
+            var popup = Swal.getPopup();
+            if (cont) {
+                cont.style.background = 'rgba(0,0,0,.55)';
+                cont.style.backdropFilter = 'blur(8px)';
+                cont.style.alignItems = 'center';
+            }
+            if (popup) {
+                popup.style.border = 'none';
+                popup.style.padding = '0';
+                popup.style.overflow = 'visible';
+                popup.style.background = 'transparent';
+                popup.style.boxShadow = 'none';
+            }
+            var close = document.getElementById('srObErrClose');
+            var done  = document.getElementById('srObErrDone');
+            if (close) close.addEventListener('click', function () { Swal.close(); });
+            if (done)  done.addEventListener('click',  function () { Swal.close(); });
+        }
+    });
+}
+
+
 
 function accionSalvaConNombre() {
     Swal.close();
-    var html = '<div style="text-align:left;">';
-    html += '<div class="alert alert-info mb-4" style="background: rgba(96, 165, 250, 0.12); border: 0.0625rem solid rgba(96, 165, 250, 0.35); border-radius: 0.75rem;">';
-    html += '<div style="display: flex; align-items: flex-start; gap:0.75rem;">';
-    html += '<i class="fas fa-info-circle fa-2x" style="color: var(--accent);"></i>';
-    html += '<div><strong style="color: var(--accent);">Backup personalizado</strong><p class="mb-0 mt-1" style="color: #d1d5db;">Asigna un nombre descriptivo a tu backup para identificarlo fácilmente.</p></div>';
-    html += '</div></div>';
-    html += '<div class="mb-3"><label class="form-label"><i class="fas fa-tag me-1"></i> Nombre del backup <span class="text-danger">*</span></label>';
-    html += '<input type="text" class="form-control" id="swalBackupName" placeholder="Ej: backup_pre_actualizacion_2026_07_12" maxlength="50" style="background:#1a1a2e;border:0.0625rem solid rgba(255,255,255,0.15);color:#fff;">';
-    html += '<small class="text-secondary d-block mt-2"><i class="fas fa-info-circle me-1"></i> Se agregará automáticamente la fecha y hora: <span id="swalBackupPreview" style="color: var(--accent); font-family: monospace;">backup_sistema_YYYY_MM_DD_HH_MM</span></small>';
-    html += '<small class="text-secondary d-block mt-1"><i class="fas fa-info-circle me-1"></i> Máximo 50 caracteres (solo letras, números, guiones y guiones bajos)</small>';
-    html += '</div>';
-    html += '<div class="mb-3 p-3" style="background: rgba(16, 185, 129, 0.05); border-radius: 0.5rem;">';
-    html += '<h6 class="small" style="color: #9ca3af; margin-bottom:0.375rem;"><i class="fas fa-list-check me-1"></i> Contenido del backup:</h6>';
-    html += '<ul class="small" style="list-style: none; padding-left:0; margin-bottom:0; color: #9ca3af;">';
-    html += '<li style="color: #9ca3af;"><i class="fas fa-check-circle text-success me-1"></i> Estructura completa de la base de datos</li>';
-    html += '<li style="color: #9ca3af;"><i class="fas fa-check-circle text-success me-1"></i> Datos de empleados y nóminas</li>';
-    html += '<li style="color: #9ca3af;"><i class="fas fa-check-circle text-success me-1"></i> Configuración del sistema y tasas</li>';
-    html += '<li style="color: #9ca3af;"><i class="fas fa-check-circle text-success me-1"></i> Historial de vacaciones y submayores</li>';
-    html += '</ul></div>';
-    html += '<div class="form-check"><input type="checkbox" class="form-check-input" id="swalBackupConfirm">';
-    html += '<label class="form-check-label" for="swalBackupConfirm" style="color: #d1d5db; white-space: nowrap;"><i class="fas fa-check-circle me-1" style="color: #10b981;"></i> Confirmo que deseo crear este backup con el nombre especificado</label></div>';
-    html += '</div>';
+
+    // ---- Estilos únicos ----
+    if (!document.getElementById('sr-backup-name-styles')) {
+        var st = document.createElement('style');
+        st.id = 'sr-backup-name-styles';
+        st.textContent = `
+        .sr-bn-popup{
+            font-family:inherit!important;
+            border-radius:.75rem!important;
+            overflow:hidden!important;
+            background:transparent!important;
+            border:none!important;
+            box-shadow:none!important;
+            padding:0!important;
+        }
+        .sr-bn-popup .swal2-html-container{
+            margin:0!important; padding:0!important; overflow:visible!important;
+        }
+        /* Ocultamos el área de acciones nativa de Swal */
+        .sr-bn-popup .swal2-actions{
+            display:none!important;
+        }
+        .sr-bn-popup .swal2-validation-message{
+            background:rgba(var(--red-rgb),.08);
+            color:var(--red);
+            border:1px solid rgba(var(--red-rgb),.25);
+            border-radius:.5rem;
+            font-size:.75rem;
+            padding:.5rem .75rem;
+            margin:.75rem 1.25rem 0;
+        }
+
+        .sr-bn{
+            background:var(--bg);
+            color:var(--txt);
+            border-radius:.75rem;
+            border:1px solid rgba(var(--color-success-soft-rgb),.25);
+            overflow:hidden;
+            text-align:left;
+            animation:srBnIn .35s cubic-bezier(.2,.8,.2,1) both;
+        }
+        @keyframes srBnIn{
+            from{opacity:0;transform:translateY(8px)}
+            to{opacity:1;transform:translateY(0)}
+        }
+
+        /* ===== Barra de título ===== */
+        .sr-bn-titlebar{
+            display:flex;align-items:center;gap:.75rem;
+            padding:.875rem 1.25rem;
+            background:linear-gradient(135deg,
+                rgba(var(--color-success-soft-rgb),.18),
+                rgba(var(--color-success-soft-rgb),.04));
+            border-bottom:1px solid rgba(var(--color-success-soft-rgb),.2);
+        }
+        .sr-bn-titlebar-icon{
+            width:2.25rem;height:2.25rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.9375rem;color:#fff;
+            background:linear-gradient(135deg,var(--color-success-soft),rgba(var(--color-success-soft-rgb),.75));
+            box-shadow:0 .375rem .75rem rgba(var(--color-success-soft-rgb),.35);
+        }
+        .sr-bn-titlebar-txt{flex:1;min-width:0}
+        .sr-bn-title{
+            font-size:.9375rem;font-weight:700;
+            color:var(--txt);
+            letter-spacing:-.01em;
+            line-height:1.2;margin:0;
+        }
+        .sr-bn-sub{
+            font-size:.6875rem;color:var(--muted);
+            margin-top:.125rem;line-height:1.3;
+        }
+        .sr-bn-titlebar-close{
+            width:2rem;height:2rem;border-radius:.5rem;border:none;
+            background:transparent;
+            color:var(--muted);cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.875rem;
+            transition:background .15s,color .15s,transform .15s;
+            flex-shrink:0;
+        }
+        .sr-bn-titlebar-close:hover{
+            background:rgba(var(--red-rgb),.12);
+            color:var(--red);
+            transform:rotate(90deg);
+        }
+
+        /* ===== Cuerpo ===== */
+        .sr-bn-body{
+            padding:1.25rem;
+        }
+
+        /* ===== Bloque informativo ===== */
+        .sr-bn-info{
+            display:flex;align-items:flex-start;gap:.75rem;
+            padding:1rem;
+            border-radius:.625rem;
+            background:rgba(var(--color-success-soft-rgb),.08);
+            border:1px solid rgba(var(--color-success-soft-rgb),.22);
+            border-left:3px solid var(--color-success-soft);
+            margin-bottom:1rem;
+        }
+        .sr-bn-info-icon{
+            width:2rem;height:2rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.9375rem;
+            color:var(--color-success-soft);
+            background:rgba(var(--color-success-soft-rgb),.18);
+        }
+        .sr-bn-info-txt{flex:1;min-width:0}
+        .sr-bn-info-title{
+            font-size:.8125rem;font-weight:700;
+            color:var(--color-success-soft);
+            margin:0 0 .25rem;
+            line-height:1.2;
+        }
+        .sr-bn-info-msg{
+            font-size:.75rem;color:var(--muted);
+            line-height:1.5;margin:0;
+        }
+
+        /* ===== Campo de texto ===== */
+        .sr-bn-field{ margin-bottom:1rem; }
+        .sr-bn-label{
+            display:flex;align-items:center;gap:.375rem;
+            font-size:.75rem;font-weight:600;
+            color:var(--txt);
+            margin-bottom:.5rem;
+        }
+        .sr-bn-label i{color:var(--color-success-soft);font-size:.75rem}
+        .sr-bn-label .req{color:var(--red)}
+
+        .sr-bn-input-wrap{
+            position:relative;
+        }
+        .sr-bn-input-icon{
+            position:absolute;left:.875rem;top:50%;
+            transform:translateY(-50%);
+            color:var(--muted);font-size:.8125rem;
+            pointer-events:none;
+            transition:color .15s;
+        }
+        .sr-bn-input{
+            width:100%;
+            padding:.8125rem .875rem .8125rem 2.5rem;
+            border-radius:.5rem;
+            border:2px solid rgba(var(--blue-soft-rgb),.18);
+            background:transparent;
+            color:var(--txt);
+            font-family:inherit;font-size:.875rem;
+            outline:none;
+            transition:border-color .15s,box-shadow .15s;
+        }
+        .sr-bn-input:focus{
+            border-color:var(--color-success-soft);
+            box-shadow:0 0 0 3px rgba(var(--color-success-soft-rgb),.15);
+        }
+        .sr-bn-input-wrap:focus-within .sr-bn-input-icon{
+            color:var(--color-success-soft);
+        }
+        .sr-bn-input::placeholder{ color:var(--faint); }
+
+        /* ===== Preview del nombre final ===== */
+        .sr-bn-preview{
+            display:flex;align-items:center;gap:.625rem;
+            margin-top:.625rem;
+            padding:.625rem .875rem;
+            border-radius:.5rem;
+            background:rgba(var(--blue-soft-rgb),.05);
+            border:1px solid rgba(var(--blue-soft-rgb),.12);
+            font-size:.75rem;
+            color:var(--muted);
+            transition:background .18s,border-color .18s;
+        }
+        .sr-bn-preview-icon{
+            width:1.5rem;height:1.5rem;border-radius:.375rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.6875rem;
+            color:var(--color-success-soft);
+            background:rgba(var(--color-success-soft-rgb),.14);
+        }
+        .sr-bn-preview-txt{flex:1;min-width:0}
+        .sr-bn-preview-lbl{
+            font-size:.625rem;font-weight:700;
+            text-transform:uppercase;letter-spacing:.06em;
+            color:var(--muted);
+            line-height:1;
+            margin-bottom:.25rem;
+        }
+        .sr-bn-preview-val{
+            font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+            font-size:.75rem;
+            color:var(--color-success-soft);
+            font-weight:600;
+            word-break:break-all;
+            line-height:1.3;
+        }
+        .sr-bn-preview-val.empty{ color:var(--amber); }
+
+        /* ===== Contenido del backup ===== */
+        .sr-bn-content{
+            padding:1rem;
+            border-radius:.625rem;
+            background:rgba(var(--blue-soft-rgb),.05);
+            border:1px solid rgba(var(--blue-soft-rgb),.15);
+        }
+        .sr-bn-content-title{
+            font-size:.75rem;font-weight:700;
+            color:var(--muted);
+            text-transform:uppercase;
+            letter-spacing:.05em;
+            margin:0 0 .75rem;
+            display:flex;align-items:center;gap:.375rem;
+        }
+        .sr-bn-content-title i{color:var(--blue);font-size:.75rem}
+        .sr-bn-content-list{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:.375rem .875rem;
+            list-style:none;
+            padding:0;margin:0;
+            font-size:.75rem;
+            color:var(--muted);
+        }
+        .sr-bn-content-list li{
+            display:flex;align-items:center;gap:.5rem;
+            line-height:1.4;
+        }
+        .sr-bn-content-list i{
+            color:var(--color-success-soft);
+            font-size:.6875rem;
+            flex-shrink:0;
+        }
+        @media (max-width:520px){
+            .sr-bn-content-list{grid-template-columns:1fr}
+        }
+
+        /* ===== Footer con botones ===== */
+        .sr-bn-footer{
+            display:flex;align-items:center;justify-content:flex-end;
+            gap:.5rem;
+            padding:1rem 1.25rem;
+            background:rgba(var(--blue-soft-rgb),.03);
+            border-top:1px solid rgba(var(--blue-soft-rgb),.15);
+        }
+
+        /* ===== Botones ===== */
+        .sr-bn-btn{
+            display:inline-flex;align-items:center;justify-content:center;gap:.375rem;
+            padding:.5rem 1rem;
+            border-radius:.5rem;
+            font-size:.75rem;font-weight:600;
+            font-family:inherit;
+            cursor:pointer;
+            border:1px solid rgba(var(--blue-soft-rgb),.2);
+            background:transparent;
+            color:var(--txt);
+            transition:background .12s,border-color .12s,filter .12s,opacity .12s;
+        }
+        .sr-bn-btn:hover{
+            background:rgba(var(--blue-soft-rgb),.08);
+            border-color:rgba(var(--blue-soft-rgb),.35);
+        }
+        .sr-bn-btn:active{background:rgba(var(--blue-soft-rgb),.15)}
+        .sr-bn-btn i{font-size:.6875rem;opacity:.85}
+        .sr-bn-btn--primary{
+            background:var(--color-success-soft);
+            border-color:var(--color-success-soft);
+            color:#fff;
+        }
+        .sr-bn-btn--primary:hover{
+            background:var(--color-success-soft);
+            border-color:var(--color-success-soft);
+            filter:brightness(1.08);
+        }
+        .sr-bn-btn--primary i{opacity:1}
+
+        .sr-bn-btn:disabled{
+            opacity:.5;
+            cursor:not-allowed;
+            filter:grayscale(.3);
+        }
+        .sr-bn-btn--primary:disabled{
+            background:var(--color-success-soft);
+            border-color:var(--color-success-soft);
+            color:#fff;
+        }
+        .sr-bn-btn--primary:disabled:hover{
+            background:var(--color-success-soft);
+            border-color:var(--color-success-soft);
+            filter:grayscale(.3);
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .sr-bn,
+            .sr-bn-titlebar-close{ animation:none;transition:none; }
+        }
+        `;
+        document.head.appendChild(st);
+    }
+
+    // ---- HTML ----
+    var html = '';
+    html += '<div class="sr-bn">';
+
+    // Barra de título
+    html +=   '<div class="sr-bn-titlebar">';
+    html +=     '<div class="sr-bn-titlebar-icon"><i class="fas fa-file-export"></i></div>';
+    html +=     '<div class="sr-bn-titlebar-txt">';
+    html +=       '<h2 class="sr-bn-title">Backup con nombre personalizado</h2>';
+    html +=       '<div class="sr-bn-sub">Asigna un nombre descriptivo a tu backup</div>';
+    html +=     '</div>';
+    html +=     '<button type="button" class="sr-bn-titlebar-close" id="srBnClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+    html +=   '</div>';
+
+    // Cuerpo
+    html +=   '<div class="sr-bn-body">';
+
+    // Bloque informativo
+    html +=     '<div class="sr-bn-info">';
+    html +=       '<div class="sr-bn-info-icon"><i class="fas fa-circle-info"></i></div>';
+    html +=       '<div class="sr-bn-info-txt">';
+    html +=         '<p class="sr-bn-info-title">Backup personalizado</p>';
+    html +=         '<p class="sr-bn-info-msg">Asigna un nombre descriptivo a tu backup para identificarlo fácilmente. La fecha y hora se agregan automáticamente.</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+
+    // Campo nombre
+    html +=     '<div class="sr-bn-field">';
+    html +=       '<label class="sr-bn-label" for="swalBackupName"><i class="fas fa-tag"></i> Nombre del backup <span class="req">*</span></label>';
+    html +=       '<div class="sr-bn-input-wrap">';
+    html +=         '<i class="fas fa-pen sr-bn-input-icon"></i>';
+    html +=         '<input type="text" id="swalBackupName" class="sr-bn-input" placeholder="Ej: backup_pre_actualizacion" maxlength="50" autocomplete="off" spellcheck="false">';
+    html +=       '</div>';
+    html +=       '<div class="sr-bn-preview">';
+    html +=         '<div class="sr-bn-preview-icon"><i class="fas fa-file-zipper"></i></div>';
+    html +=         '<div class="sr-bn-preview-txt">';
+    html +=           '<div class="sr-bn-preview-lbl">Nombre final</div>';
+    html +=           '<div class="sr-bn-preview-val empty" id="swalBackupPreview">backup_sistema_YYYY_MM_DD_HH_MM</div>';
+    html +=         '</div>';
+    html +=       '</div>';
+    html +=       '<small style="display:block;margin-top:.5rem;font-size:.6875rem;color:var(--muted);">';
+    html +=         '<i class="fas fa-circle-info me-1"></i> Máximo 50 caracteres (letras, números, guiones y guiones bajos)';
+    html +=       '</small>';
+    html +=     '</div>';
+
+    // Contenido del backup
+    html +=     '<div class="sr-bn-content">';
+    html +=       '<p class="sr-bn-content-title"><i class="fas fa-list-check"></i> Contenido del backup</p>';
+    html +=       '<ul class="sr-bn-content-list">';
+    html +=         '<li><i class="fas fa-circle-check"></i> Estructura completa de la BD</li>';
+    html +=         '<li><i class="fas fa-circle-check"></i> Datos de empleados y nóminas</li>';
+    html +=         '<li><i class="fas fa-circle-check"></i> Configuración y tasas del sistema</li>';
+    html +=         '<li><i class="fas fa-circle-check"></i> Historial de vacaciones y submayores</li>';
+    html +=       '</ul>';
+    html +=     '</div>';
+
+    html +=   '</div>'; // body
+
+    // Footer con botones (separado por línea divisoria)
+    html +=   '<div class="sr-bn-footer">';
+    html +=     '<button type="button" class="sr-bn-btn" id="srBnCancel"><i class="fas fa-ban me-1"></i> Cancelar</button>';
+    html +=     '<button type="button" class="sr-bn-btn sr-bn-btn--primary" id="srBnConfirm"><i class="fas fa-download me-1"></i> Generar Backup</button>';
+    html +=   '</div>';
+
+    html += '</div>';   // .sr-bn
+
+    // ---- Modal ----
     Swal.fire({
-        title: '<i class="fas fa-file-export me-2" style="color: #10b981;"></i> Backup con nombre personalizado',
         html: html,
-        width:'43.75rem',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        confirmButtonText: '<i class="fas fa-download me-1"></i> Generar Backup',
-        cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
-        background: '#1a1a2e',
-        color: '#fff',
+        width: '43.75rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
         allowOutsideClick: false,
         allowEscapeKey: false,
-        showCloseButton: true,
+        customClass: {
+            popup: 'sr-bn-popup'
+        },
         didOpen: function () {
-            var input = document.getElementById('swalBackupName');
-            var cb = document.getElementById('swalBackupConfirm');
-            var btn = Swal.getConfirmButton();
-            if (cb && btn) btn.disabled = true;
-            if (cb) cb.addEventListener('change', function () { if (btn) btn.disabled = !cb.checked; });
+            var popup = Swal.getPopup();
+            if (popup) {
+                popup.style.background = 'transparent';
+                popup.style.padding = '0';
+                popup.style.border = 'none';
+                popup.style.boxShadow = 'none';
+            }
+
+            var input      = document.getElementById('swalBackupName');
+            var btnConfirm = document.getElementById('srBnConfirm');
+            var btnCancel  = document.getElementById('srBnCancel');
+            var close      = document.getElementById('srBnClose');
+
+            // Botón X de la barra de título
+            if (close) {
+                close.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    Swal.close();
+                });
+            }
+
+            // Cancelar
+            if (btnCancel) {
+                btnCancel.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    Swal.close();
+                });
+            }
+
+            // Estado inicial: botón deshabilitado (input vacío)
+            if (btnConfirm) btnConfirm.disabled = true;
+
+            // Preview en vivo + habilitación del botón
             if (input) {
                 var updatePreview = function () {
                     var preview = document.getElementById('swalBackupPreview');
-                    if (!preview) return;
-                    var nombre = input.value.trim() || 'backup_sistema';
+                    var nombre = input.value.trim();
                     var limpio = nombre.replace(/[^a-zA-Z0-9_\-]/g, '_');
-                    var fecha = new Date();
-                    var fechaStr = fecha.getFullYear() + '_' + String(fecha.getMonth() + 1).padStart(2, '0') + '_' + String(fecha.getDate()).padStart(2, '0') + '_' + String(fecha.getHours()).padStart(2, '0') + '_' + String(fecha.getMinutes()).padStart(2, '0');
-                    preview.textContent = limpio + '_' + fechaStr;
-                    preview.style.color = limpio.length > 0 ? 'var(--accent)' : '#f59e0b';
+                    var valido = limpio.length >= 3;
+
+                    if (preview) {
+                        var base = nombre || 'backup_sistema';
+                        var limpioPrev = base.replace(/[^a-zA-Z0-9_\-]/g, '_');
+                        var fecha = new Date();
+                        var fechaStr = fecha.getFullYear() + '_' +
+                            String(fecha.getMonth() + 1).padStart(2, '0') + '_' +
+                            String(fecha.getDate()).padStart(2, '0') + '_' +
+                            String(fecha.getHours()).padStart(2, '0') + '_' +
+                            String(fecha.getMinutes()).padStart(2, '0');
+                        preview.textContent = limpioPrev + '_' + fechaStr;
+                        preview.classList.toggle('empty', !nombre);
+                    }
+
+                    if (btnConfirm) btnConfirm.disabled = !valido;
                 };
                 input.addEventListener('input', updatePreview);
                 updatePreview();
+                setTimeout(function () { input.focus({ preventScroll: true }); }, 50);
             }
-        },
-        preConfirm: function () {
-            var input = document.getElementById('swalBackupName');
-            var cb = document.getElementById('swalBackupConfirm');
-            var nombre = input ? input.value.trim() : '';
-            if (!nombre) {
-                Swal.showValidationMessage('<i class="fas fa-exclamation-circle me-1"></i> Por favor, ingresa un nombre para identificar el backup');
-                return false;
+
+            // Confirmar
+            if (btnConfirm) {
+                btnConfirm.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    var nombre = input ? input.value.trim() : '';
+                    if (!nombre) {
+                        Swal.showValidationMessage('<i class="fas fa-circle-exclamation me-1"></i> Por favor, ingresa un nombre para identificar el backup');
+                        return;
+                    }
+                    var limpio = nombre.replace(/[^a-zA-Z0-9_\-]/g, '_');
+                    if (limpio.length < 3) {
+                        Swal.showValidationMessage('<i class="fas fa-circle-exclamation me-1"></i> El nombre debe tener al menos 3 caracteres');
+                        return;
+                    }
+
+                    Swal.close();
+                    realizarBackupConNombre(limpio);
+                });
             }
-            var limpio = nombre.replace(/[^a-zA-Z0-9_\-]/g, '_');
-            if (limpio.length < 3) {
-                Swal.showValidationMessage('<i class="fas fa-exclamation-circle me-1"></i> El nombre debe tener al menos 3 caracteres');
-                return false;
-            }
-            if (!cb || !cb.checked) {
-                Swal.showValidationMessage('<i class="fas fa-exclamation-circle me-1"></i> Debes marcar la casilla de confirmación para crear el backup');
-                return false;
-            }
-            return limpio;
-        }
-    }).then(function (result) {
-        if (result.isConfirmed && result.value) {
-            realizarBackupConNombre(result.value);
         }
     });
 }
@@ -4805,11 +6292,9 @@ function accionSalvaConNombre() {
 function realizarBackupConNombre(nombre) {
     Swal.fire({
         title: '<i class="fas fa-spinner fa-pulse me-2"></i> Generando Backup...',
-        html: `<p>Creando backup: <strong>${nombre}</strong></p><p class="text-muted small">Este proceso puede tomar unos segundos...</p>`,
+        html: `<p>Creando backup: <strong>${nombre}</strong></p><p class="small" style="color:var(--muted);">Este proceso puede tomar unos segundos...</p>`,
         allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-        background: '#1a1a2e',
-        color: '#fff'
+        didOpen: () => Swal.showLoading()
     });
 
     fetch(AJAX_BACKUP_URL + '?nombre_custom=' + encodeURIComponent(nombre), {
@@ -4821,7 +6306,7 @@ function realizarBackupConNombre(nombre) {
         Swal.close();
         if (data.success) {
             Swal.fire({
-                title: '<i class="fas fa-check-circle me-2" style="color: #10b981;"></i> Backup Completado',
+                title: '<i class="fas fa-check-circle me-2" style="color: var(--color-success-soft);"></i> Backup Completado',
                 html: `
                     <div class="text-start">
                         <p><strong>Archivo:</strong> ${data.filename}</p>
@@ -4835,28 +6320,22 @@ function realizarBackupConNombre(nombre) {
                     </div>
                 `,
                 icon: 'success',
-                background: '#1a1a2e',
-                color: '#fff',
                 confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
             });
         } else {
             Swal.fire({
-                title: '<i class="fas fa-exclamation-triangle me-2" style="color: #f59e0b;"></i> Error',
+                title: '<i class="fas fa-exclamation-triangle me-2" style="color: var(--amber);"></i> Error',
                 text: data.message || 'Error al generar el backup',
-                icon: 'error',
-                background: '#1a1a2e',
-                color: '#fff'
+                icon: 'error'
             });
         }
     })
     .catch(() => {
         Swal.close();
         Swal.fire({
-            title: '<i class="fas fa-wifi me-2" style="color: #dc3545;"></i> Error de Conexión',
+            title: '<i class="fas fa-wifi me-2" style="color: var(--red);"></i> Error de Conexión',
             text: 'No se pudo conectar con el servidor',
-            icon: 'error',
-            background: '#1a1a2e',
-            color: '#fff'
+            icon: 'error'
         });
     });
 }
@@ -4864,86 +6343,619 @@ function realizarBackupConNombre(nombre) {
 function accionRestaurar() {
     if (!PUEDE_RESTAURAR) return;
     Swal.close();
-    var html = '<div style="text-align:left;">';
-    html += '<div class="alert alert-warning mb-4" style="background: rgba(245, 158, 11, 0.12); border: 0.0625rem solid rgba(245, 158, 11, 0.35); border-radius: 0.75rem;">';
-    html += '<div style="display: flex; align-items: flex-start; gap:0.75rem;">';
-    html += '<i class="fas fa-exclamation-triangle fa-2x" style="color: #fbbf24;"></i>';
-    html += '<div><strong style="color: #fbbf24;">¡Precaución!</strong><p class="mb-0 mt-1" style="color: #d1d5db;">Esta acción SOBRESCRIBIRÁ todos los datos actuales. Asegúrate de tener un backup antes de continuar.</p></div>';
-    html += '</div></div>';
-    html += '<div class="mb-4 p-3" style="background: rgba(96, 165, 250, 0.08); border-radius: 0.625rem;">';
-    html += '<div style="color:#d1d5db;"><i class="fas fa-info-circle me-2"></i> <strong>¿Qué se restaurará?</strong></div>';
-    html += '<ul style="list-style: none; padding-left:0; margin-top:0.5rem;" class="mb-0">';
-    html += '<li><i class="fas fa-check-circle text-success me-2"></i> Estructura completa de la base de datos</li>';
-    html += '<li><i class="fas fa-check-circle text-success me-2"></i> Datos de empleados y nóminas</li>';
-    html += '<li><i class="fas fa-check-circle text-success me-2"></i> Configuración del sistema y tasas</li>';
-    html += '<li><i class="fas fa-check-circle text-success me-2"></i> Historial de vacaciones y submayores</li>';
-    html += '</ul></div>';
-    html += '<div class="form-group mb-3">';
-    html += '<label class="form-label mb-2"><i class="fas fa-file-archive me-1"></i> Seleccionar archivo de backup:</label>';
-    html += '<input type="file" name="backup_file" id="swalRestoreFile" class="form-control" accept=".sql,.zip" required style="background:#1a1a2e;border:0.0625rem solid rgba(255,255,255,0.15);color:#fff;">';
-    html += '<small class="text-secondary d-block mt-2"><i class="fas fa-info-circle me-1"></i> Formatos soportados: .sql, .zip (máximo 300MB)</small>';
-    html += '<small class="text-secondary d-block mt-1" id="swalFileSizeInfo"></small>';
-    html += '</div>';
-    html += '<div class="form-check mb-4 p-3" style="background: rgba(220, 53, 69, 0.08); border-radius: 0.5rem; border-left: 0.1875rem solid #dc3545;">';
-    html += '<input type="checkbox" class="form-check-input" id="swalRestoreConfirm" required>';
-    html += '<label class="form-check-label" for="swalRestoreConfirm" style="color: #fca5a5;">';
-    html += '<i class="fas fa-exclamation-triangle me-1"></i> <strong>Confirmo que:</strong>';
-    html += '<ul style="margin:0.3125rem 0 0 1.25rem; padding-left:0; list-style: none;">';
-    html += '<li><i class="fas fa-check-circle text-success me-1" style="font-size:0.7rem;"></i> Tengo un backup actual de la base de datos</li>';
-    html += '<li><i class="fas fa-check-circle text-success me-1" style="font-size:0.7rem;"></i> Comprendo que se sobrescribirán todos los datos</li>';
-    html += '<li><i class="fas fa-check-circle text-success me-1" style="font-size:0.7rem;"></i> Deseo proceder con la restauración</li>';
-    html += '</ul></label></div>';
-    html += '</div>';
+
+    // ---- Estilos únicos ----
+    if (!document.getElementById('sr-restore-form-styles')) {
+        var st = document.createElement('style');
+        st.id = 'sr-restore-form-styles';
+        st.textContent = `
+        .sr-restore-form-popup{
+            font-family:inherit!important;
+            border-radius:.75rem!important;
+            overflow:hidden!important;
+            background:transparent!important;
+            border:none!important;
+            box-shadow:none!important;
+            padding:0!important;
+        }
+        .sr-restore-form-popup .swal2-html-container{
+            margin:0!important; padding:0!important; overflow:visible!important;
+        }
+        /* Ocultamos el área de acciones nativa de Swal */
+        .sr-restore-form-popup .swal2-actions{
+            display:none!important;
+        }
+        .sr-restore-form-popup .swal2-validation-message{
+            background:rgba(var(--red-rgb),.08);
+            color:var(--red);
+            border:1px solid rgba(var(--red-rgb),.25);
+            border-radius:.5rem;
+            font-size:.75rem;
+            padding:.5rem .75rem;
+            margin:.75rem 1.25rem 0;
+        }
+
+        .sr-rf{
+            background:var(--bg);
+            color:var(--txt);
+            border-radius:.75rem;
+            border:1px solid rgba(var(--amber-rgb),.25);
+            overflow:hidden;
+            text-align:left;
+            animation:srRfIn .35s cubic-bezier(.2,.8,.2,1) both;
+        }
+        @keyframes srRfIn{
+            from{opacity:0;transform:translateY(8px)}
+            to{opacity:1;transform:translateY(0)}
+        }
+
+        /* ===== Barra de título ===== */
+        .sr-rf-titlebar{
+            display:flex;align-items:center;gap:.75rem;
+            padding:.875rem 1.25rem;
+            background:linear-gradient(135deg,
+                rgba(var(--amber-rgb),.18),
+                rgba(var(--amber-rgb),.04));
+            border-bottom:1px solid rgba(var(--amber-rgb),.2);
+        }
+        .sr-rf-titlebar-icon{
+            width:2.25rem;height:2.25rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.9375rem;color:#fff;
+            background:linear-gradient(135deg,var(--amber),rgba(var(--amber-rgb),.75));
+            box-shadow:0 .375rem .75rem rgba(var(--amber-rgb),.35);
+        }
+        .sr-rf-titlebar-txt{flex:1;min-width:0}
+        .sr-rf-title{
+            font-size:.9375rem;font-weight:700;
+            color:var(--txt);
+            letter-spacing:-.01em;
+            line-height:1.2;margin:0;
+        }
+        .sr-rf-sub{
+            font-size:.6875rem;color:var(--muted);
+            margin-top:.125rem;line-height:1.3;
+        }
+        .sr-rf-titlebar-close{
+            width:2rem;height:2rem;border-radius:.5rem;border:none;
+            background:transparent;
+            color:var(--muted);cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.875rem;
+            transition:background .15s,color .15s,transform .15s;
+            flex-shrink:0;
+        }
+        .sr-rf-titlebar-close:hover{
+            background:rgba(var(--red-rgb),.12);
+            color:var(--red);
+            transform:rotate(90deg);
+        }
+
+        /* ===== Cuerpo ===== */
+        .sr-rf-body{
+            padding:1.25rem;
+        }
+
+        /* ===== Bloque de precaución ===== */
+        .sr-rf-warn{
+            display:flex;align-items:flex-start;gap:.75rem;
+            padding:1rem;
+            border-radius:.625rem;
+            background:rgba(var(--amber-rgb),.1);
+            border:1px solid rgba(var(--amber-rgb),.3);
+            border-left:3px solid var(--amber);
+            margin-bottom:1rem;
+        }
+        .sr-rf-warn-icon{
+            width:2rem;height:2rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.9375rem;
+            color:var(--amber);
+            background:rgba(var(--amber-rgb),.18);
+        }
+        .sr-rf-warn-txt{flex:1;min-width:0}
+        .sr-rf-warn-title{
+            font-size:.8125rem;font-weight:700;
+            color:var(--amber-soft);
+            margin:0 0 .25rem;
+            line-height:1.2;
+        }
+        .sr-rf-warn-msg{
+            font-size:.75rem;color:var(--muted);
+            line-height:1.5;margin:0;
+        }
+
+        /* ===== Bloque "qué se restaurará" ===== */
+        .sr-rf-info{
+            padding:1rem;
+            border-radius:.625rem;
+            background:rgba(var(--blue-soft-rgb),.05);
+            border:1px solid rgba(var(--blue-soft-rgb),.15);
+            margin-bottom:1rem;
+        }
+        .sr-rf-info-title{
+            font-size:.75rem;font-weight:700;
+            color:var(--muted);
+            text-transform:uppercase;
+            letter-spacing:.05em;
+            margin:0 0 .75rem;
+            display:flex;align-items:center;gap:.375rem;
+        }
+        .sr-rf-info-title i{color:var(--blue);font-size:.75rem}
+        .sr-rf-info-list{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:.375rem .875rem;
+            list-style:none;
+            padding:0;margin:0;
+            font-size:.75rem;
+            color:var(--muted);
+        }
+        .sr-rf-info-list li{
+            display:flex;align-items:center;gap:.5rem;
+            line-height:1.4;
+        }
+        .sr-rf-info-list i{
+            color:var(--color-success-soft);
+            font-size:.6875rem;
+            flex-shrink:0;
+        }
+        @media (max-width:520px){
+            .sr-rf-info-list{grid-template-columns:1fr}
+        }
+
+        /* ===== Dropzone / input file ===== */
+        .sr-rf-field{ margin-bottom:1rem; }
+        .sr-rf-label{
+            display:flex;align-items:center;gap:.375rem;
+            font-size:.75rem;font-weight:600;
+            color:var(--txt);
+            margin-bottom:.5rem;
+        }
+        .sr-rf-label i{color:var(--blue);font-size:.75rem}
+        .sr-rf-label .req{color:var(--red)}
+
+        .sr-rf-dropzone{
+            position:relative;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            gap:.5rem;
+            padding:1.5rem 1rem;
+            border-radius:.625rem;
+            border:2px dashed rgba(var(--blue-soft-rgb),.3);
+            background:rgba(var(--blue-soft-rgb),.04);
+            cursor:pointer;
+            transition:border-color .18s,background .18s;
+            text-align:center;
+        }
+        .sr-rf-dropzone:hover{
+            border-color:var(--blue);
+            background:rgba(var(--blue-soft-rgb),.08);
+        }
+        .sr-rf-dropzone.is-dragover{
+            border-color:var(--blue);
+            background:rgba(var(--blue-soft-rgb),.12);
+        }
+        .sr-rf-dropzone.has-file{
+            border-style:solid;
+            border-color:var(--color-success-soft);
+            background:rgba(var(--color-success-soft-rgb),.06);
+            cursor:default;
+        }
+        .sr-rf-dropzone.has-file:hover{
+            border-color:var(--color-success-soft);
+            background:rgba(var(--color-success-soft-rgb),.06);
+        }
+        .sr-rf-dropzone input[type="file"]{
+            position:absolute;inset:0;opacity:0;cursor:pointer;
+        }
+        .sr-rf-dropzone.has-file input[type="file"]{
+            display:none;
+        }
+        .sr-rf-dropzone-icon{
+            width:2.5rem;height:2.5rem;border-radius:.625rem;
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.0625rem;
+            color:var(--blue);
+            background:rgba(var(--blue-soft-rgb),.14);
+            transition:transform .18s;
+        }
+        .sr-rf-dropzone.has-file .sr-rf-dropzone-icon{
+            color:var(--color-success-soft);
+            background:rgba(var(--color-success-soft-rgb),.14);
+        }
+        .sr-rf-dropzone-title{
+            font-size:.8125rem;font-weight:600;
+            color:var(--txt);
+            line-height:1.3;
+            word-break:break-word;
+            max-width:100%;
+        }
+        .sr-rf-dropzone.has-file .sr-rf-dropzone-title{
+            color:var(--color-success-soft);
+        }
+        .sr-rf-dropzone-hint{
+            font-size:.6875rem;color:var(--muted);
+            line-height:1.3;
+        }
+        .sr-rf-dropzone-info{
+            display:none;
+            font-size:.6875rem;color:var(--muted);
+            margin-top:.25rem;
+        }
+        .sr-rf-dropzone.has-file .sr-rf-dropzone-info{
+            display:block;
+        }
+        .sr-rf-dropzone-info.over{
+            color:var(--red);
+            font-weight:600;
+        }
+
+        /* Botón X para quitar archivo */
+        .sr-rf-remove{
+            position:absolute;
+            top:.5rem;right:.5rem;
+            width:1.75rem;height:1.75rem;border-radius:.375rem;
+            border:none;background:transparent;
+            color:var(--muted);cursor:pointer;
+            display:none;align-items:center;justify-content:center;
+            font-size:.75rem;
+            transition:background .15s,color .15s;
+            z-index:2;
+        }
+        .sr-rf-dropzone.has-file .sr-rf-remove{
+            display:flex;
+        }
+        .sr-rf-remove:hover{
+            background:rgba(var(--red-rgb),.14);
+            color:var(--red);
+        }
+
+        /* ===== Confirmación ===== */
+        .sr-rf-confirm{
+            display:flex;align-items:flex-start;gap:.75rem;
+            padding:1rem;
+            border-radius:.625rem;
+            background:rgba(var(--red-rgb),.07);
+            border:1px solid rgba(var(--red-rgb),.25);
+            border-left:3px solid var(--red);
+            cursor:pointer;
+            transition:background .15s;
+        }
+        .sr-rf-confirm:hover{background:rgba(var(--red-rgb),.1)}
+        .sr-rf-confirm input[type="checkbox"]{
+            width:1.125rem;height:1.125rem;flex-shrink:0;
+            margin-top:.125rem;
+            accent-color:var(--red);
+            cursor:pointer;
+        }
+        .sr-rf-confirm-txt{flex:1;min-width:0}
+        .sr-rf-confirm-title{
+            font-size:.8125rem;font-weight:700;
+            color:var(--red);
+            display:flex;align-items:center;gap:.375rem;
+            margin-bottom:.5rem;
+        }
+        .sr-rf-confirm-title i{font-size:.75rem}
+        .sr-rf-confirm-list{
+            list-style:none;
+            padding:0;margin:0;
+            font-size:.75rem;color:var(--muted);
+            line-height:1.6;
+        }
+        .sr-rf-confirm-list li{
+            display:flex;align-items:flex-start;gap:.5rem;
+        }
+        .sr-rf-confirm-list i{
+            color:var(--color-success-soft);
+            font-size:.6875rem;
+            margin-top:.25rem;
+            flex-shrink:0;
+        }
+
+        /* ===== Footer con botones ===== */
+        .sr-rf-footer{
+            display:flex;align-items:center;justify-content:flex-end;
+            gap:.5rem;
+            padding:1rem 1.25rem;
+            background:rgba(var(--blue-soft-rgb),.03);
+            border-top:1px solid rgba(var(--blue-soft-rgb),.15);
+        }
+
+        /* ===== Botones ===== */
+        .sr-rf-btn{
+            display:inline-flex;align-items:center;justify-content:center;gap:.375rem;
+            padding:.5rem 1rem;
+            border-radius:.5rem;
+            font-size:.75rem;font-weight:600;
+            font-family:inherit;
+            cursor:pointer;
+            border:1px solid rgba(var(--blue-soft-rgb),.2);
+            background:transparent;
+            color:var(--txt);
+            transition:background .12s,border-color .12s,filter .12s,opacity .12s;
+        }
+        .sr-rf-btn:hover{
+            background:rgba(var(--blue-soft-rgb),.08);
+            border-color:rgba(var(--blue-soft-rgb),.35);
+        }
+        .sr-rf-btn:active{background:rgba(var(--blue-soft-rgb),.15)}
+        .sr-rf-btn i{font-size:.6875rem;opacity:.85}
+        .sr-rf-btn--primary{
+            background:var(--amber);
+            border-color:var(--amber);
+            color:#fff;
+        }
+        .sr-rf-btn--primary:hover{
+            background:var(--amber);
+            border-color:var(--amber);
+            filter:brightness(1.08);
+        }
+        .sr-rf-btn--primary i{opacity:1}
+        .sr-rf-btn:disabled{
+            opacity:.5;
+            cursor:not-allowed;
+            filter:grayscale(.3);
+        }
+        .sr-rf-btn--primary:disabled{
+            background:var(--amber);
+            border-color:var(--amber);
+            color:#fff;
+        }
+        .sr-rf-btn--primary:disabled:hover{
+            background:var(--amber);
+            border-color:var(--amber);
+            filter:grayscale(.3);
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .sr-rf,
+            .sr-rf-titlebar-close{ animation:none;transition:none; }
+        }
+        `;
+        document.head.appendChild(st);
+    }
+
+    // ---- HTML ----
+    var html = '';
+    html += '<div class="sr-rf">';
+
+    // Barra de título con X
+    html +=   '<div class="sr-rf-titlebar">';
+    html +=     '<div class="sr-rf-titlebar-icon"><i class="fas fa-database"></i></div>';
+    html +=     '<div class="sr-rf-titlebar-txt">';
+    html +=       '<h2 class="sr-rf-title">Restaurar Base de Datos</h2>';
+    html +=       '<div class="sr-rf-sub">Selecciona un backup y confirma la operación</div>';
+    html +=     '</div>';
+    html +=     '<button type="button" class="sr-rf-titlebar-close" id="srRfClose" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>';
+    html +=   '</div>';
+
+    // Cuerpo
+    html +=   '<div class="sr-rf-body">';
+
+    // Bloque de precaución
+    html +=     '<div class="sr-rf-warn">';
+    html +=       '<div class="sr-rf-warn-icon"><i class="fas fa-triangle-exclamation"></i></div>';
+    html +=       '<div class="sr-rf-warn-txt">';
+    html +=         '<p class="sr-rf-warn-title">¡Precaución!</p>';
+    html +=         '<p class="sr-rf-warn-msg">Esta acción <strong>sobrescribirá</strong> todos los datos actuales. Asegúrate de tener un backup antes de continuar.</p>';
+    html +=       '</div>';
+    html +=     '</div>';
+
+    // Bloque "qué se restaurará"
+    html +=     '<div class="sr-rf-info">';
+    html +=       '<p class="sr-rf-info-title"><i class="fas fa-circle-info"></i> ¿Qué se restaurará?</p>';
+    html +=       '<ul class="sr-rf-info-list">';
+    html +=         '<li><i class="fas fa-circle-check"></i> Estructura completa de la BD</li>';
+    html +=         '<li><i class="fas fa-circle-check"></i> Datos de empleados y nóminas</li>';
+    html +=         '<li><i class="fas fa-circle-check"></i> Configuración y tasas del sistema</li>';
+    html +=         '<li><i class="fas fa-circle-check"></i> Historial de vacaciones y submayores</li>';
+    html +=       '</ul>';
+    html +=     '</div>';
+
+    // Dropzone
+    html +=     '<div class="sr-rf-field">';
+    html +=       '<label class="sr-rf-label" for="swalRestoreFile"><i class="fas fa-file-archive"></i> Archivo de backup <span class="req">*</span></label>';
+    html +=       '<label class="sr-rf-dropzone" id="srRfDropzone">';
+    html +=         '<input type="file" name="backup_file" id="swalRestoreFile" accept=".sql,.zip" required>';
+    html +=         '<button type="button" class="sr-rf-remove" id="srRfRemove" title="Quitar archivo" aria-label="Quitar archivo"><i class="fas fa-xmark"></i></button>';
+    html +=         '<div class="sr-rf-dropzone-icon" id="srRfDropIcon"><i class="fas fa-cloud-arrow-up"></i></div>';
+    html +=         '<div class="sr-rf-dropzone-title" id="srRfDropTitle">Arrastra el archivo aquí o haz clic para seleccionar</div>';
+    html +=         '<div class="sr-rf-dropzone-hint" id="srRfDropHint">Formatos soportados: .sql, .zip · máximo 300 MB</div>';
+    html +=         '<div class="sr-rf-dropzone-info" id="swalFileSizeInfo"></div>';
+    html +=       '</label>';
+    html +=     '</div>';
+
+    // Confirmación
+    html +=     '<label class="sr-rf-confirm" for="swalRestoreConfirm">';
+    html +=       '<input type="checkbox" id="swalRestoreConfirm" required>';
+    html +=       '<div class="sr-rf-confirm-txt">';
+    html +=         '<div class="sr-rf-confirm-title"><i class="fas fa-triangle-exclamation"></i> Confirmo que:</div>';
+    html +=         '<ul class="sr-rf-confirm-list">';
+    html +=           '<li><i class="fas fa-circle-check"></i> Tengo un backup actual de la base de datos</li>';
+    html +=           '<li><i class="fas fa-circle-check"></i> Comprendo que se sobrescribirán todos los datos</li>';
+    html +=           '<li><i class="fas fa-circle-check"></i> Deseo proceder con la restauración</li>';
+    html +=         '</ul>';
+    html +=       '</div>';
+    html +=     '</label>';
+
+    html +=   '</div>'; // body
+
+    // Footer con botones (separado por línea divisoria)
+    html +=   '<div class="sr-rf-footer">';
+    html +=     '<button type="button" class="sr-rf-btn" id="srRfCancel"><i class="fas fa-ban me-1"></i> Cancelar</button>';
+    html +=     '<button type="button" class="sr-rf-btn sr-rf-btn--primary" id="srRfConfirm" disabled><i class="fas fa-upload me-1"></i> Restaurar Backup</button>';
+    html +=   '</div>';
+
+    html += '</div>';   // .sr-rf
+
+    // ---- Modal ----
     Swal.fire({
-        title: '<i class="fas fa-database me-2" style="color: #f97316;"></i> Restaurar Base de Datos',
         html: html,
-        width:'37.5rem',
-        showCancelButton: true,
-        confirmButtonColor: '#f59e0b',
-        confirmButtonText: '<i class="fas fa-upload me-2"></i> Restaurar Backup',
-        cancelButtonText: '<i class="fas fa-times me-2"></i> Cancelar',
-        background: '#1a1a2e',
-        color: '#fff',
+        width: '40rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
         allowOutsideClick: false,
         allowEscapeKey: false,
-        showCloseButton: true,
+        customClass: {
+            popup: 'sr-restore-form-popup'
+        },
         didOpen: function () {
-            var cb = document.getElementById('swalRestoreConfirm');
-            var btn = Swal.getConfirmButton();
-            var fi = document.getElementById('swalRestoreFile');
-            if (cb && btn) {
-                btn.disabled = true;
-                cb.addEventListener('change', function () { btn.disabled = !cb.checked; });
+            var popup = Swal.getPopup();
+            if (popup) {
+                popup.style.background = 'transparent';
+                popup.style.padding = '0';
+                popup.style.border = 'none';
+                popup.style.boxShadow = 'none';
             }
+
+            var cb         = document.getElementById('swalRestoreConfirm');
+            var btnConfirm = document.getElementById('srRfConfirm');
+            var btnCancel  = document.getElementById('srRfCancel');
+            var fi         = document.getElementById('swalRestoreFile');
+            var dz         = document.getElementById('srRfDropzone');
+            var dzTitle    = document.getElementById('srRfDropTitle');
+            var dzHint     = document.getElementById('srRfDropHint');
+            var dzIcon     = document.getElementById('srRfDropIcon');
+            var info       = document.getElementById('swalFileSizeInfo');
+            var remove     = document.getElementById('srRfRemove');
+            var close      = document.getElementById('srRfClose');
+
+            // Botón X de la barra de título
+            if (close) {
+                close.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    Swal.close();
+                });
+            }
+
+            // Cancelar
+            if (btnCancel) {
+                btnCancel.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    Swal.close();
+                });
+            }
+
+            // Habilitación del botón confirmar: necesita checkbox marcado + archivo válido
+            function updateConfirmState() {
+                if (!btnConfirm) return;
+                var hasFile = fi && fi.files && fi.files.length > 0;
+                var checked = cb && cb.checked;
+                var over = hasFile && fi.files[0].size > 300 * 1048576;
+                btnConfirm.disabled = !(hasFile && checked && !over);
+            }
+
+            if (cb) {
+                cb.addEventListener('change', updateConfirmState);
+            }
+
+            function resetFileUI() {
+                if (dz) dz.classList.remove('has-file');
+                if (dzTitle) dzTitle.textContent = 'Arrastra el archivo aquí o haz clic para seleccionar';
+                if (dzHint) dzHint.style.display = '';
+                if (dzIcon) dzIcon.innerHTML = '<i class="fas fa-cloud-arrow-up"></i>';
+                if (info) { info.innerHTML = ''; info.classList.remove('over'); }
+                updateConfirmState();
+            }
+
+            function formatSize(bytes) {
+                if (bytes < 1048576) {
+                    return (bytes / 1024).toFixed(2) + ' KB';
+                }
+                return (bytes / 1048576).toFixed(2) + ' MB';
+            }
+
+            function refreshFileUI() {
+                if (!fi || !fi.files || fi.files.length === 0) {
+                    resetFileUI();
+                    return;
+                }
+                var f = fi.files[0];
+                var sizeTxt = formatSize(f.size);
+                var over = f.size > 300 * 1048576;
+
+                if (dz) dz.classList.add('has-file');
+                if (dzTitle) dzTitle.textContent = f.name;
+                if (dzHint) dzHint.style.display = 'none';
+                if (dzIcon) dzIcon.innerHTML = '<i class="fas fa-file-circle-check"></i>';
+                if (info) {
+                    info.innerHTML = '<i class="fas fa-database me-1"></i> ' + sizeTxt +
+                        (over ? ' · supera el límite de 300 MB' : '');
+                    info.classList.toggle('over', over);
+                }
+                updateConfirmState();
+            }
+
             if (fi) {
-                fi.addEventListener('change', function () {
-                    var info = document.getElementById('swalFileSizeInfo');
-                    if (!info) return;
-                    if (fi.files && fi.files.length > 0) {
-                        var sizeMB = (fi.files[0].size / 1048576).toFixed(2);
-                        var color = fi.files[0].size > 300 * 1048576 ? '#fca5a5' : '#4ade80';
-                        info.innerHTML = '<i class="fas fa-database me-1"></i> Tamaño del archivo: <strong style="color:' + color + ';">' + sizeMB + ' MB</strong>';
+                fi.addEventListener('change', refreshFileUI);
+            }
+
+            // Botón quitar archivo
+            if (remove) {
+                remove.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (fi) {
+                        try { fi.value = ''; } catch (err) {}
+                        if (fi.files && fi.files.length === 0) {
+                            resetFileUI();
+                        } else {
+                            var clone = fi.cloneNode(true);
+                            fi.parentNode.replaceChild(clone, fi);
+                            fi = clone;
+                            fi.addEventListener('change', refreshFileUI);
+                            resetFileUI();
+                        }
                     } else {
-                        info.textContent = '';
+                        resetFileUI();
                     }
                 });
             }
-        },
-        preConfirm: function () {
-            var fi = document.getElementById('swalRestoreFile');
-            if (!fi || !fi.files || fi.files.length === 0) {
-                Swal.showValidationMessage('<i class="fas fa-exclamation-circle me-1"></i> Seleccione un archivo de backup');
-                return false;
+
+            // Drag & drop visual
+            if (dz) {
+                ['dragenter','dragover'].forEach(function (ev) {
+                    dz.addEventListener(ev, function (e) {
+                        e.preventDefault(); e.stopPropagation();
+                        if (!dz.classList.contains('has-file')) {
+                            dz.classList.add('is-dragover');
+                        }
+                    });
+                });
+                ['dragleave','drop'].forEach(function (ev) {
+                    dz.addEventListener(ev, function (e) {
+                        e.preventDefault(); e.stopPropagation();
+                        dz.classList.remove('is-dragover');
+                    });
+                });
             }
-            if (fi.files[0].size > 300 * 1048576) {
-                Swal.showValidationMessage('<i class="fas fa-exclamation-circle me-1"></i> El archivo supera el tamaño máximo permitido (300MB)');
-                return false;
+
+            // Confirmar
+            if (btnConfirm) {
+                btnConfirm.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!fi || !fi.files || fi.files.length === 0) {
+                        Swal.showValidationMessage('<i class="fas fa-circle-exclamation me-1"></i> Seleccione un archivo de backup');
+                        return;
+                    }
+                    if (fi.files[0].size > 300 * 1048576) {
+                        Swal.showValidationMessage('<i class="fas fa-circle-exclamation me-1"></i> El archivo supera el tamaño máximo permitido (300 MB)');
+                        return;
+                    }
+
+                    var file = fi.files[0];
+                    Swal.close();
+                    realizarRestaurarFetch(file);
+                });
             }
-            return fi.files[0];
-        }
-    }).then(function (result) {
-        if (result.isConfirmed && result.value) {
-            realizarRestaurarFetch(result.value);
+
+            // Estado inicial
+            updateConfirmState();
         }
     });
 }
@@ -4953,85 +6965,356 @@ async function realizarRestaurarFetch(file) {
     formData.append('backup_file', file);
     var progressUrl = AJAX_RESTORE_URL.replace('restore_db.php', 'restore_progress.php');
 
-    // Reiniciar el progreso para que el modal arranque siempre desde cero
-    // y no muestre el estado de la restauración anterior.
+    // Reiniciar progreso
     try {
         await fetch(progressUrl + '?reset=1', { cache: 'no-store' });
-    } catch (e) { /* continuar igualmente */ }
+    } catch (e) { /* continuar */ }
 
+    // ---- Estilos únicos ----
+    if (!document.getElementById('sr-restore-styles')) {
+        var st = document.createElement('style');
+        st.id = 'sr-restore-styles';
+        st.textContent = `
+        .sr-restore-popup{
+            font-family:inherit!important;
+            border-radius:.75rem!important;
+            overflow:hidden!important;
+            background:transparent!important;
+            border:none!important;
+            box-shadow:none!important;
+            padding:0!important;
+        }
+        .sr-restore-popup .swal2-html-container{
+            margin:0!important; padding:0!important; overflow:visible!important;
+        }
+
+        .sr-restore{
+            position:relative;
+            background:var(--bg);
+            color:var(--txt);
+            border-radius:.75rem;
+            border:1px solid rgba(var(--blue-soft-rgb),.2);
+            padding:1.5rem;
+            text-align:left;
+        }
+
+        /* ===== Cabecera ===== */
+        .sr-restore-head{
+            display:flex;align-items:center;gap:.875rem;
+            margin-bottom:1.25rem;
+        }
+        .sr-restore-head-icon{
+            width:2.5rem;height:2.5rem;border-radius:.625rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.0625rem;
+            color:var(--amber);
+            background:rgba(var(--amber-soft-rgb),.14);
+            animation:srRestorePulse 2s ease-in-out infinite;
+        }
+        @keyframes srRestorePulse{
+            0%,100%{ box-shadow:0 0 0 0 rgba(var(--amber-soft-rgb),.4); }
+            50%    { box-shadow:0 0 0 .5rem rgba(var(--amber-soft-rgb),0); }
+        }
+        .sr-restore-head-txt{flex:1;min-width:0}
+        .sr-restore-title{
+            font-size:1.0625rem;font-weight:700;
+            color:var(--txt);
+            letter-spacing:-.01em;
+            line-height:1.2;
+            margin:0;
+        }
+        .sr-restore-sub{
+            font-size:.75rem;color:var(--muted);
+            margin-top:.1875rem;
+            line-height:1.4;
+        }
+
+        /* ===== Anillo de progreso ===== */
+        .sr-restore-ring-wrap{
+            display:flex;justify-content:center;
+            margin:.5rem 0 1.25rem;
+        }
+        .sr-restore-ring{
+            position:relative;
+            width:9rem;height:9rem;
+        }
+        .sr-restore-ring svg{
+            width:100%;height:100%;
+            transform:rotate(-90deg);
+        }
+        .sr-restore-ring circle{
+            fill:none;
+            stroke-width:8;
+            stroke-linecap:round;
+        }
+        .sr-restore-ring .bg{
+            stroke:rgba(var(--blue-soft-rgb),.15);
+        }
+        .sr-restore-ring .fg{
+            stroke:var(--blue);
+            stroke-dasharray:283;
+            stroke-dashoffset:283;
+            transition:stroke-dashoffset .4s cubic-bezier(.4,0,.2,1);
+        }
+        .sr-restore-ring-txt{
+            position:absolute;inset:0;
+            display:flex;flex-direction:column;
+            align-items:center;justify-content:center;
+            pointer-events:none;
+        }
+        .sr-restore-pct{
+            font-size:1.75rem;font-weight:700;
+            color:var(--txt);
+            line-height:1;
+            letter-spacing:-.03em;
+            font-variant-numeric:tabular-nums;
+        }
+        .sr-restore-pct-sign{
+            font-size:.875rem;font-weight:600;
+            color:var(--muted);
+            margin-left:.125rem;
+        }
+        .sr-restore-pct-lbl{
+            font-size:.625rem;
+            color:var(--muted);
+            text-transform:uppercase;
+            letter-spacing:.1em;
+            margin-top:.375rem;
+        }
+
+        /* ===== Barra lineal fina ===== */
+        .sr-restore-bar{
+            position:relative;
+            height:.375rem;
+            border-radius:999px;
+            background:rgba(var(--blue-soft-rgb),.15);
+            overflow:hidden;
+            margin-bottom:1rem;
+        }
+        .sr-restore-bar-fill{
+            position:absolute;inset:0 auto 0 0;
+            width:0%;
+            border-radius:999px;
+            background:linear-gradient(90deg,var(--blue),rgba(var(--blue-soft-rgb),1));
+            transition:width .4s cubic-bezier(.4,0,.2,1);
+        }
+        .sr-restore-bar-fill::after{
+            content:'';position:absolute;inset:0;
+            background:linear-gradient(90deg,
+                transparent,
+                rgba(255,255,255,.35),
+                transparent);
+            animation:srRestoreShine 1.6s linear infinite;
+        }
+        @keyframes srRestoreShine{
+            0%  { transform:translateX(-100%); }
+            100%{ transform:translateX(100%); }
+        }
+
+        /* ===== Métricas ===== */
+        .sr-restore-meta{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:.625rem;
+        }
+        .sr-restore-metric{
+            display:flex;align-items:center;gap:.625rem;
+            padding:.75rem .875rem;
+            border-radius:.5rem;
+            background:rgba(var(--blue-soft-rgb),.05);
+            border:1px solid rgba(var(--blue-soft-rgb),.12);
+        }
+        .sr-restore-metric-icon{
+            width:1.75rem;height:1.75rem;border-radius:.375rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.75rem;
+            color:var(--blue);
+            background:rgba(var(--blue-soft-rgb),.12);
+        }
+        .sr-restore-metric-txt{min-width:0;flex:1}
+        .sr-restore-metric-lbl{
+            font-size:.625rem;
+            color:var(--muted);
+            text-transform:uppercase;
+            letter-spacing:.06em;
+            font-weight:600;
+            line-height:1;
+        }
+        .sr-restore-metric-val{
+            font-size:.8125rem;font-weight:600;
+            color:var(--txt);
+            margin-top:.25rem;
+            line-height:1.2;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            font-variant-numeric:tabular-nums;
+        }
+        .sr-restore-metric--full{
+            grid-column:1 / -1;
+        }
+
+        /* ===== Animación de entrada ===== */
+        .sr-restore{
+            animation:srRestoreIn .35s cubic-bezier(.2,.8,.2,1) both;
+        }
+        @keyframes srRestoreIn{
+            from{opacity:0;transform:translateY(8px)}
+            to{opacity:1;transform:translateY(0)}
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .sr-restore,
+            .sr-restore-head-icon,
+            .sr-restore-bar-fill::after{ animation:none; }
+        }
+        `;
+        document.head.appendChild(st);
+    }
+
+    // ---- HTML ----
+    var html = '';
+    html += '<div class="sr-restore">';
+
+    // Cabecera
+    html +=   '<div class="sr-restore-head">';
+    html +=     '<div class="sr-restore-head-icon"><i class="fas fa-database"></i></div>';
+    html +=     '<div class="sr-restore-head-txt">';
+    html +=       '<h2 class="sr-restore-title">Restaurando base de datos</h2>';
+    html +=       '<p class="sr-restore-sub" id="restoreStep">Iniciando restauración…</p>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    // Anillo
+    html +=   '<div class="sr-restore-ring-wrap">';
+    html +=     '<div class="sr-restore-ring">';
+    html +=       '<svg viewBox="0 0 100 100">';
+    html +=         '<circle class="bg" cx="50" cy="50" r="45"></circle>';
+    html +=         '<circle class="fg" id="restoreRing" cx="50" cy="50" r="45"></circle>';
+    html +=       '</svg>';
+    html +=       '<div class="sr-restore-ring-txt">';
+    html +=         '<div><span class="sr-restore-pct" id="restorePct">0</span><span class="sr-restore-pct-sign">%</span></div>';
+    html +=         '<div class="sr-restore-pct-lbl">Progreso</div>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    // Barra lineal
+    html +=   '<div class="sr-restore-bar">';
+    html +=     '<div class="sr-restore-bar-fill" id="restoreBarFill"></div>';
+    html +=   '</div>';
+
+    // Métricas
+    html +=   '<div class="sr-restore-meta">';
+    html +=     '<div class="sr-restore-metric sr-restore-metric--full">';
+    html +=       '<div class="sr-restore-metric-icon"><i class="fas fa-table"></i></div>';
+    html +=       '<div class="sr-restore-metric-txt">';
+    html +=         '<div class="sr-restore-metric-lbl">Tabla actual</div>';
+    html +=         '<div class="sr-restore-metric-val" id="restoreProgressTable">—</div>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=     '<div class="sr-restore-metric">';
+    html +=       '<div class="sr-restore-metric-icon"><i class="fas fa-list-check"></i></div>';
+    html +=       '<div class="sr-restore-metric-txt">';
+    html +=         '<div class="sr-restore-metric-lbl">Consultas</div>';
+    html +=         '<div class="sr-restore-metric-val" id="restoreProgressPct">0 / 0</div>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=     '<div class="sr-restore-metric">';
+    html +=       '<div class="sr-restore-metric-icon"><i class="fas fa-clock"></i></div>';
+    html +=       '<div class="sr-restore-metric-txt">';
+    html +=         '<div class="sr-restore-metric-lbl">Estado</div>';
+    html +=         '<div class="sr-restore-metric-val" id="restoreState">Procesando</div>';
+    html +=       '</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    // ---- Modal ----
     Swal.fire({
-        title: 'Restaurando...',
-        html: '<style>.restore-spinner{width:2.375rem;height:2.375rem;margin:0 auto;border:0.25rem solid #334155;border-top-color:#14b8a6;border-radius:50%;animation:restore-spin .8s linear infinite;}@keyframes restore-spin{to{transform:rotate(360deg);}}</style>' +
-              '<div class="text-center mb-2"><div class="restore-spinner"></div></div>' +
-              '<p id="restoreStep" class="mb-2 text-light">Iniciando...</p>' +
-              '<div class="progress" style="height:1.25rem; background:#2d2d3a; border-radius:0.625rem; overflow:hidden;">' +
-              '<div id="restoreProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%; background:linear-gradient(90deg,var(--accent),var(--accent-light));">0%</div></div>' +
-              '<p class="mt-2 mb-0"><span id="restoreProgressTable" class="text-info"></span>' +
-              '<span id="restoreProgressPct" class="float-end text-light"></span></p>',
-        allowOutsideClick: false,
+        html: html,
+        width: '32rem',
         showConfirmButton: false,
-        background: '#1a1a2e',
-        color: '#fff'
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        padding: '0',
+        customClass: { popup: 'sr-restore-popup' },
+        didOpen: function () {
+            var popup = Swal.getPopup();
+            if (popup) {
+                popup.style.background = 'transparent';
+                popup.style.padding = '0';
+                popup.style.border = 'none';
+                popup.style.boxShadow = 'none';
+            }
+        }
     });
 
+    // ---- Actualizador visual ----
+    function updateRing(pct) {
+        var ring = document.getElementById('restoreRing');
+        var pctEl = document.getElementById('restorePct');
+        var barFill = document.getElementById('restoreBarFill');
+        var pctVal = Math.max(0, Math.min(100, pct || 0));
+
+        if (ring) {
+            var circumference = 283; // 2πr con r=45
+            var offset = circumference - (pctVal / 100) * circumference;
+            ring.style.strokeDashoffset = offset;
+        }
+        if (pctEl) pctEl.textContent = pctVal;
+        if (barFill) barFill.style.width = pctVal + '%';
+    }
+
+    // ---- Polling ----
     var restorePoll = setInterval(function () {
         fetch(progressUrl, { cache: 'no-store' })
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 var pct = d.percent || 0;
-                var bar = document.getElementById('restoreProgressBar');
+                updateRing(pct);
+
                 var stepEl = document.getElementById('restoreStep');
-                var tblEl = document.getElementById('restoreProgressTable');
-                var pctEl = document.getElementById('restoreProgressPct');
-                if (bar) { bar.style.width = pct + '%'; bar.textContent = pct + '%'; }
+                var tblEl  = document.getElementById('restoreProgressTable');
+                var cntEl  = document.getElementById('restoreProgressPct');
+                var stEl   = document.getElementById('restoreState');
+
                 if (stepEl && d.step) stepEl.textContent = d.step;
-                if (tblEl) tblEl.textContent = d.table ? 'Tabla: ' + d.table : '';
-                if (pctEl && d.total) pctEl.textContent = (d.processed || 0) + ' / ' + d.total + ' consultas';
+                if (tblEl)  tblEl.textContent = d.table ? d.table : '—';
+                if (cntEl)  cntEl.textContent = (d.processed || 0) + ' / ' + (d.total || 0);
+                if (stEl) {
+                    stEl.textContent = pct >= 100 ? 'Completado' : 'Procesando';
+                }
             })
             .catch(function () {});
     }, 600);
 
+    // ---- Fetch final ----
     fetch(AJAX_RESTORE_URL, { method: 'POST', body: formData })
     .then(response => response.json())
     .then(data => {
         clearInterval(restorePoll);
-        var bar = document.getElementById('restoreProgressBar');
-        if (bar) { bar.style.width = '100%'; bar.textContent = '100%'; }
+        updateRing(100);
+
         if (data.success) {
-            Swal.fire({
-                title: 'Restauración Completada',
-                html: `<pre style="background:#2d2d3a; color:#e2e8f0 !important; padding:0.75rem; border-radius:0.5rem; white-space:pre-wrap; word-break:break-word;">${data.message}</pre>`,
-                icon: 'success',
-                showDenyButton: true,
-                confirmButtonText: '<i class="fas fa-check me-2"></i> Recargar',
-                denyButtonText: '<i class="fas fa-file-lines me-2"></i> Ver log',
-                background: '#1a1a2e',
-                color: '#fff'
-            }).then(function (result) {
-                if (result.isDenied) { verLogRestauracion(); }
-                else { location.reload(); }
-            });
+            mostrarExitoRestauracion(data);
         } else {
-            Swal.fire({
-                title: 'Error',
-                html: `<pre style="background:#2d2d3a; padding:0.75rem; border-radius:0.5rem; color:#fca5a5 !important; white-space:pre-wrap; word-break:break-word;">${data.message}</pre>`,
-                icon: 'error',
-                background: '#1a1a2e',
-                color: '#fff'
-            });
+            mostrarErrorRestauracion(data.message);
         }
     })
-    .catch(() => {
+    .catch(function () {
         clearInterval(restorePoll);
-        Swal.fire({
-            title: 'Error de Conexión',
-            text: 'No se pudo conectar',
-            icon: 'error',
-            background: '#1a1a2e',
-            color: '#fff'
-        });
+        mostrarErrorRestauracion('No se pudo conectar con el servidor');
     });
 }
+
+
+
+
+
 
 // Escapa HTML para inyectar texto de forma segura dentro de un <pre> de SweetAlert
 function escaparHTML(str) {
@@ -5040,11 +7323,258 @@ function escaparHTML(str) {
     });
 }
 
+function mostrarExitoRestauracion(data) {
+    Swal.fire({
+        title: '<i class="fas fa-check-circle me-2" style="color: var(--color-success-soft);"></i> Restauración Completada',
+        html: '<pre style="text-align:left;padding:0.75rem;border-radius:0.5rem;white-space:pre-wrap;word-break:break-word;background:rgba(var(--color-success-soft-rgb),.08);border:1px solid rgba(var(--color-success-soft-rgb),.25);color:var(--txt);">' + escaparHTML(data.message || 'Restauración finalizada correctamente.') + '</pre>',
+        icon: 'success',
+        width: '37.5rem',
+        showDenyButton: true,
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-rotate me-2"></i> Actualizar',
+        denyButtonText: '<i class="fas fa-file-lines me-2"></i> Ver log',
+        cancelButtonText: '<i class="fas fa-times me-2"></i> Cerrar',
+        confirmButtonColor: 'var(--color-success)',
+        denyButtonColor: 'var(--accent)',
+        cancelButtonColor: 'var(--muted)'
+    }).then(function (result) {
+        if (result.isDenied) {
+            verLogRestauracion();
+        } else if (result.isConfirmed) {
+            location.reload();
+        }
+    });
+}
+
+function mostrarErrorRestauracion(message) {
+    var texto = message || 'No se pudo completar la restauración.';
+
+    // ---- Estilos únicos ----
+    if (!document.getElementById('sr-errrestore-styles')) {
+        var st = document.createElement('style');
+        st.id = 'sr-errrestore-styles';
+        st.textContent = `
+        .sr-errrestore-popup{
+            font-family:inherit!important;
+            border-radius:.75rem!important;
+            overflow:hidden!important;
+            background:transparent!important;
+            border:none!important;
+            box-shadow:none!important;
+            padding:0!important;
+        }
+        .sr-errrestore-popup .swal2-html-container{
+            margin:0!important; padding:0!important; overflow:visible!important;
+        }
+
+        .sr-errrestore{
+            background:var(--bg);
+            color:var(--txt);
+            border-radius:.75rem;
+            border:1px solid rgba(var(--red-rgb),.25);
+            overflow:hidden;
+            text-align:left;
+            animation:srErrRestoreIn .35s cubic-bezier(.2,.8,.2,1) both;
+        }
+        @keyframes srErrRestoreIn{
+            from{opacity:0;transform:translateY(8px)}
+            to{opacity:1;transform:translateY(0)}
+        }
+
+        /* ===== Cabecera ===== */
+        .sr-errrestore-head{
+            display:flex;align-items:center;gap:.75rem;
+            padding:1rem 1.25rem;
+            background:linear-gradient(135deg,
+                rgba(var(--red-rgb),.18),
+                rgba(var(--red-rgb),.04));
+            border-bottom:1px solid rgba(var(--red-rgb),.2);
+        }
+        .sr-errrestore-head-icon{
+            width:2.25rem;height:2.25rem;border-radius:.5rem;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-size:.9375rem;color:#fff;
+            background:linear-gradient(135deg,var(--red),rgba(var(--red-rgb),.75));
+            box-shadow:0 .375rem .75rem rgba(var(--red-rgb),.35);
+        }
+        .sr-errrestore-head-txt{flex:1;min-width:0}
+        .sr-errrestore-title{
+            font-size:.9375rem;font-weight:700;
+            color:var(--txt);
+            letter-spacing:-.01em;
+            line-height:1.2;margin:0;
+        }
+        .sr-errrestore-sub{
+            font-size:.6875rem;color:var(--muted);
+            margin-top:.125rem;line-height:1.3;
+        }
+
+        /* ===== Cuerpo ===== */
+        .sr-errrestore-body{
+            padding:1rem;
+        }
+        .sr-errrestore-box{
+            margin:0;
+            padding:1rem;
+            border-radius:.5rem;
+            border:1px solid rgba(var(--red-rgb),.25);
+            background:rgba(var(--red-rgb),.06);
+            font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+            font-size:.75rem;
+            line-height:1.6;
+            color:var(--red);
+            white-space:pre-wrap;
+            word-break:break-word;
+            max-height:45vh;
+            overflow:auto;
+        }
+        .sr-errrestore-box::-webkit-scrollbar{ width:.5rem;height:.5rem; }
+        .sr-errrestore-box::-webkit-scrollbar-thumb{
+            background:rgba(var(--red-rgb),.3);
+            border-radius:.25rem;
+        }
+
+        /* ===== Acciones ===== */
+        .sr-errrestore-actions{
+            display:flex;align-items:center;justify-content:space-between;
+            gap:.75rem;
+            padding:.875rem 1.25rem;
+            border-top:1px solid rgba(var(--red-rgb),.15);
+            background:rgba(var(--red-rgb),.03);
+        }
+        .sr-errrestore-meta{
+            font-size:.6875rem;color:var(--muted);
+            display:flex;align-items:center;gap:.375rem;
+        }
+        .sr-errrestore-meta i{font-size:.6875rem;opacity:.7}
+        .sr-errrestore-btns{
+            display:flex;align-items:center;gap:.5rem;
+        }
+        .sr-errrestore-btn{
+            display:inline-flex;align-items:center;justify-content:center;gap:.375rem;
+            padding:.5rem 1rem;
+            border-radius:.5rem;
+            font-size:.75rem;font-weight:600;
+            font-family:inherit;
+            cursor:pointer;
+            border:1px solid rgba(var(--blue-soft-rgb),.2);
+            background:transparent;
+            color:var(--txt);
+            transition:background .12s,border-color .12s;
+        }
+        .sr-errrestore-btn:hover{
+            background:rgba(var(--blue-soft-rgb),.08);
+            border-color:rgba(var(--blue-soft-rgb),.35);
+        }
+        .sr-errrestore-btn:active{background:rgba(var(--blue-soft-rgb),.15)}
+        .sr-errrestore-btn i{font-size:.6875rem;opacity:.85}
+        .sr-errrestore-btn--danger{
+            background:var(--red);
+            border-color:var(--red);
+            color:#fff;
+        }
+        .sr-errrestore-btn--danger:hover{
+            background:var(--red);
+            border-color:var(--red);
+            filter:brightness(1.1);
+        }
+        .sr-errrestore-btn--danger i{opacity:1}
+        .sr-errrestore-btn--copied{
+            border-color:var(--color-success-soft)!important;
+            color:var(--color-success-soft)!important;
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .sr-errrestore{ animation:none; }
+        }
+        `;
+        document.head.appendChild(st);
+    }
+
+    // ---- HTML ----
+    var html = '';
+    html += '<div class="sr-errrestore">';
+
+    html +=   '<div class="sr-errrestore-head">';
+    html +=     '<div class="sr-errrestore-head-icon"><i class="fas fa-triangle-exclamation"></i></div>';
+    html +=     '<div class="sr-errrestore-head-txt">';
+    html +=       '<h2 class="sr-errrestore-title">Error al restaurar</h2>';
+    html +=       '<div class="sr-errrestore-sub">No se pudo completar la restauración de la base de datos</div>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-errrestore-body">';
+    html +=     '<pre class="sr-errrestore-box" id="srErrRestoreBox">' + escaparHTML(texto) + '</pre>';
+    html +=   '</div>';
+
+    html +=   '<div class="sr-errrestore-actions">';
+    html +=     '<div class="sr-errrestore-meta"><i class="fas fa-circle-exclamation"></i> Detalles del error</div>';
+    html +=     '<div class="sr-errrestore-btns">';
+    html +=       '<button type="button" class="sr-errrestore-btn" id="srErrRestoreCopy"><i class="fas fa-copy"></i> Copiar</button>';
+    html +=       '<button type="button" class="sr-errrestore-btn sr-errrestore-btn--danger" id="srErrRestoreOk"><i class="fas fa-check"></i> Entendido</button>';
+    html +=     '</div>';
+    html +=   '</div>';
+
+    html += '</div>';
+
+    Swal.fire({
+        html: html,
+        width: '40rem',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        padding: '0',
+        customClass: { popup: 'sr-errrestore-popup' },
+        didOpen: function () {
+            var popup = Swal.getPopup();
+            if (popup) {
+                popup.style.background = 'transparent';
+                popup.style.padding = '0';
+                popup.style.border = 'none';
+                popup.style.boxShadow = 'none';
+            }
+
+            var btnCopy = document.getElementById('srErrRestoreCopy');
+            var btnOk   = document.getElementById('srErrRestoreOk');
+
+            if (btnOk) btnOk.addEventListener('click', function () { Swal.close(); });
+
+            if (btnCopy) btnCopy.addEventListener('click', function () {
+                var done = function () {
+                    btnCopy.classList.add('sr-errrestore-btn--copied');
+                    btnCopy.innerHTML = '<i class="fas fa-check"></i> Copiado';
+                    setTimeout(function () {
+                        btnCopy.classList.remove('sr-errrestore-btn--copied');
+                        btnCopy.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+                    }, 1500);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(texto).then(done).catch(function () {
+                        var ta = document.createElement('textarea');
+                        ta.value = texto;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); done(); } catch (e) {}
+                        document.body.removeChild(ta);
+                    });
+                } else {
+                    var ta = document.createElement('textarea');
+                    ta.value = texto;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); done(); } catch (e) {}
+                    document.body.removeChild(ta);
+                }
+            });
+        }
+    });
+}
+
 // Abre una ventana de impresión con el texto indicado
 function imprimirTexto(titulo, texto) {
     var win = window.open('', '_blank', 'width=900,height=700');
     if (!win) {
-        Swal.fire({ title: 'Impresión bloqueada', text: 'Permita las ventanas emergentes para imprimir el log.', icon: 'warning', background: '#1a1a2e', color: '#fff' });
+        Swal.fire({ title: 'Impresión bloqueada', text: 'Permita las ventanas emergentes para imprimir el log.', icon: 'warning' });
         return;
     }
     win.document.write(
@@ -5063,7 +7593,6 @@ function imprimirTexto(titulo, texto) {
     win.print();
 }
 
-// Muestra el log de restauraciones (logs/restore_log.json) en un modal
 function verLogRestauracion() {
     fetch(AJAX_RESTORE_LOG_URL + '?t=' + Date.now(), { cache: 'no-store' })
         .then(function (r) { return r.json(); })
@@ -5072,25 +7601,298 @@ function verLogRestauracion() {
             var logs = Array.isArray(resp.logs) ? resp.logs : [];
             var entrada = logs.length ? logs[0] : null;
             var texto = entrada ? JSON.stringify(entrada, null, 2) : 'No hay registros de restauración.';
+
+            // ---- Estilos únicos ----
+            if (!document.getElementById('sr-logview-styles')) {
+                var st = document.createElement('style');
+                st.id = 'sr-logview-styles';
+                st.textContent = `
+                .sr-logview-popup{
+                    font-family:inherit!important;
+                    border-radius:.75rem!important;
+                    overflow:hidden!important;
+                    background:transparent!important;
+                    border:none!important;
+                    box-shadow:none!important;
+                    padding:0!important;
+                }
+                .sr-logview-popup .swal2-html-container{
+                    margin:0!important; padding:0!important; overflow:visible!important;
+                }
+
+                .sr-logview{
+                    background:var(--bg);
+                    color:var(--txt);
+                    border-radius:.75rem;
+                    border:1px solid rgba(var(--blue-soft-rgb),.2);
+                    overflow:hidden;
+                    text-align:left;
+                    animation:srLogviewIn .35s cubic-bezier(.2,.8,.2,1) both;
+                }
+                @keyframes srLogviewIn{
+                    from{opacity:0;transform:translateY(8px)}
+                    to{opacity:1;transform:translateY(0)}
+                }
+
+                /* ===== Cabecera ===== */
+                .sr-logview-head{
+                    display:flex;align-items:center;gap:.75rem;
+                    padding:1rem 1.25rem;
+                    background:linear-gradient(135deg,
+                        rgba(var(--blue-soft-rgb),.18),
+                        rgba(var(--blue-soft-rgb),.04));
+                    border-bottom:1px solid rgba(var(--blue-soft-rgb),.15);
+                }
+                .sr-logview-head-icon{
+                    width:2.25rem;height:2.25rem;border-radius:.5rem;flex-shrink:0;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:.9375rem;color:#fff;
+                    background:linear-gradient(135deg,var(--blue),rgba(var(--blue-soft-rgb),.85));
+                    box-shadow:0 .375rem .75rem rgba(var(--blue-soft-rgb),.3);
+                }
+                .sr-logview-head-txt{flex:1;min-width:0}
+                .sr-logview-title{
+                    font-size:.9375rem;font-weight:700;
+                    color:var(--txt);
+                    letter-spacing:-.01em;
+                    line-height:1.2;margin:0;
+                }
+                .sr-logview-sub{
+                    font-size:.6875rem;color:var(--muted);
+                    margin-top:.125rem;line-height:1.3;
+                    display:flex;align-items:center;gap:.375rem;
+                }
+                .sr-logview-live{
+                    width:.375rem;height:.375rem;border-radius:50%;
+                    background:var(--color-success-soft);
+                    box-shadow:0 0 0 0 rgba(var(--color-success-soft-rgb),.5);
+                    animation:srLogviewLive 2s cubic-bezier(.4,0,.6,1) infinite;
+                }
+                @keyframes srLogviewLive{
+                    0%,100%{ box-shadow:0 0 0 0 rgba(var(--color-success-soft-rgb),.5); }
+                    50%    { box-shadow:0 0 0 .3125rem rgba(var(--color-success-soft-rgb),0); }
+                }
+
+                /* ===== Caja del log ===== */
+                .sr-logview-body{
+                    padding:1rem;
+                }
+                .sr-logview-box{
+                    position:relative;
+                    max-height:55vh;
+                    overflow:auto;
+                    padding:1rem 1rem 1rem 3rem;
+                    border-radius:.5rem;
+                    border:1px solid rgba(var(--blue-soft-rgb),.15);
+                    background:
+                        linear-gradient(180deg,
+                            rgba(var(--blue-soft-rgb),.05),
+                            rgba(var(--blue-soft-rgb),.02));
+                    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+                    font-size:.75rem;
+                    line-height:1.65;
+                    color:var(--txt);
+white-space:pre-wrap;
+word-break:break-word;
+overflow-wrap:anywhere;
+                    margin:0;
+                    counter-reset:line;
+                    box-shadow:inset 0 .0625rem .25rem rgba(0,0,0,.06);
+                }
+                /* Números de línea */
+                .sr-logview-box .sr-line{
+                    display:block;
+                    position:relative;
+                    counter-increment:line;
+                }
+                .sr-logview-box .sr-line::before{
+                    content:counter(line);
+                    position:absolute;
+                    left:-3rem;
+                    width:2.25rem;
+                    text-align:right;
+                    color:var(--muted);
+                    opacity:.45;
+                    user-select:none;
+                    font-variant-numeric:tabular-nums;
+                    border-right:1px solid rgba(var(--blue-soft-rgb),.12);
+                    padding-right:.5rem;
+                }
+                .sr-logview-box::-webkit-scrollbar{
+                    width:.5rem;height:.5rem;
+                }
+                .sr-logview-box::-webkit-scrollbar-track{
+                    background:transparent;
+                }
+                .sr-logview-box::-webkit-scrollbar-thumb{
+                    background:rgba(var(--blue-soft-rgb),.25);
+                    border-radius:.25rem;
+                }
+                .sr-logview-box::-webkit-scrollbar-thumb:hover{
+                    background:rgba(var(--blue-soft-rgb),.4);
+                }
+
+                /* ===== Barra inferior de acciones ===== */
+                .sr-logview-actions{
+                    display:flex;align-items:center;justify-content:space-between;
+                    gap:.75rem;
+                    padding:.875rem 1.25rem;
+                    border-top:1px solid rgba(var(--blue-soft-rgb),.15);
+                    background:rgba(var(--blue-soft-rgb),.03);
+                }
+                .sr-logview-meta{
+                    font-size:.6875rem;color:var(--muted);
+                    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+                    display:flex;align-items:center;gap:.375rem;
+                }
+                .sr-logview-meta i{opacity:.7;font-size:.6875rem}
+                .sr-logview-btns{
+                    display:flex;align-items:center;gap:.5rem;
+                }
+                .sr-logview-btn{
+                    display:inline-flex;align-items:center;justify-content:center;gap:.375rem;
+                    padding:.5rem 1rem;
+                    border-radius:.5rem;
+                    font-size:.75rem;font-weight:600;
+                    font-family:inherit;
+                    cursor:pointer;
+                    border:1px solid rgba(var(--blue-soft-rgb),.2);
+                    background:transparent;
+                    color:var(--txt);
+                    transition:background .12s,border-color .12s;
+                }
+                .sr-logview-btn:hover{
+                    background:rgba(var(--blue-soft-rgb),.08);
+                    border-color:rgba(var(--blue-soft-rgb),.35);
+                }
+                .sr-logview-btn:active{background:rgba(var(--blue-soft-rgb),.15)}
+                .sr-logview-btn i{font-size:.6875rem;opacity:.85}
+                .sr-logview-btn--primary{
+                    background:var(--blue);
+                    border-color:var(--blue);
+                    color:#fff;
+                }
+                .sr-logview-btn--primary:hover{
+                    background:var(--blue);
+                    border-color:var(--blue);
+                    filter:brightness(1.1);
+                }
+                .sr-logview-btn--primary i{opacity:1}
+                .sr-logview-btn--copied{
+                    border-color:var(--color-success-soft)!important;
+                    color:var(--color-success-soft)!important;
+                }
+
+                @media (prefers-reduced-motion: reduce){
+                    .sr-logview,
+                    .sr-logview-live{ animation:none; }
+                }
+                `;
+                document.head.appendChild(st);
+            }
+
+            // ---- Helpers ----
+            function esc(s) {
+                if (typeof escaparHTML === 'function') return escaparHTML(s);
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+            function withLineNumbers(txt) {
+                return txt.split('\n').map(function (l) {
+                    return '<span class="sr-line">' + (esc(l) || '&nbsp;') + '</span>';
+                }).join('');
+            }
+
+            // ---- HTML ----
+            var totalLineas = texto.split('\n').length;
+            var html = '';
+            html += '<div class="sr-logview">';
+
+            html +=   '<div class="sr-logview-head">';
+            html +=     '<div class="sr-logview-head-icon"><i class="fas fa-file-lines"></i></div>';
+            html +=     '<div class="sr-logview-head-txt">';
+            html +=       '<h2 class="sr-logview-title">Log de restauración</h2>';
+            html +=       '<div class="sr-logview-sub"><span class="sr-logview-live"></span> Última ejecución registrada</div>';
+            html +=     '</div>';
+            html +=   '</div>';
+
+            html +=   '<div class="sr-logview-body">';
+            html +=     '<pre class="sr-logview-box" id="srLogviewBox">' + withLineNumbers(texto) + '</pre>';
+            html +=   '</div>';
+
+            html +=   '<div class="sr-logview-actions">';
+            html +=     '<div class="sr-logview-meta"><i class="fas fa-code"></i> JSON · ' + totalLineas + ' líneas</div>';
+            html +=     '<div class="sr-logview-btns">';
+            html +=       '<button type="button" class="sr-logview-btn" id="srLogviewCopy"><i class="fas fa-copy"></i> Copiar</button>';
+            html +=       '<button type="button" class="sr-logview-btn" id="srLogviewPrint"><i class="fas fa-print"></i> Imprimir</button>';
+            html +=       '<button type="button" class="sr-logview-btn sr-logview-btn--primary" id="srLogviewReload"><i class="fas fa-rotate-right"></i> Recargar</button>';
+            html +=       '<button type="button" class="sr-logview-btn" id="srLogviewClose"><i class="fas fa-ban"></i> Cerrar</button>';
+            html +=     '</div>';
+            html +=   '</div>';
+
+            html += '</div>';
+
             Swal.fire({
-                title: 'Log de restauración',
-                html: '<pre style="text-align:left; max-height:55vh; overflow:auto; background:#2d2d3a; color:#e2e8f0 !important; padding:0.75rem; border-radius:0.5rem; font-size:0.8rem; white-space:pre-wrap; word-break:break-word;">' + escaparHTML(texto) + '</pre>',
-                icon: 'info',
+                html: html,
                 width: '52rem',
-                showCancelButton: true,
-                showDenyButton: true,
-                confirmButtonText: '<i class="fas fa-check me-2"></i> Recargar',
-                denyButtonText: '<i class="fas fa-print me-2"></i> Imprimir',
-                cancelButtonText: '<i class="fas fa-times me-2"></i> Cerrar',
-                preDeny: function () { imprimirTexto('Log de restauración', texto); return false; },
-                background: '#1a1a2e',
-                color: '#fff'
-            }).then(function (res) {
-                if (res.isConfirmed) { location.reload(); }
+                showConfirmButton: false,
+                showCancelButton: false,
+                showCloseButton: false,
+                padding: '0',
+                customClass: { popup: 'sr-logview-popup' },
+                didOpen: function () {
+                    var popup = Swal.getPopup();
+                    if (popup) {
+                        popup.style.background = 'transparent';
+                        popup.style.padding = '0';
+                        popup.style.border = 'none';
+                        popup.style.boxShadow = 'none';
+                    }
+
+                    var btnCopy   = document.getElementById('srLogviewCopy');
+                    var btnPrint  = document.getElementById('srLogviewPrint');
+                    var btnReload = document.getElementById('srLogviewReload');
+                    var btnClose  = document.getElementById('srLogviewClose');
+
+                    if (btnClose)  btnClose.addEventListener('click', function () { Swal.close(); });
+                    if (btnReload) btnReload.addEventListener('click', function () { location.reload(); });
+                    if (btnPrint)  btnPrint.addEventListener('click', function () {
+                        if (typeof imprimirTexto === 'function') imprimirTexto('Log de restauración', texto);
+                    });
+                    if (btnCopy)   btnCopy.addEventListener('click', function () {
+                        var done = function () {
+                            btnCopy.classList.add('sr-logview-btn--copied');
+                            btnCopy.innerHTML = '<i class="fas fa-check"></i> Copiado';
+                            setTimeout(function () {
+                                btnCopy.classList.remove('sr-logview-btn--copied');
+                                btnCopy.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+                            }, 1500);
+                        };
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(texto).then(done).catch(function () {
+                                // Fallback
+                                var ta = document.createElement('textarea');
+                                ta.value = texto;
+                                document.body.appendChild(ta);
+                                ta.select();
+                                try { document.execCommand('copy'); done(); } catch (e) {}
+                                document.body.removeChild(ta);
+                            });
+                        } else {
+                            var ta = document.createElement('textarea');
+                            ta.value = texto;
+                            document.body.appendChild(ta);
+                            ta.select();
+                            try { document.execCommand('copy'); done(); } catch (e) {}
+                            document.body.removeChild(ta);
+                        }
+                    });
+                }
             });
         })
         .catch(function (err) {
-            Swal.fire({ title: 'Error', text: err.message || 'No se pudo leer el log', icon: 'error', background: '#1a1a2e', color: '#fff' });
+            Swal.fire({ title: 'Error', text: err.message || 'No se pudo leer el log', icon: 'error' });
         });
 }
 
@@ -5100,15 +7902,7 @@ document.getElementById('salvaRestauraBtn')?.addEventListener('click', function 
     mostrarModalSalvaRestaura();
 });
 
-// Atajo de teclado: CTRL + ALT + S para abrir Salva / Restaura desde cualquier página
-document.addEventListener('keydown', function (e) {
-    if (e.ctrlKey && e.altKey && (e.key === 'S' || e.key === 's')) {
-        e.preventDefault();
-        e.stopPropagation();
-        mostrarModalSalvaRestaura();
-        return false;
-    }
-});
+// Atajos de teclado (CTRL+ALT+S/W/X): ver bloque <script> al inicio de este archivo
 
 // Reloj
 if (document.getElementById('liveClockMenu')) {
@@ -5158,19 +7952,6 @@ if (logoutUserMenuBtn) {
     });
 }
 
-// Atajo de teclado: CTRL + ALT + X (y CTRL + X fuera de campos de texto) para cerrar sesión
-document.addEventListener('keydown', function (e) {
-    const esEditable = (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement || e.target.isContentEditable);
-    const comboSeguro = e.ctrlKey && e.altKey && (e.key === 'X' || e.key === 'x');
-    const soloCtrlFuera = e.ctrlKey && !e.altKey && !e.shiftKey && !esEditable && (e.key === 'X' || e.key === 'x');
-    if (comboSeguro || soloCtrlFuera) {
-        e.preventDefault();
-        e.stopPropagation();
-        solicitarCerrarSesion();
-        return false;
-    }
-});
-
 // Bloquear sesión
 function solicitarBloqueoSesion() {
     if (typeof Swal !== 'undefined') {
@@ -5203,16 +7984,6 @@ if (bloquearSesionMenuBtn) {
         solicitarBloqueoSesion();
     });
 }
-
-// Atajo de teclado: CTRL + ALT + W para bloquear la sesión desde cualquier página
-document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.altKey && (e.key === 'W' || e.key === 'w')) {
-        e.preventDefault();
-        e.stopPropagation();
-        solicitarBloqueoSesion();
-        return false;
-    }
-});
 
 </script>
 

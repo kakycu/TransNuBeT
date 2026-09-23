@@ -278,6 +278,8 @@ CREATE TABLE `clasif_usuarios` (
   `telefono_contacto` varchar(15) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `fecha_registro` datetime DEFAULT CURRENT_TIMESTAMP,
   `rol_id` int(11) DEFAULT NULL,
+  `close_inactiv` tinyint(1) NOT NULL DEFAULT '1',
+  `time_inac` int(11) NOT NULL DEFAULT '10',
   `foto` longtext COLLATE utf8mb4_unicode_ci,
   `usuario` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -293,7 +295,7 @@ CREATE TABLE `clasif_usuarios` (
 --
 
 INSERT INTO `clasif_usuarios` (`id`, `nombre`, `apellidos`, `no_ci`, `direccion_particular`, `telefono_contacto`, `fecha_registro`, `rol_id`, `foto`, `usuario`, `password`, `email`, `activo`, `fecha_actualizacion`, `reset_token`, `reset_expira`) VALUES
-(1, 'Franklin', 'Ramos Lamadrid', '81103016525', 'A. Arango No. 137. Nuevitas, Camagüey', '+5359860773', '2020-11-28 19:48:46', 1, 'assets/imagenes/usuarios/user_1773321151_69b2bbbf55ff3.jpg', 'admin', '$2y$10$ylnrJw8ZEDOdjoFBuc1pNuFcpthaAaAv3MuIHcqsgFks09zb216NO', 'kakycu@gmail.com', 1, '2026-08-09 17:31:38', NULL, NULL);
+(1, 'Franklin', 'Ramos Lamadrid', '81103016525', 'A. Arango No. 137. Nuevitas, Camagüey', '+5359860773', '2020-11-28 19:48:46', 1, 1, 10, 'assets/imagenes/usuarios/user_1773321151_69b2bbbf55ff3.jpg', 'admin', '$2y$10$ylnrJw8ZEDOdjoFBuc1pNuFcpthaAaAv3MuIHcqsgFks09zb216NO', 'kakycu@gmail.com', 1, '2026-08-09 17:31:38', NULL, NULL);
 
 -- --------------------------------------------------------
 
