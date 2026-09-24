@@ -360,7 +360,7 @@ footer {
                 <a class="btn btn-outline" href="../soporte.php"><i class="fa-solid fa-headset"></i>&nbsp;Soporte</a>
                 <a class="btn btn-outline" href="../privacidad.php"><i class="fa-solid fa-shield-halved"></i>&nbsp;Privacidad</a>
                 <a class="btn btn-outline" href="../terminos.php"><i class="fa-solid fa-file-contract"></i>&nbsp;T&eacute;rminos</a>
-                <a class="btn btn-outline" href="../Explorer.html"><i class="fa-solid fa-circle-info"></i>&nbsp;Sobre el autor</a>
+                <a class="btn btn-outline" href="../explorer.php"><i class="fa-solid fa-circle-info"></i>&nbsp;Sobre el autor</a>
             </div>
         </div>
     </div>

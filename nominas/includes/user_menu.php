@@ -4177,9 +4177,9 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
     </a>
 </li>
 <li><hr class="dropdown-divider"></li>
-<!-- NUEVO: Sobre el autor con enlace fijo ../explorer.html -->
+<!-- NUEVO: Sobre el autor con enlace fijo ../explorer.php -->
 <li>
-    <a class="dropdown-item d-flex align-items-center py-2" href="../../explorer.html">
+    <a class="dropdown-item d-flex align-items-center py-2" href="../../explorer.php">
         <i class="fas fa-info-circle me-3" style="width: 20px;"></i>
         <div>
             <span class="d-block" style="color: var(--win-text-primary);">Sobre el autor</span>
