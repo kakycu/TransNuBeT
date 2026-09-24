@@ -64,6 +64,25 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // ============================================
+// GUARDIA DE LICENCIA: nada dentro de /nominas/
+// se puede usar sin una licencia válida activada.
+// La licencia se introduce UNA vez desde licencia.php
+// y se guarda cifrada en el registro (Windows) o en
+// un archivo cifrado del disco (Linux/otros).
+// ============================================
+if (php_sapi_name() !== 'cli') {
+    require_once __DIR__ . '/../includes/licencia.php';
+    $pagina_lic = basename($_SERVER['SCRIPT_NAME'] ?? '', '?*');
+    if ($pagina_lic !== 'licencia.php' && !licencia_activada()) {
+        $dir_script_lic = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+        $niveles_lic    = max(0, substr_count($dir_script_lic, '/') - 1);
+        $destino_lic    = str_repeat('../', $niveles_lic) . 'licencia.php';
+        header('Location: ' . $destino_lic);
+        exit;
+    }
+}
+
+// ============================================
 // GUARDIA ANTI-RETROCESO: si la sesión está bloqueada,
 // redirigir a la pantalla de bloqueo (excepto en las páginas de desbloqueo)
 // ============================================

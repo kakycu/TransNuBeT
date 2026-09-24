@@ -10,6 +10,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_write_close();
 }
 
+// Confirmar que el sistema tiene licencia activa antes de su uso.
+require_once __DIR__ . '/../includes/licencia.php';
+if (!licencia_activada()) {
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Sistema sin licencia']);
+    exit;
+}
+
 $temp_dir = '../temp/';
 $progressFile = $temp_dir . 'restore_progress_' . session_id() . '.json';
 

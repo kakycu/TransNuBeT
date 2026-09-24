@@ -41,7 +41,12 @@ if ($es_cli) {
         exit(1);
     }
 } else {
-    // En web: validar sesión y rol antes de continuar
+    // En web: validar licencia, sesión y rol antes de continuar
+    require_once __DIR__ . '/includes/licencia.php';
+    if (!licencia_activada()) {
+        header('Location: licencia.php');
+        exit;
+    }
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (empty($_SESSION['logged_in']) || empty($_SESSION['user_id'])) {
         header('Location: login.php');
