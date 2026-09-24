@@ -1361,7 +1361,12 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
     }
 
     function closeWindows() {
-        window.location.href = 'dashboard.php';
+        var ref = document.referrer;
+        if (ref && ref.indexOf(location.origin) === 0) {
+            window.location.href = ref;
+        } else {
+            window.location.href = 'nominas/dashboard.php';
+        }
     }
 </script>
 </body>
