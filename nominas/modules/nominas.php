@@ -6661,7 +6661,7 @@ if ($existe_nomina) {
 <script src="../js/datatables/1.13.6/buttons.print.min.js"></script>
 <script src="../js/datatables/1.13.6/buttons.colVis.min.js"></script>
 
-<?php include __DIR__ . '/../includes/modulo_nominas_unico_js.php'; ?>
+<?php include __DIR__ . '/js/modulo_nominas_unico_js.php'; ?>
 
 <!-- MODAL OBLIGATORIO PARA DESCRIPCIÓN ANTES DE CONTABILIZAR -->
 <div class="modal fade" id="modalDescripcionContabilizar" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
