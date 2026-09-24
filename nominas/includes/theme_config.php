@@ -836,9 +836,13 @@ c+='html table.dataTable thead .sorting_desc_disabled::after{'
 c+='html table.dataTable thead .sorting_asc,'
  +'html table.dataTable thead .sorting_desc{color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;}';
 c+='html[data-theme="light"] table.dataTable thead .sorting_asc,'
- +'html[data-theme="light"] table.dataTable thead .sorting_desc{color:#111827!important;-webkit-text-fill-color:#111827!important;}';
+ +'html[data-theme="light"] table.dataTable thead .sorting_desc{color:var(--accent)!important;-webkit-text-fill-color:var(--accent)!important;}';
 c+='html[data-theme="orgullo"] table.dataTable thead .sorting_asc,'
- +'html[data-theme="orgullo"] table.dataTable thead .sorting_desc{color:#1e1b4b!important;-webkit-text-fill-color:#1e1b4b!important;}';
+ +'html[data-theme="orgullo"] table.dataTable thead .sorting_desc{color:var(--accent)!important;-webkit-text-fill-color:var(--accent)!important;}';
+c+='html[data-theme="blue"] table.dataTable thead .sorting_asc,'
+ +'html[data-theme="blue"] table.dataTable thead .sorting_desc{color:var(--accent)!important;-webkit-text-fill-color:var(--accent)!important;}';
+c+='html[data-theme="verde"] table.dataTable thead .sorting_asc,'
+ +'html[data-theme="verde"] table.dataTable thead .sorting_desc{color:var(--accent)!important;-webkit-text-fill-color:var(--accent)!important;}';
 c+='html[data-theme="win11"] table.dataTable thead .sorting_asc,'
  +'html[data-theme="win11"] table.dataTable thead .sorting_desc{color:#4fc3f7!important;-webkit-text-fill-color:#4fc3f7!important;}';
 
