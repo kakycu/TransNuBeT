@@ -1085,6 +1085,9 @@ function getBadge($codigo, $server_ok, $estados) {
                     <button class="dropdown-item" data-servicio="contacto">
                         <i class="fas fa-headset"></i> Contactar Soporte
                     </button>
+                    <button class="dropdown-item" data-servicio="sobre-autor">
+                        <i class="fas fa-user"></i> Sobre el Autor
+                    </button>
                 </div>
             </div>
 
@@ -1836,6 +1839,9 @@ function mostrarBienvenida() {
                 } else if (servicio === 'contacto') {
                     // Redirigir al formulario de contacto
                     window.location.href = '/contacto.php';
+                } else if (servicio === 'sobre-autor') {
+                    // Redirigir al explorador de portafolio del autor
+                    window.location.href = '/explorer.php';
                 } else {
                     // Por si hubiera otros, aunque ahora solo está este
                     Swal.fire({
