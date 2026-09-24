@@ -780,6 +780,68 @@ if(!perDev&&manualDev&&manualDev!==((_w<=768)?'movil':((_w<=1024)?'tableta':'pc'
      +TD+' .main-container{margin-left:5rem!important;}';
 }
 
+/* ===== ICONOS DE ORDENAMIENTO DATATABLES - SVG VERTICALES POR TEMA =====
+   Las flechas se dibujan en un ::after (sin texto) con mask-image +
+   background-color:currentColor. Los tres estados ocupan el mismo
+   footprint (0.6875x1.125rem) para que ninguna se vea mas pequena. La
+   columna ordenada cambia el color y peso del texto segun el tema. */
+c+='html table.dataTable thead th{position:relative!important;}';
+c+='html table.dataTable thead .sorting_asc,'
+ +'html table.dataTable thead .sorting_desc{font-weight:700!important;}';
+c+='html table.dataTable thead .sorting,'
+ +'html table.dataTable thead .sorting_asc,'
+ +'html table.dataTable thead .sorting_desc,'
+ +'html table.dataTable thead .sorting_asc_disabled,'
+ +'html table.dataTable thead .sorting_desc_disabled{background-image:none!important;}';
+/* Matamos el ::before del DataTables por defecto (dibuja su propia ▲) */
+c+='html table.dataTable thead .sorting::before,'
+ +'html table.dataTable thead .sorting_asc::before,'
+ +'html table.dataTable thead .sorting_desc::before,'
+ +'html table.dataTable thead .sorting_asc_disabled::before,'
+ +'html table.dataTable thead .sorting_desc_disabled::before{content:none!important;}';
+/* Base del ::after: gana la cascada al default (que pone content/content y opacity) */
+c+='html table.dataTable thead .sorting::after,'
+ +'html table.dataTable thead .sorting_asc::after,'
+ +'html table.dataTable thead .sorting_desc::after,'
+ +'html table.dataTable thead .sorting_asc_disabled::after,'
+ +'html table.dataTable thead .sorting_desc_disabled::after{'
+ +'content:""!important;position:absolute!important;top:50%!important;'
+ +'right:0.375rem!important;transform:translateY(-50%)!important;'
+ +'width:0.6875rem!important;height:1.125rem!important;pointer-events:none!important;'
+ +'-webkit-mask-repeat:no-repeat!important;mask-repeat:no-repeat!important;'
+ +'-webkit-mask-position:center!important;mask-position:center!important;'
+ +'-webkit-mask-size:contain!important;mask-size:contain!important;'
+ +'background-color:currentColor;}';
+c+='html table.dataTable thead .sorting::after{'
+ +'-webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 3L15 10H4z%22/%3E%3Cpath fill=%22black%22 d=%22M9.5 16L4 9h11z%22/%3E%3C/svg%3E");'
+ +'mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 3L15 10H4z%22/%3E%3Cpath fill=%22black%22 d=%22M9.5 16L4 9h11z%22/%3E%3C/svg%3E");'
+ +'opacity:0.55!important;}';
+c+='html table.dataTable thead .sorting_asc::after{'
+ +'-webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 1L18 14H1z%22/%3E%3C/svg%3E");'
+ +'mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 1L18 14H1z%22/%3E%3C/svg%3E");'
+ +'opacity:1!important;}';
+c+='html table.dataTable thead .sorting_desc::after{'
+ +'-webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 18L1 5H18z%22/%3E%3C/svg%3E");'
+ +'mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 18L1 5H18z%22/%3E%3C/svg%3E");'
+ +'opacity:1!important;}';
+c+='html table.dataTable thead .sorting_asc_disabled::after{'
+ +'-webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 1L18 14H1z%22/%3E%3C/svg%3E");'
+ +'mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 1L18 14H1z%22/%3E%3C/svg%3E");'
+ +'opacity:0.35!important;}';
+c+='html table.dataTable thead .sorting_desc_disabled::after{'
+ +'-webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 18L1 5H18z%22/%3E%3C/svg%3E");'
+ +'mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 19 19%22%3E%3Cpath fill=%22black%22 d=%22M9.5 18L1 5H18z%22/%3E%3C/svg%3E");'
+ +'opacity:0.35!important;}';
+/* Columna ordenada: texto resaltado por tema */
+c+='html table.dataTable thead .sorting_asc,'
+ +'html table.dataTable thead .sorting_desc{color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;}';
+c+='html[data-theme="light"] table.dataTable thead .sorting_asc,'
+ +'html[data-theme="light"] table.dataTable thead .sorting_desc{color:#111827!important;-webkit-text-fill-color:#111827!important;}';
+c+='html[data-theme="orgullo"] table.dataTable thead .sorting_asc,'
+ +'html[data-theme="orgullo"] table.dataTable thead .sorting_desc{color:#1e1b4b!important;-webkit-text-fill-color:#1e1b4b!important;}';
+c+='html[data-theme="win11"] table.dataTable thead .sorting_asc,'
+ +'html[data-theme="win11"] table.dataTable thead .sorting_desc{color:#4fc3f7!important;-webkit-text-fill-color:#4fc3f7!important;}';
+
 var st=document.createElement('style');
 st.id='theme-config-all';
 st.textContent=c;
