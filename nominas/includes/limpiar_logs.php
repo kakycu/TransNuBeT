@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-// limpiar_logs.php - Depuración de registros de auditoría
+// includes/limpiar_logs.php - Depuración de registros de auditoría
 // ------------------------------------------------------------
 // Elimina los registros de audit_logs con más de 365 días y
 // REEDIFICA la cadena de hashes (hash_chain) de los registros
@@ -8,17 +8,19 @@
 // tras una purga legítima.
 //
 // USO (CLI / cron):
-//   php.exe limpiar_logs.php             -> purga >365 días
-//   php.exe limpiar_logs.php --days=90   -> purga >90 días (pruebas)
+//   php.exe includes/limpiar_logs.php             -> purga >365 días
+//   php.exe includes/limpiar_logs.php --days=90   -> purga >90 días (pruebas)
 //
 // USO (web, requiere sesión Admin/Soft):
-//   /nominas/limpiar_logs.php?days=365
+//   /nominas/includes/limpiar_logs.php?days=365
 //
 // SIN Composer ni librerías externas.
+// Nota: vive en /includes, por lo que las rutas de archivos y
+// redirecciones suben un nivel con "../".
 // ============================================================
 
-require_once __DIR__ . '/config.php';              // constantes de BD
-require_once __DIR__ . '/includes/logger.php';              // canonicalDetallesAuditoria()
+require_once __DIR__ . '/../config.php';            // constantes de BD
+require_once __DIR__ . '/logger.php';               // canonicalDetallesAuditoria()
 
 $es_cli = (PHP_SAPI === 'cli');
 
@@ -41,25 +43,17 @@ if ($es_cli) {
         exit(1);
     }
 } else {
-    // En web: validar licencia, sesión y rol antes de continuar
-    if (!is_file(__DIR__ . '/includes/licencia.php')) {
-        header('Location: licencia.php');
-        exit;
-    }
-    require_once __DIR__ . '/includes/licencia.php';
-    if (!licencia_activada()) {
-        header('Location: licencia.php');
-        exit;
-    }
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    // En web: database.php valida la licencia, inicia la sesión,
+    // define $pdo y carga includes/permisos.php (permiso_rol_codigo()).
+    require_once __DIR__ . '/../config/database.php';
     if (empty($_SESSION['logged_in']) || empty($_SESSION['user_id'])) {
-        header('Location: login.php');
+        header('Location: ../login.php');
         exit;
     }
     $rol_actual = permiso_rol_codigo();
     if (!in_array($rol_actual, ['Admin', 'Soft'], true)) {
         logAction('acceso_denegado', 'auditoria', 'Intento de ejecutar la limpieza de logs sin permisos', ['rol_actual' => $rol_actual], (int)$_SESSION['user_id'], 'failed', 'Rol sin permiso: ' . $rol_actual, $_SESSION['auth_provider'] ?? 'local');
-        header('Location: modules/historico.php');
+        header('Location: ../modules/historico.php');
         exit;
     }
 }
