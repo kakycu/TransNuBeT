@@ -2073,6 +2073,8 @@ html[data-theme="orgullo"] .lock-clock-num { fill:rgba(51,38,77,0.7); }
 html[data-theme="orgullo"] .lock-clock-hand { stroke:#7c3aed; fill:none; }
 html[data-theme="orgullo"] .lock-clock-hub { fill:#7c3aed; }
 html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(139,92,246,0.15); border:0.0625rem solid rgba(167,139,250,0.35); }
+    .lic-copiar { cursor:pointer; opacity:0.65; font-size:0.72rem; color:#94a3b8; transition:opacity .15s ease, color .15s ease; }
+    .lic-copiar:hover, .lic-copiar:focus { opacity:1; color:#60a5fa; outline:none; }
     </style>
 </head>
 <body>
@@ -2803,6 +2805,8 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                 $lic_info_datos  = licencia_leer();
                                 $lic_info_activa = licencia_activada() && $lic_info_datos !== null;
                                 $lic_info_vence  = ($lic_info_datos !== null) ? licencia_vencimiento($lic_info_datos) : null;
+                                $lic_info_huella = licencia_fingerprint_equipo();
+                                $lic_info_serial = ($lic_info_datos !== null && ($lic_info_datos['serial'] ?? '') !== '') ? licencia_formatear_serial($lic_info_datos['serial']) : '—';
                                 ?>
                                 <label class="form-label d-block text-secondary mb-2"><i class="fas fa-id-card me-1" style="color: #60a5fa;"></i> Licencia del Sistema</label>
                                 <span class="badge d-inline-block mb-2" style="background: <?php echo $lic_info_activa ? 'var(--color-success)' : ($lic_info_datos !== null && $lic_info_vence !== null && $lic_info_vence < time() ? '#ef4444' : '#f59e0b'); ?>; font-size:0.7rem;">
@@ -2827,11 +2831,19 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                     </div>
                                     <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
                                         <span class="text-secondary">Huella del PC</span>
-                                        <span class="fw-semibold text-end" style="font-family:'Consolas','Courier New',monospace; font-size:0.78rem;"><?php echo htmlspecialchars(licencia_fingerprint_equipo()); ?></span>
+                                        <span class="fw-semibold text-end d-inline-flex align-items-center gap-2" style="font-family:'Consolas','Courier New',monospace; font-size:0.78rem;">
+                                            <?php echo htmlspecialchars($lic_info_huella); ?>
+                                            <i class="fas fa-copy lic-copiar" role="button" tabindex="0" title="Copiar huella del PC al portapapeles" aria-label="Copiar huella del PC al portapapeles" data-lic-titulo="Copiar huella del PC al portapapeles" data-lic-copiar="<?php echo htmlspecialchars($lic_info_huella); ?>" onclick="copiarLicencia(this)"></i>
+                                        </span>
                                     </div>
                                     <div class="d-flex justify-content-between py-1">
                                         <span class="text-secondary">Licencia</span>
-                                        <span class="fw-semibold text-end" style="font-family:'Consolas','Courier New',monospace; font-size:0.78rem;"><?php echo htmlspecialchars(($lic_info_datos !== null && ($lic_info_datos['serial'] ?? '') !== '') ? licencia_formatear_serial($lic_info_datos['serial']) : '—'); ?></span>
+                                        <span class="fw-semibold text-end d-inline-flex align-items-center gap-2" style="font-family:'Consolas','Courier New',monospace; font-size:0.78rem;">
+                                            <?php echo htmlspecialchars($lic_info_serial); ?>
+                                            <?php if ($lic_info_serial !== '—'): ?>
+                                            <i class="fas fa-copy lic-copiar" role="button" tabindex="0" title="Copiar licencia al portapapeles" aria-label="Copiar licencia al portapapeles" data-lic-titulo="Copiar licencia al portapapeles" data-lic-copiar="<?php echo htmlspecialchars($lic_info_serial); ?>" onclick="copiarLicencia(this)"></i>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -3062,6 +3074,38 @@ window.CONFIG_EXPORT = {
     sistema: 'Sistema SisGesNom®',
     empresa: <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom'), JSON_UNESCAPED_UNICODE); ?>
 };
+</script>
+<script>
+/* Copiar al portapapeles la licencia o la huella del PC */
+function copiarLicencia(icono) {
+    const texto = icono.getAttribute('data-lic-copiar') || '';
+    if (!texto) return;
+    const confirmar = () => {
+        icono.className = 'fas fa-check lic-copiar';
+        icono.setAttribute('title', 'Copiado al portapapeles');
+        setTimeout(() => {
+            icono.className = 'fas fa-copy lic-copiar';
+            icono.setAttribute('title', icono.getAttribute('data-lic-titulo') || 'Copiar al portapapeles');
+        }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(confirmar).catch(() => { copiarLicenciaFallback(texto); confirmar(); });
+    } else {
+        copiarLicenciaFallback(texto);
+        confirmar();
+    }
+}
+
+function copiarLicenciaFallback(texto) {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+}
 </script>
 <script src="../js/configuracion_export.js?v=<?php echo @filemtime(__DIR__ . '/../js/configuracion_export.js') ?: time(); ?>"></script>
 

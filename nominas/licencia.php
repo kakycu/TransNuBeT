@@ -429,6 +429,8 @@ if ($guardado_ok) {
             user-select:all;
         }
         .fp-box .hint { margin-top:0.5rem; text-align:center; }
+        .fp-copiar { cursor:pointer; opacity:0.7; font-size:0.8rem; color:#94a3b8; margin-left:0.5rem; transition:opacity .15s ease, color .15s ease; }
+        .fp-copiar:hover, .fp-copiar:focus { opacity:1; color:#60a5fa; outline:none; }
     </style>
 </head>
 <body>
@@ -457,6 +459,7 @@ if ($guardado_ok) {
                     <div class="fp-box" style="margin-top:0.85rem;">
                         <div class="fp-value">
                             <span style="color:#94a3b8; font-family:'Segoe UI',Arial,sans-serif; font-size:0.8rem; font-weight:600; letter-spacing:0;">Código Equipo:&nbsp;</span><?php echo licencia_fingerprint_equipo(); ?>
+                            <i class="fas fa-copy fp-copiar" role="button" tabindex="0" title="Copiar huella del PC al portapapeles" aria-label="Copiar huella del PC al portapapeles" data-fp-titulo="Copiar huella del PC al portapapeles" data-fp-copiar="<?php echo htmlspecialchars(licencia_fingerprint_equipo()); ?>" onclick="copiarHuella(this)"></i>
                         </div>
                     </div>
                 </div>
@@ -583,6 +586,37 @@ if ($guardado_ok) {
     <?php endif; ?>
 
     <script>
+    function copiarHuella(icono) {
+        var texto = icono.getAttribute('data-fp-copiar') || '';
+        if (!texto) return;
+        var restaurar = icono.getAttribute('data-fp-titulo') || 'Copiar huella del PC al portapapeles';
+        var confirmar = function () {
+            icono.className = 'fas fa-check fp-copiar';
+            icono.setAttribute('title', 'Copiado al portapapeles');
+            setTimeout(function () {
+                icono.className = 'fas fa-copy fp-copiar';
+                icono.setAttribute('title', restaurar);
+            }, 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(texto).then(confirmar).catch(function () { copiarHuellaFallback(texto); confirmar(); });
+        } else {
+            copiarHuellaFallback(texto);
+            confirmar();
+        }
+    }
+
+    function copiarHuellaFallback(texto) {
+        var ta = document.createElement('textarea');
+        ta.value = texto;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         var serial = document.getElementById('serial');
         var nombreInput = document.getElementById('nombre');

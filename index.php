@@ -1784,23 +1784,34 @@ function licenciaHTML(d) {
     ${fila('Usuario', `<i class="fas fa-user" style="color:#3b82f6;"></i> ${d.usuario}`)}
     ${fila('Tipo', d.tipo)}
     ${fila('Vence el', d.vence)}
-    ${fila('Licencia', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.serial}</span>`, '#60a5fa')}
-    ${fila('Huella del PC', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.huella}</span>`, '#94a3b8')}`;
+    ${fila('Licencia', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.serial}</span>${iconoCopiar(d.serial, 'Copiar licencia al portapapeles')}`, '#60a5fa')}
+    ${fila('Huella del PC', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.huella}</span>${iconoCopiar(d.huella, 'Copiar huella del PC al portapapeles')}`, '#94a3b8')}`;
 }
 
-function copiarHuella(icono) {
-    const fp = licenciaRaiz.huella || '';
+function iconoCopiar(texto, titulo) {
+    if (!texto || texto === '—') return '';
+    const valor = String(texto).replace(/'/g, "\\'");
+    return ` <i class="fas fa-copy" role="button" tabindex="0" title="${titulo}" aria-label="${titulo}" style="cursor:pointer; font-size:0.72rem; opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7" onclick="copiarTexto(this, '${valor}')"></i>`;
+}
+
+function copiarTexto(icono, texto) {
+    const valor = texto || '';
+    if (!valor) return;
     const confirmar = () => {
         icono.className = 'fas fa-check';
         icono.style.color = '#22c55e';
         setTimeout(() => { icono.className = 'fas fa-copy'; icono.style.color = ''; }, 1500);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(fp).then(confirmar).catch(() => { copiarHuellaFallback(fp); confirmar(); });
+        navigator.clipboard.writeText(valor).then(confirmar).catch(() => { copiarHuellaFallback(valor); confirmar(); });
     } else {
-        copiarHuellaFallback(fp);
+        copiarHuellaFallback(valor);
         confirmar();
     }
+}
+
+function copiarHuella(icono) {
+    copiarTexto(icono, licenciaRaiz.huella || '');
 }
 
 function copiarHuellaFallback(texto) {

@@ -8011,6 +8011,36 @@ function cerrarModalInfoRegistro(btn) {
     var overlay = (btn && btn.closest('.iso27001-overlay')) || document.getElementById('mirOverlay');
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
 }
+// Copia al portapapeles el Código (serial) o la Huella del Equipo del modal.
+function copiarRegistroLicencia(icono) {
+    var texto = icono.getAttribute('data-mir-copiar') || '';
+    if (!texto) return;
+    var restaurar = icono.getAttribute('data-mir-titulo') || 'Copiar al portapapeles';
+    var confirmar = function () {
+        icono.className = 'fas fa-check mir-copiar';
+        icono.setAttribute('title', 'Copiado al portapapeles');
+        setTimeout(function () {
+            icono.className = 'fas fa-copy mir-copiar';
+            icono.setAttribute('title', restaurar);
+        }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(confirmar).catch(function () { copiarRegistroLicenciaFallback(texto); confirmar(); });
+    } else {
+        copiarRegistroLicenciaFallback(texto);
+        confirmar();
+    }
+}
+function copiarRegistroLicenciaFallback(texto) {
+    var ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+}
 function exportarLicenciaTxt() {
     if (typeof LIC_INFO_TXT !== 'string' || !LIC_INFO_TXT) return;
     var nombre = (typeof LIC_INFO_NOMBRE === 'string' ? LIC_INFO_NOMBRE : '').trim() || 'Registro';
@@ -8362,6 +8392,21 @@ body > .swal2-container { z-index: 10500 !important; }
     font-size: 0.9375rem;
 }
 
+#mirOverlay .mir-copiar {
+    cursor: pointer;
+    opacity: 0.7;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--muted, #94a3b8);
+    transition: opacity 0.15s ease, color 0.15s ease;
+}
+#mirOverlay .mir-copiar:hover,
+#mirOverlay .mir-copiar:focus {
+    opacity: 1;
+    color: var(--accent, #fbbf24);
+    outline: none;
+}
+
 #mirOverlay .mir-badge {
     display: inline-flex;
     align-items: center;
@@ -8522,11 +8567,11 @@ body > .swal2-container { z-index: 10500 !important; }
                 </div>
                 <div class="mir-row">
                     <span class="mir-label"><i class="fas fa-key"></i>Código</span>
-                    <span class="mir-value mir-serial"><?php echo htmlspecialchars(licencia_formatear_serial($licInfoRegistro['serial'])); ?></span>
+                    <span class="mir-value mir-serial"><?php echo htmlspecialchars(licencia_formatear_serial($licInfoRegistro['serial'])); ?><i class="fas fa-copy mir-copiar" role="button" tabindex="0" title="Copiar código al portapapeles" aria-label="Copiar código al portapapeles" data-mir-titulo="Copiar código al portapapeles" data-mir-copiar="<?php echo htmlspecialchars(licencia_formatear_serial($licInfoRegistro['serial'])); ?>" onclick="copiarRegistroLicencia(this)"></i></span>
                     <span class="mir-label mir-label-sep"><i class="fas fa-fingerprint"></i>Huella del Equipo</span>
                     <?php if ($licInfoRegistro['huella'] !== ''): ?>
                         <?php $_mirCoincide = hash_equals($licInfoRegistro['huella'], licencia_fingerprint_machine()); ?>
-                        <span class="mir-value mir-value-print"><?php echo htmlspecialchars(licencia_formatear_fingerprint($licInfoRegistro['huella'])); ?></span>
+                        <span class="mir-value mir-value-print"><?php echo htmlspecialchars(licencia_formatear_fingerprint($licInfoRegistro['huella'])); ?><i class="fas fa-copy mir-copiar" role="button" tabindex="0" title="Copiar huella del equipo al portapapeles" aria-label="Copiar huella del equipo al portapapeles" data-mir-titulo="Copiar huella del equipo al portapapeles" data-mir-copiar="<?php echo htmlspecialchars(licencia_formatear_fingerprint($licInfoRegistro['huella'])); ?>" onclick="copiarRegistroLicencia(this)"></i></span>
                     <?php else: ?>
                         <span class="mir-value">No vinculada a un equipo</span>
                     <?php endif; ?>
