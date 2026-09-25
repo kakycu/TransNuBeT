@@ -227,20 +227,36 @@ function licencia_windows_borrar() {
  * @param string $ruta
  * @return bool
  */
+/**
+ * Normaliza una ruta (separadores a '/', resuelve . y .., sin realpath).
+ * @param string $ruta
+ * @return string
+ */
+function licencia_normalizar_ruta($ruta) {
+    $ruta = str_replace('\\', '/', (string)$ruta);
+    $absoluta = (strpos($ruta, '/') === 0);
+    $partes = array();
+    foreach (explode('/', $ruta) as $p) {
+        if ($p === '' || $p === '.') continue;
+        if ($p === '..') { array_pop($partes); continue; }
+        $partes[] = $p;
+    }
+    return ($absoluta ? '/' : '') . implode('/', $partes);
+}
+
+/**
+ * Comprueba si una ruta (o su directory) cae dentro de open_basedir.
+ * @param string $ruta
+ * @return bool
+ */
 function licencia_dentro_open_basedir($ruta) {
     $obd = trim((string)ini_get('open_basedir'));
     if ($obd === '') return true;
-    $candidata = str_replace('\\', '/', $ruta);
-    $real = realpath($ruta);
-    if ($real !== false) $candidata = str_replace('\\', '/', $real);
-    if (substr($candidata, -1) !== '/') $candidata .= '/';
+    $candidata = rtrim(licencia_normalizar_ruta($ruta), '/') . '/';
     foreach (explode(PATH_SEPARATOR, $obd) as $base) {
         $base = trim($base);
         if ($base === '') continue;
-        $b = realpath($base);
-        if ($b === false) $b = $base;
-        $b = str_replace('\\', '/', $b);
-        if (substr($b, -1) !== '/') $b .= '/';
+        $b = rtrim(licencia_normalizar_ruta($base), '/') . '/';
         if (strpos($candidata, $b) === 0) return true;
     }
     return false;
