@@ -222,15 +222,49 @@ function licencia_windows_borrar() {
  * Ruta del archivo de licencia en el disco de la máquina cliente.
  * @return string
  */
+/**
+ * Comprueba si una ruta (o su directory) cae dentro de open_basedir.
+ * @param string $ruta
+ * @return bool
+ */
+function licencia_dentro_open_basedir($ruta) {
+    $obd = trim((string)ini_get('open_basedir'));
+    if ($obd === '') return true;
+    $candidata = str_replace('\\', '/', $ruta);
+    $real = realpath($ruta);
+    if ($real !== false) $candidata = str_replace('\\', '/', $real);
+    if (substr($candidata, -1) !== '/') $candidata .= '/';
+    foreach (explode(PATH_SEPARATOR, $obd) as $base) {
+        $base = trim($base);
+        if ($base === '') continue;
+        $b = realpath($base);
+        if ($b === false) $b = $base;
+        $b = str_replace('\\', '/', $b);
+        if (substr($b, -1) !== '/') $b .= '/';
+        if (strpos($candidata, $b) === 0) return true;
+    }
+    return false;
+}
+
 function licencia_archivo_ruta() {
+    $candidatas = array();
     $home = getenv('HOME');
     if (!is_string($home) || $home === '') {
         $home = getenv('USERPROFILE');
     }
-    if (is_string($home) && $home !== '' && is_dir($home) && is_writable($home)) {
-        return rtrim($home, '/\\') . '/.sigesnom_licencia.dat';
+    if (is_string($home) && $home !== '') {
+        $candidatas[] = rtrim($home, '/\\') . '/.sigesnom_licencia.dat';
+        $candidatas[] = rtrim($home, '/\\') . '/sigesnom_licencia.dat';
     }
-    return sys_get_temp_dir() . '/sigesnom_licencia.dat';
+    $candidatas[] = sys_get_temp_dir() . '/sigesnom_licencia.dat';
+    $candidatas[] = '/home/uploads/sigesnom_licencia.dat';
+
+    foreach ($candidatas as $ruta) {
+        $dir = dirname($ruta);
+        if (!licencia_dentro_open_basedir($dir)) continue;
+        if (@is_dir($dir) && @is_writable($dir)) return $ruta;
+    }
+    return $candidatas[0];
 }
 
 /**
@@ -239,7 +273,7 @@ function licencia_archivo_ruta() {
  */
 function licencia_archivo_leer() {
     $ruta = licencia_archivo_ruta();
-    if (!is_file($ruta) || !is_readable($ruta)) return null;
+    if (!@is_file($ruta) || !@is_readable($ruta)) return null;
     $contenido = @file_get_contents($ruta);
     if (!is_string($contenido)) return null;
     $contenido = trim($contenido);
@@ -273,7 +307,7 @@ function licencia_archivo_escribir($valor) {
  */
 function licencia_archivo_borrar() {
     $ruta = licencia_archivo_ruta();
-    if (is_file($ruta)) return @unlink($ruta);
+    if (@is_file($ruta)) return @unlink($ruta);
     return true;
 }
 
@@ -288,7 +322,7 @@ function licencia_tiene_valor_guardado() {
         return (licencia_windows_leer() !== null);
     }
     $ruta = licencia_archivo_ruta();
-    return (is_file($ruta) && is_readable($ruta));
+    return (@is_file($ruta) && @is_readable($ruta));
 }
 
 /**
