@@ -850,7 +850,7 @@ html, body { overflow-x: hidden; }
 <div class="su-sidebar-fondo" id="suSidebarFondo"></div>
 <aside class="su-sidebar" id="suSidebar">
     <div class="su-side-logo">
-        <a href="../../index.php" title="Regresar al inicio"><img src="../../images/LogoTN.png" alt="Logo"></a>
+        <a href="../../index.php" title="Regresar al inicio"><img src="../../images/logotn.png" alt="Logo"></a>
     </div>
     <div class="su-side-marca"><?php echo htmlspecialchars(COMPANY_NAME, ENT_QUOTES, 'UTF-8'); ?></div>
     <div class="su-side-cat">Navegación</div>
@@ -1160,7 +1160,7 @@ html, body { overflow-x: hidden; }
         if ($su_autorizado) {
             $inicial_trabajadores = $pdo->query("SELECT id, codigo, ci, nombre_completo, activo FROM trabajadores ORDER BY nombre_completo")->fetchAll(PDO::FETCH_ASSOC);
             $inicial_anios = array_map('intval', $pdo->query("SELECT DISTINCT YEAR(periodo_desde) AS anio FROM nominas ORDER BY anio DESC")->fetchAll(PDO::FETCH_COLUMN));
-            $inicial_ruta_logo = __DIR__ . '/../../images/LogoTN.png';
+            $inicial_ruta_logo = __DIR__ . '/../../images/logotn.png';
             $inicial_logo_b64 = '';
             if (file_exists($inicial_ruta_logo)) {
                 $inicial_logo_b64 = 'data:image/' . pathinfo($inicial_ruta_logo, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($inicial_ruta_logo));

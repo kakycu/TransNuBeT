@@ -189,7 +189,7 @@ $datos_personales = datosPersonalesDesdeCI($usuario['no_ci'] ?? '');
 // CARGAR LOGO PARA MARCA DE AGUA EN CABECERA
 // ==========================================
 $logo_base64 = '';
-$ruta_logo = __DIR__ . '/../../images/LogoTN.png';
+$ruta_logo = __DIR__ . '/../../images/logotn.png';
 if (file_exists($ruta_logo)) {
     $logo_base64 = 'data:image/png;base64,' . base64_encode(file_get_contents($ruta_logo));
 }

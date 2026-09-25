@@ -1080,7 +1080,7 @@ html.focus-mode .fluid-container {
     </button>
     <div class="sidebar-logo text-center">
         <div class="logo">
-            <img src="<?php echo $base_prefix; ?>../images/LogoTN.png" alt="Transnubet Logo" 
+            <img src="<?php echo $base_prefix; ?>../images/logotn.png" alt="Transnubet Logo" 
                  class="sidebar-logo-img"
                  onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon fa-2x mb-2\' style=\'color:var(--accent);\'></i>';"><br>
             <h3 class="sidebar-text"><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></h3>

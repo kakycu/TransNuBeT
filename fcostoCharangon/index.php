@@ -1613,7 +1613,7 @@ if ((isset($_POST['action']) && $_POST['action'] == 'excel') || (isset($_GET['ac
         width: 100%;
         height: 100%;
         z-index: 0;
-        background-image: url('LogoTN.png');
+        background-image: url('logotn.png');
         background-size: 100px 100px;
         background-repeat: repeat;
         opacity: 0.04;
@@ -1628,7 +1628,7 @@ if ((isset($_POST['action']) && $_POST['action'] == 'excel') || (isset($_GET['ac
         width: 100%;
         height: 100%;
         z-index: 0;
-        background-image: url('LogoTN.png');
+        background-image: url('logotn.png');
         background-size: 140px 140px;
         background-repeat: repeat;
         opacity: 0.025;
@@ -2422,18 +2422,18 @@ table.ficha .indent2 { padding-left: clamp(14px, 3.5vw, 35px) !important; font-s
 <div id="pantallaBienvenida">
     <div class="logo-fondo-animado">
         <div class="logo-fondo-rotacion">
-            <img src="LogoTN.png" alt="Logo TransNuBet Fondo">
-            <img src="LogoTN.png" alt="Logo TransNuBet Fondo" class="logo-duplicado">
+            <img src="logotn.png" alt="Logo TransNuBet Fondo">
+            <img src="logotn.png" alt="Logo TransNuBet Fondo" class="logo-duplicado">
         </div>
         <div class="logo-fondo-rotacion-inversa">
-            <img src="LogoTN.png" alt="Logo TransNuBet Fondo">
-            <img src="LogoTN.png" alt="Logo TransNuBet Fondo" class="logo-duplicado">
+            <img src="logotn.png" alt="Logo TransNuBet Fondo">
+            <img src="logotn.png" alt="Logo TransNuBet Fondo" class="logo-duplicado">
         </div>
     </div>
     <div class="contenido-bienvenida">
         <div style="display:flex; justify-content:center; align-items:center; gap:20px; margin-bottom:1.5rem; position:relative; z-index:2;">
             <img src="favicon.png" alt="TransNuBet" style="height:120px; width:auto; border-radius:12px; filter:drop-shadow(0 4px 20px rgba(43,127,255,0.3));">
-            <img src="LogoTN.png" alt="Logo TransNuBet" style="height:120px; width:auto; border-radius:12px; filter:drop-shadow(0 4px 20px rgba(43,127,255,0.3));">
+            <img src="logotn.png" alt="Logo TransNuBet" style="height:120px; width:auto; border-radius:12px; filter:drop-shadow(0 4px 20px rgba(43,127,255,0.3));">
         </div>
         <h1 style="position:relative; z-index:2; font-size:2rem; line-height:1.3;">
             Sistema de Cálculo de la<br>

@@ -2648,7 +2648,7 @@ body::after {
             </div>
             <div class="logo-right">
                 <div class="logo-icon2">
-                    <img src="../images/LogoTN.png" alt="Logo"
+                    <img src="../images/logotn.png" alt="Logo"
                          style="width:100%; height:100%; object-fit: contain; border-radius: inherit;"
                          onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon\'></i>';">
                 </div>
