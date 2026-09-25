@@ -2797,7 +2797,44 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                     <input type="hidden" name="tiempo_para_bloqueo" id="tiempo_para_bloqueo" value="<?php echo (int)($config['tiempo_para_bloqueo'] ?? 10); ?>">
                                 </div>
                             </div>
-                            <div class="col-md-4 mb-3 border rounded"></div>
+                            <div class="col-md-4 mb-3 border rounded p-3 text-center">
+                                <?php
+                                require_once '../includes/licencia.php';
+                                $lic_info_datos  = licencia_leer();
+                                $lic_info_activa = licencia_activada() && $lic_info_datos !== null;
+                                $lic_info_vence  = ($lic_info_datos !== null) ? licencia_vencimiento($lic_info_datos) : null;
+                                ?>
+                                <label class="form-label d-block text-secondary mb-2"><i class="fas fa-id-card me-1" style="color: #60a5fa;"></i> Licencia del Sistema</label>
+                                <span class="badge d-inline-block mb-2" style="background: <?php echo $lic_info_activa ? 'var(--color-success)' : ($lic_info_datos !== null && $lic_info_vence !== null && $lic_info_vence < time() ? '#ef4444' : '#f59e0b'); ?>; font-size:0.7rem;">
+                                    <?php if ($lic_info_datos === null): ?>SIN LICENCIA<?php elseif ($lic_info_activa): ?>LICENCIA ACTIVA<?php elseif ($lic_info_vence !== null && $lic_info_vence < time()): ?>LICENCIA VENCIDA<?php else: ?>LICENCIA INVALIDA<?php endif; ?>
+                                </span>
+                                <div class="w-100 small text-start" style="color:#cbd5e1;">
+                                    <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
+                                        <span class="text-secondary">Registro</span>
+                                        <span class="fw-semibold text-end" style="max-width:58%; word-break:break-word;"><?php echo htmlspecialchars(($lic_info_datos['registro'] ?? '') !== '' ? $lic_info_datos['registro'] : '—'); ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
+                                        <span class="text-secondary">Usuario</span>
+                                        <span class="fw-semibold text-end" style="max-width:58%; word-break:break-word;"><?php echo htmlspecialchars(($lic_info_datos['usuario'] ?? '') !== '' ? $lic_info_datos['usuario'] : '—'); ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
+                                        <span class="text-secondary">Tipo</span>
+                                        <span class="fw-semibold text-end"><?php echo htmlspecialchars(($lic_info_datos['info']['nombre'] ?? '') !== '' ? $lic_info_datos['info']['nombre'] : '—'); ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
+                                        <span class="text-secondary">Vence el</span>
+                                        <span class="fw-semibold text-end"><?php echo $lic_info_datos !== null && $lic_info_vence !== null ? date('d/m/Y', $lic_info_vence) : ($lic_info_datos !== null ? 'Permanente' : '—'); ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
+                                        <span class="text-secondary">Huella del PC</span>
+                                        <span class="fw-semibold text-end" style="font-family:'Consolas','Courier New',monospace; font-size:0.78rem;"><?php echo htmlspecialchars(licencia_fingerprint_equipo()); ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between py-1">
+                                        <span class="text-secondary">Licencia</span>
+                                        <span class="fw-semibold text-end" style="font-family:'Consolas','Courier New',monospace; font-size:0.78rem;"><?php echo htmlspecialchars(($lic_info_datos !== null && ($lic_info_datos['serial'] ?? '') !== '') ? licencia_formatear_serial($lic_info_datos['serial']) : '—'); ?></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="d-flex gap-2 flex-wrap">
                             <button type="submit" name="guardar_config_sistema" class="btn-win btn-win-primary" title="Guardar otras configuraciones del sistema" data-tooltip="Guardar otras configuraciones del sistema" data-tooltip-theme="success">

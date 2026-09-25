@@ -11,6 +11,12 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Confirmar que el sistema tiene licencia activa antes de su uso.
+if (!is_file(__DIR__ . '/../includes/licencia.php')) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['error' => 'Módulo de licencia no encontrado']);
+    exit;
+}
 require_once __DIR__ . '/../includes/licencia.php';
 if (!licencia_activada()) {
     header('Content-Type: application/json');

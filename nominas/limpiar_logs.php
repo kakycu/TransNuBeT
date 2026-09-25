@@ -42,6 +42,10 @@ if ($es_cli) {
     }
 } else {
     // En web: validar licencia, sesión y rol antes de continuar
+    if (!is_file(__DIR__ . '/includes/licencia.php')) {
+        header('Location: licencia.php');
+        exit;
+    }
     require_once __DIR__ . '/includes/licencia.php';
     if (!licencia_activada()) {
         header('Location: licencia.php');

@@ -55,6 +55,30 @@ if (!file_exists(__DIR__ . '/nominas/config.php')) {
 require_once __DIR__ . '/nominas/config.php';
 session_start();
 
+// Endpoint de estado de licencia (en vivo): el MISMO index.php actúa de API.
+// Se usa ?licencia_json=1 para devolver los datos en JSON sin re-renderizar HTML.
+if (isset($_GET['licencia_json']) && $_GET['licencia_json'] === '1') {
+    require_once __DIR__ . '/nominas/includes/licencia.php';
+    $datos  = licencia_leer();
+    $activa = $datos !== null && licencia_activada();
+    $vence  = $datos !== null ? licencia_vencimiento($datos) : null;
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    echo json_encode(array(
+        'tiene'    => $datos !== null,
+        'activa'   => $activa,
+        'vencida'  => $datos !== null && $vence !== null && $vence < time(),
+        'estado'   => $datos === null ? 'SIN LICENCIA' : ($activa ? 'LICENCIA ACTIVA' : ($vence !== null && $vence < time() ? 'LICENCIA VENCIDA' : 'LICENCIA INVALIDA')),
+        'registro' => ($datos !== null && ($datos['registro'] ?? '') !== '') ? $datos['registro'] : '—',
+        'usuario'  => ($datos !== null && ($datos['usuario'] ?? '') !== '') ? $datos['usuario'] : '—',
+        'tipo'     => ($datos !== null && ($datos['info']['nombre'] ?? '') !== '') ? $datos['info']['nombre'] : '—',
+        'vence'    => $datos !== null && $vence !== null ? date('d/m/Y', $vence) : ($datos !== null ? 'Permanente' : '—'),
+        'serial'   => ($datos !== null && ($datos['serial'] ?? '') !== '') ? licencia_formatear_serial($datos['serial']) : '—',
+        'huella'   => licencia_fingerprint_equipo(),
+    ));
+    exit;
+}
+
 // Configuración de conexión (desde config.php)
 $host = DB_HOST;
 $user = DB_USER;
@@ -147,6 +171,13 @@ function getBadge($codigo, $server_ok, $estados) {
         return '<span class="badge-inactivo">✗ Inactivo</span>';
     }
 }
+
+// ============ DATOS DE LA LICENCIA (mismo motor que nominas) ============
+require_once __DIR__ . '/nominas/includes/licencia.php';
+$lic_raiz_datos  = licencia_leer();
+$lic_raiz_activa = $lic_raiz_datos !== null && licencia_activada();
+$lic_raiz_vence  = $lic_raiz_datos !== null ? licencia_vencimiento($lic_raiz_datos) : null;
+$lic_raiz_huella = licencia_fingerprint_equipo();
 
 ?>
 
@@ -1082,6 +1113,10 @@ function getBadge($codigo, $server_ok, $estados) {
                         <i class="fas fa-print"></i> Ficha Costo Impres. Papel Adhesivo
                     </button>
                     <div class="dropdown-divider"></div>
+                    <button class="dropdown-item" data-servicio="licencia">
+                        <i class="fas fa-key"></i> Estado de la Licencia
+                    </button>
+                    <div class="dropdown-divider"></div>
                     <button class="dropdown-item" data-servicio="contacto">
                         <i class="fas fa-headset"></i> Contactar Soporte
                     </button>
@@ -1721,6 +1756,75 @@ function mostrarBienvenida() {
     sessionStorage.removeItem('justRedirected');
 }
 
+// ============ ESTADO DE LA LICENCIA ============
+const licenciaRaiz = {
+    tiene: <?php echo json_encode($lic_raiz_datos !== null); ?>,
+    activa: <?php echo json_encode($lic_raiz_activa); ?>,
+    vencida: <?php echo json_encode($lic_raiz_datos !== null && $lic_raiz_vence !== null && $lic_raiz_vence < time()); ?>,
+    estado: <?php echo json_encode($lic_raiz_datos === null ? 'SIN LICENCIA' : ($lic_raiz_activa ? 'LICENCIA ACTIVA' : ($lic_raiz_vence !== null && $lic_raiz_vence < time() ? 'LICENCIA VENCIDA' : 'LICENCIA INVALIDA'))); ?>,
+    registro: <?php echo json_encode(($lic_raiz_datos['registro'] ?? '') !== '' ? $lic_raiz_datos['registro'] : '—'); ?>,
+    usuario: <?php echo json_encode(($lic_raiz_datos['usuario'] ?? '') !== '' ? $lic_raiz_datos['usuario'] : '—'); ?>,
+    tipo: <?php echo json_encode((($lic_raiz_datos['info']['nombre'] ?? '') !== '') ? $lic_raiz_datos['info']['nombre'] : '—'); ?>,
+    vence: <?php echo json_encode($lic_raiz_datos !== null && $lic_raiz_vence !== null ? date('d/m/Y', $lic_raiz_vence) : ($lic_raiz_datos !== null ? 'Permanente' : '—')); ?>,
+    serial: <?php echo json_encode($lic_raiz_datos !== null && ($lic_raiz_datos['serial'] ?? '') !== '' ? licencia_formatear_serial($lic_raiz_datos['serial']) : '—'); ?>,
+    huella: <?php echo json_encode($lic_raiz_huella); ?>
+};
+
+function licenciaHTML(d) {
+    const color = d.activa ? '#22c55e' : (d.tiene ? '#ef4444' : '#f59e0b');
+    const fila = (l, v, r) => `<div style="display:flex; justify-content:space-between; gap:16px; padding:9px 2px; border-bottom:1px solid rgba(255,255,255,0.08);">
+        <span style="color:#94a3b8;">${l}</span>
+        <span style="font-weight:600; text-align:right; color:${r || '#e2e8f0'}; word-break:break-word;">${v}</span></div>`;
+    return `<div style="text-align:center; margin:4px 0 16px;">
+        <span style="display:inline-block; background:${color}22; color:${color}; border:1px solid ${color}66; padding:4px 16px; border-radius:40px; font-size:0.85rem; font-weight:700;">${d.estado}</span>
+    </div>
+    ${fila('Registro', `<i class="fas fa-building" style="color:#3b82f6;"></i> ${d.registro}`)}
+    ${fila('Usuario', `<i class="fas fa-user" style="color:#3b82f6;"></i> ${d.usuario}`)}
+    ${fila('Tipo', d.tipo)}
+    ${fila('Vence el', d.vence)}
+    ${fila('Licencia', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.serial}</span>`, '#60a5fa')}
+    ${fila('Huella del PC', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.huella}</span>`, '#94a3b8')}`;
+}
+
+function copiarHuella(icono) {
+    const fp = licenciaRaiz.huella || '';
+    const confirmar = () => {
+        icono.className = 'fas fa-check';
+        icono.style.color = '#22c55e';
+        setTimeout(() => { icono.className = 'fas fa-copy'; icono.style.color = ''; }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fp).then(confirmar).catch(() => { copiarHuellaFallback(fp); confirmar(); });
+    } else {
+        copiarHuellaFallback(fp);
+        confirmar();
+    }
+}
+
+function copiarHuellaFallback(texto) {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+}
+
+function mostrarEstadoLicencia() {
+    // Verificar la licencia en vivo cada vez que se presiona
+    fetch('index.php?licencia_json=1', { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : Promise.reject('HTTP ' + r.status))
+        .then(d => {
+            abrirModalIndex('licencia', licenciaHTML(d));
+        })
+        .catch(() => {
+            // Fallback: mostrar los datos del render inicial
+            abrirModalIndex('licencia');
+        });
+}
+
 // ============ DROPDOWN: OTROS SERVICIOS (VERSIÓN DEFINITIVA) ============
 (function() {
     // Esperar a que el DOM esté listo
@@ -1836,6 +1940,9 @@ function mostrarBienvenida() {
                 } else if (servicio === 'papel-adhesivo') {
                     // Redirigir a la ficha de costo del papel adhesivo
                     window.location.href = 'fcostoAdhesivo/';
+                } else if (servicio === 'licencia') {
+                    // Mostrar el estado e info de la licencia
+                    mostrarEstadoLicencia();
                 } else if (servicio === 'contacto') {
                     // Redirigir al formulario de contacto
                     window.location.href = '/contacto.php';
@@ -1941,7 +2048,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 }).then(() => {
-                    mostrarBienvenida();
+                    if (licenciaRaiz.vencida || !licenciaRaiz.tiene) {
+                        abrirModalIndex('licencia_alerta');
+                    } else {
+                        mostrarBienvenida();
+                    }
                 });
             } else {
                 Swal.fire({
@@ -2107,6 +2218,21 @@ document.addEventListener('keydown', function (e) {
     transform: translateY(-0.0625rem);
     box-shadow: 0 0.375rem 1.125rem rgba(15, 118, 110, 0.4);
 }
+.btn-iso-licencia {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: #fff;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.8438rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-iso-licencia:hover {
+    transform: translateY(-0.0625rem);
+    box-shadow: 0 0.375rem 1.125rem rgba(37, 99, 235, 0.4);
+}
 </style>
 
 <!-- Modal Ventana: Información de las opciones del footer -->
@@ -2122,6 +2248,7 @@ document.addEventListener('keydown', function (e) {
             <div class="iso-sub" id="modalIdxSub"></div>
             <div class="iso-scroll" id="modalIdxContenido"></div>
             <div class="actions">
+                <button type="button" class="btn-iso-licencia" id="btnRegistrarLicencia" style="display:none;" onclick="window.location.href='nominas/licencia.php'"><i class="fas fa-key me-2"></i> Registrar Licencia</button>
                 <button type="button" class="btn-iso-entendido" onclick="cerrarModalIndex()"><i class="fas fa-check me-2"></i> Entendido</button>
             </div>
         </div>
@@ -2130,6 +2257,35 @@ document.addEventListener('keydown', function (e) {
 
 <script>
 var CONTENIDO_MODALES_INDEX = {
+    licencia: {
+        icono: 'fa-key',
+        titulo: 'Estado de la Licencia',
+        sub: 'Registro y huella del equipo',
+        html: licenciaHTML(licenciaRaiz)
+    },
+    licencia_alerta: {
+        icono: 'fa-triangle-exclamation',
+        titulo: 'Licencia del sistema',
+        sub: 'Se requiere una licencia vigente para operar',
+        html: (function() {
+            const d = licenciaRaiz;
+            const vencida = d.vencida;
+            const color = vencida ? '#ef4444' : '#f59e0b';
+            const estadoTxt = vencida ? 'LICENCIA VENCIDA' : 'SIN LICENCIA REGISTRADA';
+            return `<div style="text-align:center; margin:4px 0 16px;">
+                <span style="display:inline-block; background:${color}22; color:${color}; border:1px solid ${color}66; padding:4px 16px; border-radius:40px; font-size:0.85rem; font-weight:700;">${estadoTxt}</span>
+            </div>
+            <h4>${vencida ? 'Su licencia ha vencido' : 'El sistema no tiene una licencia registrada'}</h4>
+            <p>${vencida ? 'La licencia registrada para este equipo ya no tiene vigencia. Contacte al administrador para renovarla o instalar una nueva.' : 'Para operar con normalidad debe registrar una licencia válida correspondiente a la huella de este equipo.'}</p>
+            <h4>Vías de contacto</h4>
+            <p>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
+            ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a></p>
+            <p style="font-size:0.78rem; color:#64748b;">Huella de este equipo:
+                <span style="font-family:Consolas,monospace; color:#94a3b8;">${d.huella}</span>
+                <i class="fas fa-copy" title="Copiar huella al portapapeles" onclick="copiarHuella(this)"
+                   style="cursor:pointer; margin-left:6px; color:#64748b;"></i></p>`;
+        })()
+    },
     proyecto: {
         icono: 'fa-chart-line',
         titulo: 'Proyecto en crecimiento',
@@ -2198,21 +2354,26 @@ var CONTENIDO_MODALES_INDEX = {
     }
 };
 
-function abrirModalIndex(tipo) {
+var modalIndexActual = null;
+function abrirModalIndex(tipo, htmlOverride) {
     var cfg = CONTENIDO_MODALES_INDEX[tipo] || CONTENIDO_MODALES_INDEX.proyecto;
+    modalIndexActual = tipo;
     document.getElementById('modalIdxIcon').className = 'fas ' + cfg.icono + ' tt-icon';
     document.getElementById('modalIdxTitulo').textContent = cfg.titulo;
     document.getElementById('modalIdxSub').textContent = cfg.sub;
-    document.getElementById('modalIdxContenido').innerHTML = cfg.html;
+    document.getElementById('modalIdxContenido').innerHTML = htmlOverride || cfg.html;
+    var btnReg = document.getElementById('btnRegistrarLicencia');
+    if (btnReg) btnReg.style.display = (tipo === 'licencia_alerta') ? 'inline-block' : 'none';
     document.getElementById('modalIndex').style.display = 'flex';
 }
 function cerrarModalIndex() {
+    modalIndexActual = null;
     document.getElementById('modalIndex').style.display = 'none';
 }
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') cerrarModalIndex();
 });
-document.querySelector('.iso27001-overlay') && document.querySelector('.iso27001-overlay').addEventListener('click', function (e) { if (e.target === this) cerrarModalIndex(); });
+document.querySelector('.iso27001-overlay') && document.querySelector('.iso27001-overlay').addEventListener('click', function (e) { if (e.target === this && String(modalIndexActual || '').indexOf('licencia') !== 0) cerrarModalIndex(); });
 </script>
 </body>
 </html>

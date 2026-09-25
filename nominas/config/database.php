@@ -71,9 +71,82 @@ if (session_status() === PHP_SESSION_NONE) {
 // un archivo cifrado del disco (Linux/otros).
 // ============================================
 if (php_sapi_name() !== 'cli') {
-    require_once __DIR__ . '/../includes/licencia.php';
+    $ruta_modulo_licencia = __DIR__ . '/../includes/licencia.php';
+    if (!is_file($ruta_modulo_licencia)) {
+        http_response_code(500);
+        header('Content-Type: text/html; charset=utf-8');
+        ?>
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+            <title>Aplicación en mantenimiento</title>
+            <link rel="stylesheet" href="/nominas/css/font-awesome6.4.0/css/all.min.css">
+            <script src="/nominas/js/sweetalert2.all.min.js"></script>
+            <style>
+                body {
+                    margin:0;
+                    padding:0;
+                    background: linear-gradient(160deg, #f59e0b 0%, #7f1d1d 45%, #1c1917 100%);
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    min-height:100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+            </style>
+        </head>
+        <body>
+            <script>
+            Swal.fire({
+                icon: 'error',
+                title: '<i class="fas fa-shield-alt" style="color:#fbbf24"></i> Módulo de licencia no encontrado',
+                html: 'Falta el archivo <b>includes/licencia.php</b>.<br>No es posible verificar la licencia de este sistema.<br>Reinstale los archivos de la aplicación.',
+                confirmButtonText: '<i class="fas fa-sync-alt"></i> Reintentar',
+                showCancelButton: true,
+                cancelButtonText: '<i class="fas fa-download"></i> Reinstalar',
+                background: '#1e1e2f',
+                color: '#ffffff',
+                confirmButtonColor: '#f59e0b',
+                cancelButtonColor: '#3b82f6',
+                allowOutsideClick: false,
+                backdrop: 'rgba(0,0,0,0.85)'
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    window.location.reload();
+                } else {
+                    var w = window.open('/InstalarBD/InstalarBD.php', '_blank');
+                    if (!w) { window.location.href = '/InstalarBD/InstalarBD.php'; }
+                }
+            });
+            </script>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+    require_once $ruta_modulo_licencia;
     $pagina_lic = basename($_SERVER['SCRIPT_NAME'] ?? '', '?*');
     if ($pagina_lic !== 'licencia.php' && !licencia_activada()) {
+        // La licencia no está activa (vencida, inválida, de otro equipo o ausente):
+        // cerrar SIEMPRE la sesión del usuario que esté logueado.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION = array();
+            if (ini_get("session.use_cookies")) {
+                $params_lic = session_get_cookie_params();
+                setcookie(
+                    session_name(),
+                    '',
+                    time() - 42000,
+                    $params_lic["path"],
+                    $params_lic["domain"],
+                    $params_lic["secure"],
+                    $params_lic["httponly"]
+                );
+            }
+            session_destroy();
+        }
         $dir_script_lic = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
         $niveles_lic    = max(0, substr_count($dir_script_lic, '/') - 1);
         $destino_lic    = str_repeat('../', $niveles_lic) . 'licencia.php';

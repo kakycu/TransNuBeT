@@ -4187,6 +4187,16 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
         </div>
     </a>
 </li>
+<!-- NUEVO: Info. Registro con modal de licencia -->
+<li>
+    <a class="dropdown-item d-flex align-items-center py-2" href="#" id="infoRegistroBtn">
+        <i class="fas fa-id-card me-3" style="width: 20px; color:#fbbf24;"></i>
+        <div>
+            <span class="d-block" style="color: var(--win-text-primary);">Info. Registro</span>
+            <small class="text-muted d-block" style="font-size: 12px;">Datos de la licencia instalada</small>
+        </div>
+    </a>
+</li>
 <li>
     <a class="dropdown-item d-flex align-items-center py-2 text-danger" href="#" id="logoutUserMenuBtn">
         <i class="fas fa-sign-out-alt me-3" style="width: 20px;"></i>
@@ -7985,6 +7995,565 @@ if (bloquearSesionMenuBtn) {
     });
 }
 
+// === Info. Registro ===
+// El modal se monta en document.body (no dentro de la topbar) para evitar
+// que backdrop-filter/z-index de la barra superior rompa el overlay fixed.
+function abrirModalInfoRegistro() {
+    if (document.getElementById('mirOverlay')) return;
+    var tpl = document.getElementById('tplInfoRegistro');
+    if (!tpl) return;
+    var overlay = tpl.content.cloneNode(true).querySelector('.iso27001-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    document.body.appendChild(overlay);
+}
+function cerrarModalInfoRegistro(btn) {
+    var overlay = (btn && btn.closest('.iso27001-overlay')) || document.getElementById('mirOverlay');
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+}
+function exportarLicenciaTxt() {
+    if (typeof LIC_INFO_TXT !== 'string' || !LIC_INFO_TXT) return;
+    var nombre = (typeof LIC_INFO_NOMBRE === 'string' ? LIC_INFO_NOMBRE : '').trim() || 'Registro';
+    var safe = nombre.replace(/[\\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+    var fname = 'LicenciaSISGESNOM_' + safe + '.txt';
+    var blob = new Blob([LIC_INFO_TXT], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+function eliminarRegistroLicencia(btn) {
+    if (typeof Swal === 'undefined') return;
+    Swal.fire({
+        title: '<i class="fas fa-trash-alt" style="color:#f87171"></i> Eliminar registro de licencia',
+        html: 'Se eliminará la licencia de este equipo (registro de Windows), se cerrará la sesión actual y se abrirá la pantalla de registro.<br><br><b>Esta acción no se puede deshacer.</b>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-trash-alt"></i> Sí, eliminar',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        reverseButtons: true,
+        background: '#1e1e2f',
+        color: '#ffffff',
+        zIndex: 10500
+    }).then((result) => {
+        if (result.isConfirmed) {
+            var f = document.createElement('form');
+            f.method = 'POST';
+            f.action = '<?php echo $base_prefix; ?>eliminar_licencia.php';
+            f.style.display = 'none';
+            var inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'csrf';
+            inp.value = typeof CSRF_ELIMINAR_LICENCIA !== 'undefined' ? CSRF_ELIMINAR_LICENCIA : '';
+            f.appendChild(inp);
+            document.body.appendChild(f);
+            f.submit();
+        }
+    });
+}
+document.getElementById('infoRegistroBtn')?.addEventListener('click', function (e) {
+    e.preventDefault();
+    var dd = this.closest('.dropdown-menu');
+    if (dd) { dd.classList.remove('show'); }
+    abrirModalInfoRegistro();
+});
+
 </script>
+
+<?php
+$licInfoRegistro = function_exists('licencia_leer') ? licencia_leer() : null;
+$licHasRegistro = is_array($licInfoRegistro) && $licInfoRegistro['registro'] !== '';
+// Solo los roles Admin y Soft pueden eliminar el registro de licencia del equipo.
+$puede_eliminar_licencia = in_array(strtolower(trim((string)$user_rol_codigo)), ['admin', 'soft'], true);
+// Token CSRF para el envío de eliminar_licencia.php.
+$csrf_eliminar_licencia = $_SESSION['csrf_eliminar_licencia'] ?? '';
+if ($csrf_eliminar_licencia === '') {
+    $csrf_eliminar_licencia = function_exists('random_bytes') ? bin2hex(random_bytes(32)) : md5(uniqid('', true));
+    $_SESSION['csrf_eliminar_licencia'] = $csrf_eliminar_licencia;
+}
+// Texto plano para la exportación a Licencia.txt (solo si hay licencia).
+$licInfoRegistro_txt = '';
+if ($licHasRegistro) {
+    $_mirVenceTxt = licencia_vencimiento($licInfoRegistro);
+    $licInfoRegistro_txt =
+        "SISGESNOM - REGISTRO DE LICENCIA\n"
+        . "=================================\n"
+        . "Registro efectuado el día: " . date('d/m/Y h:i:s A', $licInfoRegistro['fecha_activacion']) . "\n"
+        . "A nombre de            : " . $licInfoRegistro['registro'] . "\n"
+        . "Usuario del registro   : " . $licInfoRegistro['usuario'] . "\n"
+        . "Por término de         : " . $licInfoRegistro['info']['nombre'] . "\n"
+        . "Vencimiento            : " . ($_mirVenceTxt === null ? 'Permanente (no vence)' : date('d/m/Y', $_mirVenceTxt) . ' (' . licencia_dias_restantes($licInfoRegistro) . ' días restantes)') . "\n"
+        . "Código (Serial)        : " . licencia_formatear_serial($licInfoRegistro['serial']) . "\n"
+        . "Huella del equipo      : " . ($licInfoRegistro['huella'] !== '' ? licencia_formatear_fingerprint($licInfoRegistro['huella']) : 'No vinculada a un equipo') . "\n"
+        . "=================================\n"
+        . "Generado: " . date('d/m/Y h:i:s A');
+}
+?>
+<style>
+/* ============================================================
+   WINDOWS 11 / FLUENT DESIGN — Modal Información del Registro
+   Usa las variables de tema del sistema (--panel/--card/--txt/
+   --muted/--border/--accent) para adaptarse automáticamente a
+   dark, light, blue, verde, orgullo y win11.
+   ============================================================ */
+
+/* ---------- Overlay padre (fondo oscurecido + blur Mica) ---------- */
+#mirOverlay.iso27001-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
+    animation: mirFadeIn 180ms ease-out;
+}
+[data-theme="light"] #mirOverlay.iso27001-overlay,
+[data-theme="orgullo"] #mirOverlay.iso27001-overlay {
+    background: rgba(15, 23, 42, 0.45);
+}
+
+@keyframes mirFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes mirSlideUp {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- Caja principal (superficie Mica del tema) ---------- */
+#mirOverlay .iso27001-box {
+    max-width: 36rem;
+    width: 100%;
+    background: var(--card, rgba(32, 32, 36, 0.88));
+    backdrop-filter: blur(30px) saturate(160%);
+    -webkit-backdrop-filter: blur(30px) saturate(160%);
+    border: 1px solid var(--border-2, rgba(255, 255, 255, 0.10));
+    border-radius: 12px;
+    box-shadow:
+        var(--mir-sh-1, 0 0 0 1px rgba(0, 0, 0, 0.35)),
+        0 20px 60px var(--mir-sh-2, rgba(0, 0, 0, 0.55)),
+        0 8px 20px var(--mir-sh-3, rgba(0, 0, 0, 0.35));
+    overflow: hidden;
+    animation: mirSlideUp 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-theme="light"] #mirOverlay .iso27001-box,
+[data-theme="orgullo"] #mirOverlay .iso27001-box {
+    --mir-sh-1: 0 0 0 1px rgba(15, 23, 42, 0.08);
+    --mir-sh-2: rgba(15, 23, 42, 0.25);
+    --mir-sh-3: rgba(15, 23, 42, 0.16);
+}
+
+/* ---------- Titlebar estilo Win11 ---------- */
+#mirOverlay .iso27001-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem 1rem;
+    background: var(--panel-2, rgba(255, 255, 255, 0.03));
+    border-bottom: 1px solid var(--border-2, rgba(255, 255, 255, 0.06));
+}
+
+#mirOverlay .iso27001-titlebar .tt-text {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.01rem;
+    color: var(--txt, #f3f4f6);
+    flex: 1;
+}
+
+#mirOverlay .iso27001-titlebar .tt-icon {
+    font-size: 1rem;
+    color: var(--accent, #fbbf24) !important;
+}
+
+/* El SweetAlert (p.ej. "Eliminar registro de licencia") debe quedar
+   SIEMPRE por delante del overlay del modal (z-index 9999). */
+body > .swal2-container { z-index: 10500 !important; }
+
+/* Botón exportar Licencia.txt estilo Win11 */
+#mirOverlay .iso27001-download {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--muted, #cbd5e1);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}
+#mirOverlay .iso27001-download:hover {
+    background: rgba(251, 191, 36, 0.15);
+    background: rgba(var(--accent-rgb), 0.15);
+    color: var(--accent, #fbbf24);
+}
+#mirOverlay .iso27001-download:active {
+    background: rgba(var(--accent-rgb), 0.25);
+}
+#mirOverlay .iso27001-download:focus-visible {
+    outline: 2px solid var(--accent, #fbbf24);
+    outline-offset: 2px;
+}
+
+/* Botón cerrar estilo Win11 */
+#mirOverlay .iso27001-close {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--muted, #cbd5e1);
+    font-size: 1.125rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}
+#mirOverlay .iso27001-close:hover {
+    background: rgba(239, 68, 68, 0.85);
+    color: #ffffff;
+}
+#mirOverlay .iso27001-close:active {
+    background: rgba(220, 38, 38, 0.95);
+}
+#mirOverlay .iso27001-close:focus-visible {
+    outline: 2px solid var(--accent, #fbbf24);
+    outline-offset: 2px;
+}
+
+/* ---------- Body ---------- */
+#mirOverlay .iso27001-body {
+    padding: 1.25rem 1.25rem 1rem;
+}
+
+#mirOverlay .iso-empresa {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--txt, #f1f5f9);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+#mirOverlay .iso-empresa i {
+    color: var(--accent, #fbbf24) !important;
+}
+
+#mirOverlay .iso-sub {
+    font-size: 0.8125rem;
+    color: var(--muted, #94a3b8);
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+/* ---------- Scroll Win11 ---------- */
+#mirOverlay .iso-scroll {
+    max-height: 26rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+#mirOverlay .iso-scroll::-webkit-scrollbar { width: 8px; }
+#mirOverlay .iso-scroll::-webkit-scrollbar-track { background: transparent; }
+#mirOverlay .iso-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 8px;
+}
+#mirOverlay .iso-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.55);
+}
+
+/* ---------- Grid de 3 columnas (Registro + Tiempo Restante + Por Término) ---------- */
+#mirOverlay .mir-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+#mirOverlay .mir-grid-3 .mir-row { margin-bottom: 0; }
+@media (max-width: 420px) {
+    #mirOverlay .mir-grid-3 { grid-template-columns: 1fr; }
+    #mirOverlay .mir-grid-3 .mir-row { margin-bottom: 0.5rem; }
+}
+
+/* ---------- Filas (tarjetas planas tintadas con el acento del tema) ---------- */
+#mirOverlay .mir-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem 0.875rem;
+    margin-bottom: 0.5rem;
+    background: rgba(148, 163, 184, 0.08);
+    background: rgba(var(--accent-rgb), 0.05);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border: 1px solid rgba(var(--accent-rgb), 0.14);
+    border-radius: 8px;
+    transition: background 140ms ease, border-color 140ms ease;
+}
+#mirOverlay .mir-row:hover {
+    background: rgba(148, 163, 184, 0.12);
+    background: rgba(var(--accent-rgb), 0.09);
+    border-color: rgba(148, 163, 184, 0.24);
+    border-color: rgba(var(--accent-rgb), 0.22);
+}
+
+/* Acento superior de la card */
+#mirOverlay .mir-row::before {
+    content: "";
+    display: block;
+    width: 24px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent, #fbbf24), var(--accent-dark, #f59e0b));
+    margin-bottom: 0.375rem;
+    opacity: 0.9;
+}
+/* Segunda card del grid: acento neutro del tema para diferenciarla */
+#mirOverlay .mir-grid-3 .mir-row:nth-child(2)::before {
+    background: linear-gradient(90deg, var(--faint, #64748b), var(--muted, #94a3b8));
+}
+
+#mirOverlay .mir-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06rem;
+    color: var(--muted, #94a3b8);
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+#mirOverlay .mir-label i {
+    color: var(--accent, #fbbf24);
+    font-size: 0.75rem;
+}
+
+#mirOverlay .mir-value {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--txt, #f8fafc);
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+#mirOverlay .mir-serial {
+    font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+    letter-spacing: 0.08rem;
+    color: var(--accent, #fbbf24);
+    font-size: 0.9375rem;
+}
+
+#mirOverlay .mir-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04rem;
+    border-radius: 999px;
+}
+#mirOverlay .mir-badge i {
+    font-size: 0.6875rem;
+}
+#mirOverlay .mir-badge-ok {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.30);
+}
+#mirOverlay .mir-badge-no {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.30);
+}
+
+#mirOverlay .btn-iso-eliminar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-right: auto;
+    padding: 0.5rem 1.125rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #fecaca;
+    background: linear-gradient(180deg, #dc2626, #991b1b);
+    border: 1px solid rgba(0, 0, 0, 0.20);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: filter 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+#mirOverlay .btn-iso-eliminar:hover {
+    filter: brightness(1.10);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+#mirOverlay .btn-iso-eliminar:active {
+    transform: translateY(1px);
+    filter: brightness(0.95);
+}
+#mirOverlay .btn-iso-eliminar:focus-visible {
+    outline: 2px solid #ef4444;
+    outline-offset: 2px;
+}
+
+/* ---------- Estado sin licencia ---------- */
+#mirOverlay .mir-sin-lic {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--muted, #cbd5e1);
+    font-size: 0.875rem;
+    background: rgba(251, 191, 36, 0.06);
+    background: rgba(var(--accent-rgb), 0.06);
+    border: 1px solid rgba(251, 191, 36, 0.18);
+    border: 1px solid rgba(var(--accent-rgb), 0.18);
+    border-radius: 8px;
+    line-height: 1.5;
+}
+#mirOverlay .mir-sin-lic i {
+    color: var(--accent, #fbbf24) !important;
+    font-size: 1.125rem;
+    margin-right: 0.5rem;
+}
+
+/* ---------- Acciones (botón Win11 con acento del tema) ---------- */
+#mirOverlay .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+}
+
+#mirOverlay .btn-iso-entendido {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.125rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(180deg, var(--accent, #fbbf24), var(--accent-dark, #f59e0b));
+    border: 1px solid rgba(0, 0, 0, 0.10);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: filter 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+#mirOverlay .btn-iso-entendido:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.35);
+    box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.35);
+}
+#mirOverlay .btn-iso-entendido:active {
+    transform: translateY(1px);
+    filter: brightness(0.95);
+}
+#mirOverlay .btn-iso-entendido:focus-visible {
+    outline: 2px solid var(--accent, #fbbf24);
+    outline-offset: 2px;
+}
+</style>
+
+<template id="tplInfoRegistro">
+<div id="mirOverlay" class="iso27001-overlay" style="display:none;">
+    <div class="iso27001-box" role="dialog" aria-modal="true" aria-labelledby="mirTitle">
+        <div class="iso27001-titlebar">
+            <i class="fas fa-id-card tt-icon"></i>
+            <span class="tt-text" id="mirTitle">Información del Registro</span>
+            <?php if ($licHasRegistro): ?>
+            <button type="button" class="iso27001-download" aria-label="Exportar a Licencia.txt" title="Exportar a Licencia.txt" onclick="exportarLicenciaTxt()">
+                <i class="fas fa-floppy-disk"></i>
+            </button>
+            <?php endif; ?>
+            <button type="button" class="iso27001-close" aria-label="Cerrar" onclick="cerrarModalInfoRegistro(this)">&times;</button>
+        </div>
+        <div class="iso27001-body">
+            <div class="iso-empresa"><i class="fas fa-shield-alt"></i>Datos de la licencia instalada</div>
+            <div class="iso-sub">Información del registro de licencia de este equipo</div>
+            <div class="iso-scroll">
+                <?php if ($licHasRegistro): ?>
+                <div class="mir-grid-3">
+                    <div class="mir-row">
+                        <span class="mir-label"><i class="fas fa-calendar-day"></i>Registro Efectuado el Día</span>
+                        <span class="mir-value"><?php echo htmlspecialchars(date('d/m/Y h:i:s A', $licInfoRegistro['fecha_activacion'])); ?></span>
+                    </div>
+                    <div class="mir-row">
+                        <span class="mir-label"><i class="fas fa-clock"></i>Tiempo Restante</span>
+                        <?php $_mirVence = licencia_vencimiento($licInfoRegistro); ?>
+                        <span class="mir-value"><?php echo $_mirVence === null ? 'Permanente (no vence)' : htmlspecialchars((string)licencia_dias_restantes($licInfoRegistro)) . ' días · vence el ' . htmlspecialchars(date('d/m/Y', $_mirVence)); ?></span>
+                    </div>
+                    <div class="mir-row">
+                        <span class="mir-label"><i class="fas fa-hourglass-half"></i>Por Término de</span>
+                        <span class="mir-value"><?php echo htmlspecialchars($licInfoRegistro['info']['nombre']); ?></span>
+                    </div>
+                </div>
+                <div class="mir-row">
+                    <span class="mir-label"><i class="fas fa-user-tag"></i>A Nombre de</span>
+                    <span class="mir-value"><?php echo htmlspecialchars($licInfoRegistro['registro']); ?></span>
+                    <?php if ((string)($licInfoRegistro['usuario'] ?? '') !== ''): ?>
+                    <span class="mir-label mir-label-sep"><i class="fas fa-user"></i>Usuario</span>
+                    <span class="mir-value"><?php echo htmlspecialchars($licInfoRegistro['usuario']); ?></span>
+                    <?php endif; ?>
+                </div>
+                <div class="mir-row">
+                    <span class="mir-label"><i class="fas fa-key"></i>Código</span>
+                    <span class="mir-value mir-serial"><?php echo htmlspecialchars(licencia_formatear_serial($licInfoRegistro['serial'])); ?></span>
+                    <span class="mir-label mir-label-sep"><i class="fas fa-fingerprint"></i>Huella del Equipo</span>
+                    <?php if ($licInfoRegistro['huella'] !== ''): ?>
+                        <?php $_mirCoincide = hash_equals($licInfoRegistro['huella'], licencia_fingerprint_machine()); ?>
+                        <span class="mir-value mir-value-print"><?php echo htmlspecialchars(licencia_formatear_fingerprint($licInfoRegistro['huella'])); ?></span>
+                    <?php else: ?>
+                        <span class="mir-value">No vinculada a un equipo</span>
+                    <?php endif; ?>
+                </div>
+                <?php else: ?>
+                <div class="mir-sin-lic">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    No hay una licencia instalada en este equipo.
+                </div>
+                <?php endif; ?>
+            </div>
+            <div class="actions">
+                <?php if ($puede_eliminar_licencia): ?>
+                <button type="button" class="btn-iso-eliminar" onclick="eliminarRegistroLicencia(this)">
+                    <i class="fas fa-trash-alt"></i>Eliminar Reg.
+                </button>
+                <?php endif; ?>
+                <button type="button" class="btn-iso-entendido" onclick="cerrarModalInfoRegistro(this)">
+                    <i class="fas fa-check"></i>Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+<script>var LIC_INFO_TXT = <?php echo json_encode($licInfoRegistro_txt); ?>;
+var LIC_INFO_NOMBRE = <?php echo json_encode($licHasRegistro ? $licInfoRegistro['registro'] : ''); ?>;
+var CSRF_ELIMINAR_LICENCIA = <?php echo json_encode($csrf_eliminar_licencia); ?>;</script>
 
 <?php include __DIR__ . '/theme_panel.php'; ?>

@@ -3,13 +3,95 @@
 // Corre antes del login y NO requiere base de datos.
 // Almacena los datos UNA sola vez, cifrados, en el registro de Windows
 // o en un archivo cifrado del disco (Linux/otros).
+// Soporta licencias por tiempo (1, 3, 6 meses, 1 ó 2 años) o permanentes.
 
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
+if (!is_file(__DIR__ . '/includes/licencia.php')) {
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    ?>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Aplicación en mantenimiento</title>
+        <link rel="stylesheet" href="/nominas/css/font-awesome6.4.0/css/all.min.css">
+        <script src="/nominas/js/sweetalert2.all.min.js"></script>
+        <style>
+            body {
+                margin:0;
+                padding:0;
+                background: linear-gradient(160deg, #f59e0b 0%, #7f1d1d 45%, #1c1917 100%);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                min-height:100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        </style>
+    </head>
+    <body>
+        <script>
+        Swal.fire({
+            icon: 'error',
+            title: '<i class="fas fa-shield-alt" style="color:#fbbf24"></i> Módulo de licencia no encontrado',
+            html: 'Falta el archivo <b>includes/licencia.php</b>.<br>No es posible verificar la licencia de este sistema.<br>Reinstale los archivos de la aplicación.',
+            confirmButtonText: '<i class="fas fa-sync-alt"></i> Reintentar',
+            showCancelButton: true,
+            cancelButtonText: '<i class="fas fa-download"></i> Reinstalar',
+            background: '#1e1e2f',
+            color: '#ffffff',
+            confirmButtonColor: '#f59e0b',
+            cancelButtonColor: '#3b82f6',
+            allowOutsideClick: false,
+            backdrop: 'rgba(0,0,0,0.85)'
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                window.location.reload();
+            } else {
+                var w = window.open('/InstalarBD/InstalarBD.php', '_blank');
+                if (!w) { window.location.href = '/InstalarBD/InstalarBD.php'; }
+            }
+        });
+        </script>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 require_once __DIR__ . '/includes/licencia.php';
 
-// Si ya está registrado, ir directo al login.
+// Licencia previamente guardada (para diagnosticar y mostrar el motivo).
+$lic_guardada = licencia_leer();
+
+// Diagnóstico del estado de la licencia guardada para anunciarlo al usuario.
+$lic_diagnostico = 'inexistente'; // inexistente | invalida | vencida | corrupta
+if ($lic_guardada !== null) {
+    $lic_diagnostico = 'invalida'; // descifrada pero la llave no coincide
+    if (licencia_validar_serial($lic_guardada['registro'], $lic_guardada['usuario'], $lic_guardada['serial'])) {
+        $lic_diagnostico = licencia_vencida($lic_guardada) ? 'vencida' : 'ok';
+    }
+} elseif (licencia_tiene_valor_guardado()) {
+    $lic_diagnostico = 'corrupta'; // hay datos pero no se pueden descifrar/leer
+}
+
+$mensaje_diagnostico = '';
+switch ($lic_diagnostico) {
+    case 'vencida':
+        $mensaje_diagnostico = 'La licencia registrada en este equipo <b>ha vencido</b>.<br>Introduzca una nueva llave de licencia para continuar.';
+        break;
+    case 'invalida':
+        $mensaje_diagnostico = 'El registro de licencia almacenado en este equipo <b>no coincide</b> con la llave serial.<br>Verifique los datos o solicite una llave válida.';
+        break;
+    case 'corrupta':
+        $mensaje_diagnostico = 'El registro de licencia almacenado está dañado o ha sido indebidamente alterado.<br>Introduzca un registro nuevo.';
+        break;
+}
+
+// Si ya está registrado y NO vence, ir directo al login.
 if (licencia_activada()) {
     header('Location: login.php');
     exit;
@@ -17,12 +99,47 @@ if (licencia_activada()) {
 
 $error        = '';
 $guardado_ok  = false;
+$examinar_ok  = false;
 $nombre       = isset($_POST['nombre'])  ? trim((string)$_POST['nombre'])  : '';
 $usuario      = isset($_POST['usuario']) ? trim((string)$_POST['usuario']) : '';
 $serial       = isset($_POST['serial'])  ? trim((string)$_POST['serial'])  : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($nombre === '') {
+    // ***** Examinar archivo .lic: rellena los campos con los datos de la licencia *****
+    if (isset($_POST['examinar']) && $_POST['examinar'] === '1') {
+        if (empty($_FILES['archivo_lic']['tmp_name']) || ($_FILES['archivo_lic']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $error = 'Debe <b>seleccionar un archivo .lic</b> válido para examinar.';
+        } else {
+            $ext = strtolower(pathinfo($_FILES['archivo_lic']['name'], PATHINFO_EXTENSION));
+            if ($ext !== 'lic') {
+                $error = 'El archivo debe tener extensión <b>.lic</b>.';
+            } else {
+                $imp_datos = licencia_leer_archivo_lic($_FILES['archivo_lic']['tmp_name']);
+                if ($imp_datos === null) {
+                    $error = 'El archivo <b>.lic</b> seleccionado no es válido o su llave interna no corresponde.<br>Revise el archivo o solicite uno nuevo.';
+                } else {
+                    $fp_actual = licencia_fingerprint_machine();
+                    if ($imp_datos['huella'] !== '' && !hash_equals($imp_datos['huella'], $fp_actual)) {
+                        $error = 'Esta licencia fue emitida para <b>otro equipo</b>.<br>' .
+                                 'Huella destino&nbsp;: <b>' . htmlspecialchars(licencia_formatear_fingerprint($imp_datos['huella'])) . '</b><br>' .
+                                 'Este equipo&nbsp;&nbsp;&nbsp;&nbsp;: <b>' . htmlspecialchars(licencia_formatear_fingerprint($fp_actual)) . '</b><br>' .
+                                 'Solicite al proveedor una licencia para esta PC.';
+                    } else {
+                        $nombre  = $imp_datos['registro'];
+                        $usuario = $imp_datos['usuario'];
+                        $serial  = licencia_formatear_serial($imp_datos['serial']);
+                        $examinar_ok     = true;
+                        $examinar_tipo   = $imp_datos['info']['nombre'];
+                        $examinar_periodo = ($imp_datos['info']['meses'] !== null)
+                            ? ((int)$imp_datos['info']['meses'] === 1 ? '1 mes' : (int)$imp_datos['info']['meses'] . ' meses')
+                            : 'Permanente';
+                        $examinar_nota   = ($imp_datos['huella'] !== '') ? '<br><b>Esta licencia es exclusiva de este equipo.</b>' : '';
+                        $examinar_hasta  = ($imp_datos['info']['meses'] !== null) ? date('d/m/Y', licencia_vencimiento($imp_datos)) : 'Sin vencimiento (Permanente)';
+                    }
+                }
+            }
+        }
+    } elseif ($nombre === '') {
         $error = 'Debe indicar el <b>Nombre de Registro</b>.';
     } elseif ($usuario === '') {
         $error = 'Debe indicar el <b>Usuario del Registro</b>.';
@@ -31,8 +148,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!licencia_validar_serial($nombre, $usuario, $serial)) {
         $error = 'La <b>Llave Serial</b> no corresponde a los datos de registro introducidos.<br>Verifique Nombre y Usuario, o solicite una llave válida.';
     } else {
-        if (licencia_guardar($nombre, $usuario, $serial)) {
-            $guardado_ok = true;
+        $guardado = licencia_guardar($nombre, $usuario, $serial);
+        if ($guardado !== false) {
+            $guardado_ok  = true;
+            $guardado_tipo   = isset($guardado['info']['nombre']) ? $guardado['info']['nombre'] : 'Permanente';
+            $guardado_meses  = isset($guardado['info']['meses']) ? $guardado['info']['meses'] : null;
+            $guardado_hasta  = ($guardado_meses !== null) ? date('d/m/Y', licencia_vencimiento($guardado)) : 'Sin vencimiento (Permanente)';
         } else {
             $error = 'No se pudo guardar la licencia en este equipo.<br>Compruebe que la aplicación tiene permisos de escritura.';
         }
@@ -41,6 +162,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Feedback de éxito con SweetAlert y redirección al login.
 if ($guardado_ok) {
+    // Al instalarse/reinstalarse la licencia se cierra SIEMPRE la sesión
+    // del usuario que esté logueado (si hubiera alguna en este equipo).
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $_SESSION = array();
+        if (ini_get("session.use_cookies")) {
+            $params_lic_inst = session_get_cookie_params();
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params_lic_inst["path"],
+                $params_lic_inst["domain"],
+                $params_lic_inst["secure"],
+                $params_lic_inst["httponly"]
+            );
+        }
+        @session_destroy();
+    }
     ?>
     <!DOCTYPE html>
     <html lang="es">
@@ -57,7 +199,10 @@ if ($guardado_ok) {
     Swal.fire({
         icon: 'success',
         title: '<i class="fas fa-check-circle" style="color:#4ade80"></i> Registro completado',
-        html: 'El sistema ha sido <b>registrado correctamente</b>.<br>Redirigiendo al inicio de sesión&hellip;',
+        html: 'El sistema ha sido <b>registrado correctamente</b>.<br>' +
+              'Tipo de licencia: <b><?php echo $guardado_tipo; ?></b>.<br>' +
+              'Vence: <b><?php echo $guardado_hasta; ?></b>.<br>' +
+              'Redirigiendo al inicio de sesión&hellip;',
         confirmButtonText: '<i class="fas fa-arrow-right-to-bracket"></i> Ir al Login',
         allowOutsideClick: false,
         background: '#1e1e2f',
@@ -162,10 +307,28 @@ if ($guardado_ok) {
             box-shadow:0 0 0 0.1875rem rgba(59,130,246,0.2);
         }
         .input-with-icon input::placeholder { color:#64748b; }
+        .input-with-icon input[type="file"] {
+            padding:0.7rem 1rem 0.7rem 2.75rem;
+            color:#cbd5e1;
+            font-size:0.85rem;
+            cursor:pointer;
+        }
+        .input-with-icon input[type="file"]::-webkit-file-upload-button {
+            background: rgba(34,197,94,0.15);
+            color:#4ade80;
+            border:0.0625rem solid rgba(34,197,94,0.35);
+            border-radius:0.5rem;
+            padding:0.375rem 0.75rem;
+            margin-right:0.75rem;
+            cursor:pointer;
+            font-weight:600;
+        }
         .serial-input { text-transform:uppercase; letter-spacing:2px; font-family:'Consolas', monospace; }
         .hint { margin-top:0.375rem; font-size:0.72rem; color:#64748b; }
         .btn-registrar {
-            width:100%;
+            display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+            flex:1;
+            width:auto;
             padding:0.9rem;
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             border:none;
@@ -179,9 +342,10 @@ if ($guardado_ok) {
         .btn-registrar:hover { transform:translateY(-2px); box-shadow:0 0.625rem 1.25rem rgba(59,130,246,0.35); }
         .btn-registrar:active { transform:translateY(0); }
         .btn-home {
-            display:flex; align-items:center; justify-content:center; gap:0.5rem;
-            width:100%;
-            margin-top:0.7rem;
+            display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+            flex:1;
+            width:auto;
+            margin-top:0;
             padding:0.75rem;
             background: rgba(148,163,184,0.1);
             border:0.0625rem solid rgba(148,163,184,0.25);
@@ -192,6 +356,20 @@ if ($guardado_ok) {
             transition:background 0.2s;
         }
         .btn-home:hover { background: rgba(148,163,184,0.2); }
+        .lic-actions { display:flex; gap:0.7rem; margin-top:0.7rem; }
+        .lic-divider {
+            display:flex; align-items:center; justify-content:center;
+            margin:1.1rem 0 1rem;
+        }
+        .lic-divider span {
+            display:flex; align-items:center; gap:0.5rem;
+            color:#64748b; font-size:0.8rem;
+            background: rgba(148,163,184,0.08);
+            padding:0.4rem 1rem;
+            border-radius:2rem;
+            border:0.0625rem solid rgba(148,163,184,0.2);
+        }
+        .lic-divider b { color:#cbd5e1; }
         .lic-footer {
             padding:0.75rem 1.5rem 1rem;
             text-align:center;
@@ -199,6 +377,25 @@ if ($guardado_ok) {
             font-size:0.72rem;
         }
         .lic-footer b { color:#64748b; }
+        .fp-box {
+            margin-bottom:1rem;
+            padding:0.9rem 1rem 0.8rem;
+            background: rgba(0,0,0,0.3);
+            border:0.0625rem solid rgba(148,163,184,0.25);
+            border-radius:0.875rem;
+        }
+        .fp-label { color:#94a3b8; font-size:0.78rem; margin-bottom:0.55rem; }
+        .fp-label b { color:#cbd5e1; }
+        .fp-value {
+            font-family:'Consolas', monospace;
+            letter-spacing:1px;
+            color:#fbbf24;
+            font-size:1.05rem;
+            font-weight:600;
+            text-align:center;
+            user-select:all;
+        }
+        .fp-box .hint { margin-top:0.5rem; text-align:center; }
     </style>
 </head>
 <body>
@@ -217,7 +414,18 @@ if ($guardado_ok) {
                 <div style="text-align:center;">
                     <h1>SISGESNOM®</h1>
                     <div class="subtitle">Sistema de Gestión de Nóminas y Trabajadores</div>
-                    <div class="badge-lic"><i class="fas fa-lock-open"></i> PENDIENTE DE REGISTRO</div>
+                    <?php if ($lic_guardada !== null && licencia_vencida($lic_guardada)): ?>
+                        <div class="badge-lic" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.4);">
+                            <i class="fas fa-triangle-exclamation"></i> LICENCIA VENCIDA &mdash; INGRESE UNA NUEVA
+                        </div>
+                    <?php else: ?>
+                        <div class="badge-lic"><i class="fas fa-lock-open"></i> PENDIENTE DE REGISTRO</div>
+                    <?php endif; ?>
+                    <div class="fp-box" style="margin-top:0.85rem;">
+                        <div class="fp-value">
+                            <span style="color:#94a3b8; font-family:'Segoe UI',Arial,sans-serif; font-size:0.8rem; font-weight:600; letter-spacing:0;">Código Equipo:&nbsp;</span><?php echo licencia_fingerprint_equipo(); ?>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -252,12 +460,29 @@ if ($guardado_ok) {
                         <div class="hint"><i class="fas fa-circle-info"></i> Formato: 25 caracteres en 5 grupos de 5, separados por guiones.</div>
                     </div>
 
-                    <button type="submit" class="btn-registrar" id="btnRegistrar">
-                        <i class="fas fa-key"></i> Activar Licencia
-                    </button>
-                    <button type="button" class="btn-home" id="btnHome">
-                        <i class="fas fa-arrow-left"></i> Regresar al Inicio
-                    </button>
+                    <div class="lic-actions">
+                        <button type="submit" class="btn-registrar" id="btnRegistrar">
+                            <i class="fas fa-key"></i> Activar Licencia
+                        </button>
+                        <button type="button" class="btn-home" id="btnHome">
+                            <i class="fas fa-arrow-left"></i> Regresar al Inicio
+                        </button>
+                    </div>
+                </form>
+
+                <div class="lic-divider"><span><i class="fas fa-arrow-right"></i> o importe desde un archivo <b>.lic</b> <i class="fas fa-arrow-left"></i></span></div>
+
+                <form method="POST" action="" id="licImport" enctype="multipart/form-data" autocomplete="off">
+                    <input type="hidden" name="examinar" value="1">
+                    <div class="input-group">
+                        <label><i class="fas fa-file-import"></i> Archivo de Licencia (.lic)</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-file-shield"></i>
+                            <input type="file" name="archivo_lic" id="archivo_lic" accept=".lic"
+                                   placeholder="Seleccione el archivo .lic" onchange="this.form.submit()">
+                        </div>
+                        <div class="hint"><i class="fas fa-circle-info"></i> Elija un archivo <b>.lic</b>: se verificará automáticamente y se rellenarán los campos con los datos de la licencia.</div>
+                    </div>
                 </form>
             </div>
 
@@ -279,6 +504,45 @@ if ($guardado_ok) {
             background: '#1e1e2f',
             color: '#ffffff',
             confirmButtonColor: '#3b82f6'
+        });
+    });
+    </script>
+    <?php elseif ($mensaje_diagnostico !== ''): ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            icon: 'warning',
+            title: '<i class="fas fa-circle-exclamation" style="color:#fbbf24"></i> Licencia no válida',
+            html: '<?php echo $mensaje_diagnostico; ?>',
+            confirmButtonText: '<i class="fas fa-key"></i> Registrar nueva licencia',
+            background: '#1e1e2f',
+            color: '#ffffff',
+            confirmButtonColor: '#3b82f6'
+        });
+    });
+    </script>
+    <?php elseif ($examinar_ok): ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            icon: 'success',
+            title: '<i class="fas fa-file-circle-check" style="color:#4ade80"></i> Archivo de licencia v&aacute;lido',
+            html: '<div style="text-align:left; font-size:0.9rem;">' +
+                  'Licencia generada a favor de: <b><?php echo htmlspecialchars($nombre); ?></b><br>' +
+                  'Tipo: <b><?php echo htmlspecialchars($examinar_tipo); ?></b><br>' +
+                  'Per&iacute;odo de Validez: <b><?php echo htmlspecialchars($examinar_periodo); ?></b><br>' +
+                  'Vence: <b><?php echo htmlspecialchars($examinar_hasta); ?></b><br>' +
+                  '<?php echo $examinar_nota; ?>' +
+                  '<hr style="border-color:rgba(148,163,184,0.2); margin:0.6rem 0;">' +
+                  'Revise los datos y presione <b>Activar Licencia</b> para completar el registro.</div>',
+            confirmButtonText: '<i class="fas fa-key"></i> Activar Licencia',
+            allowOutsideClick: false,
+            background: '#1e1e2f',
+            color: '#ffffff',
+            confirmButtonColor: '#3b82f6'
+        }).then(function () {
+            var btn = document.getElementById('btnRegistrar');
+            if (btn) { btn.focus(); }
         });
     });
     </script>
@@ -322,6 +586,38 @@ if ($guardado_ok) {
                     confirmButtonColor: '#3b82f6'
                 });
                 serial.focus();
+                return;
+            }
+        });
+
+        var formImport = document.getElementById('licImport');
+        formImport.addEventListener('submit', function (e) {
+            var f = document.getElementById('archivo_lic');
+            if (!f.files || f.files.length === 0) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Archivo no seleccionado',
+                    html: 'Seleccione primero un archivo de licencia <b>.lic</b>.',
+                    confirmButtonText: '<i class="fas fa-check"></i> Entendido',
+                    background: '#1e1e2f',
+                    color: '#ffffff',
+                    confirmButtonColor: '#3b82f6'
+                });
+                return;
+            }
+            var nombre = f.files[0].name;
+            if (!nombre.toLowerCase().endsWith('.lic')) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Extensión no válida',
+                    html: 'El archivo debe tener extensión <b>.lic</b>.',
+                    confirmButtonText: '<i class="fas fa-check"></i> Entendido',
+                    background: '#1e1e2f',
+                    color: '#ffffff',
+                    confirmButtonColor: '#3b82f6'
+                });
                 return;
             }
         });
