@@ -30,7 +30,7 @@ header('Content-Type: application/json');
 
 // Configuración de la base de datos (desde database.php)
 require_once '../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 // Directorio de backups
 $backup_dir = '../backups/';
 

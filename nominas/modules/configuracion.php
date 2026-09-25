@@ -1,7 +1,7 @@
 <?php
 // modules/configuracion.php - Configuraciones del Sistema
 require_once '../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 require_once '../config/mail.php';
 require_once '../includes/funciones.php';
 
@@ -2806,7 +2806,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                 ?>
                                 <label class="form-label d-block text-secondary mb-2"><i class="fas fa-id-card me-1" style="color: #60a5fa;"></i> Licencia del Sistema</label>
                                 <span class="badge d-inline-block mb-2" style="background: <?php echo $lic_info_activa ? 'var(--color-success)' : ($lic_info_datos !== null && $lic_info_vence !== null && $lic_info_vence < time() ? '#ef4444' : '#f59e0b'); ?>; font-size:0.7rem;">
-                                    <?php if ($lic_info_datos === null): ?>SIN LICENCIA<?php elseif ($lic_info_activa): ?>LICENCIA ACTIVA<?php elseif ($lic_info_vence !== null && $lic_info_vence < time()): ?>LICENCIA VENCIDA<?php else: ?>LICENCIA INVALIDA<?php endif; ?>
+                                    <?php echo htmlspecialchars(licencia_etiqueta_estado($lic_info_datos, 'LICENCIA ', $lic_info_activa)); ?>
                                 </span>
                                 <div class="w-100 small text-start" style="color:#cbd5e1;">
                                     <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
@@ -2823,7 +2823,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                     </div>
                                     <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
                                         <span class="text-secondary">Vence el</span>
-                                        <span class="fw-semibold text-end"><?php echo $lic_info_datos !== null && $lic_info_vence !== null ? date('d/m/Y', $lic_info_vence) : ($lic_info_datos !== null ? 'Permanente' : '—'); ?></span>
+                                        <span class="fw-semibold text-end"><?php echo htmlspecialchars(licencia_texto_vencimiento($lic_info_datos)); ?></span>
                                     </div>
                                     <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
                                         <span class="text-secondary">Huella del PC</span>

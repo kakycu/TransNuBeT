@@ -17,7 +17,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 }
 
 require_once '../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 
 if (!in_array(permiso_rol_codigo(), ['Admin', 'Soft', 'Editor'], true)) {
     echo json_encode(['success' => false, 'message' => 'No tiene permisos para ver el log']);

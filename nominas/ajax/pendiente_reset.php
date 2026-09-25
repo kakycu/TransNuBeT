@@ -2,7 +2,7 @@
 // ajax/pendiente_reset.php - Decide sobre una solicitud de cambio de contraseña pendiente
 require_once '../config/database.php';
 require_once '../config/mail.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

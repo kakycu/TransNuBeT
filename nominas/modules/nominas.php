@@ -42,7 +42,7 @@ if (!isset($_SESSION['usuario_id']) && !isset($_SESSION['logged_in'])) {
 // CONEXIÓN GLOBAL A LA BASE DE DATOS Y OBTENCIÓN DE CONFIGURACIÓN GENÉRICA
 // =========================================================================
 require_once '../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 require_once '../includes/funciones.php';
 
 // Control de acceso por rol

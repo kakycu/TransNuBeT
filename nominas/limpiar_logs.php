@@ -18,7 +18,7 @@
 // ============================================================
 
 require_once __DIR__ . '/config.php';              // constantes de BD
-require_once __DIR__ . '/logger.php';              // canonicalDetallesAuditoria()
+require_once __DIR__ . '/includes/logger.php';              // canonicalDetallesAuditoria()
 
 $es_cli = (PHP_SAPI === 'cli');
 

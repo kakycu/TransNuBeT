@@ -4,7 +4,7 @@ header('Content-Type: application/json');
 
 // Incluir configuración de base de datos
 require_once '../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 require_once '../includes/funciones.php';
 
 // Verificar sesión

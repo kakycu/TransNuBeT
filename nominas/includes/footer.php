@@ -791,7 +791,7 @@ if (!empty($_SESSION['logged_in'])) {
             }
         } catch (Throwable $e) {}
     }
-    $idle_lock_url = $base_prefix . 'bloquear_sesion.php';
+    $idle_lock_url = $base_prefix . 'includes/bloquear_sesion.php';
     $idle_ping_url = $base_prefix . 'ajax/idle_ping.php';
     ?>
 <script>

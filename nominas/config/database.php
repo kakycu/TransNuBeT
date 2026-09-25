@@ -161,11 +161,11 @@ if (php_sapi_name() !== 'cli') {
 // ============================================
 if (!empty($_SESSION['sesion_bloqueada']) && !defined('BLOQUEO_SESION_PERMITIDO')) {
     $pagina_actual = basename($_SERVER['SCRIPT_NAME'] ?? '', '?*');
-    $permitidas = ['bloquear_sesion.php', 'logout.php', 'login.php', 'verificar_contrasena_bloqueo.php', 'limpiar_bloqueo.php'];
+    $permitidas = ['bloquear_sesion.php', 'logout.php', 'login.php', 'verif_pass_lookscreen.php', 'limpiar_bloqueo.php'];
     if (!in_array($pagina_actual, $permitidas)) {
         $dir_script  = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
         $niveles     = max(0, substr_count($dir_script, '/') - 1);
-        $destino     = str_repeat('../', $niveles) . 'bloquear_sesion.php';
+        $destino     = str_repeat('../', $niveles) . 'includes/bloquear_sesion.php';
         header('Location: ' . $destino);
         exit;
     }
@@ -292,7 +292,7 @@ try {
 // ============================================
 if (!empty($_SESSION['logged_in']) && !defined('BLOQUEO_SESION_PERMITIDO')) {
     $idle_pagina   = basename($_SERVER['SCRIPT_NAME'] ?? '', '?*');
-    $idle_exentas  = ['bloquear_sesion.php', 'logout.php', 'login.php', 'verificar_contrasena_bloqueo.php', 'limpiar_bloqueo.php'];
+    $idle_exentas  = ['bloquear_sesion.php', 'logout.php', 'login.php', 'verif_pass_lookscreen.php', 'limpiar_bloqueo.php'];
     $idle_accept   = $_SERVER['HTTP_ACCEPT'] ?? '';
     $idle_xhr      = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
     $idle_es_ajax  = $idle_xhr || (strpos($idle_accept, 'text/html') === false);
@@ -324,7 +324,7 @@ if (!empty($_SESSION['logged_in']) && !defined('BLOQUEO_SESION_PERMITIDO')) {
 
                 $idle_dir  = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
                 $idle_niv  = max(0, substr_count($idle_dir, '/') - 1);
-                $idle_dest = str_repeat('../', $idle_niv) . 'bloquear_sesion.php';
+                $idle_dest = str_repeat('../', $idle_niv) . 'includes/bloquear_sesion.php';
 
                 if ($idle_es_ajax) {
                     header('Content-Type: application/json; charset=utf-8');

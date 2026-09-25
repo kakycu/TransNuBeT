@@ -2,7 +2,7 @@
 // modules/empleados.php - Refactorizado con diseño Windows 11 y Correcciones
 require_once '../config/database.php';
 require_once '../includes/funciones.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 
 // Iniciar sesión
 if (session_status() === PHP_SESSION_NONE) {

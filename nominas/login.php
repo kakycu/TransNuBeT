@@ -96,7 +96,7 @@ if ($db_ok) {
     $SITE_VERSION = defined('SITE_VERSION') ? SITE_VERSION : $SITE_VERSION;
     $SLOGAN = defined('SLOGAN') ? SLOGAN : $SLOGAN;
     // ===== NUEVO: sistema de auditoría (logger.php usa el $pdo global) =====
-    require_once __DIR__ . '/logger.php';
+    require_once __DIR__ . '/includes/logger.php';
     
     // Cargar configuración desde la base de datos
     try {

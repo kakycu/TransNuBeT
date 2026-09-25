@@ -1443,7 +1443,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         <li><a class="dropdown-item" href="usuarios.php"><i class="fas fa-user-cog me-2" style="color:#a78bfa;"></i>Gestionar Usuarios</a></li>
         <?php endif; ?>
         <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>bloquear_sesion.php"><i class="fas fa-user-lock me-2" style="color:#f59e0b;"></i>Bloquear Sesión</a></li>
+        <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>includes/bloquear_sesion.php"><i class="fas fa-user-lock me-2" style="color:#f59e0b;"></i>Bloquear Sesión</a></li>
         <li><a class="dropdown-item text-danger" href="#" id="btnCerrarSesionPerfil"><i class="fas fa-sign-out-alt me-2"></i>Cerrar sesión</a></li>
     </ul>
 </div>
@@ -2020,7 +2020,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         <li><a class="dropdown-item" href="usuarios.php"><i class="fas fa-user-cog me-2" style="color:#a78bfa;"></i>Gestionar Usuarios</a></li>
         <?php endif; ?>
         <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>bloquear_sesion.php"><i class="fas fa-user-lock me-2" style="color:#f59e0b;"></i>Bloquear Sesión</a></li>
+        <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>includes/bloquear_sesion.php"><i class="fas fa-user-lock me-2" style="color:#f59e0b;"></i>Bloquear Sesión</a></li>
         <li><a class="dropdown-item text-danger" href="#" id="btnCerrarSesionPerfilFab"><i class="fas fa-sign-out-alt me-2"></i>Cerrar sesión</a></li>
     </ul>
 </div>

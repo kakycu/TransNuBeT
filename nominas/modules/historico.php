@@ -22,7 +22,7 @@
 // ============================================================
 
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 require_once __DIR__ . '/../includes/funciones.php';
 
 // ============================================================

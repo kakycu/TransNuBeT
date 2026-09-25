@@ -3963,7 +3963,7 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 			</li>
 			<li>
 				<a class="dropdown-item d-flex align-items-center py-2" id="bloquearSesionMenuBtn"
-				   href="<?php echo $base_prefix; ?>bloquear_sesion.php">
+				   href="<?php echo $base_prefix; ?>includes/bloquear_sesion.php">
 					<i class="fas fa-user-lock me-3" style="width: 20px; color:#f59e0b;"></i>
 					<div>
 						<span class="d-block" style="color:#f59e0b; font-weight:600;">Bloquear Sesión</span>
@@ -7979,11 +7979,11 @@ function solicitarBloqueoSesion() {
             reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = '<?php echo $base_prefix; ?>bloquear_sesion.php';
+                window.location.href = '<?php echo $base_prefix; ?>includes/bloquear_sesion.php';
             }
         });
     } else {
-        window.location.href = '<?php echo $base_prefix; ?>bloquear_sesion.php';
+        window.location.href = '<?php echo $base_prefix; ?>includes/bloquear_sesion.php';
     }
 }
 
@@ -8045,7 +8045,7 @@ function eliminarRegistroLicencia(btn) {
         if (result.isConfirmed) {
             var f = document.createElement('form');
             f.method = 'POST';
-            f.action = '<?php echo $base_prefix; ?>eliminar_licencia.php';
+            f.action = '<?php echo $base_prefix; ?>includes/eliminar_licencia.php';
             f.style.display = 'none';
             var inp = document.createElement('input');
             inp.type = 'hidden';
@@ -8088,7 +8088,7 @@ if ($licHasRegistro) {
         . "A nombre de            : " . $licInfoRegistro['registro'] . "\n"
         . "Usuario del registro   : " . $licInfoRegistro['usuario'] . "\n"
         . "Por término de         : " . $licInfoRegistro['info']['nombre'] . "\n"
-        . "Vencimiento            : " . ($_mirVenceTxt === null ? 'Permanente (no vence)' : date('d/m/Y', $_mirVenceTxt) . ' (' . licencia_dias_restantes($licInfoRegistro) . ' días restantes)') . "\n"
+        . "Vencimiento            : " . ($_mirVenceTxt === null ? 'Permanente (no vence)' : date('d/m/Y', $_mirVenceTxt) . ' ' . trim(licencia_etiqueta_dias_restantes($licInfoRegistro))) . "\n"
         . "Código (Serial)        : " . licencia_formatear_serial($licInfoRegistro['serial']) . "\n"
         . "Huella del equipo      : " . ($licInfoRegistro['huella'] !== '' ? licencia_formatear_fingerprint($licInfoRegistro['huella']) : 'No vinculada a un equipo') . "\n"
         . "=================================\n"
@@ -8486,7 +8486,7 @@ body > .swal2-container { z-index: 10500 !important; }
             <i class="fas fa-id-card tt-icon"></i>
             <span class="tt-text" id="mirTitle">Información del Registro</span>
             <?php if ($licHasRegistro): ?>
-            <button type="button" class="iso27001-download" aria-label="Exportar a Licencia.txt" title="Exportar a Licencia.txt" onclick="exportarLicenciaTxt()">
+            <button type="button" class="iso27001-download" aria-label="Exportar la Licencia.txt" title="Exportar la Licencia.txt" onclick="exportarLicenciaTxt()">
                 <i class="fas fa-floppy-disk"></i>
             </button>
             <?php endif; ?>
@@ -8505,7 +8505,7 @@ body > .swal2-container { z-index: 10500 !important; }
                     <div class="mir-row">
                         <span class="mir-label"><i class="fas fa-clock"></i>Tiempo Restante</span>
                         <?php $_mirVence = licencia_vencimiento($licInfoRegistro); ?>
-                        <span class="mir-value"><?php echo $_mirVence === null ? 'Permanente (no vence)' : htmlspecialchars((string)licencia_dias_restantes($licInfoRegistro)) . ' días · vence el ' . htmlspecialchars(date('d/m/Y', $_mirVence)); ?></span>
+                        <span class="mir-value"><?php echo $_mirVence === null ? 'Permanente (no vence)' : htmlspecialchars(licencia_texto_vencimiento($licInfoRegistro)); ?></span>
                     </div>
                     <div class="mir-row">
                         <span class="mir-label"><i class="fas fa-hourglass-half"></i>Por Término de</span>

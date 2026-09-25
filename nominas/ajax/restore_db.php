@@ -28,7 +28,7 @@ header('Content-Type: application/json');
 
 // Configuración de la base de datos
 require_once '../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 
 // Verificar permisos: la restauración es solo para (Admin, Soft, Editor)
 if (!in_array(permiso_rol_codigo(), ['Admin', 'Soft', 'Editor'], true)) {

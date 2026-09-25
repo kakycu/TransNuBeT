@@ -3,7 +3,7 @@
 
 // 1. Carga de configuración (config/database.php lee las credenciales desde config.php)
 require_once '../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 
 // 2. Control de seguridad por si la sesión no se inició en el paso anterior
 if (session_status() === PHP_SESSION_NONE) {

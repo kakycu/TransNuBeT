@@ -7,7 +7,7 @@ require_once '../config/database.php';
 // Cifrado de contraseña SMTP (para editar mail_password de forma segura)
 require_once '../config/mail.php';
 
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 
 // 2. Iniciar sesión únicamente si config.php no lo hizo
 if (session_status() === PHP_SESSION_NONE) {

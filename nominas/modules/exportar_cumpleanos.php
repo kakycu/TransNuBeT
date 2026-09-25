@@ -3,7 +3,7 @@
 header('Content-Type: application/json');
 
 require_once '../config/database.php';
-require_once __DIR__ . '/../logger.php';
+require_once __DIR__ . '/../includes/logger.php';
 require_once '../includes/funciones.php';
 
 // Iniciar sesión

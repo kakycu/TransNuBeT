@@ -1,7 +1,7 @@
 <?php
 // logout.php - Cierre de sesión
 require_once 'config/database.php';
-require_once 'logger.php';
+require_once __DIR__ . '/includes/logger.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
