@@ -425,6 +425,55 @@ function licencia_activada() {
 }
 
 /**
+ * Etiqueta entre paréntesis con los días que faltan para el vencimiento:
+ * "(en 27 días)", "(vence hoy)" o "(vencida)".
+ * Las licencias permanentes no llevan etiqueta.
+ * @param array|null $datos
+ * @return string Cadena vacía si no aplica.
+ */
+function licencia_etiqueta_dias_restantes($datos) {
+    if ($datos === null) return '';
+    $vence = licencia_vencimiento($datos);
+    if ($vence === null) return '';
+    $dias = licencia_dias_restantes($datos);
+    if ((int)$dias === 0) return (time() > (int)$vence) ? ' (vencida)' : ' (vence hoy)';
+    return ' (en ' . (int)$dias . ' ' . ((int)$dias === 1 ? 'día' : 'días') . ')';
+}
+
+/**
+ * Etiqueta de estado lista para mostrar en cualquier vista.
+ * Cuando la licencia está ACTIVA añade entre paréntesis los días restantes,
+ * p.ej. "LICENCIA ACTIVA (en 27 días)". Las permanentes no llevan sufijo.
+ *
+ * @param array|null $datos   Datos de la licencia (null = no hay licencia).
+ * @param string     $prefijo 'LICENCIA ' o '' según la vista.
+ * @param bool       $activa  Estado ya calculado (evita releer la licencia).
+ * @return string
+ */
+function licencia_etiqueta_estado($datos = null, $prefijo = 'LICENCIA ', $activa = null) {
+    if ($datos === null) return 'SIN LICENCIA';
+    if ($activa === null) $activa = licencia_activada();
+    if ($activa) return $prefijo . 'ACTIVA' . licencia_etiqueta_dias_restantes($datos);
+    $vence = licencia_vencimiento($datos);
+    return $prefijo . (($vence !== null && (int)$vence < time()) ? 'VENCIDA' : 'INVALIDA');
+}
+
+/**
+ * Texto de vencimiento listo para mostrar, con los días restantes entre
+ * paréntesis: "25/10/2026 (en 27 días)", "25/10/2026 (vence hoy)".
+ *
+ * @param array|null $datos     Datos de la licencia (null = no hay licencia).
+ * @param string     $sin_datos Texto cuando no hay licencia.
+ * @return string
+ */
+function licencia_texto_vencimiento($datos, $sin_datos = '—') {
+    if ($datos === null) return $sin_datos;
+    $vence = licencia_vencimiento($datos);
+    if ($vence === null) return 'Permanente (no vence)';
+    return date('d/m/Y', $vence) . licencia_etiqueta_dias_restantes($datos);
+}
+
+/**
  * Guarda la licencia UNA sola vez (salvo que esté vencida, lo que permite
  * re-registrar con una nueva llave). Devuelve el estado almacenado.
  * @param string $nombre  Nombre de registro
@@ -686,7 +735,7 @@ function licencia_descripcion_instalada() {
         return 'EXISTE UN VALOR DE LICENCIA pero no se pudo descifrar (corrupto o alterado).' . "\nRuta: " . licencia_ruta_almacenamiento();
     }
     $vence  = licencia_vencimiento($datos);
-    $estado = licencia_activada() ? 'ACTIVA' : (licencia_vencida($datos) ? 'VENCIDA' : 'INVALIDA');
+    $estado = licencia_etiqueta_estado($datos, '', licencia_activada());
     $lineas  = array();
     $lineas[] = 'Estado            : ' . $estado;
     $lineas[] = 'Registro          : ' . $datos['registro'];
@@ -699,7 +748,7 @@ function licencia_descripcion_instalada() {
         $lineas[] = 'Vinculada a       : ' . licencia_formatear_fingerprint($fp) . ($coincide ? '  (este equipo)' : '  (OTRO EQUIPO)');
     }
     $lineas[] = 'Activada el       : ' . date('d/m/Y H:i:s', $datos['fecha_activacion']);
-    $lineas[] = 'Vence el          : ' . (($vence === null) ? 'Nunca (licencia permanente)' : date('d/m/Y H:i:s', $vence));
+    $lineas[] = 'Vence el          : ' . (($vence === null) ? 'Nunca (licencia permanente)' : date('d/m/Y H:i:s', $vence) . (licencia_vencida($datos) ? '' : licencia_etiqueta_dias_restantes($datos)));
     if ($vence !== null) {
         $dias = licencia_dias_restantes($datos);
         $lineas[] = 'Días restantes    : ' . $dias;
@@ -781,4 +830,89 @@ function licencia_test() {
     }
     $resultados['persistencia'] = $persistencia;
     return $resultados;
+}
+
+/* ================= Acceso directo al archivo =================
+ * Este módulo es una librería: solo debe usarse con require/include.
+ * Si alguien abre su URL directamente se corta la ejecución y se
+ * responde con una página informativa en vez de una página en blanco.
+ */
+if (isset($_SERVER['SCRIPT_FILENAME'])
+    && @realpath($_SERVER['SCRIPT_FILENAME']) === @realpath(__FILE__)) {
+
+    $dir_datos   = licencia_leer();
+    $dir_activa  = ($dir_datos !== null) && licencia_activada();
+    $dir_estado  = licencia_etiqueta_estado($dir_datos, 'LICENCIA ', $dir_activa);
+    $dir_vence   = licencia_texto_vencimiento($dir_datos);
+    $dir_destino = $dir_activa ? '/nominas/login.php' : '/nominas/licencia.php';
+    $dir_boton   = $dir_activa ? 'Ir al sistema' : 'Registrar licencia';
+    $dir_titulo  = $dir_activa ? 'Acceso restringido' : 'Licencia no activa';
+    $dir_aviso   = 'Este archivo es un <b>módulo interno</b> del sistema de licencias y no se abre directamente desde el navegador.';
+
+    if ($dir_activa) {
+        $dir_detalle = 'El registro de este equipo est&aacute; correcto:<br><br>'
+            . 'Estado&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <b style="color:#4ade80;">' . htmlspecialchars($dir_estado) . '</b><br>'
+            . 'Vence&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <b>' . htmlspecialchars($dir_vence) . '</b>';
+    } else {
+        $dir_detalle = 'El registro de este equipo <b>no est&aacute; activo</b> (' . htmlspecialchars($dir_estado) . ').<br><br>'
+            . 'Debe registrar la licencia para poder usar el sistema.';
+    }
+
+    if (!headers_sent()) {
+        http_response_code(403);
+        header('Content-Type: text/html; charset=utf-8');
+    }
+    ?>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><?php echo htmlspecialchars($dir_titulo); ?></title>
+        <link rel="stylesheet" href="/nominas/css/font-awesome6.4.0/css/all.min.css">
+        <style>
+            body {
+                margin: 0;
+                padding: 2rem 1rem;
+                background: linear-gradient(160deg, #f59e0b 0%, #7f1d1d 45%, #1c1917 100%);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #e2e8f0;
+            }
+            .dir-box {
+                max-width: 560px;
+                background: #1e1e2f;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 14px;
+                padding: 1.75rem;
+                line-height: 1.6;
+                box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+            }
+            .dir-box h1 {
+                margin: 0 0 0.75rem;
+                font-size: 1.15rem;
+                color: #fbbf24;
+            }
+            .dir-box p { margin: 0 0 0.5rem; font-size: 0.9rem; }
+            .dir-box .dir-pie { font-size: 0.78rem; color: #94a3b8; margin-top: 1.25rem; }
+            .dir-box a { color: #60a5fa; }
+        </style>
+    </head>
+    <body>
+        <div class="dir-box">
+            <h1><i class="fas fa-shield-alt"></i> M&oacute;dulo de licencia</h1>
+            <p><?php echo $dir_aviso; ?></p>
+            <p><?php echo $dir_detalle; ?></p>
+            <p class="dir-pie">
+                Estado al <?php echo date('d/m/Y H:i'); ?> &middot;
+                <a href="<?php echo htmlspecialchars($dir_destino); ?>"><?php echo htmlspecialchars($dir_boton); ?></a>
+            </p>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
 }

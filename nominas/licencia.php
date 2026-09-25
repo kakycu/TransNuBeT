@@ -156,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ? ((int)$imp_datos['info']['meses'] === 1 ? '1 mes' : (int)$imp_datos['info']['meses'] . ' meses')
                             : 'Permanente';
                         $examinar_nota   = ($imp_datos['huella'] !== '') ? '<br><b>Esta licencia es exclusiva de este equipo.</b>' : '';
-                        $examinar_hasta  = ($imp_datos['info']['meses'] !== null) ? date('d/m/Y', licencia_vencimiento($imp_datos)) : 'Sin vencimiento (Permanente)';
+                        $examinar_hasta  = ($imp_datos['info']['meses'] !== null) ? licencia_texto_vencimiento($imp_datos, 'Sin vencimiento (Permanente)') : 'Sin vencimiento (Permanente)';
                     }
                 }
             }
@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $guardado_ok  = true;
             $guardado_tipo   = isset($guardado['info']['nombre']) ? $guardado['info']['nombre'] : 'Permanente';
             $guardado_meses  = isset($guardado['info']['meses']) ? $guardado['info']['meses'] : null;
-            $guardado_hasta  = ($guardado_meses !== null) ? date('d/m/Y', licencia_vencimiento($guardado)) : 'Sin vencimiento (Permanente)';
+            $guardado_hasta  = ($guardado_meses !== null) ? licencia_texto_vencimiento($guardado, 'Sin vencimiento (Permanente)') : 'Sin vencimiento (Permanente)';
         } else {
             $error = 'No se pudo guardar la licencia en este equipo.<br>Compruebe que la aplicación tiene permisos de escritura.';
         }
