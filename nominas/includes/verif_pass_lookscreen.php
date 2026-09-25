@@ -1,9 +1,9 @@
 <?php
-// verificar_contrasena_bloqueo.php - Endpoint que verifica la contraseña para desbloquear la sesión
+// includes/verif_pass_lookscreen.php - Endpoint que verifica la contraseña para desbloquear la sesión
 // (Marca BLOQUEO_SESION_PERMITIDO ANTES de cargar database.php para que la guardia anti-retroceso no redirija)
 define('BLOQUEO_SESION_PERMITIDO', true);
 
-require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/../config/database.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $uid = (int)($_SESSION['user_id'] ?? $_SESSION['usuario_id'] ?? 0);

@@ -1,7 +1,8 @@
 <?php
-// eliminar_licencia.php - Elimina el registro de licencia del equipo,
+// includes/eliminar_licencia.php - Elimina el registro de licencia del equipo,
 // cierra la sesión actual y redirige a la pantalla de registro (licencia.php).
 // Solo disponible para los roles Admin y Soft.
+// Nota: vive en /includes, por lo que las redirecciones suben un nivel con "../".
 
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
@@ -10,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/logger.php';
 
 // database.php ya carga includes/licencia.php e includes/permisos.php.
@@ -18,25 +19,25 @@ require_once __DIR__ . '/logger.php';
 // Acceso protegido: solo POST (evita la ejecución por GET, tipo <img src=...>),
 // sesión iniciada, token CSRF y rol Admin/Soft.
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
 if (empty($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
 if (!empty($_SESSION['csrf_eliminar_licencia'])
     && !hash_equals($_SESSION['csrf_eliminar_licencia'], (string)($_POST['csrf'] ?? ''))) {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
 // Solo Admin y Soft pueden eliminar el registro de licencia.
 $rol_actual = permiso_rol_codigo();
 if (!in_array($rol_actual, ['Admin', 'Soft'], true)) {
-    header('Location: index.php');
+    header('Location: ../index.php');
     exit;
 }
 
@@ -79,5 +80,5 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // Ir a la pantalla de registro de licencia (ahora no hay licencia activa).
-header('Location: licencia.php');
+header('Location: ../licencia.php');
 exit;

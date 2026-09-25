@@ -1,12 +1,14 @@
 <?php
-// bloquear_sesion.php - Pantalla de bloqueo de sesión (estilo login.php con barra de título tipo ventana)
-require_once __DIR__ . '/config/database.php';
+// includes/bloquear_sesion.php - Pantalla de bloqueo de sesión (estilo login.php con barra de título tipo ventana)
+// Nota: vive en /includes, por lo que TODAS las rutas relativas de esta página
+// (assets, redirecciones, fetch) suben un nivel con "../".
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/logger.php';
 
 // Si no hay sesión iniciada, salir al login
 $uid = $_SESSION['user_id'] ?? $_SESSION['usuario_id'] ?? null;
 if (empty($uid) || empty($_SESSION['logged_in'])) {
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
 }
 
@@ -17,13 +19,16 @@ $_SESSION['sesion_bloqueada_tiempo'] = time();
 // Guardar el origen al que se debe regresar tras desbloquear
 // Se guarda el path relativo a la raíz de la app (ej. "modules/trabajadores.php")
 // en lugar del basename, para que el retorno no pierda el directorio /modules.
-if (empty($_SESSION['bloqueo_origen']) || $_SESSION['bloqueo_origen'] === 'bloquear_sesion.php') {
+if (empty($_SESSION['bloqueo_origen']) || $_SESSION['bloqueo_origen'] === 'bloquear_sesion.php'
+    || $_SESSION['bloqueo_origen'] === 'includes/bloquear_sesion.php') {
     $origen = 'dashboard.php';
     $ref = $_SERVER['HTTP_REFERER'] ?? '';
     if ($ref !== '') {
         $ref_url   = parse_url($ref);
         $ref_path  = ltrim($ref_url['path'] ?? '', '/');
-        $base_dir  = ltrim(rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/login.php')), '/'), '/');
+        // Esta página vive en /nominas/includes, así que la raíz de la app
+        // (para calcular el origen relativo) es el directorio PADRE.
+        $base_dir  = ltrim(rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/nominas/includes/bloquear_sesion.php'))), '/'), '/');
         if ($base_dir === '') {
             if ($ref_path !== '') $origen = $ref_path;
         } elseif (strpos($ref_path, $base_dir . '/') === 0) {
@@ -35,8 +40,9 @@ if (empty($_SESSION['bloqueo_origen']) || $_SESSION['bloqueo_origen'] === 'bloqu
             $origen .= '?' . $ref_url['query'];
         }
     }
-    if ($origen === 'bloquear_sesion.php' || $origen === 'login.php'
-        || $origen === 'verificar_contrasena_bloqueo.php' || $origen === 'limpiar_bloqueo.php') {
+    if ($origen === 'bloquear_sesion.php' || $origen === 'includes/bloquear_sesion.php' || $origen === 'login.php'
+        || $origen === 'verif_pass_lookscreen.php' || $origen === 'includes/verif_pass_lookscreen.php'
+        || $origen === 'limpiar_bloqueo.php' || $origen === 'includes/limpiar_bloqueo.php') {
         $origen = 'dashboard.php';
     }
     $_SESSION['bloqueo_origen'] = $origen;
@@ -173,12 +179,12 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Sesión Bloqueada - <?php echo htmlspecialchars($bloqueo_company); ?></title>
-    <link rel="icon" type="image/x-icon" href="../images/favicons/nominas.ico">
+    <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
 
     <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
     <!-- SweetAlert2 -->
-    <link rel="stylesheet" href="css/sweetalert2.min.css">
+    <link rel="stylesheet" href="../css/sweetalert2.min.css">
 
 <style>
     /* ========== RESET Y ESTILOS BASE (igual que login.php) ========== */
@@ -201,7 +207,7 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
         position: fixed;
         top: 0; left: 0;
         width: 100%; height: 100%;
-        background-image: url('../images/sigesnom.png');
+        background-image: url('../../images/sigesnom.png');
         background-repeat: no-repeat;
         background-position: center center;
         background-size: contain;
@@ -900,7 +906,7 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
     </div>
 
     <!-- Scripts -->
-    <script src="js/sweetalert211.js"></script>
+    <script src="../js/sweetalert211.js"></script>
     <script>
     (function () {
         'use strict';
@@ -909,7 +915,16 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
         // DATOS DEL SERVIDOR
         // ============================================================
         var LOCK_SEGUNDOS = <?php echo (int) $LOCK_SEGUNDOS; ?>;
-        var lockOrigin = <?php echo json_encode($_SESSION['bloqueo_origen'] ?? 'dashboard.php'); ?>;
+        // El origen se guarda relativo a la raíz de la app ("modules/empleados.php"),
+        // pero esta página vive en /includes → hay que subir un nivel al volver.
+        var lockOrigin = <?php
+            $lock_origen = (string)($_SESSION['bloqueo_origen'] ?? 'dashboard.php');
+            if ($lock_origen === '' || $lock_origen[0] === '/') {
+                echo json_encode($lock_origen);
+            } else {
+                echo json_encode('../' . $lock_origen);
+            }
+        ?>;
         var lockUser = '<?php echo addslashes(htmlspecialchars($nombre_completo)); ?>';
         var maxAttempts = 3;
         var unlockAttempts = 0;
@@ -992,9 +1007,9 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
                     color: '#e2e8f0',
                     confirmButtonColor: '#ef4444',
                     allowOutsideClick: false
-                }).then(function () { window.location.href = 'logout.php'; });
+                }).then(function () { window.location.href = '../logout.php'; });
             } else {
-                window.location.href = 'logout.php';
+                window.location.href = '../logout.php';
             }
         }
 
@@ -1190,9 +1205,9 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
                             background: 'rgba(15, 23, 42, 0.95)',
                             color: '#e2e8f0',
                             allowOutsideClick: false
-                        }).then(function () { window.location.href = 'logout.php'; });
+                        }).then(function () { window.location.href = '../logout.php'; });
                     } else {
-                        window.location.href = 'logout.php';
+                        window.location.href = '../logout.php';
                     }
                     return;
                 }
@@ -1207,7 +1222,7 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
                     var fd = new FormData();
                     fd.append('password', passwordInput.value);
 
-                    var resp = await fetch('verificar_contrasena_bloqueo.php', { method: 'POST', body: fd });
+                    var resp = await fetch('verif_pass_lookscreen.php', { method: 'POST', body: fd });
                     var text = await resp.text();
                     var data;
                     try { data = JSON.parse(text); } catch (e2) { throw new Error('Respuesta no válida del servidor'); }
@@ -1269,11 +1284,11 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
                                 background: 'rgba(15, 23, 42, 0.95)',
                                 color: '#e2e8f0'
                             });
-                            window.location.href = 'logout.php';
+                            window.location.href = '../logout.php';
                         }
                     });
                 } else {
-                    window.location.href = 'logout.php';
+                    window.location.href = '../logout.php';
                 }
             });
         }
