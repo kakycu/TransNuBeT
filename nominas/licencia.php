@@ -64,6 +64,28 @@ if (!is_file(__DIR__ . '/includes/licencia.php')) {
 }
 require_once __DIR__ . '/includes/licencia.php';
 
+// Endpoint interno para validar en vivo el serial sin exponer el secreto al navegador.
+if (isset($_REQUEST['validar_serial']) && (string)$_REQUEST['validar_serial'] === '1') {
+    header('Content-Type: application/json; charset=utf-8');
+    $v_nombre  = isset($_REQUEST['nombre'])  ? trim((string)$_REQUEST['nombre'])  : '';
+    $v_usuario = isset($_REQUEST['usuario']) ? trim((string)$_REQUEST['usuario']) : '';
+    $v_serial  = isset($_REQUEST['serial'])  ? trim((string)$_REQUEST['serial'])  : '';
+    $resp = array('ok' => false, 'motivo' => '');
+    if ($v_nombre === '') {
+        $resp['motivo'] = 'nombre';
+    } elseif ($v_usuario === '') {
+        $resp['motivo'] = 'usuario';
+    } elseif (preg_match('/^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$/', strtoupper($v_serial)) !== 1) {
+        $resp['motivo'] = 'formato';
+    } elseif (!licencia_validar_serial($v_nombre, $v_usuario, $v_serial)) {
+        $resp['motivo'] = 'invalida';
+    } else {
+        $resp['ok'] = true;
+    }
+    echo json_encode($resp);
+    exit;
+}
+
 // Licencia previamente guardada (para diagnosticar y mostrar el motivo).
 $lic_guardada = licencia_leer();
 
@@ -323,7 +345,18 @@ if ($guardado_ok) {
             cursor:pointer;
             font-weight:600;
         }
-        .serial-input { text-transform:uppercase; letter-spacing:2px; font-family:'Consolas', monospace; }
+        .serial-input { text-transform:uppercase; letter-spacing:2px; font-family:'Consolas', monospace; padding-right:3rem; }
+        .serial-check {
+            position:absolute;
+            right:1.125rem;
+            top:50%;
+            transform:translateY(-50%);
+            font-size:1.25rem;
+            pointer-events:none;
+            display:none;
+        }
+        .serial-check.valid i { color:#22c55e; }
+        .serial-check.invalid i { color:#ef4444; }
         .hint { margin-top:0.375rem; font-size:0.72rem; color:#64748b; }
         .btn-registrar {
             display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
@@ -456,6 +489,7 @@ if ($guardado_ok) {
                             <input type="text" name="serial" id="serial" class="serial-input" maxlength="29"
                                    placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
                                    value="<?php echo htmlspecialchars($serial); ?>">
+                            <span id="serialCheck" class="serial-check"></span>
                         </div>
                         <div class="hint"><i class="fas fa-circle-info"></i> Formato: 25 caracteres en 5 grupos de 5, separados por guiones.</div>
                     </div>
@@ -551,10 +585,57 @@ if ($guardado_ok) {
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         var serial = document.getElementById('serial');
+        var nombreInput = document.getElementById('nombre');
+        var usuarioInput = document.getElementById('usuario');
+        var serialCheck = document.getElementById('serialCheck');
+
+        function licEstadoSerial(nombre, usuario, llave) {
+            return fetch(window.location.pathname, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: 'validar_serial=1&nombre=' + encodeURIComponent(nombre) +
+                      '&usuario=' + encodeURIComponent(usuario) +
+                      '&serial=' + encodeURIComponent(llave)
+            }).then(function (r) { return r.json(); });
+        }
+
+        function licMostrarEstado(nombre, usuario, llave) {
+            var limpia = llave.replace(/[^A-Z0-9]/g, '');
+            serialCheck.className = 'serial-check';
+            serialCheck.innerHTML = '';
+            serialCheck.style.display = 'none';
+            if (limpia.length !== 25) { return; }
+            if (nombre === '' || usuario === '') {
+                serialCheck.innerHTML = '<i class="fas fa-circle-question" title="Complete Nombre y Usuario para validar"></i>';
+                serialCheck.style.display = 'inline-block';
+                return;
+            }
+            serialCheck.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            serialCheck.style.display = 'inline-block';
+            licEstadoSerial(nombre, usuario, llave).then(function (j) {
+                if (j && j.ok === true) {
+                    serialCheck.className = 'serial-check valid';
+                    serialCheck.innerHTML = '<i class="fas fa-check-circle"></i>';
+                } else {
+                    serialCheck.className = 'serial-check invalid';
+                    serialCheck.innerHTML = '<i class="fas fa-times-circle"></i>';
+                }
+                serialCheck.style.display = 'inline-block';
+            }).catch(function () {
+                serialCheck.className = 'serial-check invalid';
+                serialCheck.innerHTML = '<i class="fas fa-times-circle"></i>';
+                serialCheck.style.display = 'inline-block';
+            });
+        }
+
+        function licVerificar() {
+            licMostrarEstado(nombreInput.value.trim(), usuarioInput.value.trim(), serial.value);
+        }
 
         // Autoconvertir a mayúsculas mientras se escribe.
         serial.addEventListener('input', function () {
             serial.value = serial.value.toUpperCase();
+            licVerificar();
         });
 
         // Polegar: rellenar guiones automáticamente (un grupo por foco).
@@ -565,7 +646,14 @@ if ($guardado_ok) {
                 grupos.push(val.substr(i, 5));
             }
             serial.value = grupos.join('-');
+            licVerificar();
         });
+
+        nombreInput.addEventListener('input', licVerificar);
+        usuarioInput.addEventListener('input', licVerificar);
+
+        // Al cargar (p. ej. tras examinar un .lic) muestra ya el estado del serial.
+        licVerificar();
 
         document.getElementById('btnHome').addEventListener('click', function () {
             window.location.href = '../index.php';
