@@ -1,7 +1,7 @@
 <?php
 // herramientas/generar_serial.php
 // Herramienta de administración de licencias SISGESNOM.
-// CLI + WEB (Login en página + Sidebar + Topbar + Footer + Tema + SweetAlert2 + Rotar token + Instalar manual).
+// CLI + WEB (Login + Sidebar + Topbar + Footer + Tema + SweetAlert2 + Rotar token + Instalar manual + Imprimir/PDF).
 
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
@@ -986,6 +986,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $accion !== 'rotar_token') {
                     'serial'   => $serial,
                     'valida'   => $valida,
                     'destino'  => $destino,
+                    'fecha'    => date('Y-m-d H:i:s'),
                 );
                 if ($exportar) {
                     $dir = __DIR__ . '/licencias_exportadas';
@@ -1434,6 +1435,147 @@ $flashJson = json_encode($flash, JSON_UNESCAPED_UNICODE);
     .serial-box { font-size: 1rem; letter-spacing: 1px; }
     .fp-box { font-size: .95rem; letter-spacing: 1px; }
   }
+
+  /* ========== Hoja carta (8.5 x 11 pulg) para impresión / PDF ========== */
+  #hojaLicencia {
+    position: fixed;
+    left: -9999px; top: 0;
+    width: 8.5in;
+    height: 11in;
+    overflow: hidden;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 0.6in 0.7in 0.5in 0.7in;
+    font-family: "Segoe UI Variable", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.45;
+    box-sizing: border-box;
+  }
+  #hojaLicencia .hl-header {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 3px solid #0d3b66;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+  }
+  #hojaLicencia .hl-marca { display: flex; align-items: center; gap: 12px; }
+  #hojaLicencia .hl-marca img {
+    width: 52px; height: 52px; object-fit: contain;
+    border-radius: 10px; background: #ffffff;
+  }
+  #hojaLicencia .hl-marca .hl-nombre {
+    font-size: 18pt; font-weight: 800; color: #0d3b66;
+    letter-spacing: -.3px; line-height: 1;
+  }
+  #hojaLicencia .hl-marca .hl-sub { font-size: 9pt; color: #64748b; margin-top: 4px; }
+  /* Simbolo de marca registrada */
+  #hojaLicencia .hl-reg {
+    font-size: .45em;
+    font-weight: 700;
+    vertical-align: super;
+    line-height: 0;
+    margin-left: 1px;
+    letter-spacing: 0;
+  }
+  #hojaLicencia .hl-meta {
+    text-align: right; font-size: 8.5pt; color: #475569; line-height: 1.4;
+  }
+  #hojaLicencia .hl-meta .hl-tag {
+    display: inline-block; padding: 3px 10px;
+    background: #0d3b66; color: #fff; border-radius: 999px;
+    font-size: 8pt; letter-spacing: .5px; font-weight: 600;
+    margin-bottom: 4px;
+  }
+  #hojaLicencia h1 {
+    font-size: 15pt; font-weight: 700; color: #0d3b66;
+    margin: 0 0 2px 0; letter-spacing: -.2px;
+  }
+  #hojaLicencia .hl-desc { color: #64748b; font-size: 9.5pt; margin-bottom: 16px; }
+  #hojaLicencia .hl-bloque {
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 12px; background: #f8fafc;
+  }
+  #hojaLicencia .hl-bloque-titulo {
+    font-size: 8.5pt; text-transform: uppercase; letter-spacing: 1px;
+    color: #64748b; font-weight: 700; margin-bottom: 8px;
+  }
+  #hojaLicencia .hl-fila {
+    display: flex; border-bottom: 1px dashed #cbd5e1;
+    padding: 5px 0; font-size: 10pt;
+  }
+  #hojaLicencia .hl-fila:last-child { border-bottom: none; }
+  #hojaLicencia .hl-fila .hl-k { width: 42%; color: #475569; font-weight: 600; }
+  #hojaLicencia .hl-fila .hl-v { flex: 1; color: #0f172a; word-break: break-word; }
+  /* Debe ir DESPUES de .hl-fila (misma especificidad) para poder ocultarlo */
+  #hojaLicencia .hl-fila.hl-oculto { display: none; }
+  #hojaLicencia .hl-oculto { display: none; }
+  #hojaLicencia .hl-serial {
+    font-family: "Cascadia Code", "Consolas", ui-monospace, monospace;
+    font-size: 14pt; letter-spacing: 2px; font-weight: 700;
+    color: #0d3b66; background: #eef6ff;
+    border: 1px dashed #60a5fa; border-radius: 8px;
+    padding: 10px 14px; text-align: center;
+    word-break: break-all; margin-top: 2px;
+  }
+  #hojaLicencia .hl-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 8.5pt; font-weight: 700; letter-spacing: .3px;
+  }
+  #hojaLicencia .hl-badge.ok { background: #dcfce7; color: #15803d; }
+  #hojaLicencia .hl-badge.no { background: #fee2e2; color: #b91c1c; }
+
+  #hojaLicencia .hl-firma {
+    margin-top: 22px; display: flex; justify-content: space-between; gap: 30px;
+  }
+  #hojaLicencia .hl-firma .hl-linea {
+    flex: 1; border-top: 1px solid #94a3b8; text-align: center;
+    font-size: 8.5pt; color: #475569; padding-top: 5px;
+  }
+  #hojaLicencia .hl-footer {
+    position: absolute;
+    bottom: 0.35in; left: 0.7in; right: 0.7in;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 8px; font-size: 7.5pt; color: #94a3b8;
+    display: flex; justify-content: space-between;
+  }
+  #hojaLicencia .hl-watermark {
+    position: absolute;
+    top: 42%; left: 0; right: 0;
+    text-align: center; font-size: 80pt; font-weight: 900;
+    color: #0d3b66;
+    opacity: .25;
+    transform: rotate(-18deg);
+    letter-spacing: 14px;
+    white-space: nowrap;
+    pointer-events: none; user-select: none;
+    z-index: 2;
+  }
+  /* Contenido por debajo de la marca de agua (z-index 2) */
+  #hojaLicencia .hl-header,
+  #hojaLicencia h1,
+  #hojaLicencia .hl-desc,
+  #hojaLicencia .hl-bloque,
+  #hojaLicencia .hl-firma { position: relative; z-index: 1; }
+  #hojaLicencia .hl-footer { z-index: 1; }
+
+  @media print {
+    @page { size: letter portrait; margin: 0; }
+    html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+    .layout, .topbar, .sidebar, .footer, .backdrop { display: none !important; }
+    #hojaLicencia {
+      display: block !important;
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 8.5in !important;
+      height: 11in !important;
+      min-height: 11in !important;
+      max-height: 11in !important;
+      overflow: hidden !important;
+      box-shadow: none !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1462,7 +1604,7 @@ $flashJson = json_encode($flash, JSON_UNESCAPED_UNICODE);
 
     <div class="spacer"></div>
     <div class="side-foot">
-      <div><i class="fa-solid fa-circle-check me-1" style="color:#4ade80"></i> v2.3.0</div>
+      <div><i class="fa-solid fa-circle-check me-1" style="color:#4ade80"></i> v2.7.0</div>
       <div>Licencia administrada localmente</div>
     </div>
   </aside>
@@ -1550,12 +1692,59 @@ $flashJson = json_encode($flash, JSON_UNESCAPED_UNICODE);
                 <p class="mb-3"><?= $gen['destino'] === '' ? '<span style="color:var(--text-mute)">Genérica</span>' : htmlspecialchars($gen['destino'], ENT_QUOTES, 'UTF-8') ?></p>
                 <p class="mb-1 small" style="color:var(--text-mute)">Válida</p>
                 <p class="mb-3"><?= $gen['valida'] ? '<span class="badge bg-success">SÍ</span>' : '<span class="badge bg-danger">NO</span>' ?></p>
+                <p class="mb-1 small" style="color:var(--text-mute)">Fecha de generación</p>
+                <p class="mb-3" id="fechaGeneracion"><?= htmlspecialchars(date('d/m/Y H:i:s', strtotime($gen['fecha'] ?? 'now')), ENT_QUOTES, 'UTF-8') ?></p>
                 <label class="form-label small">Llave Serial</label>
                 <div class="serial-box" id="serialBox"><?= htmlspecialchars($gen['serial'], ENT_QUOTES, 'UTF-8') ?></div>
                 <div class="d-flex gap-2 mt-3 flex-wrap">
-                  <button class="btn btn-sm btn-outline-primary" onclick="copiar('serialBox')"><i class="fa-regular fa-copy me-1"></i> Copiar</button>
+                  <button class="btn btn-sm btn-outline-primary"
+                          onclick="copiarLicencia(<?= htmlspecialchars(json_encode(array(
+                              'registro' => $gen['nombre'],
+                              'usuario'  => $gen['usuario'],
+                              'tipo'     => $gen['tipo'],
+                              'tipo_nom' => $gen['tipo_nom'],
+                              'serial'   => $gen['serial'],
+                              'valida'   => $gen['valida'],
+                              'destino'  => $gen['destino'],
+                              'fecha'    => date('d/m/Y H:i:s', strtotime($gen['fecha'] ?? 'now')),
+                          ), JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>);"
+                          title="Copiar todos los datos de la licencia">
+                    <i class="fa-regular fa-copy me-1"></i> Copiar
+                  </button>
+
+                  <button class="btn btn-sm btn-outline-primary"
+                          onclick="prepararHojaLicencia(<?= htmlspecialchars(json_encode(array(
+                              'registro' => $gen['nombre'],
+                              'usuario'  => $gen['usuario'],
+                              'tipo'     => $gen['tipo'],
+                              'tipo_nom' => $gen['tipo_nom'],
+                              'serial'   => $gen['serial'],
+                              'valida'   => $gen['valida'],
+                              'destino'  => $gen['destino'],
+                              'fecha'    => date('d/m/Y H:i:s', strtotime($gen['fecha'] ?? 'now')),
+                          ), JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>); imprimirLicencia();">
+                    <i class="fa-solid fa-print me-1"></i> Imprimir
+                  </button>
+
+                  <button class="btn btn-sm btn-outline-primary"
+                          onclick="prepararHojaLicencia(<?= htmlspecialchars(json_encode(array(
+                              'registro' => $gen['nombre'],
+                              'usuario'  => $gen['usuario'],
+                              'tipo'     => $gen['tipo'],
+                              'tipo_nom' => $gen['tipo_nom'],
+                              'serial'   => $gen['serial'],
+                              'valida'   => $gen['valida'],
+                              'destino'  => $gen['destino'],
+                              'fecha'    => date('d/m/Y H:i:s', strtotime($gen['fecha'] ?? 'now')),
+                          ), JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>); exportarPDFLicencia();">
+                    <i class="fa-solid fa-file-pdf me-1"></i> Exportar PDF
+                  </button>
+
                   <?php if (!empty($gen['archivo_nombre'])): ?>
-                    <a class="btn btn-sm btn-outline-success" href="?accion=descargar&archivo=<?= urlencode($gen['archivo_nombre']) ?>&token=<?= $token ?>"><i class="fa-solid fa-download me-1"></i> Descargar .lic</a>
+                    <a class="btn btn-sm btn-outline-success"
+                       href="?accion=descargar&archivo=<?= urlencode($gen['archivo_nombre']) ?>&token=<?= $token ?>">
+                      <i class="fa-solid fa-download me-1"></i> Descargar .lic
+                    </a>
                   <?php endif; ?>
                 </div>
               </div>
@@ -1600,7 +1789,42 @@ $flashJson = json_encode($flash, JSON_UNESCAPED_UNICODE);
                 <tr><th>Almacenada en</th><td><code><?= htmlspecialchars($estado['ruta'], ENT_QUOTES, 'UTF-8') ?></code></td></tr>
               </table>
             </div>
-            <button class="btn btn-outline-danger btn-sm mt-3" onclick="confirmarEliminar()"><i class="fa-solid fa-trash me-1"></i> Eliminar licencia</button>
+            <?php
+              $datosEstado = array(
+                  'modo'      => 'estado',
+                  'estado'    => $activa ? 'ACTIVA' : (licencia_vencida($d) ? 'VENCIDA' : 'INVALIDA'),
+                  'registro'  => $d['registro'],
+                  'usuario'   => $d['usuario'],
+                  'tipo'      => $d['tipo'],
+                  'tipo_nom'  => $d['info']['nombre'],
+                  'serial'    => licencia_formatear_serial($d['serial']),
+                  'vinculada' => ($d['huella'] !== '') ? licencia_formatear_fingerprint($d['huella']) : '',
+                  'activada'  => date('d/m/Y H:i:s', $d['fecha_activacion']),
+                  'vence'     => $vence === null ? 'Nunca (permanente)' : date('d/m/Y H:i:s', $vence),
+                  'ruta'      => $estado['ruta'],
+                  'valida'    => $activa,
+              );
+              $jsonEstado = htmlspecialchars(json_encode($datosEstado,
+                  JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8');
+            ?>
+            <div class="d-flex gap-2 mt-3 flex-wrap">
+              <button class="btn btn-sm btn-outline-primary"
+                      onclick="prepararHojaLicencia(<?= $jsonEstado ?>); imprimirLicencia();">
+                <i class="fa-solid fa-print me-1"></i> Imprimir
+              </button>
+
+              <button class="btn btn-sm btn-outline-primary"
+                      onclick="prepararHojaLicencia(<?= $jsonEstado ?>); exportarPDFLicencia();">
+                <i class="fa-solid fa-file-pdf me-1"></i> Exportar PDF
+              </button>
+
+              <button class="btn btn-sm btn-outline-primary" onclick="copiarLicencia(<?= $jsonEstado ?>)"
+                      title="Copiar todos los datos de la licencia">
+                <i class="fa-regular fa-copy me-1"></i> Copiar
+              </button>
+
+              <button class="btn btn-outline-danger btn-sm" onclick="confirmarEliminar()"><i class="fa-solid fa-trash me-1"></i> Eliminar licencia</button>
+            </div>
             <form method="post" id="formEliminar" class="d-none">
               <input type="hidden" name="accion" value="eliminar">
               <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>">
@@ -1715,8 +1939,66 @@ $flashJson = json_encode($flash, JSON_UNESCAPED_UNICODE);
   </div>
 </div>
 
+<!-- ============ Hoja imprimible (8.5 x 11) para Imprimir / Exportar PDF ============ -->
+<div id="hojaLicencia" aria-hidden="true">
+  <div class="hl-watermark">SISGESNOM</div>
+
+  <div class="hl-header">
+    <div class="hl-marca">
+      <img src="images/Unicorn.png" alt="SISGESNOM" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMGQzYjY2Ii8+PHBhdGggZmlsbD0iIzdlZTc4NyIgZD0iTTUwIDE1TDg1IDI1djI1YzAgMjAtMTUgMzUtMzUgNDAtMjAtNS0zNS0yMC0zNS00MFYyNXoiLz48L3N2Zz4=';">
+      <div>
+        <div class="hl-nombre">SISGESNOM<sup class="hl-reg">&reg;</sup></div>
+        <div class="hl-sub">Unicornio Software<sup class="hl-reg">&reg;</sup></div>
+      </div>
+    </div>
+    <div class="hl-meta">
+      <div class="hl-tag" id="hlTag">CERTIFICADO DE LICENCIA</div>
+      <div id="hlFilaEmitido"><span id="hlKEmitido">Emitido</span>: <b id="hlFecha"></b></div>
+      <div class="hl-oculto" id="hlFilaDocIdCab"><span id="hlKDocId">Documento</span>: <b id="hlDocId"></b></div>
+    </div>
+  </div>
+
+  <h1 id="hlTitulo">Licencia de uso de software</h1>
+  <div class="hl-desc" id="hlDescripcion">Este documento certifica la autorización de uso del sistema <b>SISGESNOM</b>.</div>
+
+  <div class="hl-bloque">
+    <div class="hl-bloque-titulo" id="hlTituloBloque1">Datos del registro</div>
+    <div class="hl-fila hl-oculto" id="hlFilaEstado"><div class="hl-k">Estado</div><div class="hl-v" id="hlEstado"></div></div>
+    <div class="hl-fila"><div class="hl-k" id="hlKRegistro">Nombre de Registro</div><div class="hl-v" id="hlRegistro"></div></div>
+    <div class="hl-fila"><div class="hl-k" id="hlKUsuario">Usuario del Registro</div><div class="hl-v" id="hlUsuario"></div></div>
+    <div class="hl-fila"><div class="hl-k" id="hlKTipo">Tipo de Licencia</div><div class="hl-v" id="hlTipo"></div></div>
+    <div class="hl-fila" id="hlFilaDuracion"><div class="hl-k">Duración</div><div class="hl-v" id="hlDuracion"></div></div>
+    <div class="hl-fila"><div class="hl-k" id="hlKVence">Vencimiento</div><div class="hl-v" id="hlVence"></div></div>
+    <div class="hl-fila" id="hlFilaVinculada"><div class="hl-k" id="hlKDestino">Huella destino</div><div class="hl-v" id="hlDestino"></div></div>
+    <div class="hl-fila hl-oculto" id="hlFilaActivada"><div class="hl-k">Activada el</div><div class="hl-v" id="hlActivada"></div></div>
+  </div>
+
+  <div class="hl-bloque">
+    <div class="hl-bloque-titulo">Llave serial</div>
+    <div class="hl-serial" id="hlSerial"></div>
+  </div>
+
+  <div class="hl-bloque">
+    <div class="hl-bloque-titulo" id="hlTituloBloque2">Verificación</div>
+    <div class="hl-fila"><div class="hl-k" id="hlKValida">Integridad</div><div class="hl-v" id="hlValida"></div></div>
+    <div class="hl-fila"><div class="hl-k" id="hlKOrigen">Generado desde</div><div class="hl-v" id="hlOrigen"></div></div>
+    <div class="hl-fila" id="hlFilaDocId"><div class="hl-k">ID del documento</div><div class="hl-v" id="hlDocId2"></div></div>
+  </div>
+
+  <div class="hl-firma">
+    <div class="hl-linea">Firma del Comercial</div>
+    <div class="hl-linea">Sello / Fecha</div>
+  </div>
+
+  <div class="hl-footer">
+    <span>SISGESNOM &middot; Unicornio Software<sup class="hl-reg">&reg;</sup></span>
+    <span>Documento generado automáticamente</span>
+  </div>
+</div>
+
 <script src="js/bootstrap.bundle.min.js"></script>
 <script src="js/sweetalert211.js"></script>
+<script src="js/html2pdf.bundle.min.js"></script>
 <script>
 /* Tema */
 (function() {
@@ -1756,14 +2038,11 @@ function activarSeccion(nombre) {
   const info = SECCIONES[nombre] || { titulo: '', sub: '' };
   document.getElementById('pageTitle').innerHTML = info.titulo + ' <small class="ms-2">— ' + info.sub + '</small>';
 
-  // Foco automático en el primer campo "nombre" de la sección activa
   if (sec) {
     const inputNombre = sec.querySelector('input[name="nombre"]');
     if (inputNombre) {
-      // Espera a que el DOM pinte el cambio de sección
       setTimeout(() => {
         inputNombre.focus();
-        // Solo si el input no tiene texto, mueve el cursor al final
         if (inputNombre.value) {
           const len = inputNombre.value.length;
           inputNombre.setSelectionRange(len, len);
@@ -1798,7 +2077,8 @@ const SWAL_ICONS = {
   copy:    '<i class="fa-regular fa-copy me-2"></i>',
   key:     '<i class="fa-solid fa-key me-2" style="color:#fbbf24"></i>',
   rotate:  '<i class="fa-solid fa-arrows-rotate me-2" style="color:#60a5fa"></i>',
-  logout:  '<i class="fa-solid fa-right-from-bracket me-2" style="color:#f87171"></i>'
+  logout:  '<i class="fa-solid fa-right-from-bracket me-2" style="color:#f87171"></i>',
+  pdf:     '<i class="fa-solid fa-file-pdf me-2" style="color:#f87171"></i>'
 };
 function cssVars() {
   const cs = getComputedStyle(document.documentElement);
@@ -1819,23 +2099,75 @@ function swalErr(t, h) {
 }
 
 const FLASH = <?= $flashJson ?>;
+function listaFlashHtml(arr, icono) {
+  return arr.map(m => '<div style="display:flex;gap:.6rem;align-items:flex-start;' +
+    'text-align:left;margin:.35rem 0">' +
+    '<i class="fa-solid ' + icono + '" style="margin-top:.2rem;flex:0 0 auto"></i>' +
+    '<span>' + m + '</span></div>').join('');
+}
 (async function mostrarFlash() {
-  if (FLASH && FLASH.ok && FLASH.ok.length) for (const m of FLASH.ok) await swalOk('Operación exitosa', m);
-  if (FLASH && FLASH.err && FLASH.err.length) for (const m of FLASH.err) await swalErr('Ocurrió un error', m);
+  if (FLASH && FLASH.ok && FLASH.ok.length)
+    await swalOk('Operación exitosa', listaFlashHtml(FLASH.ok, 'fa-circle-check'));
+  if (FLASH && FLASH.err && FLASH.err.length)
+    await swalErr('Ocurrió un error', listaFlashHtml(FLASH.err, 'fa-circle-exclamation'));
 })();
 
-function copiar(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  navigator.clipboard.writeText(el.innerText).then(() => {
+function copiarTexto(texto) {
+  if (!texto) return;
+  navigator.clipboard.writeText(texto).then(() => {
     const c = cssVars();
     Swal.fire({
       iconHtml: SWAL_ICONS.copy, title: 'Copiado al portapapeles',
-      html: '<span style="font-family:ui-monospace,Consolas,monospace;color:#a7f3d0">' + el.innerText + '</span>',
+      html: '<pre style="font-family:ui-monospace,Consolas,monospace;color:#a7f3d0;' +
+            'text-align:left;white-space:pre-wrap;word-break:break-all;margin:0">' +
+            texto.replace(/[<>&]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[ch])) + '</pre>',
       confirmButtonText: '<i class="fa-solid fa-check me-2"></i> Aceptar',
       confirmButtonColor: '#2563eb', background: c.bg, color: c.color, icon: undefined
     });
   }).catch(() => swalErr('No se pudo copiar', ''));
+}
+
+function copiar(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  copiarTexto(el.innerText);
+}
+
+/* Copia la licencia completa (no solo el serial) */
+function copiarLicencia(datos) {
+  if (!datos) return;
+  const mes = { M:'1 mes', Q:'3 meses', S:'5 meses', A:'12 meses', B:'24 meses', C:'60 meses', P:'Permanente' };
+  let t;
+  if (datos.modo === 'estado') {
+    t = [
+      'SISGESNOM - Estado de la licencia',
+      '',
+      'Estado:      ' + (datos.estado || ''),
+      'Registro:    ' + (datos.registro || ''),
+      'Usuario:     ' + (datos.usuario  || ''),
+      'Tipo:        ' + (datos.tipo_nom || '') + ' (' + (datos.tipo || '') + ')',
+      'Serial:      ' + (datos.serial || ''),
+      'Vinculada a: ' + (datos.vinculada || 'Generica'),
+      'Activada el: ' + (datos.activada || ''),
+      'Vence:       ' + (datos.vence || '')
+    ].join('\n');
+  } else {
+    t = [
+      'SISGESNOM' + ' - Licencia de uso de software',
+      '',
+      'Registro:    ' + (datos.registro || ''),
+      'Usuario:     ' + (datos.usuario  || ''),
+      'Tipo:        ' + (datos.tipo_nom || '') + ' (' + (datos.tipo || '') + ')',
+      'Duracion:    ' + (mes[datos.tipo] || ''),
+      'Destino:     ' + (!datos.destino ? 'Generica' : datos.destino),
+      'Valida:      ' + (datos.valida ? 'SI' : 'NO'),
+      'Generada:    ' + (datos.fecha || ''),
+      '',
+      'Llave Serial:',
+      datos.serial || ''
+    ].join('\n');
+  }
+  copiarTexto(t);
 }
 
 function limpiarFormulario(id) {
@@ -1899,7 +2231,7 @@ function mostrarInfo() {
   const c = cssVars();
   Swal.fire({
     iconHtml: SWAL_ICONS.info, title: 'SISGESNOM · Generador de Licencias',
-    html: 'Versión 2.3.0<br>Unicornio Software°<br><br>' +
+    html: 'Versión 2.7.0<br>Unicornio Software°<br><br>' +
           '<small style="opacity:.7">Desarrollado para uso interno.</small>',
     confirmButtonText: '<i class="fa-solid fa-check me-2"></i> Aceptar',
     confirmButtonColor: '#2563eb', background: c.bg, color: c.color, icon: undefined
@@ -2000,6 +2332,220 @@ document.getElementById('sideLogout').addEventListener('click', function() {
   const ini = <?= json_encode($accion_vista_inicial) ?>;
   activarSeccion(ini || 'generar');
 })();
+
+/* ========== Hoja imprimible: rellenar, imprimir y exportar a PDF ========== */
+
+function prepararHojaLicencia(datos) {
+  window.__hlUltimosDatos = datos;
+  const hoy = new Date();
+  const fechaTxt = hoy.toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' });
+  const docId = 'SGS-' + hoy.getFullYear() +
+                String(hoy.getMonth()+1).padStart(2,'0') +
+                String(hoy.getDate()).padStart(2,'0') + '-' +
+                Math.random().toString(36).slice(2,8).toUpperCase();
+
+  const mesesPorTipo = { M:1, Q:3, S:5, A:12, B:24, C:60, P:null };
+  const meses = mesesPorTipo[datos.tipo];
+  const duracion = (meses === null) ? 'Permanente (sin vencimiento)'
+                                    : (meses + (meses === 1 ? ' mes' : ' meses'));
+
+  let venceTxt;
+  if (meses === null) {
+    venceTxt = 'Nunca (licencia permanente)';
+  } else {
+    // El vencimiento real se calcula desde la INSTALACION, no desde la
+    // generacion: todavia no hay fecha concreta que mostrar.
+    venceTxt = duracion + ' desde la instalación';
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const esEstado = datos.modo === 'estado';
+
+  /* --- adaptation de etiquetas y filas segun el modo --- */
+  const mostrar = (id, on) => $(id).classList.toggle('hl-oculto', !on);
+  const texto = (id, v) => { $(id).textContent = v; };
+
+  texto('hlKRegistro', esEstado ? 'Registro'     : 'Nombre de Registro');
+  texto('hlKUsuario',  esEstado ? 'Usuario'      : 'Usuario del Registro');
+  texto('hlKTipo',     esEstado ? 'Tipo'         : 'Tipo de Licencia');
+  texto('hlKVence',    esEstado ? 'Vence'        : 'Vencimiento');
+  texto('hlKDestino',  esEstado ? 'Vinculada a'  : 'Huella destino');
+  texto('hlKValida',   'Integridad');
+  texto('hlKOrigen',   esEstado ? 'Almacenada en': 'Generado desde');
+  texto('hlKEmitido',  esEstado ? 'Emitido'  : 'Generado');
+  texto('hlTituloBloque1', esEstado ? 'Estado de la licencia' : 'Datos del registro');
+  texto('hlTituloBloque2', esEstado ? 'Almacenamiento'        : 'Verificación');
+  texto('hlTitulo', esEstado ? 'Estado de la licencia de software' : 'Licencia de uso de software');
+  texto('hlDescripcion', esEstado
+    ? 'Informe del estado de la licencia instalada en este equipo.'
+    : 'Este documento certifica la autorización de uso del sistema SISGESNOM.');
+
+  mostrar('hlFilaEstado',   esEstado);
+  mostrar('hlFilaActivada', esEstado);
+  mostrar('hlFilaDuracion', !esEstado);
+  mostrar('hlFilaDocId',    !esEstado);
+  mostrar('hlFilaVinculada', true);
+  mostrar('hlFilaDocIdCab', !esEstado);
+
+  /* --- contenido --- */
+  texto('hlFecha',    fechaTxt);
+  texto('hlDocId',    docId);
+  texto('hlDocId2',   docId);
+  texto('hlRegistro', datos.registro);
+  texto('hlUsuario',  datos.usuario);
+  texto('hlTipo',     datos.tipo_nom + '  (' + datos.tipo + ')');
+  texto('hlSerial',   datos.serial);
+
+  if (esEstado) {
+    texto('hlEstado',   datos.estado || '');
+    texto('hlActivada', datos.activada || '');
+    texto('hlVence',    datos.vence || '');
+    texto('hlDestino',  datos.vinculada
+      ? datos.vinculada
+      : 'Genérica (sin vínculo a un equipo específico)');
+    texto('hlOrigen',   datos.ruta || '');
+  } else {
+    texto('hlDuracion', duracion);
+    texto('hlVence',    venceTxt);
+    texto('hlDestino',  datos.destino === ''
+      ? 'Genérica (se vincula al primer equipo que la importe)'
+      : datos.destino);
+    texto('hlOrigen',   'Generador de Licencias SISGESNOM (Web)');
+  }
+
+  const hlVal = $('hlValida');
+  if (datos.valida) {
+    hlVal.innerHTML = '<span class="hl-badge ok">✓ Válida</span>';
+  } else {
+    hlVal.innerHTML = '<span class="hl-badge no">✗ No válida</span>';
+  }
+}
+
+function imprimirLicencia() {
+  window.print();
+}
+
+function exportarPDFLicencia() {
+  const datos = window.__hlUltimosDatos || null;
+  if (!datos) {
+    swalErr('Sin datos', 'Genere una licencia primero.');
+    return;
+  }
+
+  if (typeof html2pdf === 'undefined') {
+    window.print();
+    return;
+  }
+
+  const hoja = document.getElementById('hojaLicencia');
+
+  // 1) Guardar estilos originales para restaurarlos después
+  const estilosOriginales = {
+    position:   hoja.style.position,
+    left:       hoja.style.left,
+    top:        hoja.style.top,
+    zIndex:     hoja.style.zIndex,
+    opacity:    hoja.style.opacity,
+    boxShadow:  hoja.style.boxShadow,
+    visibility: hoja.style.visibility,
+    width:      hoja.style.width,
+    height:     hoja.style.height,
+    overflow:   hoja.style.overflow,
+    background: hoja.style.background,
+    margin:     hoja.style.margin,
+    padding:    hoja.style.padding,
+    display:    hoja.style.display,
+    pointerEvents: hoja.style.pointerEvents
+  };
+
+  // 2) Mover temporalmente al viewport para que html2canvas lo renderice bien
+  //    z-index negativo + pointer-events:none la deja detrás de la interfaz
+  //    sin usar opacity (html2canvas rasteriza el opacity computado -> PDF en blanco)
+  hoja.style.position   = 'fixed';
+  hoja.style.left       = '0';
+  hoja.style.top        = '0';
+  hoja.style.zIndex     = '-1';
+  hoja.style.pointerEvents = 'none';
+  hoja.style.boxShadow  = 'none';
+  hoja.style.visibility = 'visible';
+  hoja.style.width      = '8.5in';
+  hoja.style.height     = '11in';
+  hoja.style.overflow   = 'hidden';
+  hoja.style.background = '#ffffff';
+  hoja.style.color      = '#0f172a';
+    hoja.style.margin     = '0';
+    hoja.style.padding    = '0.6in 0.7in 0.5in 0.7in';
+    hoja.style.display    = 'block';
+
+  const nombreArchivo = 'SISGESNOM_' +
+    (datos.registro || 'licencia').replace(/[^A-Za-z0-9_-]+/g, '_') +
+    '_' + (datos.tipo || 'M') + '_' +
+    new Date().toISOString().slice(0,10) + '.pdf';
+
+  const opciones = {
+    margin:      0,
+    filename:    nombreArchivo,
+    image:       { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale:           2,
+      useCORS:         true,
+      allowTaint:      true,
+      backgroundColor: '#ffffff',
+      logging:         false,
+      // sin width/height/windowWidth/windowHeight: html2canvas usa el
+      // boundingBox del elemento, evitando el desplazamiento horizontal
+      scrollX:         0,
+      scrollY:         -window.scrollY,
+      x:               0,
+      y:               0
+    },
+    jsPDF:       { unit: 'pt', format: [612, 792], orientation: 'portrait', compress: true },
+    pagebreak:   { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  // 3) Esperar pintado e imágenes antes de rasterizar
+  const esperarPaint = () => new Promise(res => {
+    requestAnimationFrame(() => requestAnimationFrame(res));
+  });
+  const esperarImagenes = () => Promise.all(
+    Array.from(hoja.querySelectorAll('img')).map(img => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      return new Promise(res => {
+        img.addEventListener('load',  res, { once: true });
+        img.addEventListener('error', res, { once: true });
+      });
+    })
+  );
+
+  const restaurar = () => {
+    hoja.style.position   = estilosOriginales.position;
+    hoja.style.left       = estilosOriginales.left;
+    hoja.style.top        = estilosOriginales.top;
+    hoja.style.zIndex     = estilosOriginales.zIndex;
+    hoja.style.opacity    = estilosOriginales.opacity;
+    hoja.style.boxShadow  = estilosOriginales.boxShadow;
+    hoja.style.visibility = estilosOriginales.visibility;
+    hoja.style.width      = estilosOriginales.width;
+    hoja.style.height     = estilosOriginales.height;
+    hoja.style.overflow   = estilosOriginales.overflow;
+    hoja.style.background = estilosOriginales.background;
+    hoja.style.color      = estilosOriginales.color;
+    hoja.style.margin     = estilosOriginales.margin;
+    hoja.style.padding    = estilosOriginales.padding;
+    hoja.style.display    = estilosOriginales.display;
+    hoja.style.pointerEvents = estilosOriginales.pointerEvents;
+  };
+
+  Promise.all([esperarImagenes(), esperarPaint()]).then(() => {
+    setTimeout(() => {
+      html2pdf().set(opciones).from(hoja).save()
+        .then(() => { restaurar(); })
+        .catch(() => { restaurar(); window.print(); });
+    }, 200);
+  });
+}
+
+
 </script>
 </body>
 </html>
