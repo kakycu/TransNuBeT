@@ -844,7 +844,11 @@ c+='html[data-theme="blue"] table.dataTable thead .sorting_asc,'
 c+='html[data-theme="verde"] table.dataTable thead .sorting_asc,'
  +'html[data-theme="verde"] table.dataTable thead .sorting_desc{color:var(--accent)!important;-webkit-text-fill-color:var(--accent)!important;}';
 c+='html[data-theme="win11"] table.dataTable thead .sorting_asc,'
- +'html[data-theme="win11"] table.dataTable thead .sorting_desc{color:#4fc3f7!important;-webkit-text-fill-color:#4fc3f7!important;}';
+  +'html[data-theme="win11"] table.dataTable thead .sorting_desc{color:#4fc3f7!important;-webkit-text-fill-color:#4fc3f7!important;}';
+
+/* text-muted: contraste adecuado en temas oscuros */
+c+='html[data-theme="dark"] .text-muted,'
+  +'html[data-theme="win11"] .text-muted{color:#9ca3af!important;}';
 
 var st=document.createElement('style');
 st.id='theme-config-all';

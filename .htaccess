@@ -1,11 +1,46 @@
-# SOLUCIÓN FORZADA
+# =====================================================================
+# .htaccess - SISGESNOM
+# =====================================================================
+
+# ----- SOLUCIÓN FORZADA -----
 Options -Indexes
 
 # Si existe index.php se sirve; si NO existe, se sirve no-index.php
 DirectoryIndex index.php no-index.php
 
-# Error 404 → 404.php (recurso no encontrado)
+# Error 404 -> 404.php (recurso no encontrado)
 ErrorDocument 404 /404.php
 
-# Error 403 → 403.php (acceso denegado)
+# Error 403 -> 403.php (acceso denegado)
 ErrorDocument 403 /403.php
+
+# =====================================================================
+# SEGURIDAD - Bloquear archivos sensibles
+# =====================================================================
+
+# 1) Bloquear el token de la herramienta (nombre exacto)
+<FilesMatch "^\.tool_token$">
+    Require all denied
+</FilesMatch>
+
+# 2) Bloquear cualquier archivo que empiece por punto
+#    (.tool_token, .htaccess, .env, .git, .tool_token.bak, etc.)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# 3) Bloquear extensiones de backup / temporales del token
+<FilesMatch "\.tool_token$|\.tool_token\..*$">
+    Require all denied
+</FilesMatch>
+
+# 4) Bloquear archivos .lic exportados (contienen datos de licencia)
+<FilesMatch "\.lic$">
+    Require all denied
+</FilesMatch>
+
+# 5) Bloquear la carpeta de licencias exportadas (por si existe)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^licencias_exportadas/ - [F,L]
+</IfModule>

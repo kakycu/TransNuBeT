@@ -34,6 +34,19 @@ define('INSTALLER_LOG_FILE', __DIR__ . '/instalarBD.log');
 // Ruta web base de la aplicación (ej: /nominas o /)
 $appBase = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 
+// ---------- Módulo de licencias ----------
+$ruta_licencia = APP_DIR . '/includes/licencia.php';
+if (is_file($ruta_licencia)) {
+    require_once $ruta_licencia;
+}
+
+function licencia_fp_equipo(): string {
+    if (function_exists('licencia_fingerprint_equipo')) {
+        return licencia_fingerprint_equipo();
+    }
+    return '';
+}
+
 // ---------- Registro de actividad ----------
 function logMessage(string $msg): void {
     $line = '[' . date('H:i:s') . '] ' . $msg;
@@ -294,7 +307,7 @@ CREATE TABLE `clasif_usuarios` (
 -- Volcado de datos para la tabla `clasif_usuarios`
 --
 
-INSERT INTO `clasif_usuarios` (`id`, `nombre`, `apellidos`, `no_ci`, `direccion_particular`, `telefono_contacto`, `fecha_registro`, `rol_id`, `foto`, `usuario`, `password`, `email`, `activo`, `fecha_actualizacion`, `reset_token`, `reset_expira`) VALUES
+INSERT INTO `clasif_usuarios` (`id`, `nombre`, `apellidos`, `no_ci`, `direccion_particular`, `telefono_contacto`, `fecha_registro`, `rol_id`, `close_inactiv`, `time_inac`, `foto`, `usuario`, `password`, `email`, `activo`, `fecha_actualizacion`, `reset_token`, `reset_expira`) VALUES
 (1, 'Franklin', 'Ramos Lamadrid', '81103016525', 'A. Arango No. 137. Nuevitas, Camagüey', '+5359860773', '2020-11-28 19:48:46', 1, 1, 10, 'assets/imagenes/usuarios/user_1773321151_69b2bbbf55ff3.jpg', 'admin', '$2y$10$ylnrJw8ZEDOdjoFBuc1pNuFcpthaAaAv3MuIHcqsgFks09zb216NO', 'kakycu@gmail.com', 1, '2026-08-09 17:31:38', NULL, NULL);
 
 -- --------------------------------------------------------
@@ -1350,6 +1363,72 @@ function updateConfigFile(string $dbname, string $host, string $user, string $pa
 }
 
 // ============================================================
+// LICENCIAS — eliminar registro del equipo tras instalar la BD
+// ============================================================
+function limpiarLicenciaEquipo(): bool {
+    if (!function_exists('licencia_borrar')) {
+        return false;
+    }
+    return licencia_borrar();
+}
+
+function validarSerialHandler(): void {
+    $nombre  = trim((string)($_POST['nombre'] ?? ''));
+    $usuario = trim((string)($_POST['usuario'] ?? ''));
+    $serial  = trim((string)($_POST['serial'] ?? ''));
+    $ok = ($nombre !== '' && $usuario !== '' && function_exists('licencia_validar_serial')
+        && licencia_validar_serial($nombre, $usuario, $serial));
+    jsonResponse(['ok' => $ok]);
+}
+
+function activarLicenciaHandler(): void {
+    $nombre  = trim((string)($_POST['nombre'] ?? ''));
+    $usuario = trim((string)($_POST['usuario'] ?? ''));
+    $serial  = trim((string)($_POST['serial'] ?? ''));
+    if ($nombre === '' || $usuario === '') {
+        jsonError('Escriba el Nombre y el Usuario de registro.');
+    }
+    if (!function_exists('licencia_validar_serial') || !licencia_validar_serial($nombre, $usuario, $serial)) {
+        jsonError('La llave serial no es válida para ese Nombre y Usuario.');
+    }
+    $guardado = function_exists('licencia_guardar') ? licencia_guardar($nombre, $usuario, $serial) : false;
+    if ($guardado === false) {
+        jsonError('No se pudo guardar la licencia en este equipo.');
+    }
+    $estado = function_exists('licencia_etiqueta_estado') ? licencia_etiqueta_estado($guardado, '', true) : 'ACTIVA';
+    logMessage('Licencia activada: ' . $estado);
+    jsonResponse([
+        'success' => true,
+        'message' => 'Licencia activada correctamente.',
+        'estado'  => $estado,
+    ]);
+}
+
+function importarLicHandler(): void {
+    if (empty($_FILES['archivo_lic'])) {
+        jsonError('No se recibió ningún archivo.');
+    }
+    $f = $_FILES['archivo_lic'];
+    if ($f['error'] !== UPLOAD_ERR_OK) {
+        jsonError('Error al subir el archivo (código ' . $f['error'] . ').');
+    }
+    if (!function_exists('licencia_importar_archivo')) {
+        jsonError('El módulo de licencias no está disponible.');
+    }
+    $datos = licencia_importar_archivo($f['tmp_name']);
+    if ($datos === false) {
+        jsonError('El archivo .lic no es válido o no corresponde a este equipo.');
+    }
+    $estado = function_exists('licencia_etiqueta_estado') ? licencia_etiqueta_estado($datos, '', true) : 'ACTIVA';
+    logMessage('Licencia importada desde archivo: ' . $estado);
+    jsonResponse([
+        'success' => true,
+        'message' => 'Archivo de licencia válido. La licencia quedó instalada.',
+        'estado'  => $estado,
+    ]);
+}
+
+// ============================================================
 // MANEJADORES (AJAX)
 // ============================================================
 if (($_POST['action'] ?? '') !== '') {
@@ -1386,6 +1465,15 @@ if (($_POST['action'] ?? '') !== '') {
                 break;
             case 'delete_installer':
                 deleteInstallerHandler();
+                break;
+            case 'validar_serial':
+                validarSerialHandler();
+                break;
+            case 'activar_licencia':
+                activarLicenciaHandler();
+                break;
+            case 'importar_lic':
+                importarLicHandler();
                 break;
             default:
                 jsonError('Acción desconocida: ' . $action);
@@ -1664,11 +1752,18 @@ function createDatabaseHandler(): void {
 
     logMessage("Base de datos '$db' creada e importada correctamente.");
     logMessage('config.php actualizado con las credenciales de conexión.');
+
+    $lic_borrada = limpiarLicenciaEquipo();
+    logMessage($lic_borrada
+        ? 'Registro de licencia previo eliminado del equipo (HKCU\Software\SISGESNOM).'
+        : 'No se encontró registro de licencia previo que eliminar.');
+
     jsonResponse([
         'success' => true,
         'message' => 'Base de datos creada e importada. config.php actualizado.',
         'urlBase' => $appBase,
         'dbname' => $c['dbname'],
+        'licencia_borrada' => $lic_borrada,
         'log' => getLog(),
     ]);
 }
@@ -1852,6 +1947,11 @@ function importSalvaBatchHandler(): void {
     $successful = (int)$st['total'] - $failed;
     logMessage("Salva importada: $successful consultas ejecutadas, $failed fallaron. config.php actualizado.");
 
+    $lic_borrada = limpiarLicenciaEquipo();
+    logMessage($lic_borrada
+        ? 'Registro de licencia previo eliminado del equipo (HKCU\Software\SISGESNOM).'
+        : 'No se encontró registro de licencia previo que eliminar.');
+
     jsonResponse([
         'success'   => ($failed === 0 || $successful > 0),
         'done'      => true,
@@ -1861,6 +1961,7 @@ function importSalvaBatchHandler(): void {
         'errors'    => $errors,
         'dbname'    => $dbname,
         'empresa'   => $empresa,
+        'licencia_borrada' => $lic_borrada,
         'log'       => getLog(),
     ]);
 }
@@ -2316,6 +2417,7 @@ p.panel-desc { color: var(--muted); font-size: 13.5px; margin-bottom: 18px; }
 }
 .card-info b { color: #5eead4; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid.grid-db { grid-template-columns: repeat(3, 1fr); }
 .form-grid.grid-empresa { grid-template-columns: repeat(6, 1fr); }
 .form-grid.grid-empresa .form-group.col-2 { grid-column: span 2; }
 .form-grid.grid-empresa .form-group.col-3 { grid-column: span 3; }
@@ -2497,11 +2599,13 @@ select.form-control option { background: #1e293b; color: #e2e8f0; }
 @media (max-width: 820px) {
     .req-list { grid-template-columns: 1fr 1fr; }
     .form-grid, .form-grid.grid-empresa { grid-template-columns: 1fr 1fr; }
+    .form-grid.grid-db { grid-template-columns: 1fr 1fr; }
     .summary { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
     .req-list { grid-template-columns: 1fr; }
     .form-grid, .form-grid.grid-empresa { grid-template-columns: 1fr; }
+    .form-grid.grid-db { grid-template-columns: 1fr; }
     .form-grid.grid-empresa .form-group.col-2,
     .form-grid.grid-empresa .form-group.col-3 { grid-column: 1 / -1; }
     .summary { grid-template-columns: 1fr; }
@@ -2731,6 +2835,37 @@ a.link { color: var(--accent); }
     initial-value: 0deg;
     inherits: false;
 }
+.lic-badge {
+    display: inline-block;
+    background: rgba(245, 158, 11, .14);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, .35);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    padding: 5px 14px;
+    border-radius: 20px;
+}
+.fp-box {
+    background: rgba(0, 0, 0, .3);
+    border: 1px solid rgba(148, 163, 184, .25);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+.fp-label { color: #94a3b8; font-size: 12.5px; font-weight: 600; }
+.fp-label b { color: #fbbf24; font-family: Consolas, monospace; letter-spacing: 1px; }
+.lic-footer {
+    padding: 12px 16px 16px;
+    text-align: center;
+    color: #475569;
+    font-size: 11.5px;
+    border-top: 1px solid var(--border);
+}
+.lic-footer b { color: #64748b; }
+#licenciaModal .modal-logo { height: 70px; }
+.lic-warning-card { background: rgba(239,68,68,.15); border: 2px solid #ef4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center; animation: licBlink 1.2s ease-in-out infinite; }
+.lic-warning-card .lic-warning-text { color: #ef4444; font-weight: 700; font-size: 15px; letter-spacing: .5px; margin-bottom: 12px; text-transform: uppercase; }
+@keyframes licBlink { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 @keyframes retroSpin { to { --retro-angle: 90deg; } }
 .swal-retro-bg {
     --retro-angle: 0deg;
@@ -2772,6 +2907,7 @@ a.link { color: var(--accent); }
     .step-body { padding: 18px 16px 20px; }
     .req-list { grid-template-columns: 1fr 1fr; }
     .form-grid, .form-grid.grid-empresa { grid-template-columns: 1fr 1fr; }
+    .form-grid.grid-db { grid-template-columns: 1fr 1fr; }
     .form-grid.grid-empresa .form-group.col-2,
     .form-grid.grid-empresa .form-group.col-3 { grid-column: 1 / -1; }
     .summary { grid-template-columns: 1fr; }
@@ -2834,7 +2970,7 @@ a.link { color: var(--accent); }
     .req-list li { padding: 12px; }
 
     /* Formularios: 1 columna */
-    .form-grid, .form-grid.grid-empresa { grid-template-columns: 1fr; }
+    .form-grid, .form-grid.grid-empresa, .form-grid.grid-db { grid-template-columns: 1fr; }
     .form-grid.grid-empresa .form-group.col-2,
     .form-grid.grid-empresa .form-group.col-3 { grid-column: 1 / -1; }
 
@@ -3091,6 +3227,57 @@ html, body { overflow-x: hidden; }
     </div>
 </div>
 
+<div class="modal-overlay" id="licenciaModal" style="display:none">
+    <div class="modal-heading">
+        <div class="hh">REGISTRO DE <span>LICENCIA</span></div>
+        <div class="ss">SisGesNom - Sistema de Gestión de Nóminas</div>
+        <div class="ss-copyright">Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;</div>
+        <img src="../images/sigesnom.png" alt="SisGesNom" class="modal-logo">
+    </div>
+    <div class="modal-box">
+        <div class="modal-titlebar">
+            <i class="fas fa-key tt-icon"></i>
+            <span class="tt-text">Registro de Licencia</span>
+            <button type="button" class="modal-close" id="licenciaClose" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align:left">
+            <div style="text-align:center;margin-bottom:14px">
+                <span class="lic-badge"><i class="fas fa-lock-open"></i> PENDIENTE DE REGISTRO</span>
+                <div class="fp-box" style="margin-top:10px">
+                    <div class="fp-label">Código Equipo: <b><?php echo htmlspecialchars(licencia_fp_equipo()); ?></b></div>
+                </div>
+            </div>
+            <div class="admin-field">
+                <label><i class="fa-solid fa-building"></i>&nbsp;Nombre de Registro</label>
+                <input class="form-control" id="licNombre" placeholder="Nombre de la empresa o instalación" maxlength="120" onkeydown="if(event.key==='Enter'){event.preventDefault();activarLicencia();}">
+            </div>
+            <div class="admin-field">
+                <label><i class="fa-solid fa-user"></i>&nbsp;Usuario del Registro</label>
+                <input class="form-control" id="licUsuario" placeholder="Usuario o administrador responsable" maxlength="80" onkeydown="if(event.key==='Enter'){event.preventDefault();activarLicencia();}">
+            </div>
+            <div class="admin-field">
+                <label><i class="fa-solid fa-hashtag"></i>&nbsp;Llave Serial</label>
+                <input class="form-control" id="licSerial" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" maxlength="29" style="text-transform:uppercase" oninput="licVerificarSerial()" onkeydown="if(event.key==='Enter'){event.preventDefault();activarLicencia();}">
+                <div class="hint" id="licSerialMsg" style="font-size:12px;margin-top:4px;min-height:16px"></div>
+            </div>
+            <div class="admin-field">
+                <label><i class="fa-solid fa-file-import"></i>&nbsp;Archivo de Licencia (.lic)</label>
+                <input class="form-control" type="file" id="licArchivo" accept=".lic" onchange="licImportarArchivo(this)">
+                <div class="hint">Si dispone de un archivo <b>.lic</b>, selecciónelo y se instalará automáticamente.</div>
+            </div>
+            <div class="actions" style="justify-content:flex-start">
+                <button class="btn btn-primary" id="licActivar"><i class="fas fa-key"></i> Activar Licencia</button>
+                <button class="btn btn-secondary" id="licRegresar"><i class="fa-solid fa-arrow-left"></i> Regresar al Inicio</button>
+                <button class="btn btn-warning" id="licContinuar"><i class="fa-solid fa-arrow-right"></i> Continuar sin registrar</button>
+            </div>
+        </div>
+        <div class="lic-footer">
+            Este programa se distribuye bajo registro de licencia.<br>
+            Los datos introducidos se almacenan <b>cifrados</b> y de forma <b>única</b> en este equipo.
+        </div>
+    </div>
+</div>
+
 <script>/*!
 * sweetalert2 v11.26.25
 * Released under the MIT License.
@@ -3219,7 +3406,8 @@ var state = {
     data: null,
     db: null,
     completed: false,
-    empresa: 'Sin Nombre'
+    empresa: 'Sin Nombre',
+    licenciaActivada: false
 };
 
 function esc(s) {
@@ -3399,9 +3587,9 @@ function testMysqlAuth() {
         } else {
             if (msg) { msg.className = 'auth-msg err'; msg.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ' + esc(res.message || 'No se pudo conectar.'); }
             if (typeof Swal !== 'undefined') {
-                Swal.fire({ icon: 'error', title: 'Error de conexion', html: '<i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#e74c3c"></i><br>' + esc(mysqlErrorFront(res.message)), confirmButtonText: '<i class="fa-solid fa-check"></i>&nbsp;Aceptar' });
+                Swal.fire({ icon: 'error', title: 'Error de Conexión', html: '<i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#e74c3c"></i><br>' + esc(mysqlErrorFront(res.message)), confirmButtonText: '<i class="fa-solid fa-check"></i>&nbsp;Aceptar' });
             } else {
-                notify(res.message || 'Error de conexion.', 'error');
+                notify(res.message || 'Error de Conexión.', 'error');
             }
         }
     });
@@ -3444,7 +3632,7 @@ function renderDatabase(el, actions) {
     var d = { host: 'localhost', port: 3306, name: '<?php echo SYS_DBNAME; ?>', user: 'root', pass: '' };
     if (state.db) { d = state.db; }
     el.innerHTML =
-        '<div class="form-grid">' +
+        '<div class="form-grid grid-db">' +
         '<div class="form-group"><label>Servidor (host)</label><input class="form-control" id="db_host" value="' + esc(d.host) + '"></div>' +
         '<div class="form-group"><label>Puerto</label><input class="form-control" id="db_port" value="' + esc(d.port) + '"></div>' +
         '<div class="form-group"><label>Nombre de la base de datos</label><input class="form-control" id="db_name" value="' + esc(d.name) + '"></div>' +
@@ -3477,6 +3665,11 @@ function renderDatabase(el, actions) {
         };
     };
     state.collectDb = collect;
+
+    setTimeout(function () {
+        var h = document.getElementById('db_host');
+        if (h) { h.focus(); h.select(); }
+    }, 0);
 
     var actions2 = document.querySelector('#wizardContent > .actions');
     actions2.innerHTML = '';
@@ -3521,7 +3714,10 @@ function testConn() {
     notify('Probando conexión...', 'warning', true);
     api('test_connection', state.collectDb(), function (res) {
         if (res.success) {
-            notify('Conexion exitosa a MySQL (servidor ' + esc(res.server) + ').', 'success');
+            notify('Conexión exitosa a MySQL (servidor ' + esc(res.server) + ').', 'success');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'success', title: 'Conexión Exitosa', html: '<i class="fa-solid fa-circle-check" style="font-size:48px;color:#2ecc71"></i><br>Conexión exitosa a MySQL (servidor ' + esc(res.server) + ').', confirmButtonText: '<i class="fa-solid fa-check"></i>&nbsp;Aceptar' });
+            }
             var b = document.getElementById('btnSalva');
             if (b) b.disabled = false;
         }
@@ -3529,7 +3725,7 @@ function testConn() {
             var errMsg = mysqlErrorFront(res.message);
             notify(errMsg, 'error');
             if (typeof Swal !== 'undefined') {
-                Swal.fire({ icon: 'error', title: 'Error de conexion', html: '<i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#e74c3c"></i><br>' + esc(errMsg), confirmButtonText: '<i class="fa-solid fa-check"></i>&nbsp;Aceptar' });
+                Swal.fire({ icon: 'error', title: 'Error de Conexión', html: '<i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#e74c3c"></i><br>' + esc(errMsg), confirmButtonText: '<i class="fa-solid fa-check"></i>&nbsp;Aceptar' });
             }
         }
         showDbLog();
@@ -3596,14 +3792,16 @@ function importSalvaBatchLoop(body) {
                 setImportBar(100, res.message || 'Salva importada correctamente.');
                 setTimeout(function () {
                     notify(res.message || 'Salva importada correctamente.', 'success');
-                    completeStep(2);
                     var hasEmpresa = state.empresaData && state.empresaData.nombre_empresa;
-                    if (hasEmpresa) { completeStep(3); }
                     mostrarRepetirProceso();
-                    var actions = document.querySelector('#wizardContent > .actions');
-                    actions.innerHTML = '';
-                    actions.insertAdjacentHTML('beforeend', '<button class="btn btn-secondary" onclick="goStep(state.step - 1)"><i class="fa-solid fa-arrow-left"></i>&nbsp;Anterior</button>');
-                    actions.insertAdjacentHTML('beforeend', btnNext('Siguiente', 'goNextAfterDb()'));
+                    solicitarLicencia(function () {
+                        completeStep(2);
+                        if (hasEmpresa) { completeStep(3); }
+                        var actions = document.querySelector('#wizardContent > .actions');
+                        actions.innerHTML = '';
+                        actions.insertAdjacentHTML('beforeend', '<button class="btn btn-secondary" onclick="goStep(state.step - 1)"><i class="fa-solid fa-arrow-left"></i>&nbsp;Anterior</button>');
+                        actions.insertAdjacentHTML('beforeend', btnNext('Siguiente', 'goNextAfterDb()'));
+                    });
                 }, 400);
             } else {
                 var msg = res.message || 'La salva se importó con errores.';
@@ -3681,10 +3879,12 @@ function createDb() {
                 Swal.fire({ icon: 'success', title: 'Base de datos creada', html: '<i class="fa-solid fa-check-circle" style="font-size:48px;color:#2ecc71"></i><br>Base de datos creada e importada correctamente.', confirmButtonText: '<i class="fa-solid fa-arrow-right"></i>&nbsp;Continuar' });
             }
             mostrarRepetirProceso();
-            var actions = document.querySelector('#wizardContent > .actions');
-            actions.innerHTML = '';
-            actions.insertAdjacentHTML('beforeend', '<button class="btn btn-secondary" onclick="goStep(state.step - 1)"><i class="fa-solid fa-arrow-left"></i>&nbsp;Anterior</button>');
-            actions.insertAdjacentHTML('beforeend', btnNext('Siguiente', 'completeStep(2); goStep(state.step + 1)'));
+            solicitarLicencia(function () {
+                var actions = document.querySelector('#wizardContent > .actions');
+                actions.innerHTML = '';
+                actions.insertAdjacentHTML('beforeend', '<button class="btn btn-secondary" onclick="goStep(state.step - 1)"><i class="fa-solid fa-arrow-left"></i>&nbsp;Anterior</button>');
+                actions.insertAdjacentHTML('beforeend', btnNext('Siguiente', 'completeStep(2); goStep(state.step + 1)'));
+            });
         } else {
             var msg = mysqlErrorFront(res.message);
             notify(msg, 'error');
@@ -3713,6 +3913,155 @@ function repetirProcesoDb() {
     var rp = document.getElementById('btnRepetirProceso');
     if (rp) rp.remove();
     notify('Proceso reiniciado. Puede crear la base de datos nuevamente o importar otra salva.', 'warning');
+}
+
+function licVerificarSerial() {
+    var msg = document.getElementById('licSerialMsg');
+    var serial = document.getElementById('licSerial');
+    var nombre = document.getElementById('licNombre').value.trim();
+    var usuario = document.getElementById('licUsuario').value.trim();
+    if (!msg || !serial) return;
+    var limpia = serial.value.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    if (limpia.length !== 25) { msg.textContent = ''; msg.style.color = ''; return; }
+    if (nombre === '' || usuario === '') {
+        msg.innerHTML = '<i class="fa-solid fa-circle-question"></i> Complete Nombre y Usuario para validar';
+        msg.style.color = '#94a3b8';
+        return;
+    }
+    msg.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando...';
+    msg.style.color = '#94a3b8';
+    api('validar_serial', { nombre: nombre, usuario: usuario, serial: serial.value }, function (res) {
+        if (res && res.ok) {
+            msg.innerHTML = '<i class="fa-solid fa-check-circle" style="color:#22c55e"></i> Llave válida';
+            msg.style.color = '#22c55e';
+        } else {
+            msg.innerHTML = '<i class="fa-solid fa-times-circle" style="color:#ef4444"></i> Llave no válida';
+            msg.style.color = '#ef4444';
+        }
+    });
+}
+
+function activarLicencia() {
+    var nombre = document.getElementById('licNombre').value.trim();
+    var usuario = document.getElementById('licUsuario').value.trim();
+    var serial = document.getElementById('licSerial').value.trim();
+    if (!nombre || !usuario) { notify('Escriba el Nombre y el Usuario de registro.', 'error'); return; }
+    if (serial.replace(/[^A-Z0-9]/gi, '').length !== 25) { notify('La llave serial debe tener 25 caracteres.', 'error'); return; }
+    notify('Activando licencia...', 'warning', true);
+    api('activar_licencia', { nombre: nombre, usuario: usuario, serial: serial }, function (res) {
+        if (res.success) {
+            notify('Licencia activada correctamente.', 'success');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: '<i class="fa-solid fa-key" style="color:#fbbf24"></i> Licencia Activada',
+                    html: '<i class="fa-solid fa-check-circle" style="font-size:48px;color:#2ecc71"></i><br>La licencia se activó correctamente.<br>Estado: <b>' + esc(res.estado || 'ACTIVA') + '</b>',
+                    confirmButtonText: '<i class="fa-solid fa-arrow-right"></i>&nbsp;Continuar',
+                    allowOutsideClick: false
+                }).then(function () { cerrarLicenciaModal(true); });
+            } else {
+                cerrarLicenciaModal(true);
+            }
+        } else {
+            notify(res.message || 'No se pudo activar la licencia.', 'error');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: 'Licencia no válida', html: '<i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#e74c3c"></i><br>' + esc(res.message || 'No se pudo activar la licencia.'), confirmButtonText: '<i class="fa-solid fa-check"></i>&nbsp;Aceptar' });
+            }
+        }
+    });
+}
+
+function licImportarArchivo(input) {
+    if (!input || !input.files || !input.files[0]) { notify('Seleccione un archivo .lic.', 'warning'); return; }
+    var file = input.files[0];
+    notify('Importando archivo de licencia...', 'warning', true);
+    var data = new FormData();
+    data.append('action', 'importar_lic');
+    data.append('archivo_lic', file);
+    var req = new XMLHttpRequest();
+    req.open('POST', window.location.href, true);
+    req.onreadystatechange = function () {
+        if (req.readyState !== 4) return;
+        var res;
+        try { res = JSON.parse(req.responseText); } catch (e) { res = { success: false, message: 'Respuesta no válida del servidor.' }; }
+        if (res.success) {
+            notify('Archivo de licencia instalado correctamente.', 'success');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: '<i class="fa-solid fa-file-circle-check" style="color:#4ade80"></i> Licencia Instalada',
+                    html: '<i class="fa-solid fa-check-circle" style="font-size:48px;color:#2ecc71"></i><br>El archivo .lic se instaló correctamente.<br>Estado: <b>' + esc(res.estado || 'ACTIVA') + '</b>',
+                    confirmButtonText: '<i class="fa-solid fa-arrow-right"></i>&nbsp;Continuar',
+                    allowOutsideClick: false
+                }).then(function () { cerrarLicenciaModal(true); });
+            } else {
+                cerrarLicenciaModal(true);
+            }
+        } else {
+            notify(res.message || 'No se pudo instalar el archivo.', 'error');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: 'Archivo no válido', html: '<i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#e74c3c"></i><br>' + esc(res.message || 'No se pudo instalar el archivo.'), confirmButtonText: '<i class="fa-solid fa-check"></i>&nbsp;Aceptar' });
+            }
+        }
+    };
+    req.send(data);
+}
+
+function cerrarLicenciaModal(activada) {
+    var overlay = document.getElementById('licenciaModal');
+    if (overlay) { overlay.style.display = 'none'; }
+    if (activada) { state.licenciaActivada = true; }
+    if (!activada && typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Licencia no registrada',
+            html: '<i class="fa-solid fa-triangle-exclamation" style="font-size:48px;color:#f59e0b"></i><br>' +
+                'El sistema <b>no será completamente funcional</b> sin una licencia registrada.<br><br>' +
+                'Para registrar su licencia, acceda al sistema y seleccione la opción <b>Registro de Licencia</b>, ' +
+                'o vuelva al paso anterior en este instalador.',
+            confirmButtonText: '<i class="fa-solid fa-check"></i>&nbsp;Entendido',
+            allowOutsideClick: false
+        });
+    }
+    if (typeof state.licenciaOnDone === 'function') {
+        var cb = state.licenciaOnDone;
+        state.licenciaOnDone = null;
+        cb(activada);
+    }
+}
+
+function solicitarLicencia(onDone) {
+    state.licenciaOnDone = onDone || function () {};
+    var overlay = document.getElementById('licenciaModal');
+    if (!overlay) { state.licenciaOnDone(false); return; }
+    document.getElementById('licNombre').value = state.empresa || '';
+    document.getElementById('licUsuario').value = '';
+    document.getElementById('licSerial').value = '';
+    document.getElementById('licArchivo').value = '';
+    var msg = document.getElementById('licSerialMsg');
+    if (msg) { msg.textContent = ''; }
+    overlay.style.display = 'flex';
+    document.getElementById('licActivar').onclick = function () { activarLicencia(); };
+    document.getElementById('licRegresar').onclick = function () {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '¿Sin licencia ahora?',
+                html: 'Puede registrar la licencia más tarde desde la pantalla de acceso del sistema.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fa-solid fa-arrow-left"></i>&nbsp;Regresar al Inicio',
+                cancelButtonText: '<i class="fa-solid fa-key"></i>&nbsp;Seguir aquí',
+                reverseButtons: true
+            }).then(function (result) {
+                if (result.isConfirmed) { cerrarLicenciaModal(false); }
+            });
+        } else {
+            cerrarLicenciaModal(false);
+        }
+    };
+    document.getElementById('licenciaClose').onclick = function () { cerrarLicenciaModal(false); };
+    document.getElementById('licContinuar').onclick = function () { cerrarLicenciaModal(false); };
+    setTimeout(function () { document.getElementById('licNombre').focus(); }, 60);
 }
 
 function goNextAfterDb() {
@@ -4026,6 +4375,11 @@ function renderComplete(el, actions) {
         '</div>' +
         '<div class="card-info"><b>Importante:</b> ' + adminNote +
         'Recomendamos cambiarla en su primer acceso desde la opción "Cambiar contraseña".</div>' +
+        (state.licenciaActivada ? '' :
+            '<div class="lic-warning-card">' +
+            '<div class="lic-warning-text">Usted no registro su licencia de uso de SisGesNom</div>' +
+            '<button class="btn btn-danger" onclick="solicitarLicencia(function() { renderComplete(document.getElementById(\'stepContent\'), document.querySelector(\'#wizardContent > .actions\')); })"><i class="fa-solid fa-key"></i>&nbsp;Introducir Licencia Operativa</button>' +
+            '</div>') +
         '<div class="section-title">Acceso</div>' +
         '<div class="links-grid">' +
         '<a class="btn btn-success" href="' + esc(siteUrl('index.php')) + '" target="_blank"><i class="fa-solid fa-house"></i>&nbsp;Ir al Inicio General</a> ' +
