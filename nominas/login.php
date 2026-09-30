@@ -97,6 +97,7 @@ if ($db_ok) {
     $SLOGAN = defined('SLOGAN') ? SLOGAN : $SLOGAN;
     // ===== NUEVO: sistema de auditoría (logger.php usa el $pdo global) =====
     require_once __DIR__ . '/includes/logger.php';
+    require_once __DIR__ . '/includes/subsistemas.php';
     
     // Cargar configuración desde la base de datos
     try {
@@ -122,6 +123,17 @@ if ($db_ok) {
     } catch (PDOException $e) {
         error_log("Error al cargar configuración: " . $e->getMessage());
     }
+}
+
+// Nombre del sistema, para mostrar "Sistema version - Empresa"
+$nombre_sistema = 'SisGesNom';
+
+// Estado del subsistema de Nóminas (codigo 0001). Si está deshabilitado se bloquea el acceso.
+$subsistema_activo = 1;
+$enMantenimiento = false;
+if ($db_ok && $pdo) {
+    $subsistema_activo = subsistema_activo($pdo, '0001') ? 1 : 0;
+    $enMantenimiento = modo_mantenimiento_activo($pdo);
 }
 
 // Correo de soporte: desde configuracion_general (parametro 'email_soporte'); si está vacío en la BD, kakycu@gmail.com
@@ -313,16 +325,15 @@ if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action
         } catch (Exception $e) { }
     }
 
-    $enMantenimiento = false;
-    try {
-        $stmtMaint = $pdo->prepare("SELECT modo_mantenimiento FROM configuracion_sistema LIMIT 1");
-        $stmtMaint->execute();
-        $maintResult = $stmtMaint->fetch(PDO::FETCH_ASSOC);
-        $enMantenimiento = ($maintResult && $maintResult['modo_mantenimiento'] >= 1);
-    } catch (Exception $e) {}
+    $enMantenimiento = modo_mantenimiento_activo($pdo);
 
     if ($enMantenimiento && $user_data['rol_id'] != 5) {
         $_SESSION['login_flash'] = "El sistema se encuentra en MANTENIMIENTO. Su rol no tiene permisos para acceder en este momento.";
+        header('Location: login.php'); exit;
+    }
+
+    if ($subsistema_activo == 0 && $user_data['rol_id'] != 5) {
+        $_SESSION['login_flash'] = 'subsistema_inactivo';
         header('Location: login.php'); exit;
     }
 
@@ -490,16 +501,16 @@ if ($db_ok && $google_configurado && $google_oauth_activo && isset($_GET['action
         } catch (Exception $e) { }
     }
 
-    $enMantenimiento = false;
-    try {
-        $stmtMaint = $pdo->prepare("SELECT modo_mantenimiento FROM configuracion_sistema LIMIT 1");
-        $stmtMaint->execute();
-        $maintResult = $stmtMaint->fetch(PDO::FETCH_ASSOC);
-        $enMantenimiento = ($maintResult && $maintResult['modo_mantenimiento'] >= 1);
-    } catch (Exception $e) {}
+    $enMantenimiento = modo_mantenimiento_activo($pdo);
 
     if ($enMantenimiento && $user_data['rol_id'] != 5) {
         echo json_encode(['ok' => false, 'error' => 'MANTENIMIENTO', 'message' => 'El sistema se encuentra en MANTENIMIENTO. Su rol no tiene permisos para acceder en este momento.']);
+        exit;
+    }
+
+    if ($subsistema_activo == 0 && $user_data['rol_id'] != 5) {
+        $msgInactivo = 'El módulo de Nóminas se encuentra deshabilitado por el administrador. Contacte al administrador del sistema.';
+        echo json_encode(['ok' => false, 'error' => 'subsistema_inactivo', 'message' => $msgInactivo, 'mensaje' => $msgInactivo]);
         exit;
     }
 
@@ -585,15 +596,8 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             }
             $response = ['db_ok' => $dbOkNow, 'maintenance' => false];
             if ($dbOkNow) {
-                // Si la BD está OK, también consultar mantenimiento
-                try {
-                    $stmt = $pdo->prepare("SELECT modo_mantenimiento FROM configuracion_sistema LIMIT 1");
-                    $stmt->execute();
-                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                    if ($result && isset($result['modo_mantenimiento']) && $result['modo_mantenimiento'] != 0) {
-                        $response['maintenance'] = true;
-                    }
-                } catch (Exception $e) { }
+                $response['maintenance'] = modo_mantenimiento_activo($pdo);
+                $response['subsistema'] = (bool)$subsistema_activo;
             }
             echo json_encode($response);
             exit;
@@ -1282,16 +1286,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
                     'local'
                 );
             } elseif ($user_data && password_verify($password_input, $user_data['password'])) {
-                $enMantenimiento = false;
-                try {
-                    $stmtMaint = $pdo->prepare("SELECT modo_mantenimiento FROM configuracion_sistema LIMIT 1");
-                    $stmtMaint->execute();
-                    $maintResult = $stmtMaint->fetch(PDO::FETCH_ASSOC);
-                    $enMantenimiento = ($maintResult && $maintResult['modo_mantenimiento'] >= 1);
-                } catch (Exception $e) {}
-                
+    $enMantenimiento = modo_mantenimiento_activo($pdo);
+
                 if ($enMantenimiento && $user_data['rol_id'] != 5) {
                     $error = "El sistema se encuentra en MANTENIMIENTO. Su rol no tiene permisos para acceder en este momento.";
+                } elseif ($subsistema_activo == 0 && $user_data['rol_id'] != 5) {
+                    $error = 'subsistema_inactivo';
+
+                    logAction(
+                        'iniciar_sesion',
+                        'login',
+                        'Intento de inicio de sesión con el subsistema de Nóminas DESHABILITADO para: ' . $dato_entrada,
+                        ['usuario_intentado' => $dato_entrada, 'motivo' => 'subsistema_inactivo'],
+                        (int)$user_data['id'],
+                        'failed',
+                        'Subsistema inactivo',
+                        'local'
+                    );
                 } else {
                     $_SESSION['user_id'] = $user_data['id'];
                     $_SESSION['username'] = $user_data['usuario'];
@@ -2325,6 +2336,7 @@ body::after {
 }
 
 /* Modal mantenimiento estilo Win11 */
+.swal2-container { z-index: 100001 !important; }
 .win11-modal-overlay {
     position: fixed;
     top:0;
@@ -2749,6 +2761,132 @@ body::after {
     </div>
 </div>
 
+<!-- BARRA MODO BYPASS (acceso programador con mantenimiento activo) -->
+<?php if ($es_programador && $enMantenimiento && !empty($db_ok)): ?>
+<style>
+@keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+@keyframes glow { 0% { box-shadow: 0 0.25rem 0.9375rem rgba(220,53,69,0.3); } 50% { box-shadow: 0 0.25rem 1.5625rem rgba(220,53,69,0.7); } 100% { box-shadow: 0 0.25rem 0.9375rem rgba(220,53,69,0.3); } }
+@keyframes shine { 0% { left: -100%; } 20% { left: 100%; } 100% { left: 100%; } }
+@keyframes floatingParticles { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 50% { opacity: 0.5; } 100% { transform: translateY(-1.25rem) rotate(360deg); opacity: 0; } }
+
+.bypass-notification {
+    position: fixed; top: 0; left: 0; width: 100%;
+    background: linear-gradient(135deg, #ff416c, #ff4b2b, #dc3545);
+    background-size: 200% 200%;
+    color: white; text-align: center; padding: 0.875rem 1.25rem;
+    z-index: 999999; font-weight: 600;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    border-bottom: 0.125rem solid rgba(255,255,255,0.2);
+    box-shadow: 0 0.25rem 1.25rem rgba(220,53,69,0.5);
+    display: flex; justify-content: center; align-items: center; gap: 1.25rem;
+    animation: slideDown 0.4s cubic-bezier(0.68,-0.55,0.265,1.55), glow 2s infinite;
+    backdrop-filter: blur(5px);
+    letter-spacing: 0.5px; transform-origin: top; overflow: hidden;
+}
+.bypass-notification::before {
+    content: ""; position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shine 3s infinite; pointer-events: none;
+}
+.bypass-notification > i {
+    font-size: 1.4rem; filter: drop-shadow(0 0.125rem 0.25rem rgba(0,0,0,0.2));
+    animation: pulse 2s infinite 0.5s;
+}
+.bypass-notification > i:last-of-type { animation: pulse 2s infinite; }
+.bypass-notification span {
+    background: rgba(255,255,255,0.15); padding: 0.375rem 1.125rem;
+    border-radius: 3.125rem; backdrop-filter: blur(10px);
+    border: 0.0625rem solid rgba(255,255,255,0.3);
+    box-shadow: 0 0.125rem 0.625rem rgba(0,0,0,0.2);
+    font-weight: 700; text-transform: uppercase;
+    font-size: 0.95rem; letter-spacing: 1px;
+}
+.bypass-notification .chip-acceso {
+    background: rgba(0,0,0,0.2); font-size: 0.85rem;
+    text-transform: none; letter-spacing: 0;
+}
+.bypass-notification .chip-mant {
+    background: #ffc107; color: #000; font-size: 0.85rem; font-weight: 700;
+    text-transform: none; letter-spacing: 0;
+}
+.bypass-close {
+    position: absolute; right: 1.25rem;
+    background: rgba(255,255,255,0.2); border: none; color: white;
+    width: 2rem; height: 2rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 18px; transition: all 0.3s ease;
+    backdrop-filter: blur(5px); border: 0.0625rem solid rgba(255,255,255,0.3);
+}
+.bypass-close:hover { background: rgba(255,255,255,0.3); transform: rotate(90deg) scale(1.1); }
+.bypass-close:active { transform: rotate(180deg) scale(0.9); }
+.bypass-notification .particle {
+    position: absolute; width: 0.375rem; height: 0.375rem;
+    background: rgba(255,255,255,0.3); border-radius: 50%;
+    pointer-events: none; animation: floatingParticles 3s infinite;
+}
+@media (max-width: 768px) {
+    .bypass-notification { flex-direction: column; gap: 0.625rem; padding: 0.75rem; }
+    .bypass-notification span { font-size: 0.85rem; padding: 0.25rem 0.75rem; }
+    .bypass-close { position: relative; right: auto; margin-top: 0.3125rem; }
+}
+</style>
+
+<div class="bypass-notification" id="bypassNotification">
+    <div class="particle" style="top: 10%; left: 10%; animation-delay: 0s;"></div>
+    <div class="particle" style="top: 20%; left: 20%; animation-delay: 0.5s;"></div>
+    <div class="particle" style="top: 30%; left: 30%; animation-delay: 1s;"></div>
+    <div class="particle" style="top: 40%; left: 40%; animation-delay: 1.5s;"></div>
+    <div class="particle" style="top: 50%; left: 50%; animation-delay: 2s;"></div>
+
+    <i class="fas fa-unlock-alt"></i>
+
+    <span>
+        <i class="fas fa-code me-2" style="font-size: 0.9rem; animation: none;"></i>
+        MODO BYPASS ACTIVADO
+        <i class="fas fa-shield-alt mx-2" style="font-size: 0.9rem; animation: none;"></i>
+    </span>
+
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span class="chip-acceso"><i class="fas fa-user-cog me-1"></i> Acceso Programador</span>
+        <span class="chip-mant"><i class="fas fa-tools me-1"></i> Mantenimiento Activo</span>
+    </div>
+
+    <i class="fas fa-tools"></i>
+
+    <button class="bypass-close" onclick="this.parentElement.remove(); document.body.style.marginTop='0';" title="Cerrar notificaci&oacute;n">
+        <i class="fas fa-times"></i>
+    </button>
+</div>
+
+<script>
+(function () {
+    var autoHide = setTimeout(function () {
+        var n = document.getElementById("bypassNotification");
+        if (!n) return;
+        n.style.transition = "transform 0.5s ease, opacity 0.5s ease";
+        n.style.transform = "translateY(-100%)";
+        n.style.opacity = "0";
+        setTimeout(function () { n.remove(); document.body.style.marginTop = "0"; }, 500);
+    }, 5000);
+
+    window.addEventListener("scroll", function () {
+        var n = document.getElementById("bypassNotification");
+        if (!n) return;
+        clearTimeout(autoHide);
+        if (window.scrollY < 50) {
+            n.style.transform = "translateY(0)";
+            n.style.opacity = "1";
+        } else {
+            n.style.transform = "translateY(-100%)";
+            n.style.opacity = "0";
+        }
+    });
+})();
+</script>
+<?php endif; ?>
+
 <!-- MODAL MANTENIMIENTO -->
 <div class="win11-modal-overlay" id="maintenanceModal">
   <div class="win11-modal" style="border: 0.0625rem solid #ffc107; box-shadow: 0 0 2.5rem rgba(255, 193, 7, 0.2);">
@@ -2757,15 +2895,19 @@ body::after {
         <div class="modal-icon maintenance-icon-pulse">
           <i class="fa-solid fa-helmet-safety"></i>
         </div>
-        <h3 class="modal-title" style="color: #ffc107;">🛠️ Modo Mantenimiento Activo</h3>
+        <h3 class="modal-title" id="maint-modal-title" style="color: #ffc107;">Sistema en mantenimiento</h3>
       </div>
     </div>
     <div class="win11-modal-body">
-      <p style="font-size:1.1em; color: #fff; margin-bottom:1.25rem; text-align: center;">
-        <strong><?php echo htmlspecialchars($COMPANY_NAME); ?></strong> se encuentra actualmente en modo de mantenimiento.
+      <p id="maint-modal-text" style="font-size:1.1em; color: #fff; margin-bottom:1.25rem; text-align: center;">
+        El sistema continúa en mantenimiento.
       </p>
       <div style="background: rgba(255, 193, 7, 0.05); border-radius: 0.5rem; padding:0.9375rem; border: 0.0625rem dashed rgba(255, 193, 7, 0.3);">
-        <p style="color: #ffc107; text-align: center; margin-bottom:0;">Por favor, intente más tarde.</p>
+        <p id="maint-modal-hint" style="color: #ffc107; text-align: center; margin-bottom:0.75rem;">Por favor, intente más tarde.</p>
+        <p style="color: #cbd5e1; text-align: center; margin-bottom:0; font-size:0.9em;">
+          <i class="fa-regular fa-clock me-1"></i>Última verificación:
+          <span id="maint-last-check" style="color: #fff; font-weight:600;"><?php echo date('d/m/Y - h:i:s A'); ?></span>
+        </p>
       </div>
     </div>
     <div class="win11-modal-footer">
@@ -4705,21 +4847,94 @@ function disableLoginAccess() {
     if(pass) pass.disabled = true;
     if(forgotLink) forgotLink.classList.add('disabled-link');
 }
+function fechaHoraVerificacion() {
+    const ahora = new Date();
+    const dosDigitos = n => String(n).padStart(2, '0');
+    const horas = ahora.getHours();
+    const meridiano = horas >= 12 ? 'PM' : 'AM';
+    const horas12 = horas % 12 === 0 ? 12 : horas % 12;
+    return dosDigitos(ahora.getDate()) + '/' + dosDigitos(ahora.getMonth() + 1) + '/' + ahora.getFullYear()
+        + ' - ' + dosDigitos(horas12) + ':' + dosDigitos(ahora.getMinutes()) + ':' + dosDigitos(ahora.getSeconds()) + ' ' + meridiano;
+}
+function marcarUltimaVerificacion() {
+    const el = document.getElementById('maint-last-check');
+    if (el) el.textContent = fechaHoraVerificacion();
+}
+function swalMantenimientoActivo(alTerminar) {
+    Swal.fire({
+        icon: 'warning',
+        title: 'Sistema en mantenimiento',
+        html: '<p style="font-size:1rem; margin-bottom:0.75rem;">El sistema continúa en mantenimiento.</p>'
+            + '<p style="font-size:0.85rem; color:#94a3b8; margin:0;">'
+            + '<i class="fa-regular fa-clock me-1"></i>Última verificación: '
+            + fechaHoraVerificacion() + '</p>',
+        background: '#0f172a',
+        color: '#e2e8f0',
+        confirmButtonColor: '#ffc107',
+        confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
+    }).then(() => { if (typeof alTerminar === 'function') alTerminar(); });
+}
+function swalMantenimientoFinalizado() {
+    Swal.fire({
+        icon: 'success',
+        title: 'Mantenimiento finalizado',
+        html: '<p style="font-size:1rem; margin-bottom:0.75rem;">El sistema está operativo nuevamente.</p>'
+            + '<p style="font-size:0.85rem; color:#94a3b8; margin:0;">'
+            + '<i class="fa-regular fa-clock me-1"></i>Última verificación: '
+            + fechaHoraVerificacion() + '</p>',
+        background: '#0f172a',
+        color: '#e2e8f0',
+        confirmButtonColor: '#22c55e',
+        confirmButtonText: '<i class="fas fa-right-to-bracket me-2"></i> Iniciar sesión'
+    }).then(() => { location.reload(); });
+}
 function recheckMaintenanceStatus() {
-    let btn = document.getElementById('btn-recheck-maint');
-    let originalContent = btn ? btn.innerHTML : '';
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    const btn = document.getElementById('btn-recheck-maint');
+    const originalContent = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Verificando...'; }
     fetch('login.php?action=check_status')
         .then(response => response.json())
         .then(data => {
-            if (data.maintenance) {
-                Swal.fire({ icon: 'info', title: 'Sistema en mantenimiento', text: 'El sistema continúa en mantenimiento.', background: '#0f172a', confirmButtonColor: '#ffc107' });
-            } else {
-                Swal.fire({ icon: 'success', title: '¡Mantenimiento finalizado!', text: 'El sistema está operativo nuevamente.', timer: 2000, showConfirmButton: false, background: '#0f172a' }).then(() => { location.reload(); });
-            }
+            marcarUltimaVerificacion();
             if (btn) { btn.innerHTML = originalContent; btn.disabled = false; }
+            if (data.maintenance) {
+                swalMantenimientoActivo();
+                return;
+            }
+            avisoMantenimientoFinalizado();
+            swalMantenimientoFinalizado();
         })
-        .catch(() => { Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo conectar.' }); if (btn) { btn.innerHTML = originalContent; btn.disabled = false; } });
+        .catch(() => {
+            if (btn) { btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i> Error de conexión'; }
+            setTimeout(() => { if (btn) { btn.innerHTML = originalContent; btn.disabled = false; } }, 2000);
+        });
+}
+function avisoMantenimientoFinalizado() {
+    const titulo = document.getElementById('maint-modal-title');
+    const texto = document.getElementById('maint-modal-text');
+    const hint = document.getElementById('maint-modal-hint');
+    if (titulo) { titulo.textContent = 'Mantenimiento finalizado'; titulo.style.color = '#22c55e'; }
+    if (texto) texto.textContent = 'El sistema ya está disponible.';
+    if (hint) { hint.textContent = 'Mantenimiento finalizado. Puedes iniciar sesión.'; hint.style.color = '#22c55e'; }
+    const btn = document.getElementById('btn-recheck-maint');
+    if (btn) { btn.innerHTML = '<i class="fa-solid fa-check me-2"></i> Ir al inicio de sesión'; btn.disabled = false; btn.onclick = () => location.reload(); }
+    const icon = document.querySelector('#maintenanceModal .maintenance-icon-pulse i');
+    if (icon) { icon.classList.remove('fa-helmet-safety'); icon.classList.add('fa-circle-check'); }
+}
+function vigilanciaMantenimiento() {
+    return setInterval(() => {
+        const modal = document.getElementById('maintenanceModal');
+        if (!modal || !modal.classList.contains('active')) return;
+        fetch('login.php?action=check_status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.maintenance) { marcarUltimaVerificacion(); return; }
+                clearInterval(window._intervaloMantenimiento);
+                avisoMantenimientoFinalizado();
+                swalMantenimientoFinalizado();
+            })
+            .catch(() => {});
+    }, 120000);
 }
 
 if (dbOk) {
@@ -4729,7 +4944,28 @@ if (dbOk) {
         if (!isProgrammerBypass) {
             fetch('login.php?action=check_status')
                 .then(res => res.json())
-                .then(data => { if (data.maintenance) { openMaintenanceModal(); disableLoginAccess(); } })
+                .then(data => {
+                    if (data.maintenance) {
+                        openMaintenanceModal();
+                        disableLoginAccess();
+                        if (!window._intervaloMantenimiento) {
+                            window._intervaloMantenimiento = vigilanciaMantenimiento();
+                        }
+                        swalMantenimientoActivo();
+                        return;
+                    }
+                    if (data.subsistema === false) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Módulo de Nóminas deshabilitado',
+                            html: '<p style="font-size:1rem;">El administrador desactivó este módulo. Los usuarios sin permiso de administración no podrán iniciar sesión.</p>',
+                            background: '#0f172a',
+                            color: '#e2e8f0',
+                            confirmButtonColor: '#f59e0b',
+                            confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
+                        });
+                    }
+                })
                 .catch(e => console.error(e));
         } else {
             const badge = document.createElement('div');
@@ -4770,6 +5006,11 @@ document.addEventListener('DOMContentLoaded', function() {
         titulo = 'Usuario Inhabilitado';
         icono = 'error';
         botonColor = '#ef4444';
+    <?php elseif ($error === 'subsistema_inactivo'): ?>
+        titulo = 'Módulo Deshabilitado';
+        mensaje = 'El módulo de Nóminas se encuentra deshabilitado por el administrador. Contacte al administrador del sistema.';
+        icono = 'warning';
+        botonColor = '#f59e0b';
     <?php elseif ($error === 'google_email_no_existe'): ?>
         titulo = 'Acceso Denegado';
         mensaje = 'Su cuenta de Google no está registrada en el sistema. Solicite su cuenta al administrador para poder acceder.';
@@ -4901,6 +5142,7 @@ if (dbOk) {
                     if (data.error === 'complete_campos') msg = 'Complete todos los campos.';
                     else if (data.error === 'credenciales_invalidas') msg = 'Nombre de usuario y/o contraseña incorrectos. Verifique sus credenciales.';
                     else if (data.error === 'error_sistema') msg = 'Ocurrió un error al procesar su solicitud. Intente más tarde.';
+                    else if (data.error === 'subsistema_inactivo') msg = 'El módulo de Nóminas se encuentra deshabilitado por el administrador. Contacte al administrador del sistema.';
                     else if (data.error && data.error.includes('MANTENIMIENTO')) msg = data.error;
                     Swal.fire({
                         title: '<i class="fas fa-times-circle" style="color: #ef4444; font-size:2rem;"></i><br><?php echo addslashes($COMPANY_NAME); ?>',

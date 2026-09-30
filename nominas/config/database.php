@@ -343,6 +343,47 @@ if (!empty($_SESSION['logged_in']) && !defined('BLOQUEO_SESION_PERMITIDO')) {
 }
 
 // ============================================
+// BLOQUEO POR MANTENIMIENTO O SUBSISTEMA DESHABILITADO
+// Cierra el acceso de las sesiones ya abiertas al activar
+// el modo mantenimiento o al desactivar el subsistema.
+// Excepción: rol 5 (Programador), igual que en facturacion.
+// ============================================
+if (!empty($_SESSION['logged_in']) && !defined('MANTENIMIENTO_PERMITIDO')) {
+    $mnt_pagina  = basename($_SERVER['SCRIPT_NAME'] ?? '', '?*');
+    $mnt_exentas = ['login.php', 'logout.php', 'mantenimiento.php', 'licencia.php',
+                    'bloquear_sesion.php', 'limpiar_bloqueo.php', 'verif_pass_lookscreen.php'];
+    $mnt_accept  = $_SERVER['HTTP_ACCEPT'] ?? '';
+    $mnt_xhr     = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+    $mnt_es_ajax = $mnt_xhr || (strpos($mnt_accept, 'text/html') === false);
+
+    if (!in_array($mnt_pagina, $mnt_exentas, true)) {
+        require_once __DIR__ . '/../includes/subsistemas.php';
+        $mnt_rol    = (int)($_SESSION['rol_id'] ?? 0);
+        $mnt_real   = motivo_bloqueo($pdo);
+        $mnt_motivo = ($mnt_real !== null && $mnt_rol !== 5) ? $mnt_real : null;
+
+        if ($mnt_motivo !== null) {
+            $_SESSION['bloqueo_motivo'] = $mnt_motivo;
+
+            $mnt_dir  = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+            $mnt_niv  = max(0, substr_count($mnt_dir, '/') - 1);
+            $mnt_dest = str_repeat('../', $mnt_niv) . 'mantenimiento.php?motivo=' . urlencode($mnt_motivo);
+
+            if ($mnt_es_ajax) {
+                header('Content-Type: application/json; charset=utf-8');
+                http_response_code(423);
+                exit(json_encode(['ok' => false, 'maintenance' => true, 'redirect' => $mnt_dest,
+                                 'msg' => $mnt_motivo === 'mantenimiento'
+                                     ? 'Sistema en mantenimiento'
+                                     : 'Módulo de Nóminas deshabilitado']));
+            }
+            header('Location: ' . $mnt_dest);
+            exit;
+        }
+    }
+}
+
+// ============================================
 // CARGAR CONFIGURACIÓN DESDE LA BASE DE DATOS
 // ============================================
 

@@ -122,9 +122,10 @@ try {
         }
         
         // 2. Obtener configuración general (si la tabla existe)
+        $mantenimiento_activo = false;
         $checkTable = $conn->query("SHOW TABLES LIKE 'configuracion_general'");
         if ($checkTable && $checkTable->num_rows > 0) {
-            $configQuery = $conn->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'site_name', 'email_empresa', 'telefono_empresa', 'slogan', 'email_soporte')");
+            $configQuery = $conn->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'site_name', 'email_empresa', 'telefono_empresa', 'slogan', 'email_soporte', 'modo_mantenimiento')");
             if ($configQuery) {
                 while ($row = $configQuery->fetch_assoc()) {
                     if ($row['parametro'] == 'nombre_empresa' && !empty($row['valor'])) {
@@ -146,6 +147,9 @@ try {
                     if ($row['parametro'] == 'slogan' && !empty($row['valor'])) {
                         $SLOGAN = $row['valor'];
                     }
+                    if ($row['parametro'] == 'modo_mantenimiento') {
+                        $mantenimiento_activo = in_array((string)$row['valor'], ['1', 'true'], true);
+                    }
                 }
             }
         }
@@ -159,6 +163,16 @@ try {
 
 $current_year = date('Y');
 $server_ok = $server_status['php'] && $server_status['mysql'];
+
+if (!isset($mantenimiento_activo)) {
+    $mantenimiento_activo = false;
+}
+
+// Badge de Mantenimiento, se muestra debajo del badge "Acceder" de cada tarjeta
+function getMaintenanceBadge($activo) {
+    $clase = $activo ? 'maintenance-badge visible' : 'maintenance-badge';
+    return '<div class="' . $clase . '"><i class="fas fa-wrench"></i> ⚠️ En Mantenimiento</div>';
+}
 
 // Función auxiliar para generar el badge según código de subsistema
 function getBadge($codigo, $server_ok, $estados) {
@@ -541,6 +555,25 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             animation: arrowMove 1s ease-in-out infinite;
             display: inline-block;
             transition: color 0.3s ease;
+        }
+
+        .maintenance-badge {
+            display: none;
+            margin-top: 10px;
+            background: #f59e0b20;
+            border: 1px solid #f59e0b60;
+            color: #f59e0b;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .maintenance-badge.visible {
+            display: inline-flex;
         }
 
         @keyframes arrowMove {
@@ -1181,6 +1214,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
                         <i class="fas fa-arrow-right"></i> Acceder
                     </div>
                 </div>
+                <?php echo getMaintenanceBadge($mantenimiento_activo); ?>
             </div>
         </div>
 

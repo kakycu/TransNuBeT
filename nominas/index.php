@@ -76,6 +76,9 @@ $SITE_NAME = $COMPANY_NAME . ' - Sistema de Nóminas';
 // Correo de soporte: desde configuracion_general (parametro 'email_soporte'); si está vacío, kakycu@gmail.com
 $index_email_soporte = 'kakycu@gmail.com';
 
+// Estado de mantenimiento (badge informativo junto al título)
+$mantenimiento_activo = false;
+
 // Intentar conexión a MySQL
 $conn = null;
 try {
@@ -91,7 +94,7 @@ try {
         // Cargar configuración de empresa (si la tabla existe)
         $checkTable = $conn->query("SHOW TABLES LIKE 'configuracion_general'");
         if ($checkTable && $checkTable->num_rows > 0) {
-            $configQuery = $conn->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'site_name', 'email_soporte')");
+            $configQuery = $conn->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'site_name', 'email_soporte', 'modo_mantenimiento')");
             if ($configQuery) {
                 while ($row = $configQuery->fetch_assoc()) {
                     if ($row['parametro'] == 'nombre_empresa' && !empty($row['valor'])) {
@@ -103,6 +106,9 @@ try {
                     }
                     if ($row['parametro'] == 'email_soporte' && !empty($row['valor'])) {
                         $index_email_soporte = trim((string)$row['valor']);
+                    }
+                    if ($row['parametro'] == 'modo_mantenimiento') {
+                        $mantenimiento_activo = in_array((string)$row['valor'], ['1', 'true'], true);
                     }
                 }
             }
@@ -397,6 +403,23 @@ $current_year = date('Y');
         font-weight: 500;
         color: #cbd5e1;
     }
+
+    .maintenance-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-left: 0.75rem;
+        padding: 0.3rem 0.85rem;
+        border-radius: 3.75rem;
+        background: #f59e0b20;
+        border: 0.0625rem solid #f59e0b60;
+        color: #f59e0b;
+        font-size: clamp(0.65rem, 1.6vw, 0.75rem);
+        font-weight: 600;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .maintenance-badge i { font-size: 0.9em; }
 
     .welcome-card h1 {
         font-size: clamp(1.35rem, 4.5vw, 2.4rem);
@@ -721,6 +744,9 @@ $current_year = date('Y');
             </div>
             <h1>
                 <i class="fas fa-chart-simple"></i> Nómina <span style="background: linear-gradient(145deg,#60a5fa,#3b82f6); background-clip:text; -webkit-background-clip:text; color:transparent;">Inteligente</span>
+                <?php if ($mantenimiento_activo): ?>
+                    <span class="maintenance-badge"><i class="fas fa-wrench"></i> Mantenimiento</span>
+                <?php endif; ?>
             </h1>
             <div class="description">
                 Gestión completa de salarios, incidencias, cálculos automáticos de ISR, seguridad social, vacaciones y reportes ejecutivos en tiempo real.

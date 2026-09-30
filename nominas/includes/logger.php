@@ -96,6 +96,8 @@ if (!defined('LOG_ACCIONES')) {
         'guardar_configuracion_correo'=> 'Guardar configuración de correo',
         'guardar_configuracion_google'=> 'Guardar configuración de Google OAuth',
         'probar_configuracion_correo' => 'Probar configuración de correo',
+        'cambiar_configuracion'       => 'Cambio de configuración (valor anterior -> nuevo)',
+        'cambiar_estado_subsistema'   => 'Cambio de estado de subsistema',
         // --- Vacaciones ---
         'registrar_movimiento_vacaciones' => 'Registrar movimiento en submayor de vacaciones',
         'exportar_submayor_vacaciones'=> 'Exportar submayor de vacaciones',

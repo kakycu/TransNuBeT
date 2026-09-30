@@ -174,6 +174,17 @@ try {
             $pdo->exec('DELETE FROM audit_logs');
             $pdo->exec('ALTER TABLE audit_logs AUTO_INCREMENT = 1');
 
+            logAction(
+                'eliminar_historico',
+                'historico',
+                'Eliminación total del histórico de operaciones',
+                ['eliminados' => $total, 'respaldo' => basename($archivo)],
+                $user_id,
+                'success',
+                null,
+                $auth_provider
+            );
+
             echo json_encode([
                 'success'    => true,
                 'eliminados' => $total,

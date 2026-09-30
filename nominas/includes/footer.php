@@ -531,6 +531,16 @@ if (!function_exists('avisarClasificadoresVacios') && file_exists(__DIR__ . '/fu
 if (function_exists('avisarClasificadoresVacios') && isset($pdo) && $pdo instanceof PDO) {
     avisarClasificadoresVacios($pdo);
 }
+
+// Aviso de mantenimiento para el rol 5 (Programador) ya logueado, con el
+// sistema en mantenimiento o con el subsistema de Nominas desactivado.
+if (file_exists(__DIR__ . '/aviso_mantenimiento.php')) {
+    require_once __DIR__ . '/aviso_mantenimiento.php';
+    $aviso_motivo = aviso_mantenimiento_motivo();
+    if ($aviso_motivo !== null) {
+        echo aviso_mantenimiento_html($aviso_motivo);
+    }
+}
 ?>
 
 <!-- Modal Ventana: Información del Sistema (ISO 27001, Infraestructura, Open Source, Auditable) -->

@@ -4,6 +4,8 @@ require_once '../config/database.php';
 require_once __DIR__ . '/../includes/logger.php';
 require_once '../config/mail.php';
 require_once '../includes/funciones.php';
+require_once __DIR__ . '/../includes/subsistemas.php';
+require_once __DIR__ . '/../includes/config_audit.php';
 
 asegurarRecargosExtra($pdo);
 
@@ -197,8 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             foreach ($params as $param) {
                 if (isset($_POST[$param])) {
-                    $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
-                    $stmt->execute([$_POST[$param], $param]);
+                    guardar_parametro_configuracion($pdo, $param, $_POST[$param]);
                 }
             }
             logAction('guardar_configuracion_general', 'configuracion', 'Configuración general guardada', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
@@ -220,8 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             foreach ($params as $param) {
                 if (isset($_POST[$param])) {
-                    $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
-                    $stmt->execute([$_POST[$param], $param]);
+                    guardar_parametro_configuracion($pdo, $param, $_POST[$param]);
                 }
             }
             logAction('guardar_datos_entidad', 'configuracion', 'Datos de la entidad guardados', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
@@ -242,8 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             foreach ($params as $param) {
                 if (isset($_POST[$param])) {
-                    $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
-                    $stmt->execute([$_POST[$param], $param]);
+                    guardar_parametro_configuracion($pdo, $param, $_POST[$param]);
                 }
             }
             logAction('guardar_datos_personal', 'configuracion', 'Personal autorizado guardado', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
@@ -261,9 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             foreach ($params as $param) {
                 if (isset($_POST[$param])) {
-$stmt = $pdo->prepare("INSERT INTO configuracion_general (parametro, valor, tipo_dato) VALUES (?, ?, 'texto')
-                                       ON DUPLICATE KEY UPDATE valor = VALUES(valor)");
-                    $stmt->execute([$param, $_POST[$param]]);
+                    guardar_parametro_configuracion($pdo, $param, $_POST[$param]);
                 }
             }
             logAction('guardar_datos_bancarios', 'configuracion', 'Información bancaria guardada', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
@@ -357,8 +354,7 @@ $stmt = $pdo->prepare("INSERT INTO configuracion_general (parametro, valor, tipo
         
         try {
             foreach ($params as $param => $valor) {
-                $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
-                $stmt->execute([$valor, $param]);
+                guardar_parametro_configuracion($pdo, $param, $valor);
             }
             logAction('guardar_configuracion_correo', 'configuracion', 'Configuración SMTP/correo guardada', ['proveedor' => $params['mail_proveedor']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Configuración de correo guardada correctamente";
@@ -382,8 +378,7 @@ $stmt = $pdo->prepare("INSERT INTO configuracion_general (parametro, valor, tipo
         
         try {
             foreach ($params_google as $param => $valor) {
-                $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
-                $stmt->execute([$valor, $param]);
+                guardar_parametro_configuracion($pdo, $param, $valor);
             }
             logAction('guardar_configuracion_google', 'configuracion', 'Configuración de Google OAuth guardada', ['googleoauth' => $params_google['googleoauth']], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Configuración de Google guardada correctamente";
@@ -399,14 +394,16 @@ $stmt = $pdo->prepare("INSERT INTO configuracion_general (parametro, valor, tipo
             'tiempo_para_bloqueo' => max(1, (int)($_POST['tiempo_para_bloqueo'] ?? 10)),
         ];
         $subsistema_nominas = (($_POST['subsistema_nominas'] ?? '0') === '1') ? 1 : 0;
+        $modo_mantenimiento = (($_POST['modo_mantenimiento'] ?? '0') === '1') ? 1 : 0;
         try {
             foreach ($params_sistema as $param => $valor) {
-                $stmt = $pdo->prepare("UPDATE configuracion_general SET valor = ? WHERE parametro = ?");
-                $stmt->execute([$valor, $param]);
+                guardar_parametro_configuracion($pdo, $param, $valor);
             }
-            $stmt = $pdo->prepare("UPDATE subsistemas SET estado = ? WHERE codigo = '0001'");
-            $stmt->execute([$subsistema_nominas]);
-            logAction('guardar_configuracion_sistema', 'configuracion', 'Otras configuraciones del sistema guardadas', ['tiempo_para_bloqueo' => $params_sistema['tiempo_para_bloqueo'], 'subsistema_nominas' => $subsistema_nominas], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            guardar_estado_subsistema($pdo, '0001', $subsistema_nominas);
+            if (!establecer_modo_mantenimiento($pdo, $modo_mantenimiento)) {
+                throw new PDOException('No se pudo guardar el modo mantenimiento');
+            }
+            logAction('guardar_configuracion_sistema', 'configuracion', 'Otras configuraciones del sistema guardadas', ['tiempo_para_bloqueo' => $params_sistema['tiempo_para_bloqueo'], 'subsistema_nominas' => $subsistema_nominas, 'modo_mantenimiento' => $modo_mantenimiento], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Otras configuraciones del sistema guardadas correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
@@ -707,6 +704,9 @@ try {
         $subsistema_nominas_activo = (int)$row['estado'] === 1;
     }
 } catch (PDOException $e) {}
+
+// Estado del modo mantenimiento
+$modo_mantenimiento_activo = modo_mantenimiento_activo($pdo);
 ?>
 
 <!DOCTYPE html>
@@ -2765,6 +2765,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                     <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseSistema" aria-expanded="false" aria-controls="collapseSistema">
                         <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-wrench me-2" style="color: #60a5fa;"></i> Otras Configuraciones del Sistema
                         <span class="badge ms-2" id="badgeSistemaEstado" style="background: <?php echo $subsistema_nominas_activo ? 'var(--color-success)' : '#ef4444'; ?>; font-size:0.65rem;">SISTEMA/<?php echo $subsistema_nominas_activo ? 'ACTIVO' : 'INACTIVO'; ?></span>
+                        <span class="badge ms-2" id="badgeMantenimientoEstado" style="background: <?php echo $modo_mantenimiento_activo ? '#f59e0b' : '#6b7280'; ?>; font-size:0.65rem;">MANTENIMIENTO/<?php echo $modo_mantenimiento_activo ? 'ON' : 'OFF'; ?></span>
                         <span class="badge ms-2" id="badgeSistemaMin" style="background: #0078d4; font-size:0.65rem;"><?php echo (int)($config['tiempo_para_bloqueo'] ?? 10); ?> MIN</span>
                     </h6>
                 </div>
@@ -2778,6 +2779,13 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                     <input type="checkbox" class="form-check-input" style="width:2.4em; height:1.25em; cursor:pointer; margin-left:0;" name="subsistema_nominas" id="subsistema_nominas" value="1" <?php echo $subsistema_nominas_activo ? 'checked' : ''; ?>>
                                     <label class="form-check-label mb-0" for="subsistema_nominas" style="color:#d1d5db; cursor:pointer; font-size:0.9rem;"><i class="fas fa-power-off me-1"></i> Activar/Desactivar</label>
                                 </div>
+                                <hr class="border-white-10 my-3">
+                                <label class="form-label d-block"><i class="fas fa-screwdriver-wrench me-1" style="color:#f59e0b;"></i> Modo Mantenimiento</label>
+                                <div class="form-check form-switch" style="display:flex; align-items:center; justify-content:center; gap:0.625rem; padding-left:0; margin-bottom:0;">
+                                    <input type="checkbox" class="form-check-input" style="width:2.4em; height:1.25em; cursor:pointer; margin-left:0;" name="modo_mantenimiento" id="modo_mantenimiento" value="1" <?php echo $modo_mantenimiento_activo ? 'checked' : ''; ?>>
+                                    <label class="form-check-label mb-0" for="modo_mantenimiento" style="color:#d1d5db; cursor:pointer; font-size:0.9rem;"><i class="fas fa-power-off me-1"></i> Activar/Desactivar</label>
+                                </div>
+                                <p class="text-secondary mb-0 mt-2" style="font-size:0.72rem;"><i class="fas fa-circle-info me-1" style="color:#f59e0b;"></i>Bloquea el acceso al sistema. Solo los usuarios con rol 5 (Programador) pueden entrar.</p>
                             </div>
                             <div class="col-md-4 mb-3 border rounded p-3 text-center">
                                 <label class="form-label d-block">Tiempo antes de cerrarse la sesión<br>al estar el bloqueo de pantalla</label>
@@ -5378,10 +5386,79 @@ document.getElementById('bancariaForm')?.addEventListener('submit', function(e) 
 (function() {
     const chk = document.getElementById('subsistema_nominas');
     const badge = document.getElementById('badgeSistemaEstado');
-    if (!chk || !badge) return;
-    chk.addEventListener('change', function() {
+    if (!chk) return;
+
+    function pintarBadge() {
+        if (!badge) return;
         badge.textContent = 'SISTEMA/' + (chk.checked ? 'ACTIVO' : 'INACTIVO');
         badge.style.background = chk.checked ? 'var(--color-success)' : '#ef4444';
+    }
+
+    chk.addEventListener('change', function() {
+        pintarBadge();
+        if (typeof Swal === 'undefined') return;
+        const activar = chk.checked;
+        setTimeout(function() {
+            Swal.fire({
+                icon: activar ? 'question' : 'warning',
+                title: activar ? '¿Activar el subsistema de Nóminas?' : '¿Desactivar el subsistema de Nóminas?',
+                text: activar
+                    ? 'Al guardar, el subsistema de Nóminas quedará disponible para todos los usuarios con rol 1 a 4.'
+                    : 'Al guardar, el subsistema de Nóminas quedará bloqueado para todos los usuarios, incluidos los que ya tienen sesión abierta. Solo los usuarios con rol 5 (Programador) conservarán el acceso.',
+                showCancelButton: true,
+                showDenyButton: false,
+                allowOutsideClick: false,
+                confirmButtonText: activar
+                    ? '<i class="fas fa-power-off me-1"></i> Sí, activar'
+                    : '<i class="fas fa-power-off me-1"></i> Sí, desactivar',
+                cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
+                reverseButtons: true,
+                customClass: { confirmButton: 'btn-win btn-win-primary', cancelButton: 'btn-win' },
+                background: 'var(--panel)',
+                color: 'var(--txt)'
+            }).then(function(result) {
+                if (result.isConfirmed) return;
+                chk.checked = !activar;
+                pintarBadge();
+            });
+        }, 0);
+    });
+})();
+
+(function() {
+    const chk = document.getElementById('modo_mantenimiento');
+    const badge = document.getElementById('badgeMantenimientoEstado');
+    if (!chk) return;
+
+    function pintarBadge() {
+        if (!badge) return;
+        badge.textContent = 'MANTENIMIENTO/' + (chk.checked ? 'ON' : 'OFF');
+        badge.style.background = chk.checked ? '#f59e0b' : '#6b7280';
+    }
+
+    chk.addEventListener('change', function() {
+        pintarBadge();
+        if (!chk.checked || typeof Swal === 'undefined') return;
+        setTimeout(function() {
+            Swal.fire({
+                icon: 'warning',
+                title: '¿Activar el modo mantenimiento?',
+                text: 'Al guardar, se bloqueará el acceso de todos los usuarios con sesión abierta y no podrán iniciar sesión. Solo los usuarios con rol 5 (Programador) conservarán el acceso.',
+                showCancelButton: true,
+                showDenyButton: false,
+                allowOutsideClick: false,
+                confirmButtonText: '<i class="fas fa-screwdriver-wrench me-1"></i> Sí, activar',
+                cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
+                reverseButtons: true,
+                customClass: { confirmButton: 'btn-win btn-win-primary', cancelButton: 'btn-win' },
+                background: 'var(--panel)',
+                color: 'var(--txt)'
+            }).then(function(result) {
+                if (result.isConfirmed) return;
+                chk.checked = false;
+                pintarBadge();
+            });
+        }, 0);
     });
 })();
 </script>

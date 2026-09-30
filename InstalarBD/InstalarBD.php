@@ -371,7 +371,8 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (38, 'tiempo_para_bloqueo', '10', 'entero', 'Tiempo en minutos para cerrar la sesión tras bloquearse la pantalla (por defecto 10)', '2026-09-21 00:39:51', NULL),
 (39, 'cuenta_bancaria', '', 'texto', NULL, '2026-09-21 01:53:39', NULL),
 (40, 'banco', '', 'texto', NULL, '2026-09-21 01:53:39', NULL),
-(41, 'sucursal', '', 'texto', NULL, '2026-09-21 01:53:39', NULL);
+(41, 'sucursal', '5783', 'texto', NULL, '2026-09-20 21:53:39', NULL),
+(42, 'modo_mantenimiento', '0', 'booleano', 'Bloquea el acceso al sistema para todos los usuarios excepto el rol 5 (Programador)', '2026-09-29 22:39:36', NULL);
 
 
 -- --------------------------------------------------------
@@ -1087,7 +1088,7 @@ ALTER TABLE `clasif_usuarios`
 -- AUTO_INCREMENT de la tabla `configuracion_general`
 --
 ALTER TABLE `configuracion_general`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT de la tabla `configuracion_rangos_impuesto`
