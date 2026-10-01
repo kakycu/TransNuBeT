@@ -97,6 +97,29 @@
 }
 
 /* ===== Tarjetas de estadísticas (patrón común de la app) ===== */
+/* Colores de texto del modulo: nunca dependen del color heredado de body,
+   para que sean legibles en los seis temas (incluido "dark"). */
+.main-container,
+.main-container .glass-card,
+.main-container .win-topbar,
+.main-container .carpeta-toolbar { color: var(--txt) !important; }
+
+.main-container .page-title h1 { color: var(--txt) !important; }
+.main-container .glass-card .h6,
+.main-container .h6 { color: var(--txt) !important; }
+.main-container .glass-card .h6 i { color: var(--accent) !important; }
+.main-container .page-title p { color: var(--muted) !important; }
+.main-container .table { color: var(--txt) !important; }
+.main-container .table td,
+.main-container .table th { color: inherit !important; }
+.main-container .carpeta-vacio { color: var(--muted) !important; }
+.main-container .carpeta-alerta { color: var(--txt) !important; }
+.main-container .carpeta-filtros .form-control,
+.main-container .carpeta-filtros .form-select { color: var(--txt) !important; }
+.main-container .carpeta-filtros .form-control::placeholder { color: var(--faint) !important; }
+.main-container .carpeta-filtros .form-control:focus,
+.main-container .carpeta-filtros .form-select:focus { color: var(--txt) !important; }
+
 .stat-card {
     background: linear-gradient(135deg, var(--panel-2), var(--panel)) !important;
     border-radius: 1rem;

@@ -850,6 +850,12 @@ c+='html[data-theme="win11"] table.dataTable thead .sorting_asc,'
 c+='html[data-theme="dark"] .text-muted,'
   +'html[data-theme="win11"] .text-muted{color:#9ca3af!important;}';
 
+/* Tema oscuro: fondo y color base de body.
+   Sin esta regla el tema "dark" hereda el body blanco y el texto #212529 de
+   Bootstrap, que queda ilegible sobre el fondo oscuro de .win11-bg. */
+c+='html[data-theme="dark"] body{background:var(--bg)!important;color:#e8edf6!important;}'
+  +'html[data-theme="dark"] .win11-bg{background:linear-gradient(135deg,#0b1018 0%,#131a28 50%,#0d1220 100%)!important;}';
+
 var st=document.createElement('style');
 st.id='theme-config-all';
 st.textContent=c;
