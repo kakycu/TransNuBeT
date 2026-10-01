@@ -253,39 +253,8 @@
                 }
             } catch (e) { /* usar valores por defecto */ }
 
-            ajustarPorcentajeTotal();
-        }
-
-        /* ---- Suma exacta de 100% ----
-           La columna de accion se fija en px, no en %, asi que el resto
-           tiene que repartirse el 100% que queda. Sin esto el navegador
-           reparte a su manera la holgura y ensancha la columna de accion.
-           Se conservan las proporciones, solo se reescalan. */
-        function ajustarPorcentajeTotal() {
-            var anchoTabla = tabla.getBoundingClientRect().width;
-            if (!anchoTabla) return;
-
-            var pctAccion = (ANCHO_ACCION / anchoTabla) * 100;
-            var disponible = 100 - pctAccion;
-            var suma = 0;
-            var i;
-
-            for (i = 0; i < ULTIMA; i++) suma += anchos[i];
-            if (suma <= 0) return;
-
-            var factor = disponible / suma;
-            for (i = 0; i < ULTIMA; i++) {
-                anchos[i] = Math.round((anchos[i] * factor) * 100) / 100;
-            }
-            anchos[ULTIMA] = Math.round(pctAccion * 100) / 100;
-
-            /* El redondeo deja algun decimal de diferencia: se compensa */
-            var total = 0;
-            for (i = 0; i < cols.length; i++) total += anchos[i];
-            var diferencia = Math.round((100 - total) * 100) / 100;
-            if (diferencia !== 0) {
-                anchos[0] = Math.round((anchos[0] + diferencia) * 100) / 100;
-            }
+            /* La columna de acciones no se guarda: siempre es fija */
+            anchos[ULTIMA] = POR_DEFECTO[ULTIMA] || 15;
         }
 
         /* ---- Ancho minimo de cada columna, en px ----
@@ -480,30 +449,6 @@
             return ancho || parseFloat(cs.fontSize) * elemento.textContent.length * 0.6;
         }
 
-        /* ---- Espacio que ocupa la celda aparte del nombre ----
-           Icono + separacion + padding de la celda. Se mide en vez de
-           usar un numero fijo para que no dependa del tema ni del
-           Bootstrap; se suman 4px de holgura porque con el ancho justo
-           el redondeo del navegador deja fuera el ultimo caracter. */
-        function espacioReservado(celda, nombre) {
-            var total = 4;
-            var icono = celda.querySelector('.carpeta-icono-archivo');
-            var contenedor = nombre.parentNode;
-            var cs;
-
-            if (icono) total += icono.getBoundingClientRect().width;
-
-            if (contenedor) {
-                cs = getComputedStyle(contenedor);
-                total += parseFloat(cs.columnGap || cs.gap) || 0;
-            }
-
-            cs = getComputedStyle(celda);
-            total += (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
-
-            return total;
-        }
-
         /* ---- Doble clic: ajustar al contenido ----
            Mide la columna mas larga de TODAS las filas, tambien las que
            estan ocultas por un filtro, para que el ajuste no dependa del
@@ -521,9 +466,9 @@
                 if (indice === 0) {
                     var nombre = celda.querySelector('.carpeta-nombre');
                     if (!nombre) continue;
-                    actual = anchoReal(nombre) + espacioReservado(celda, nombre);
+                    actual = anchoReal(nombre) + 40; // icono + holguras
                 } else {
-                    actual = anchoReal(celda) + 18;
+                    actual = anchoReal(celda) + 16;
                 }
                 if (actual > anchoMax) anchoMax = actual;
             }
