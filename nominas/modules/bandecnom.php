@@ -316,12 +316,14 @@ if (file_exists($ruta_logo)) {
 }
 
 /* Color base del icono según formato */
-.card-option[data-format="dbf"] .icon-option { color: #2563eb; }
+.card-option[data-format="dbf"] .icon-option,
+.card-option[data-format="dbf5"] .icon-option { color: #2563eb; }
 .card-option[data-format="xlsx"] .icon-option { color: var(--color-success); }
 .card-option[data-format="xml"] .icon-option { color: #d97706; }
 
 /* Al seleccionar, la tarjeta adopta el color del botón de exportación: icono en blanco */
-.card-option[data-format="dbf"].selected .icon-option { color: #ffffff; filter: drop-shadow(0 0 0.375rem rgba(255, 255, 255, 0.5)); }
+.card-option[data-format="dbf"].selected .icon-option,
+.card-option[data-format="dbf5"].selected .icon-option { color: #ffffff; filter: drop-shadow(0 0 0.375rem rgba(255, 255, 255, 0.5)); }
 .card-option[data-format="xlsx"].selected .icon-option { color: #ffffff; filter: drop-shadow(0 0 0.375rem rgba(255, 255, 255, 0.5)); }
 .card-option[data-format="xml"].selected .icon-option { color: #ffffff; filter: drop-shadow(0 0 0.375rem rgba(255, 255, 255, 0.5)); }
 
@@ -348,35 +350,71 @@ if (file_exists($ruta_logo)) {
     color: #60a5fa;
 }
 
+.badges-row {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
+}
+
+.badges-row .badge-format {
+    margin-top: 0;
+    font-size: 0.6rem;
+    padding: 0.125rem 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+.badges-row .badge-format.recomendado {
+    background: rgba(var(--color-success-rgb), 0.2);
+    color: #34D399;
+}
+
 .badge-format.recomendado {
     background: rgba(var(--color-success-rgb), 0.2);
     color: #34D399;
 }
 /* Colores específicos para cada formato */
-.card-option[data-format="dbf"]:hover {
+.card-option[data-format="dbf"]:hover,
+.card-option[data-format="dbf5"]:hover {
     border-color: #2563eb;
     background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(37, 99, 235, 0.08));
     box-shadow: 0 0 0 0.125rem rgba(37, 99, 235, 0.25), 0 0.625rem 1.75rem rgba(37, 99, 235, 0.25);
     transform: translateY(-0.1875rem);
 }
 
-.card-option[data-format="dbf"]:hover .icon-option { color: #60a5fa; transform: scale(1.12); filter: drop-shadow(0 0 0.5rem rgba(37, 99, 235, 0.6)); }
-.card-option[data-format="dbf"]:hover h5 { color: #bfdbfe; }
-.card-option[data-format="dbf"]:hover p { color: rgba(191, 219, 254, 0.8); }
-.card-option[data-format="dbf"]:hover .badge-format { background: rgba(37, 99, 235, 0.35); border: 0.0625rem solid rgba(37, 99, 235, 0.6); color: #dbeafe; }
+.card-option[data-format="dbf"]:hover .icon-option,
+.card-option[data-format="dbf5"]:hover .icon-option { color: #60a5fa; transform: scale(1.12); filter: drop-shadow(0 0 0.5rem rgba(37, 99, 235, 0.6)); }
+.card-option[data-format="dbf"]:hover h5,
+.card-option[data-format="dbf5"]:hover h5 { color: #bfdbfe; }
+.card-option[data-format="dbf"]:hover p,
+.card-option[data-format="dbf5"]:hover p { color: rgba(191, 219, 254, 0.8); }
+.card-option[data-format="dbf"]:hover .badge-format,
+.card-option[data-format="dbf5"]:hover .badge-format { background: rgba(37, 99, 235, 0.35); border: 0.0625rem solid rgba(37, 99, 235, 0.6); color: #dbeafe; }
 
-.card-option[data-format="dbf"].selected {
+.card-option[data-format="dbf"].selected,
+.card-option[data-format="dbf5"].selected {
     border-color: #1d4ed8;
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     box-shadow: 0 0.375rem 1.25rem rgba(37, 99, 235, 0.45);
     transform: translateY(-0.1875rem);
 }
 
-.card-option[data-format="dbf"].selected h5 { color: #ffffff; }
-.card-option[data-format="dbf"].selected p { color: rgba(255, 255, 255, 0.85); }
-.card-option[data-format="dbf"].selected .badge-format { background: rgba(255, 255, 255, 0.2); border: 0.0625rem solid rgba(255, 255, 255, 0.45); color: #ffffff; }
-.card-option[data-format="dbf"].selected .card-checkbox { border-top: 0.0625rem solid rgba(255, 255, 255, 0.25); }
-.card-option[data-format="dbf"].selected .card-checkbox label { color: rgba(255, 255, 255, 0.9); }
+.card-option[data-format="dbf"].selected h5,
+.card-option[data-format="dbf5"].selected h5 { color: #ffffff; }
+.card-option[data-format="dbf"].selected p,
+.card-option[data-format="dbf5"].selected p { color: rgba(255, 255, 255, 0.85); }
+.card-option[data-format="dbf"].selected .badge-format,
+.card-option[data-format="dbf5"].selected .badge-format { background: rgba(255, 255, 255, 0.2); border: 0.0625rem solid rgba(255, 255, 255, 0.45); color: #ffffff; }
+.card-option[data-format="dbf"].selected .card-checkbox,
+.card-option[data-format="dbf5"].selected .card-checkbox { border-top: 0.0625rem solid rgba(255, 255, 255, 0.25); }
+.card-option[data-format="dbf"].selected .card-checkbox label,
+.card-option[data-format="dbf5"].selected .card-checkbox label { color: rgba(255, 255, 255, 0.9); }
 
 .card-option[data-format="xlsx"]:hover {
     border-color: var(--color-success);
@@ -509,23 +547,27 @@ if (file_exists($ruta_logo)) {
 }
 
 /* DBF - Azul */
-.btn-exportar.dbf {
+.btn-exportar.dbf,
+.btn-exportar.dbf5 {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     box-shadow: 0 0.25rem 0.9375rem rgba(37, 99, 235, 0.3);
 }
 
-.btn-exportar.dbf i {
+.btn-exportar.dbf i,
+.btn-exportar.dbf5 i {
     color: #ffffff;
     text-shadow: 0 0 0.3125rem rgba(255, 255, 255, 0.5);
 }
 
-.btn-exportar.dbf:hover {
+.btn-exportar.dbf:hover,
+.btn-exportar.dbf5:hover {
     background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
     box-shadow: 0 0.5rem 1.625rem rgba(37, 99, 235, 0.55);
     transform: translateY(-0.1875rem) scale(1.02);
 }
 
-.btn-exportar.dbf:hover i {
+.btn-exportar.dbf:hover i,
+.btn-exportar.dbf5:hover i {
     transform: scale(1.18);
     filter: drop-shadow(0 0 0.375rem rgba(96, 165, 250, 0.8));
 }
@@ -597,18 +639,18 @@ if (file_exists($ruta_logo)) {
 /* Plantillas en blanco */
 .plantilla-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap:0.625rem;
     margin-top:0.75rem;
 }
 
 .btn-plantilla {
-    padding:0.75rem 0.625rem;
+    padding:0.75rem 0.5rem;
     border-radius: 0.75rem;
     border: 0.0625rem dashed rgba(96, 165, 250, 0.5);
     background: rgba(96, 165, 250, 0.08);
     color: #93c5fd;
-    font-size:0.85rem;
+    font-size:0.8rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -616,6 +658,8 @@ if (file_exists($ruta_logo)) {
     align-items: center;
     gap:0.25rem;
     text-align: center;
+    min-width: 0;
+    overflow: hidden;
     transition: all 0.3s ease;
 }
 
@@ -625,12 +669,15 @@ if (file_exists($ruta_logo)) {
 
 .btn-plantilla small {
     font-weight: 400;
-    font-size:0.65rem;
+    font-size:0.6rem;
     color: #64748b;
     line-height:1.3;
+    max-width:100%;
+    word-break:break-word;
 }
 
-.btn-plantilla.plantilla-dbf {
+.btn-plantilla.plantilla-dbf,
+.btn-plantilla.plantilla-dbf5 {
     border-color: rgba(37, 99, 235, 0.5);
     background: rgba(37, 99, 235, 0.08);
     color: #93c5fd;
@@ -652,14 +699,16 @@ if (file_exists($ruta_logo)) {
     transform: translateY(-0.125rem);
 }
 
-.btn-plantilla.plantilla-dbf:hover {
+.btn-plantilla.plantilla-dbf:hover,
+.btn-plantilla.plantilla-dbf5:hover {
     background: linear-gradient(135deg, rgba(37, 99, 235, 0.55), rgba(37, 99, 235, 0.3));
     border-color: #60a5fa;
     box-shadow: 0 0.5rem 1.5rem rgba(37, 99, 235, 0.45);
     color: #bfdbfe;
 }
 
-.btn-plantilla.plantilla-dbf:hover i {
+.btn-plantilla.plantilla-dbf:hover i,
+.btn-plantilla.plantilla-dbf5:hover i {
     color: #93c5fd;
     transform: scale(1.15);
     filter: drop-shadow(0 0 0.375rem rgba(147, 197, 253, 0.9));
@@ -697,7 +746,7 @@ if (file_exists($ruta_logo)) {
 
 @media (max-width: 768px) {
     .plantilla-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
     }
 }
 
@@ -1991,12 +2040,27 @@ if (file_exists($ruta_logo)) {
 <div class="cards-row">
     <div class="card-option" data-format="dbf">
         <i class="fas fa-database icon-option"></i>
-        <h5>DBF</h5>
+        <h5>DBF v1-3 Col</h5>
         <p>dBase III PLUS</p>
-        <span class="badge-format recomendado"><i class="fas fa-star me-1"></i>Recomendado</span>
+        <div class="badges-row">
+            <span class="badge-format"><i class="fas fa-layer-group me-1"></i>3 col</span>
+        </div>
         <div class="card-checkbox">
             <input type="checkbox" class="zip-checkbox" id="zip_dbf" data-format="dbf">
             <label for="zip_dbf"><i class="fas fa-file-archive"></i> Comprimido (ZIP)</label>
+        </div>
+    </div>
+    <div class="card-option" data-format="dbf5">
+        <i class="fas fa-database icon-option"></i>
+        <h5>DBF v2-5 Col</h5>
+        <p>dBase III PLUS</p>
+        <div class="badges-row">
+            <span class="badge-format"><i class="fas fa-layer-group me-1"></i>5 col</span>
+            <span class="badge-format recomendado"><i class="fas fa-star me-1"></i>Recomendado</span>
+        </div>
+        <div class="card-checkbox">
+            <input type="checkbox" class="zip-checkbox" id="zip_dbf5" data-format="dbf5">
+            <label for="zip_dbf5"><i class="fas fa-file-archive"></i> Comprimido (ZIP)</label>
         </div>
     </div>
     <div class="card-option" data-format="xlsx">
@@ -2029,8 +2093,13 @@ if (file_exists($ruta_logo)) {
         <div class="plantilla-grid">
             <button type="button" class="btn-plantilla plantilla-dbf" id="btnPlantillaDbf" data-plantilla="dbf">
                 <i class="fas fa-database"></i>
-                <span>Plantilla DBF</span>
-                <small>nomina.dbf · NID, CUENTA, IMPORTE</small>
+                <span>Plantilla DBF v1</span>
+                <small>nomina_plantilla_v1-3col.dbf · NID, CUENTA, IMPORTE</small>
+            </button>
+            <button type="button" class="btn-plantilla plantilla-dbf5" id="btnPlantillaDbf5" data-plantilla="dbf5">
+                <i class="fas fa-database"></i>
+                <span>Plantilla DBF v2</span>
+                <small>nomina_plantilla_v2-5col.dbf · NUM_IDEPER, CTA_MNAC, IMPORTE_N, CTA_MLC, IMPORTE_D</small>
             </button>
             <button type="button" class="btn-plantilla plantilla-xlsx" id="btnPlantillaXlsx" data-plantilla="xlsx">
                 <i class="fas fa-file-excel"></i>
@@ -2286,7 +2355,7 @@ function toggleFormatCards(habilitar) {
         const btnExportar = document.getElementById('btnExportar');
         if (btnExportar) {
             btnExportar.disabled = true;
-            btnExportar.classList.remove('dbf', 'xlsx', 'xml');
+            btnExportar.classList.remove('dbf', 'dbf5', 'xlsx', 'xml');
             btnExportar.innerHTML = '<i class="fas fa-download me-2"></i><span id="btnTexto">Exportar Nómina Acreditativa</span>';
         }
     }
@@ -2402,7 +2471,8 @@ function actualizarTextoBoton(formato) {
     const btnExportar = document.getElementById('btnExportar');
     const btnTexto = document.getElementById('btnTexto');
     const textos = {
-        'dbf': 'Exportar Nómina Acreditativa (DBF)',
+        'dbf': 'Exportar Nómina Acreditativa (DBF v1-3 Col)',
+        'dbf5': 'Exportar Nómina Acreditativa (DBF v2-5 Col)',
         'xlsx': 'Exportar Nómina Acreditativa (Excel)',
         'xml': 'Exportar Nómina Acreditativa (XML)'
     };
@@ -2413,7 +2483,7 @@ function actualizarTextoBoton(formato) {
     
     // Cambiar la clase del botón según el formato seleccionado
     if (btnExportar) {
-        btnExportar.classList.remove('dbf', 'xlsx', 'xml');
+        btnExportar.classList.remove('dbf', 'dbf5', 'xlsx', 'xml');
         if (formato && !btnExportar.disabled) {
             btnExportar.classList.add(formato);
         }
@@ -4070,7 +4140,7 @@ function mostrarPreviewYExportar() {
         Swal.fire({
             icon: 'warning',
             title: '<i class="fas fa-file me-2"></i> Selecciona un formato',
-            text: 'Debes elegir DBF, XLSX o XML para continuar',
+            text: 'Debes elegir DBF v1-3 Col, DBF v2-5 Col, XLSX o XML para continuar',
             confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido',
             confirmButtonColor: '#3B82F6',
             background: '#1E1E1E',
@@ -4368,7 +4438,7 @@ function verificarNominaContabilizada() {
     
     if (!tipoNomina || !periodoData) {
         btnExportar.disabled = true;
-        btnExportar.classList.remove('dbf', 'xlsx', 'xml');
+        btnExportar.classList.remove('dbf', 'dbf5', 'xlsx', 'xml');
         btnExportar.innerHTML = '<i class="fas fa-download me-2"></i><span id="btnTexto">Exportar Nómina Acreditativa</span>';
         if (window.formatoSeleccionado) actualizarTextoBoton(window.formatoSeleccionado);
         return;
@@ -4383,7 +4453,7 @@ function verificarNominaContabilizada() {
     }
     
     btnExportar.disabled = true;
-    btnExportar.classList.remove('dbf', 'xlsx', 'xml');
+    btnExportar.classList.remove('dbf', 'dbf5', 'xlsx', 'xml');
     btnExportar.innerHTML = '<i class="fas fa-spinner fa-pulse me-2"></i> Verificando...';
     
     let formData = new FormData();
@@ -4407,7 +4477,7 @@ function verificarNominaContabilizada() {
             if (window.formatoSeleccionado) actualizarTextoBoton(window.formatoSeleccionado);
         } else {
             btnExportar.disabled = true;
-            btnExportar.classList.remove('dbf', 'xlsx', 'xml');
+            btnExportar.classList.remove('dbf', 'dbf5', 'xlsx', 'xml');
             btnExportar.innerHTML = '<i class="fas fa-ban me-2"></i> No disponible - Nómina no contabilizada';
             
             const desdeParts = periodo.desde.split('-');
@@ -4432,7 +4502,7 @@ function verificarNominaContabilizada() {
     .catch(error => {
         console.error('Error verificando nómina:', error);
         btnExportar.disabled = true;
-        btnExportar.classList.remove('dbf', 'xlsx', 'xml');
+        btnExportar.classList.remove('dbf', 'dbf5', 'xlsx', 'xml');
         btnExportar.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Error de verificación';
         
         Swal.fire({
@@ -4490,19 +4560,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const plantillaBtns = document.querySelectorAll('.btn-plantilla');
     if (plantillaBtns.length > 0) {
         const plantillaNombres = {
-            'dbf': 'DBF',
+            'dbf': 'DBF v1',
+            'dbf5': 'DBF v2',
             'xlsx': 'Excel (XLSX)',
             'xml': 'XML'
         };
         const plantillaIconos = {
             'dbf': 'fa-database',
+            'dbf5': 'fa-database',
             'xlsx': 'fa-file-excel',
             'xml': 'fa-code'
         };
         const plantillaArchivos = {
-            'dbf': 'nomina.dbf',
-            'xlsx': 'nomina.xlsx',
-            'xml': 'nomina.xml'
+            'dbf': 'nomina_plantilla_v1-3col.dbf',
+            'dbf5': 'nomina_plantilla_v2-5col.dbf',
+            'xlsx': 'nomina_plantilla_xlsx.xlsx',
+            'xml': 'nomina_plantilla_xml.xml'
+        };
+        const plantillaCampos = {
+            'dbf': '<li><strong>NID</strong> (11 caracteres)</li>'
+                 + '<li><strong>CUENTA</strong> (16 caracteres)</li>'
+                 + '<li><strong>IMPORTE</strong> (18 dígitos, 2 decimales)</li>',
+            'dbf5': '<li><strong>NUM_IDEPER</strong> (15 caracteres)</li>'
+                  + '<li><strong>CTA_MNAC</strong> (16 caracteres)</li>'
+                  + '<li><strong>IMPORTE_N</strong> (16 dígitos, 2 decimales)</li>'
+                  + '<li><strong>CTA_MLC</strong> (16 caracteres)</li>'
+                  + '<li><strong>IMPORTE_D</strong> (16 dígitos, 2 decimales)</li>',
+            'xlsx': '<li><strong>NID</strong> (11 caracteres)</li>'
+                  + '<li><strong>CUENTA</strong> (16 caracteres)</li>'
+                  + '<li><strong>IMPORTE</strong> (18 dígitos, 2 decimales)</li>',
+            'xml': '<li><strong>Nid</strong></li>'
+                 + '<li><strong>Cuenta</strong></li>'
+                 + '<li><strong>Importe</strong></li>'
         };
 
         plantillaBtns.forEach(btn => {
@@ -4516,9 +4605,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     title: '<i class="fas ' + icono + ' me-2"></i> ¿Descargar plantilla ' + nombre + '?',
                     html: '<p>Se generará el archivo <strong>' + archivo + '</strong> en blanco con la estructura:</p>'
                         + '<ul style="text-align:left; display:inline-block; margin-top:0.625rem;">'
-                        + '<li><strong>NID</strong> (11 caracteres)</li>'
-                        + '<li><strong>CUENTA</strong> (16 caracteres)</li>'
-                        + '<li><strong>IMPORTE</strong> (18 dígitos, 2 decimales)</li>'
+                        + (plantillaCampos[formato] || plantillaCampos['dbf'])
                         + '</ul>'
                         + '<p style="margin-top:0.625rem;">Sirve como plantilla para llenar los datos manualmente.</p>',
                     icon: 'question',
@@ -4557,7 +4644,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             Swal.fire({
                                 icon: 'success',
                                 title: '<i class="fas fa-check-circle me-2"></i> Plantilla generada',
-                                html: '<p><strong>Archivo:</strong> ' + data.archivo + '</p><p>Estructura lista: NID, CUENTA, IMPORTE (sin registros).</p>',
+                                html: '<p><strong>Archivo:</strong> ' + data.archivo + '</p><p>Estructura lista: ' + nombre + ' (sin registros).</p>',
                                 confirmButtonText: '<i class="fas fa-check me-2"></i>Aceptar',
                                 confirmButtonColor: '#3B82F6',
                                 background: '#1E1E1E',
@@ -4648,7 +4735,7 @@ document.addEventListener('DOMContentLoaded', function() {
         actualizarTextoBoton(window.formatoSeleccionado);
         const btnExportarElem = document.getElementById('btnExportar');
         if (btnExportarElem && !btnExportarElem.disabled) {
-            btnExportarElem.classList.remove('dbf', 'xlsx', 'xml');
+            btnExportarElem.classList.remove('dbf', 'dbf5', 'xlsx', 'xml');
             btnExportarElem.classList.add(window.formatoSeleccionado);
         }
     }

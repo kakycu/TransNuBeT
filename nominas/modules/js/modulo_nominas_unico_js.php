@@ -7313,37 +7313,30 @@ backdrop: 'rgba(0,0,0,0.6)'
     dispararAccionHashNominas();
     window.addEventListener('hashchange', dispararAccionHashNominas);
 
+    // Modales que se pueden abrir desde el submenú de Nóminas del sidebar.
+    // El marcado del submenú lo controla includes/sidebar.php (al cerrar el modal
+    // delega el marcado en el ítem padre "Nóminas"); aquí solo se limpia el ancla (#)
+    // de la URL cuando ya no queda ningún modal abierto.
     var modalesSubmenuNominas = [
-        { modal: 'modalCuadre', enlace: 'verificar_cuadres' },
-        { modal: 'modalFullHistorial', enlace: 'historial_montos' },
-        { modal: 'modalSeleccionResumenSalarial', enlace: 'resumen_salarial' },
-        { modal: 'modalListadoDevengadoTrabajador', enlace: 'resumen_salarial' },
-        { modal: 'modalSinCuenta', enlace: 'resumen_salarial' },
-        { modal: 'modalSinNomina', enlace: 'sin_nomina' }
+        'modalCuadre',
+        'modalFullHistorial',
+        'modalSeleccionResumenSalarial',
+        'modalListadoDevengadoTrabajador',
+        'modalSinCuenta',
+        'modalSinNomina'
     ];
 
-    function actualizarActivoSubmenuNominas() {
-        var hayAbierto = false;
-        document.querySelectorAll('#nominasSubmenu a').forEach(function(a) {
-            a.classList.remove('active');
+    function hayModalNominasAbierto() {
+        return modalesSubmenuNominas.some(function(idModal) {
+            var el = document.getElementById(idModal);
+            return !!(el && el.classList.contains('show'));
         });
-        modalesSubmenuNominas.forEach(function(m) {
-            var el = document.getElementById(m.modal);
-            if (el && el.classList.contains('show')) {
-                var link = document.querySelector('#nominasSubmenu a[href$="#' + m.enlace + '"]');
-                if (link) link.classList.add('active');
-                hayAbierto = true;
-            }
-        });
-        return hayAbierto;
     }
-    modalesSubmenuNominas.forEach(function(m) {
-        var el = document.getElementById(m.modal);
+    modalesSubmenuNominas.forEach(function(idModal) {
+        var el = document.getElementById(idModal);
         if (el) {
-            el.addEventListener('shown.bs.modal', actualizarActivoSubmenuNominas);
             el.addEventListener('hidden.bs.modal', function() {
-                var quedaAbierto = actualizarActivoSubmenuNominas();
-                if (!quedaAbierto && window.history && window.history.replaceState) {
+                if (!hayModalNominasAbierto() && window.history && window.history.replaceState) {
                     history.replaceState(null, '', window.location.pathname + window.location.search);
                 }
             });

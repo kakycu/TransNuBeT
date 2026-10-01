@@ -439,7 +439,7 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'preview') {
 // ========================
 // 5b. EXPORTAR PLANTILLAS EN BLANCO (DBF / XLSX / XML)
 // ========================
-if (isset($_POST['accion']) && in_array($_POST['accion'], ['plantilla_dbf', 'plantilla_xlsx', 'plantilla_xml'])) {
+if (isset($_POST['accion']) && in_array($_POST['accion'], ['plantilla_dbf', 'plantilla_dbf5', 'plantilla_xlsx', 'plantilla_xml'])) {
     $accionPlantilla = $_POST['accion'];
     $carpeta = __DIR__ . '/exports/';
     if (!is_dir($carpeta)) mkdir($carpeta, 0777, true);
@@ -450,8 +450,12 @@ if (isset($_POST['accion']) && in_array($_POST['accion'], ['plantilla_dbf', 'pla
             ['CUENTA',  'C', 16, 0],
             ['IMPORTE', 'N', 18, 2]
         ];
-        $nombreArchivo = 'nomina_plantilla_' . date('Ymd_His');
+        $nombreArchivo = 'nomina_plantilla_v1-3col';
         $archivoSalida = generarDbf($carpeta, $nombreArchivo, $fields, []);
+        $extension = 'dbf';
+    } elseif ($accionPlantilla === 'plantilla_dbf5') {
+        $nombreArchivo = 'nomina_plantilla_v2-5col';
+        $archivoSalida = generarDbf5($carpeta, $nombreArchivo, []);
         $extension = 'dbf';
     } elseif ($accionPlantilla === 'plantilla_xlsx') {
         if (!file_exists('../vendor/autoload.php')) {
@@ -471,7 +475,7 @@ if (isset($_POST['accion']) && in_array($_POST['accion'], ['plantilla_dbf', 'pla
         $sheet->getColumnDimension('B')->setWidth(20);
         $sheet->getColumnDimension('C')->setWidth(14);
 
-        $nombreArchivo = 'nomina_plantilla_' . date('Ymd_His');
+        $nombreArchivo = 'nomina_plantilla_xlsx';
         $archivoSalida = $carpeta . $nombreArchivo . '.xlsx';
         try {
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
@@ -485,7 +489,7 @@ if (isset($_POST['accion']) && in_array($_POST['accion'], ['plantilla_dbf', 'pla
         $xml .= '  <registro  Nid="" Cuenta="" Importe="" />' . "\n";
         $xml .= '</acreditacion>' . "\n";
 
-        $nombreArchivo = 'nomina_plantilla_' . date('Ymd_His');
+        $nombreArchivo = 'nomina_plantilla_xml';
         $archivoSalida = $carpeta . $nombreArchivo . '.xml';
         if (file_put_contents($archivoSalida, $xml) === false) {
             $archivoSalida = false;
@@ -625,7 +629,7 @@ $tipoNomina = $_POST['tipo_nomina'] ?? $_GET['tipo_nomina'] ?? '';
 // ========================
 // 7. VALIDAR FORMATO
 // ========================
-$formatosPermitidos = ['dbf', 'xlsx', 'xml'];
+$formatosPermitidos = ['dbf', 'dbf5', 'xlsx', 'xml'];
 if (!in_array($formato, $formatosPermitidos)) {
     echo json_encode([
         'success' => false, 
@@ -782,6 +786,65 @@ function generarDbf($carpeta, $nombreArchivo, $fields, $registros) {
 }
 
 // ========================
+// FUNCIÓN PARA GENERAR ARCHIVOS DBF DE 5 COLUMNAS (BANDEC v2)
+// NUM_IDEPER, CTA_MNAC, IMPORTE_N, CTA_MLC, IMPORTE_D
+// ========================
+function generarDbf5($carpeta, $nombreArchivo, $registros) {
+    $archivoSalida = $carpeta . $nombreArchivo . '.dbf';
+
+    $fields = [
+        ['NUM_IDEPER', 'C', 15, 0],
+        ['CTA_MNAC',  'C', 16, 0],
+        ['IMPORTE_N', 'N', 16, 2],
+        ['CTA_MLC',   'C', 16, 0],
+        ['IMPORTE_D', 'N', 16, 2]
+    ];
+
+    $recordLen = 1;
+    foreach ($fields as $field) $recordLen += $field[2];
+
+    $numRecords = count($registros);
+    $headerLen = 32 + (count($fields) * 32) + 1;
+
+    $header = '';
+    $header .= pack('C', 0x03);
+    $header .= pack('C', date('Y') - 1900);
+    $header .= pack('C', date('m'));
+    $header .= pack('C', date('d'));
+    $header .= pack('V', $numRecords);
+    $header .= pack('v', $headerLen);
+    $header .= pack('v', $recordLen);
+    $header .= str_repeat("\x00", 17) . "\x03" . str_repeat("\x00", 2);
+
+    foreach ($fields as $field) {
+        $header .= str_pad(substr($field[0], 0, 11), 11, "\x00");
+        $header .= pack('C', ord($field[1]));
+        $header .= pack('V', 0);
+        $header .= pack('C', $field[2]);
+        $header .= pack('C', $field[3]);
+        $header .= str_repeat("\x00", 14);
+    }
+    $header .= pack('C', 0x0D);
+
+    $fp = fopen($archivoSalida, 'wb');
+    if (!$fp) return false;
+
+    fwrite($fp, $header);
+    foreach ($registros as $fila) {
+        fwrite($fp, pack('C', 0x20));
+        fwrite($fp, str_pad(substr(sanitizar($fila['ci']), 0, 15), 15, ' '));
+        fwrite($fp, str_pad(substr(sanitizar($fila['cuentabanc']), 0, 16), 16, ' '));
+        $importeN = str_pad(number_format((float)($fila['importe'] ?? 0), 2, '.', ''), 16, ' ', STR_PAD_LEFT);
+        fwrite($fp, sanitizar($importeN));
+        fwrite($fp, str_repeat(' ', 16));
+        fwrite($fp, str_repeat(' ', 16));
+    }
+    fwrite($fp, pack('C', 0x1A));
+    fclose($fp);
+    return $archivoSalida;
+}
+
+// ========================
 // 11. EXPORTAR A DBF
 // ========================
 if ($formato === 'dbf') {
@@ -792,6 +855,16 @@ if ($formato === 'dbf') {
     ];
 
     $archivoSalida = generarDbf($carpeta, $nombreArchivo, $fields, $registros);
+    if ($archivoSalida) {
+        $success = true;
+    }
+}
+
+// ========================
+// 11b. EXPORTAR A DBF DE 5 COLUMNAS
+// ========================
+elseif ($formato === 'dbf5') {
+    $archivoSalida = generarDbf5($carpeta, $nombreArchivo, $registros);
     if ($archivoSalida) {
         $success = true;
     }

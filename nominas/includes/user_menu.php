@@ -4316,7 +4316,8 @@ var AJAX_RESTORE_LOG_URL = '<?php echo $base_prefix; ?>ajax/restore_log.php';
 var PERMISOS_NOMBRES_MODULOS = {
     'dashboard': 'Panel de control', 'empleados': 'Empleados', 'nominas': 'Nóminas',
     'reportes': 'Reportes', 'clasificadores': 'Clasificadores', 'configuracion': 'Configuración',
-    'usuarios': 'Usuarios', 'bandecnom': 'Banco (Exportar)', 'submayor': 'Submayor Vacaciones', 'solapines': 'Solapines'
+    'usuarios': 'Usuarios', 'bandecnom': 'Banco (Exportar)', 'submayor': 'Submayor Vacaciones', 'solapines': 'Solapines',
+    'snc225': 'Tarjeta SNC-225', 'domiciliacion_tarjetas': 'Domiciliación Tarjetas'
 };
 var PERMISOS_ACCIONES = [
     ['ver', 'Ver', '#34d399'],

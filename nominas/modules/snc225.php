@@ -12,6 +12,11 @@ if (!isset($_SESSION['usuario_id']) && !isset($_SESSION['logged_in'])) {
     exit();
 }
 
+// Acceso restringido: Administrador (Admin), Contador/Editor (Editor) y Programador (Soft).
+if (!permiso_puede('snc225', 'ver')) {
+    permiso_denegar_acceso('Tarjeta SNC-225');
+}
+
 setlocale(LC_TIME, 'es_ES.utf8', 'spanish');
 
 $es_admin = permiso_puede('empleados', 'ver');

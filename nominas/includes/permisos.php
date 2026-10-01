@@ -36,6 +36,14 @@ function permiso_rol_codigo() {
 }
 
 /**
+ * Módulos restringidos a Administrador (1), Contador/Editor (3) y Programador (5).
+ * El Visualizador (2) y el Supervisor General (4) no pueden usarlos.
+ */
+function permisos_modulos_snc() {
+    return ['snc225', 'domiciliacion_tarjetas'];
+}
+
+/**
  * Matriz de permisos por rol y módulo.
  * Acciones: ver, crear, editar, eliminar, exportar
  */
@@ -43,14 +51,16 @@ function permiso_matriz() {
     $TODO = ['ver' => true, 'crear' => true, 'editar' => true, 'eliminar' => true, 'exportar' => true];
     $SOLO_LECTURA = ['ver' => true, 'crear' => false, 'editar' => false, 'eliminar' => false, 'exportar' => true];
     $NADA = ['ver' => false, 'crear' => false, 'editar' => false, 'eliminar' => false, 'exportar' => false];
+    $SIN_CREAR = ['ver' => true, 'crear' => false, 'editar' => true, 'eliminar' => true, 'exportar' => true];
 
-    $modulos = ['dashboard', 'empleados', 'nominas', 'reportes', 'clasificadores', 'configuracion', 'usuarios', 'bandecnom', 'submayor', 'solapines'];
+    $modulos = ['dashboard', 'empleados', 'nominas', 'reportes', 'clasificadores', 'configuracion', 'usuarios', 'bandecnom', 'submayor', 'solapines', 'snc225', 'domiciliacion_tarjetas'];
 
     foreach ($modulos as $m) {
         $matriz['Admin'][$m] = $TODO;
-        $matriz['Soft'][$m] = ($m === 'bandecnom') ? $NADA : $TODO;
+        $matriz['Soft'][$m] = in_array($m, ['bandecnom'], true) ? $NADA : $TODO;
     }
 
+    // Visualizador: sin acceso a SNC-225 ni a Domiciliación de Tarjetas
     $matriz['Visor'] = [
         'dashboard' => ['ver' => true, 'crear' => false, 'editar' => false, 'eliminar' => false, 'exportar' => false],
         'empleados' => $SOLO_LECTURA,
@@ -62,6 +72,8 @@ function permiso_matriz() {
         'bandecnom' => $NADA,
         'submayor' => $SOLO_LECTURA,
         'solapines' => $SOLO_LECTURA,
+        'snc225' => $NADA,
+        'domiciliacion_tarjetas' => $NADA,
     ];
 
     $matriz['Editor'] = [
@@ -75,19 +87,24 @@ function permiso_matriz() {
         'bandecnom' => $TODO,
         'submayor' => $TODO,
         'solapines' => $TODO,
+        'snc225' => $TODO,
+        'domiciliacion_tarjetas' => $TODO,
     ];
 
+    // Supervisor General: también sin acceso a SNC-225 ni a Domiciliación de Tarjetas
     $matriz['Super'] = [
         'dashboard' => $TODO,
-        'empleados' => ['ver' => true, 'crear' => false, 'editar' => true, 'eliminar' => true, 'exportar' => true],
-        'nominas' => ['ver' => true, 'crear' => false, 'editar' => true, 'eliminar' => true, 'exportar' => true],
+        'empleados' => $SIN_CREAR,
+        'nominas' => $SIN_CREAR,
         'reportes' => $TODO,
         'clasificadores' => $TODO,
         'configuracion' => $TODO,
         'usuarios' => $NADA,
         'bandecnom' => $NADA,
         'submayor' => $TODO,
-        'solapines' => $TODO,
+        'solapines' => $SOLO_LECTURA,
+        'snc225' => $NADA,
+        'domiciliacion_tarjetas' => $NADA,
     ];
 
     return $matriz;
@@ -217,4 +234,130 @@ function permiso_denegar_ajax($mensaje = null) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['success' => false, 'message' => $mensaje, 'denied' => true]);
     exit;
+}
+
+/**
+ * Carpetas del sistema (Exportaciones / Descargas) del Dashboard.
+ * Acceso: Administrador (1), Visualizador (2), Contador/Editor (3),
+ * Supervisor General (4) y Programador (5); cada uno segun sus permisos.
+ */
+function carpetas_sistema_roles_permitidos() {
+    return ['Admin', 'Visor', 'Editor', 'Super', 'Soft'];
+}
+
+/**
+ * ¿El rol actual puede usar las carpetas del sistema?
+ */
+function carpetas_sistema_permitido() {
+    return in_array(permiso_rol_codigo(), carpetas_sistema_roles_permitidos(), true);
+}
+
+/**
+ * Ruta del perfil del usuario de Windows.
+ * Apache no expone $_SERVER['USERPROFILE'], hay que usar getenv().
+ */
+function carpetas_perfil_usuario() {
+    $perfil = trim((string)getenv('USERPROFILE'));
+    if ($perfil === '') {
+        $perfil = trim((string)($_SERVER['USERPROFILE'] ?? ''));
+    }
+    if ($perfil === '') {
+        $drive = trim((string)getenv('HOMEDRIVE'));
+        $path  = trim((string)getenv('HOMEPATH'));
+        if ($drive !== '' && $path !== '') {
+            $perfil = $drive . $path;
+        }
+    }
+    return $perfil;
+}
+
+/**
+ * Definición de las carpetas del sistema, con su metadata y ruta resuelta.
+ * Compartida por carpetas.php (listado) y abrir_carpeta.php (apertura).
+ *
+ * @return array<string, array<string, mixed>>
+ */
+function carpetas_sistema_definicion() {
+    $perfil = carpetas_perfil_usuario();
+
+    return [
+        'exportaciones' => [
+            'titulo'      => 'Carpeta Exportaciones',
+            'icono'       => 'fa-file-export',
+            'descripcion' => 'Archivos generados por el sistema (DBF, Excel, PDF, ZIP).',
+            'descargable' => true,
+            'ruta'        => realpath(__DIR__ . '/../modules/exports'),
+        ],
+        'descargas' => [
+            'titulo'      => 'Carpeta Descargas',
+            'icono'       => 'fa-download',
+            'descripcion' => 'Carpeta de Descargas del equipo donde el navegador guarda los archivos.',
+            'descargable' => false,
+            'ruta'        => $perfil !== '' ? realpath($perfil . DIRECTORY_SEPARATOR . 'Downloads') : false,
+        ],
+    ];
+}
+
+/**
+ * Permisos del explorador de carpetas segun el rol.
+ *
+ * 1 Admin -> descargar, eliminar y abrir; 2 Visor -> sin acceso al modulo;
+ * 3 Editor -> descargar y abrir; 4 Super -> solo descargar; 5 Soft -> descargar y abrir.
+ *
+ * @return array<int, array{clave: string, etiqueta: string, icono: string}>
+ */
+function carpetas_sistema_permisos_rol($codigo)
+{
+    $descargar = ['clave' => 'descargar', 'etiqueta' => 'Descargar', 'icono' => 'fa-download'];
+    $eliminar  = ['clave' => 'eliminar',  'etiqueta' => 'Eliminar',  'icono' => 'fa-trash-alt'];
+    $abrir     = ['clave' => 'abrir',     'etiqueta' => 'Abrir',     'icono' => 'fa-folder-open'];
+
+    switch ($codigo) {
+        case 'Admin':
+            return [$descargar, $eliminar, $abrir];
+        case 'Soft':
+        case 'Editor':
+            return [$descargar, $abrir];
+        default:
+            return [$descargar];
+    }
+}
+
+/**
+ * El rol actual puede realizar una accion en el explorador de carpetas?
+ *
+ * @param string $accion descargar|eliminar|abrir
+ */
+function carpetas_sistema_puede($accion)
+{
+    $accion = strtolower(trim((string)$accion));
+
+    foreach (carpetas_sistema_permisos_rol(permiso_rol_codigo()) as $permiso) {
+        if ($permiso['clave'] === $accion) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Resuelve una clave de carpeta válida y existente.
+ *
+ * @return array{0: string, 1: string}|null [clave, ruta real] o null si no aplica.
+ */
+function carpetas_sistema_resolver($clave) {
+    $definicion = carpetas_sistema_definicion();
+    $clave = trim((string)$clave);
+
+    if (!isset($definicion[$clave]) || $definicion[$clave]['ruta'] === false) {
+        return null;
+    }
+
+    $ruta = $definicion[$clave]['ruta'];
+    if (!is_dir($ruta)) {
+        return null;
+    }
+
+    return [$clave, $ruta];
 }

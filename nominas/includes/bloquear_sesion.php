@@ -91,7 +91,8 @@ if (!empty($usuario['foto'])) {
         $foto_usuario = 'data:' . ($mime ?: 'image/jpeg') . ';base64,' . base64_encode($foto);
     } else {
         $foto_rel  = ltrim($foto, './');
-        $root_abs  = __DIR__;
+        $url_prefix = '../'; // esta pagina vive en /nominas/includes/
+        $root_abs  = dirname(__DIR__); // carpeta NOMINAS
         $candidatas = [];
         if (strpos($foto_rel, 'assets/') === 0) {
             $candidatas[] = $foto_rel;
@@ -101,7 +102,7 @@ if (!empty($usuario['foto'])) {
             $candidatas[] = 'assets/imagenes/trabajadores/' . basename($foto_rel);
         }
         foreach ($candidatas as $cand) {
-            if (file_exists($root_abs . '/' . $cand)) { $foto_usuario = $cand; break; }
+            if (file_exists($root_abs . '/' . $cand)) { $foto_usuario = $url_prefix . $cand; break; }
         }
     }
 }

@@ -1,0 +1,416 @@
+/* modules/CSS/carpetas.css - Explorador de carpetas del sistema (Exportaciones / Descargas)
+   Reglas de la app: variables de tema, .stat-card y .glass-card.
+   El fondo, la barra superior y el margen del sidebar los aporta theme_config.php.
+
+   OJO: theme_config.php inyecta su <style> al FINAL del documento y usa !important,
+   por lo que las reglas de este archivo que compitan con él deben llevarlo también.
+   Todos los colores salen de variables de tema (--txt, --muted, --accent...), nunca hardcodeados. */
+
+/* Fondo win11 (fallback; el tema de la app aporta el suyo con !important) */
+.win11-bg {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f1a 100%);
+}
+.win11-bg::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: radial-gradient(circle at 20% 80%, rgba(0, 120, 212, 0.15) 0%, transparent 50%),
+                      radial-gradient(circle at 80% 20%, rgba(16, 124, 16, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+/* theme_config.php aporta el margin-left; el padding vive aquí */
+.main-container { padding: 1.25rem; }
+
+/* ===== Encabezado ===== */
+.carpeta-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* ===== Selector de carpeta =====
+   Mismo diseño que el botón "Abrir Carpeta": la activa va sólida con el par
+   de color que garantiza contraste y la inactiva, delineada. Sin colores fijos:
+   todo sale de --carpeta-accent-*, que carpetas.js calcula a partir de --accent. */
+.carpeta-selector { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.carpeta-selector .btn {
+    border-radius: 0.625rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    opacity: 1;
+    transition: filter 0.2s ease;
+}
+.carpeta-selector .btn i { color: inherit !important; }
+
+/* Activa: relleno sólido, equivalente a "Abrir Carpeta" */
+.carpeta-selector .btn-activa {
+    background: var(--carpeta-accent-bg, var(--accent)) !important;
+    color: var(--carpeta-accent-fg, #ffffff) !important;
+    border-color: var(--carpeta-accent-bg, var(--accent)) !important;
+}
+/* Inactiva: fondo de panel y texto de acento legible sobre él */
+.carpeta-selector .btn-inactiva {
+    background: var(--panel-2) !important;
+    color: var(--carpeta-accent-ink, var(--accent)) !important;
+    border-color: var(--border-2) !important;
+}
+.carpeta-selector .btn-activa:hover,
+.carpeta-selector .btn-activa:focus {
+    background: var(--carpeta-accent-bg, var(--accent)) !important;
+    color: var(--carpeta-accent-fg, #ffffff) !important;
+    filter: brightness(1.22) saturate(1.1);
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.375rem 1rem rgba(var(--accent-rgb), 0.35);
+}
+.carpeta-selector .btn-inactiva:hover,
+.carpeta-selector .btn-inactiva:focus {
+    background: var(--carpeta-accent-bg, var(--accent)) !important;
+    color: var(--carpeta-accent-fg, #ffffff) !important;
+    border-color: var(--carpeta-accent-bg, var(--accent)) !important;
+    filter: brightness(1.22) saturate(1.1);
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.375rem 1rem rgba(var(--accent-rgb), 0.35);
+}
+
+/* "Abrir Carpeta": mismo diseño que las dos anteriores.
+   Doble clase para ganarle a html[data-theme=...] .btn-win-primary de theme_config.php,
+   que se inyecta al final del documento y también usa !important. */
+.carpeta-toolbar .btn-abrir-carpeta.btn-win.btn-win-primary,
+.carpeta-toolbar .btn-abrir-carpeta.btn-win.btn-win-primary:focus,
+.carpeta-toolbar .btn-abrir-carpeta.btn-win.btn-win-primary:hover {
+    background: var(--carpeta-accent-bg, var(--accent)) !important;
+    background-image: none !important;
+    color: var(--carpeta-accent-fg, #ffffff) !important;
+    border-color: var(--carpeta-accent-bg, var(--accent)) !important;
+    filter: none !important;
+}
+.carpeta-toolbar .btn-abrir-carpeta.btn-win.btn-win-primary:hover {
+    filter: brightness(1.22) saturate(1.1) !important;
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.375rem 1rem rgba(var(--accent-rgb), 0.35);
+}
+
+/* ===== Tarjetas de estadísticas (patrón común de la app) ===== */
+.stat-card {
+    background: linear-gradient(135deg, var(--panel-2), var(--panel)) !important;
+    border-radius: 1rem;
+    padding: 1rem;
+    border: 0.0625rem solid var(--border);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+.stat-card:hover { transform: translateY(-0.1875rem); border-color: rgba(var(--accent-rgb), 0.3); }
+
+/* Versión compacta de las tarjetas de estadísticas */
+.stat-card-sm {
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+}
+.stat-card-sm .stat-icon {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.95rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.375rem;
+}
+.stat-card-sm .stat-value { font-size: 1.25rem; }
+.stat-card-sm .stat-label { font-size: 0.6875rem; }
+.stat-card-sm .carpeta-ruta {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 0.4rem;
+}
+
+/* Tarjeta de rol: usuario, rol y permisos */
+.stat-card-rol { display: flex; flex-direction: column; }
+.stat-rol-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+.stat-rol-key {
+    flex: 0 0 auto;
+    color: var(--muted) !important;
+    text-transform: uppercase;
+    font-size: 0.625rem;
+    letter-spacing: 0.0312rem;
+}
+.stat-rol-val {
+    color: var(--txt) !important;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.stat-rol-permisos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
+}
+.permiso-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    padding: 0;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    color: var(--carpeta-accent-ink, var(--accent)) !important;
+    background: rgba(var(--accent-rgb), 0.14) !important;
+    border: 0.0625rem solid rgba(var(--accent-rgb), 0.25);
+    cursor: help;
+}
+.permiso-chip i { font-size: 0.6875rem; color: inherit !important; }
+.stat-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 0.625rem;
+    background: rgba(var(--accent-rgb), 0.15) !important;
+    color: var(--carpeta-accent-ink, var(--accent)) !important;
+}
+.stat-icon i { color: inherit !important; }
+.stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--txt) !important;
+}
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--muted) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.0312rem;
+    margin-top: 0.125rem;
+}
+.stat-sub { font-size: 0.75rem; color: var(--faint) !important; margin-top: 0.125rem; }
+
+/* Ubicación de la carpeta */
+.carpeta-ruta {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    word-break: break-all;
+    color: var(--txt) !important;
+    background: var(--panel-2) !important;
+    border: 0.0625rem solid var(--border);
+    border-radius: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    display: block;
+}
+
+/* ===== Botón de apertura en el explorador =====
+   Solo aporta forma/alineación: el color lo define el tema (.btn-win-primary),
+   que ya garantiza texto legible en los 6 temas. */
+.btn-abrir-carpeta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.625rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+}
+.btn-abrir-carpeta i { color: inherit !important; }
+.btn-abrir-carpeta:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ===== Boton "Volver al Dashboard" (misma forma que snc225.php) =====
+   snc225.php define .btn-win en su propio <style>; este modulo no carga
+   dashboard.css, asi que aqui se define la FORMA base. El COLOR lo siguen
+   aportando las reglas del tema activo (theme_config.php / user_menu.php),
+   que usan variables --accent y ganan con !important en los 6 temas. */
+.main-container .btn-win {
+    background: rgba(var(--accent-rgb), 0.15);
+    border: 0.0625rem solid rgba(var(--accent-rgb), 0.3);
+    color: var(--accent);
+    padding: 0.5rem 1rem;
+    border-radius: 0.625rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+.main-container .btn-win:hover { background: rgba(var(--accent-rgb), 0.25); }
+.main-container .btn-win.btn-win-outline { background: transparent; }
+.main-container .btn-win.btn-win-outline:hover { background: rgba(var(--accent-rgb), 0.15); }
+.main-container .btn-win.btn-win-sm { padding: 0.25rem 0.75rem; font-size: 0.75rem; }
+
+/* ===== Tabla de archivos =====
+   Bootstrap pone texto oscuro por defecto (#212529) y theme_config no siempre
+   lo corrige: se fija con variables de tema para que sea legible en dark/win11. */
+.tabla-carpetas {
+    --bs-table-color: var(--txt);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--border);
+    --bs-table-hover-color: var(--txt);
+    --bs-table-hover-bg: var(--panel-2);
+    --bs-table-striped-color: var(--txt);
+    --bs-table-striped-bg: transparent;
+    color: var(--txt) !important;
+}
+.tabla-carpetas thead th {
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.0312rem;
+    font-size: 0.72rem;
+    color: var(--muted) !important;
+    border-bottom-color: var(--border) !important;
+    background: transparent !important;
+}
+.tabla-carpetas tbody td {
+    color: var(--txt) !important;
+    border-bottom-color: var(--border) !important;
+}
+.tabla-carpetas tbody tr:hover > td {
+    color: var(--txt) !important;
+    background: var(--panel-2) !important;
+}
+/* Hover de fila reforzado en los temas donde --panel-2 no contrasta:
+   - Claro: --panel-2 (#f3f5f9) es casi blanco sobre la tarjeta blanca.
+   - Win11: --panel-2 (#262626) es IDÉNTICO al fondo de la tarjeta (#262626).
+   IMPORTANTE: Bootstrap (.table-hover) pinta el hover con un box-shadow inset
+   que usa --bs-table-accent-bg y cubre el background de la celda; por eso el
+   cambio debe hacerse en esa VARIABLE, no en background. */
+[data-theme="light"] .tabla-carpetas tbody tr:hover > td,
+[data-theme="win11"] .tabla-carpetas tbody tr:hover > td {
+    --bs-table-accent-bg: rgba(var(--accent-rgb), 0.45) !important;
+    background: rgba(var(--accent-rgb), 0.45) !important;
+}
+.tabla-carpetas td, .tabla-carpetas th { vertical-align: middle; }
+/* Nombres largos: se truncan con "..." en una sola línea (word-break eliminado).
+   max-width:0 es el truco estándar para permitir ellipsis en celdas de tabla:
+   la columna Archivo toma el espacio sobrante y las demás quedan con su ancho. */
+.tabla-carpetas .carpeta-archivo {
+    max-width: 0;
+    min-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--txt) !important;
+}
+/* Negritas del nombre al pasar el mouse por la celda (y normal al salir) */
+.tabla-carpetas td.carpeta-archivo:hover { font-weight: 700; }
+.tabla-carpetas .carpeta-icono-archivo { width: 1.25rem; color: var(--muted) !important; }
+.tabla-carpetas .carpeta-nota { color: var(--muted) !important; font-size: 0.78rem; white-space: nowrap; }
+.tabla-carpetas .btn i { color: inherit !important; }
+
+/* ===== Encabezados ordenables (Archivo / Tamaño / Modificado) =====
+   Heredan el formato del th (mayusculas, espaciado) con font/text-transform: inherit.
+   Color por variable de tema; el icono indica la direccion del orden. */
+.tabla-carpetas .th-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    background: transparent;
+    border: none;
+    padding: 0;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    color: var(--muted) !important;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.tabla-carpetas .th-sort:hover,
+.tabla-carpetas .th-sort:focus-visible {
+    color: var(--accent) !important;
+}
+.tabla-carpetas .th-sort.activa { color: var(--accent) !important; }
+.tabla-carpetas .th-sort .th-sort-icono { font-size: 0.7rem; opacity: 0.6; }
+.tabla-carpetas .th-sort.activa .th-sort-icono { opacity: 1; }
+
+/* Botón deshabilitado por permisos de rol (se muestra, no se oculta) */
+.btn-deshabilitado,
+.btn-deshabilitado:disabled,
+.btn-deshabilitado[disabled] {
+    background: var(--panel-2) !important;
+    color: var(--faint) !important;
+    border-color: var(--border-2) !important;
+    box-shadow: none !important;
+    filter: none !important;
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.btn-deshabilitado i { color: inherit !important; }
+
+/* Botón eliminar: solo Administrador (rol 1). Usa var(--red) del tema. */
+.btn-eliminar-archivo {
+    color: var(--red, #dc3545) !important;
+    border-color: var(--red, #dc3545) !important;
+    background: transparent !important;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.btn-eliminar-archivo:hover,
+.btn-eliminar-archivo:focus {
+    background: var(--red, #dc3545) !important;
+    color: var(--bg) !important;
+    border-color: var(--red, #dc3545) !important;
+    transform: translateY(-0.0625rem);
+}
+.btn-eliminar-archivo:disabled,
+.btn-eliminar-archivo[disabled] {
+    color: var(--faint) !important;
+    border-color: var(--border-2) !important;
+    background: transparent !important;
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ===== Estados vacíos ===== */
+.carpeta-vacio {
+    text-align: center;
+    color: var(--muted) !important;
+    padding: 2.5rem 1rem;
+}
+.carpeta-vacio .fas { font-size: 3rem; display: block; margin-bottom: 0.75rem; opacity: 0.55; }
+
+/* Aviso de carpeta ausente */
+.carpeta-alerta {
+    background: rgba(var(--accent-rgb), 0.1) !important;
+    border: 0.0625rem solid rgba(var(--accent-rgb), 0.35) !important;
+    color: var(--txt) !important;
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+.carpeta-alerta i { color: var(--accent) !important; }
+
+/* ===== Controles de filtrado ===== */
+.carpeta-filtros { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.carpeta-filtros .form-select,
+.carpeta-filtros .form-control {
+    background: var(--panel) !important;
+    border: 0.0625rem solid var(--border-2) !important;
+    color: var(--txt) !important;
+    border-radius: 0.5rem !important;
+    font-size: 0.8rem;
+    box-shadow: none !important;
+}
+.carpeta-filtros .form-select:focus,
+.carpeta-filtros .form-control:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 0.125rem rgba(var(--accent-rgb), 0.2) !important;
+}
+.carpeta-filtros .form-control::placeholder { color: var(--faint) !important; opacity: 1 !important; }
+.carpeta-filtros option { background: var(--panel) !important; color: var(--txt) !important; }

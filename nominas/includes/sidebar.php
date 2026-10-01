@@ -23,6 +23,7 @@ $current_file = basename($current_script);
 // Recuperar información de sesión
 $user_nombre = $_SESSION['user_nombre'] ?? 'Usuario';
 $user_rol_desc = $_SESSION['rol_descripcion'] ?? 'Administrador';
+$user_rol_codigo = $_SESSION['rol_codigo'] ?? $_SESSION['usuario_rol'] ?? '';
 $user_id = $_SESSION['user_id'] ?? null;
 
 $is_google_auth = (isset($_SESSION['auth_provider']) && $_SESSION['auth_provider'] === 'google');
@@ -34,7 +35,7 @@ $is_google_auth = (isset($_SESSION['auth_provider']) && $_SESSION['auth_provider
 if ($user_id && isset($pdo) && $pdo instanceof PDO) {
     try {
         $stmt = $pdo->prepare("
-            SELECT r.descripcion AS rol_descripcion
+            SELECT r.codigo AS rol_codigo, r.descripcion AS rol_descripcion
             FROM clasif_usuarios u
             LEFT JOIN clasif_rol r ON u.rol_id = r.id
             WHERE u.id = ?
@@ -44,10 +45,22 @@ if ($user_id && isset($pdo) && $pdo instanceof PDO) {
         if ($rol_db && !empty($rol_db['rol_descripcion'])) {
             $user_rol_desc = $rol_db['rol_descripcion'];
         }
+        if ($rol_db && !empty($rol_db['rol_codigo'])) {
+            $user_rol_codigo = $rol_db['rol_codigo'];
+        }
     } catch (PDOException $e) {
         // Mantener el valor de sesión
     }
 }
+
+// Carpetas del sistema (Exportaciones / Descargas):
+// solo Administrador (Admin), Contador/Editor (Editor) y Programador (Soft).
+$sidebar_rol_codigo = function_exists('permiso_rol_codigo')
+    ? (string)permiso_rol_codigo()
+    : trim((string)($user_rol_codigo ?? ''));
+$sidebar_rol_permitido = function_exists('carpetas_sistema_permitido')
+    ? carpetas_sistema_permitido()
+    : in_array($sidebar_rol_codigo, ['Admin', 'Editor', 'Soft'], true);
 
 // ==========================================
 // ESTADÍSTICAS PARA BADGES DEL MENÚ
@@ -793,6 +806,59 @@ body:has(.win-sidebar.collapsed) .main-container {
     transform: scale(1.15) rotate(-10deg);
 }
 
+/* Fila del pie dividida en dos columnas: Cerrar Sesion | Enfoque */
+.sidebar-footer .footer-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 0.375rem;
+}
+
+.sidebar-footer .footer-actions .nav-item {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0.4625rem 0.5rem;
+}
+
+.sidebar-footer .footer-actions .nav-item i {
+    width: 1.1rem;
+    font-size: 0.95rem;
+}
+
+.sidebar-footer .footer-actions .nav-item .sidebar-text {
+    font-size: 0.72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Boton Enfoque (modo enfoque del tema) */
+#focusModeSidebarBtn {
+    color: var(--win-sidebar-text);
+}
+
+#focusModeSidebarBtn:hover,
+#focusModeSidebarBtn:focus-visible {
+    background: var(--accent-bg) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+#focusModeSidebarBtn .focus-icon-on { display: none; }
+#focusModeSidebarBtn.active .focus-icon-on { display: inline-block; }
+#focusModeSidebarBtn.active .focus-icon-off { display: none; }
+
+/* Colapsado: los dos botones se apilan verticales (solo iconos) */
+.win-sidebar.collapsed .sidebar-footer .footer-actions {
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.win-sidebar.collapsed .sidebar-footer .footer-actions .nav-item {
+    padding: 0.6875rem 0;
+}
+
 #sidebarIdleCountdown {
     display: flex;
     align-items: center;
@@ -1132,15 +1198,28 @@ html.focus-mode .fluid-container {
     <nav class="sidebar-nav">
         <span class="nav-category">General</span>
         <?php if (permiso_puede('dashboard', 'ver')): ?>
-        <a href="<?php echo $base_prefix; ?>dashboard.php" class="nav-item <?php echo ($current_file == 'dashboard.php') ? 'active' : ''; ?>" data-tooltip="Dashboard" data-tooltip-theme="primary">
-            <i class="fas fa-chart-line"></i>
-            <span class="sidebar-text">Dashboard</span>
-        </a>
+        <div class="nav-group <?php echo ($current_file == 'dashboard.php' || $current_file == 'carpetas.php') ? 'open' : ''; ?>" id="dashboardNavGroup">
+            <a href="<?php echo $base_prefix; ?>dashboard.php" class="nav-item <?php echo ($current_file == 'dashboard.php') ? 'active' : ''; ?>" data-tooltip="Dashboard" data-tooltip-theme="primary">
+                <i class="fas fa-chart-line"></i>
+                <span class="sidebar-text">Dashboard</span>
+                <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="dashboardChevron"></i>
+            </a>
+            <div class="nav-submenu" id="dashboardSubmenu">
+                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=exportaciones" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'exportaciones') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta donde el sistema guarda los archivos exportados" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                    <i class="fas fa-file-export"></i>
+                    <span class="sidebar-text">Carpeta Exportaciones</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=descargas" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'descargas') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de Descargas del equipo" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                    <i class="fas fa-download"></i>
+                    <span class="sidebar-text">Carpeta Descargas</span>
+                </a>
+            </div>
+        </div>
         <?php endif; ?>
 
         <?php if (permiso_puede('empleados', 'ver') || permiso_puede('submayor', 'ver')): ?>
         <span class="nav-category">Personal</span>
-        <div class="nav-group <?php echo (in_array($current_file, ['empleados.php', 'snc225.php', 'submayor_vacaciones.php'])) ? 'open' : ''; ?>" id="empleadosNavGroup">
+        <div class="nav-group <?php echo (in_array($current_file, ['empleados.php', 'snc225.php', 'domiciliacion_tarjetas.php', 'submayor_vacaciones.php'])) ? 'open' : ''; ?>" id="empleadosNavGroup">
             <?php if (permiso_puede('empleados', 'ver')): ?>
             <a href="<?php echo $base_prefix; ?>modules/empleados.php" class="nav-item <?php echo ($current_file == 'empleados.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Empleados" data-tooltip-theme="primary">
                 <i class="fas fa-users"></i>
@@ -1168,6 +1247,10 @@ html.focus-mode .fluid-container {
                 <a href="<?php echo $base_prefix; ?>modules/snc225.php" class="nav-item <?php echo ($current_file == 'snc225.php') ? 'active' : ''; ?>" data-tooltip="Tarjeta SNC-225" data-tooltip-theme="primary">
                     <i class="fas fa-id-card"></i>
                     <span class="sidebar-text">SNC - 225</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/domiciliacion_tarjetas.php" class="nav-item <?php echo ($current_file == 'domiciliacion_tarjetas.php') ? 'active' : ''; ?>" data-tooltip="Generar base de datos de domiciliacion de tarjetas para el banco" data-tooltip-theme="primary">
+                    <i class="fas fa-credit-card"></i>
+                    <span class="sidebar-text">Domiciliación Tarjetas</span>
                 </a>
                 <?php if (permiso_puede('submayor', 'ver')): ?>
                 <a href="<?php echo $base_prefix; ?>modules/submayor_vacaciones.php" class="nav-item <?php echo ($current_file == 'submayor_vacaciones.php') ? 'active' : ''; ?>" data-tooltip="Submayor de Vacaciones" data-tooltip-theme="primary">
@@ -1282,9 +1365,16 @@ html.focus-mode .fluid-container {
     </nav>
     
     <div class="sidebar-footer">
-        <div class="nav-item" id="logoutSidebarBtn" data-tooltip="Cerrar Sesión" data-tooltip-theme="danger">
-            <i class="fas fa-sign-out-alt"></i>
-            <span class="sidebar-text">Cerrar Sesión</span>
+        <div class="footer-actions">
+            <div class="nav-item" id="logoutSidebarBtn" data-tooltip="Cerrar Sesión" data-tooltip-theme="danger">
+                <i class="fas fa-sign-out-alt"></i>
+                <span class="sidebar-text">Cerrar Sesión</span>
+            </div>
+            <div class="nav-item" id="focusModeSidebarBtn" role="button" aria-pressed="false" data-tooltip="Activar modo enfoque" data-tooltip-theme="primary">
+                <i class="fas fa-eye-slash focus-icon-off"></i>
+                <i class="fas fa-eye focus-icon-on"></i>
+                <span class="sidebar-text">Enfoque</span>
+            </div>
         </div>
         <div id="sidebarIdleCountdown" class="sidebar-text" hidden data-tooltip="Tiempo restante antes del bloqueo por inactividad" data-tooltip-theme="primary">
             <i class="fas fa-hourglass-half idle-cd-icon"></i>
@@ -1403,65 +1493,225 @@ html.focus-mode .fluid-container {
     }
 
     function initSubmenu() {
-        const configNavGroup = document.getElementById('configNavGroup');
-        const configChevron = document.getElementById('configChevron');
-        if (configNavGroup && configChevron) {
-            configChevron.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                configNavGroup.classList.toggle('open');
+        // Comportamiento tipo acordeón: al abrir un grupo principal
+        // se cierran todos los demás grupos del menú
+        const nav = document.getElementById('winSidebar') ? document.querySelector('#winSidebar .sidebar-nav') : null;
+        const grupos = () => document.querySelectorAll('#winSidebar .sidebar-nav .nav-group');
+
+        function cerrarOtrosGrupos(grupoActual) {
+            grupos().forEach(function(grupo) {
+                if (grupo !== grupoActual) {
+                    grupo.classList.remove('open');
+                }
             });
         }
-        const empleadosNavGroup = document.getElementById('empleadosNavGroup');
-        const empleadosChevron = document.getElementById('empleadosChevron');
-        if (empleadosNavGroup && empleadosChevron) {
-            empleadosChevron.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                empleadosNavGroup.classList.toggle('open');
+
+        function abrirGrupo(grupo) {
+            if (!grupo) return;
+            cerrarOtrosGrupos(grupo);
+            grupo.classList.add('open');
+        }
+
+        function alternarGrupo(grupo) {
+            if (!grupo) return;
+            if (grupo.classList.contains('open')) {
+                grupo.classList.remove('open');
+                return;
+            }
+            abrirGrupo(grupo);
+        }
+
+        /* ==========================================================
+           MARCADO DEL MENU (un solo punto de control, para todos los modulos)
+           - Al elegir un hijo del submenu se marca ese hijo.
+           - Si el hijo abria un modal, mientras esta abierto se mantiene el hijo.
+           - Al cerrarse ese modal el marcado se delega al item padre del grupo.
+           ========================================================== */
+        let hijoSeleccionado = null;
+        let padreSeleccionado = null;
+        let modalDelHijo = null;
+
+        function itemPadreDe(hijo) {
+            const grupo = hijo.closest('.nav-group');
+            if (!grupo) return null;
+            return grupo.querySelector(':scope > .nav-item') || grupo.querySelector('.nav-item');
+        }
+
+        function marcarSolo(link) {
+            if (!link) return;
+            grupos().forEach(function(grupo) {
+                grupo.querySelectorAll('.nav-item.active').forEach(function(a) {
+                    a.classList.remove('active');
+                });
+            });
+            link.classList.add('active');
+        }
+
+        function seleccionarHijo(hijo) {
+            if (!hijo) return;
+            hijoSeleccionado = hijo;
+            padreSeleccionado = itemPadreDe(hijo);
+            modalDelHijo = null;
+            marcarSolo(hijo);
+        }
+
+        function delegarAlPadre() {
+            if (!padreSeleccionado || padreSeleccionado === hijoSeleccionado) {
+                if (hijoSeleccionado) marcarSolo(hijoSeleccionado);
+            } else {
+                marcarSolo(padreSeleccionado);
+                hijoSeleccionado = null;
+                padreSeleccionado = null;
+            }
+            modalDelHijo = null;
+        }
+
+        if (nav) {
+            nav.addEventListener('click', function(e) {
+                const chevron = e.target && e.target.closest ? e.target.closest('.nav-group-chevron') : null;
+                if (chevron && nav.contains(chevron)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    alternarGrupo(chevron.closest('.nav-group'));
+                    return;
+                }
+                const hijo = e.target && e.target.closest ? e.target.closest('.nav-submenu .nav-item') : null;
+                if (hijo && nav.contains(hijo)) {
+                    seleccionarHijo(hijo);
+                }
+            });
+
+            /* Al abrirse un modal se recuerda cual fue para delegar solo ese cierre */
+            document.addEventListener('shown.bs.modal', function(e) {
+                if (hijoSeleccionado && !modalDelHijo) {
+                    modalDelHijo = e.target;
+                }
+            });
+
+            /* Al cerrarse el modal, el marcado se delega al item padre del grupo:
+               el usuario sigue dentro del modulo, no dentro de la opcion del modal */
+            document.addEventListener('hidden.bs.modal', function(e) {
+                if (!hijoSeleccionado) return;
+                if (modalDelHijo && e.target !== modalDelHijo) return;
+                delegarAlPadre();
             });
         }
-        const nominasNavGroup = document.getElementById('nominasNavGroup');
-        const nominasChevron = document.getElementById('nominasChevron');
-        if (nominasNavGroup && nominasChevron) {
-            nominasChevron.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                nominasNavGroup.classList.toggle('open');
+
+        // Al cargar la pagina solo puede quedar abierto un grupo principal
+        cerrarOtrosGrupos(document.querySelector('#winSidebar .sidebar-nav .nav-group.open'));
+
+        // Carpetas del sistema (Administrador, Visualizador, Contador/Editor, Supervisor y Programador)
+        const ROLES_CARPETAS = <?php echo json_encode($sidebar_rol_permitido ? ['Admin', 'Visor', 'Editor', 'Super', 'Soft'] : []); ?>;
+        const ROL_ACTUAL_CARPETAS = <?php echo json_encode($sidebar_rol_codigo); ?>;
+        const ROL_DESC_CARPETAS = <?php echo json_encode($user_rol_desc); ?>;
+        document.querySelectorAll('[data-rol-carpetas]').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                if (ROLES_CARPETAS.length === 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Acceso denegado',
+                            html: '<div class="text-start">'
+                                + '<p class="mb-2">No tiene acceso a esta opción por su rol.</p>'
+                                + '<p class="mb-0 small" style="color: var(--muted) !important;">Rol actual: <b style="color: var(--txt) !important;">'
+                                + (ROL_DESC_CARPETAS || 'Desconocido') + '</b></p>'
+                                + '<p class="mb-0 small" style="color: var(--muted) !important;">Roles autorizados: Administrador, Visualizador, Contador/Editor, Supervisor y Programador.</p>'
+                                + '</div>',
+                            confirmButtonText: '<i class="fas fa-times me-2"></i>Entendido',
+                            customClass: { confirmButton: 'swal2-deny' }
+                        });
+                    }
+                }
             });
-        }
-        const bancoNavGroup = document.getElementById('bancoNavGroup');
-        const bancoChevron = document.getElementById('bancoChevron');
-        if (bancoNavGroup && bancoChevron) {
-            bancoChevron.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                bancoNavGroup.classList.toggle('open');
-            });
-        }
+        });
+        // Sincroniza la opcion marcada con el ancla (#hash) de la URL.
+        // Solo toca el marcado cuando existe un enlace que coincida con el ancla:
+        // si no hay coincidencia conserva la seleccion actual para que un hijo
+        // no pierda su marca.
         function syncHashNav() {
             var h = window.location.hash || '';
+            if (!h) return;
             ['nominasSubmenu', 'empleadosSubmenu'].forEach(function(submenuId) {
                 var submenu = document.getElementById(submenuId);
                 var group = submenu ? submenu.closest('.nav-group') : null;
                 if (!submenu || !group) return;
-                submenu.querySelectorAll('a').forEach(function(a) {
-                    a.classList.remove('active');
-                });
-                var hashLink = h ? submenu.querySelector('a[href$="' + h + '"]') : null;
-                if (hashLink) {
-                    hashLink.classList.add('active');
-                    group.classList.add('open');
-                }
+                var hashLink = submenu.querySelector('a[href$="' + h + '"]');
+                if (!hashLink) return;
+                seleccionarHijo(hashLink);
+                abrirGrupo(group);
             });
         }
         syncHashNav();
         window.addEventListener('hashchange', syncHashNav);
     }
 
+    /* Boton Enfoque del pie: alterna el mismo modo enfoque del tema
+       (clase focus-mode en <html> + clave transnubet_focus_mode de theme_config.php) */
+    function initFocusToggle() {
+        var btn = document.getElementById('focusModeSidebarBtn');
+        if (!btn) return;
+        var sidebarEl = document.getElementById('winSidebar');
+        var focusTab = document.getElementById('focusTab');
+
+        function syncUI() {
+            var on = document.documentElement.classList.contains('focus-mode');
+            btn.classList.toggle('active', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            btn.setAttribute('data-tooltip', on ? 'Desactivar modo enfoque' : 'Activar modo enfoque');
+        }
+
+        function guardar(on) {
+            try {
+                /* Misma clave por dispositivo que theme_config.php y theme_panel.php */
+                var pd = (localStorage.getItem('transnubet_per_device') || 'true') !== 'false';
+                var dev = null;
+                if (!pd) {
+                    var m = localStorage.getItem('transnubet_device_manual');
+                    if (m === 'pc' || m === 'tableta' || m === 'movil') dev = m;
+                }
+                if (!dev) {
+                    var sw = (window.screen && window.screen.width) || 0;
+                    var sh = (window.screen && window.screen.height) || 0;
+                    var corto = (sw > 0 && sh > 0) ? Math.min(sw, sh) : 0;
+                    if (corto > 0 && corto <= 520) {
+                        dev = 'movil';
+                    } else {
+                        var w = window.innerWidth || document.documentElement.clientWidth;
+                        dev = w <= 768 ? 'movil' : (w <= 1024 ? 'tableta' : 'pc');
+                    }
+                }
+                localStorage.setItem(pd ? ('transnubet_focus_mode@' + dev) : 'transnubet_focus_mode', on ? 'true' : 'false');
+            } catch (err) {}
+        }
+
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var nuevo = !document.documentElement.classList.contains('focus-mode');
+            document.documentElement.classList.toggle('focus-mode', nuevo);
+            guardar(nuevo);
+            var tp = document.getElementById('tpFocusMode');
+            if (tp) tp.checked = nuevo;
+            if (sidebarEl) {
+                sidebarEl.classList.remove('focus-pinned');
+                sidebarEl.classList.remove('mobile-open');
+            }
+            if (focusTab) focusTab.setAttribute('aria-expanded', 'false');
+            syncUI();
+        });
+
+        /* Mantener el botón sincronizado si el modo cambia por otra vía
+           (panel de tema, Restaurar Predeterminado, etc.) */
+        new MutationObserver(syncUI).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        syncUI();
+    }
+
     function onReady() {
         initSidebar();
         initSubmenu();
+        initFocusToggle();
     }
 
     if (document.readyState === 'loading') {

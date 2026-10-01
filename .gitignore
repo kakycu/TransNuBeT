@@ -14,6 +14,7 @@ nominas/backups/
 nominas/logs/
 nominas/temp/
 nominas/solapines/
+nominas/modules/exports/
 *.log
 
 # ===== Artefactos de herramientas de desarrollo =====

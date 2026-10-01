@@ -511,13 +511,13 @@ $base_prefix = $is_in_modules ? '../' : '';
                 <span>Copyright © <strong>SisGesnom</strong> <?php echo date('Y'); ?> &bull; <strong><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></strong> · Todos los derechos reservados</span>
             </div>
             <div class="copyright-links">
-                <a href="<?php echo $base_prefix; ?>../../terminos.php" class="copyright-link" data-tooltip="Términos y Condiciones" data-tooltip-theme="secondary"><i class="fas fa-file-contract"></i> Términos</a>
+                <a href="<?php echo $base_prefix; ?>../../terminos.php"  target="_blank" class="copyright-link" data-tooltip="Términos y Condiciones" data-tooltip-theme="secondary"><i class="fas fa-file-contract"></i> Términos</a>
                 <span class="corporate-separator">|</span>
-                <a href="<?php echo $base_prefix; ?>../../privacidad.php" class="copyright-link" data-tooltip="Política de Privacidad" data-tooltip-theme="secondary"><i class="fas fa-lock"></i> Privacidad</a>
+                <a href="<?php echo $base_prefix; ?>../../privacidad.php" target="_blank" class="copyright-link" data-tooltip="Política de Privacidad" data-tooltip-theme="secondary"><i class="fas fa-lock"></i> Privacidad</a>
                 <span class="corporate-separator">|</span>
-                <a href="<?php echo $base_prefix; ?>../../soporte.php" class="copyright-link" data-tooltip="Soporte Técnico" data-tooltip-theme="secondary"><i class="fas fa-envelope"></i> Soporte</a>
+                <a href="<?php echo $base_prefix; ?>../../soporte.php"  target="_blank" class="copyright-link" data-tooltip="Soporte Técnico" data-tooltip-theme="secondary"><i class="fas fa-envelope"></i> Soporte</a>
                 <span class="corporate-separator">|</span>
-                <a href="<?php echo $base_prefix; ?>../../contacto.php" class="copyright-link" data-tooltip="Contacto" data-tooltip-theme="secondary"><i class="fas fa-address-book"></i> Contacto</a>
+                <a href="<?php echo $base_prefix; ?>../../contacto.php"  target="_blank" class="copyright-link" data-tooltip="Contacto" data-tooltip-theme="secondary"><i class="fas fa-address-book"></i> Contacto</a>
             </div>
         </div>
     </div>
