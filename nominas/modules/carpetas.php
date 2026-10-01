@@ -245,7 +245,15 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
     <!-- Listado de archivos -->
     <div class="glass-card fade-in-up">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3">
-            <span class="h6 mb-0"><i class="fas fa-list me-2"></i>Contenido de la carpeta</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="h6 mb-0"><i class="fas fa-list me-2"></i>Contenido de la carpeta</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary carpeta-restablecer-anchos"
+                        id="btnRestablecerAnchos"
+                        data-bs-toggle="tooltip" data-bs-title="Restablecer el ancho de las columnas"
+                        aria-label="Restablecer el ancho de las columnas">
+                    <i class="fas fa-rotate-left"></i>
+                </button>
+            </div>
             <div class="carpeta-filtros">
                 <select id="filtroExtension" class="form-select" style="width:auto" aria-label="Filtrar por tipo de archivo">
                     <option value="">Todos los tipos</option>

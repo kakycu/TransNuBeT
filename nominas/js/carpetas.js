@@ -579,10 +579,30 @@
             }, 150);
         });
 
-        /* ---- Tooltips de Bootstrap en los iconos de accion ---- */
+        /* ---- Boton "restablecer anchos" ----
+           Vuelve al ancho por defecto y borra lo guardado, para no tener
+           que buscar la consola cuando una columna quedo muy angosta. */
+        function restablecerAnchos() {
+            anchos = POR_DEFECTO.slice();
+            anchos.length = cols.length;
+            ajustarPorcentajeTotal();
+            aplicar();
+            guardar();
+            anchos.forEach(function (v, i) {
+                if (i !== ULTIMA) actualizarAria(i);
+            });
+        }
+
+        var btnRestablecer = document.getElementById('btnRestablecerAnchos');
+        if (btnRestablecer) {
+            btnRestablecer.addEventListener('click', restablecerAnchos);
+        }
+
+        /* ---- Tooltips de Bootstrap en los botones de la tabla ---- */
         if (window.bootstrap && window.bootstrap.Tooltip) {
             Array.prototype.forEach.call(
-                document.querySelectorAll('.carpeta-accion-icono[data-bs-toggle="tooltip"]'),
+                document.querySelectorAll('.carpeta-accion-icono[data-bs-toggle="tooltip"], ' +
+                                         '.carpeta-restablecer-anchos[data-bs-toggle="tooltip"]'),
                 function (el) { new bootstrap.Tooltip(el); }
             );
         }
