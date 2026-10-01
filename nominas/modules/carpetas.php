@@ -142,7 +142,7 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
 
     <link rel="stylesheet" href="CSS/carpetas.css?v=<?php echo @filemtime(__DIR__ . '/CSS/carpetas.css') ?: time(); ?>">
 </head>
-<body>
+<body data-carpeta="<?php echo htmlspecialchars($solicitada); ?>">
 
 <div class="win11-bg"></div>
 
@@ -265,13 +265,19 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
         </div>
         <?php else: ?>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 tabla-carpetas">
+            <table class="table table-hover align-middle mb-0 tabla-carpetas" id="tablaCarpetas">
+                <colgroup>
+                    <col data-col="0">
+                    <col data-col="1">
+                    <col data-col="2">
+                    <col data-col="3">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th><button type="button" class="th-sort" data-orden="nombre"><span>Archivo</span><i class="fas fa-sort th-sort-icono"></i></button></th>
-                        <th class="text-end"><button type="button" class="th-sort" data-orden="bytes"><span>Tamaño</span><i class="fas fa-sort th-sort-icono"></i></button></th>
-                        <th class="text-end"><button type="button" class="th-sort" data-orden="fecha"><span>Modificado</span><i class="fas fa-sort th-sort-icono"></i></button></th>
-                        <th class="text-end">Acción</th>
+                        <th data-col="0"><button type="button" class="th-sort" data-orden="nombre"><span>Archivo</span><i class="fas fa-sort th-sort-icono"></i></button><span class="th-grip" title="Arrastrar para ajustar el ancho; doble clic para ajustar al contenido"></span></th>
+                        <th data-col="1" class="text-end"><button type="button" class="th-sort" data-orden="bytes"><span>Tamaño</span><i class="fas fa-sort th-sort-icono"></i></button><span class="th-grip" title="Arrastrar para ajustar el ancho; doble clic para ajustar al contenido"></span></th>
+                        <th data-col="2" class="text-end"><button type="button" class="th-sort" data-orden="fecha"><span>Modificado</span><i class="fas fa-sort th-sort-icono"></i></button><span class="th-grip" title="Arrastrar para ajustar el ancho; doble clic para ajustar al contenido"></span></th>
+                        <th data-col="3" class="text-end">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="tbodyCarpetas">
@@ -294,31 +300,38 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
                         data-nombre="<?php echo htmlspecialchars($a['nombre']); ?>"
                         data-bytes="<?php echo (int)$a['bytes']; ?>"
                         data-fecha="<?php echo (int)$a['fecha']; ?>">
-                        <td class="carpeta-archivo" title="<?php echo htmlspecialchars($a['nombre']); ?>">
-                            <i class="fas <?php echo $icono; ?> carpeta-icono-archivo me-2"></i><?php echo htmlspecialchars($a['nombre']); ?>
+                        <td class="celda-archivo" title="<?php echo htmlspecialchars($a['nombre']); ?>">
+                            <span class="carpeta-archivo">
+                                <i class="fas <?php echo $icono; ?> carpeta-icono-archivo"></i><span class="carpeta-nombre"><?php echo htmlspecialchars($a['nombre']); ?></span>
+                            </span>
                         </td>
                         <td class="text-end"><?php echo htmlspecialchars(carpetas_formato_bytes($a['bytes'])); ?></td>
                         <td class="text-end"><?php echo date('d/m/Y h:i:s a', $a['fecha']); ?></td>
-                        <td class="text-end d-flex flex-wrap justify-content-end align-items-center gap-2">
-                            <?php if ($a['descarga'] !== null): ?>
-                            <a class="btn btn-sm btn-win" href="<?php echo htmlspecialchars($a['descarga']); ?>" download
-                               title="Descargar <?php echo htmlspecialchars($a['nombre']); ?>">
-                                <i class="fas fa-download me-1"></i>Descargar
-                            </a>
-                            <?php endif; ?>
-                            <?php if (carpetas_sistema_puede('eliminar')): ?>
-                            <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar-archivo"
-                                    data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
-                                    data-nombre="<?php echo htmlspecialchars($a['nombre']); ?>"
-                                    title="Eliminar archivo">
-                                <i class="fas fa-trash-alt me-1"></i>Eliminar
-                            </button>
-                            <?php else: ?>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled
-                                    title="Solo disponible para Administrador">
-                                <i class="fas fa-trash-alt me-1"></i>Eliminar
-                            </button>
-                            <?php endif; ?>
+                        <td class="text-end">
+                            <span class="carpeta-acciones">
+                                <?php if ($a['descarga'] !== null): ?>
+                                <a class="btn btn-sm btn-win carpeta-accion-icono" href="<?php echo htmlspecialchars($a['descarga']); ?>"
+                                   download data-bs-toggle="tooltip" data-bs-title="Descargar"
+                                   aria-label="Descargar <?php echo htmlspecialchars($a['nombre']); ?>">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                <?php endif; ?>
+                                <?php if (carpetas_sistema_puede('eliminar')): ?>
+                                <button type="button" class="btn btn-sm btn-outline-danger carpeta-accion-icono btn-eliminar-archivo"
+                                        data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
+                                        data-nombre="<?php echo htmlspecialchars($a['nombre']); ?>"
+                                        data-bs-toggle="tooltip" data-bs-title="Eliminar"
+                                        aria-label="Eliminar <?php echo htmlspecialchars($a['nombre']); ?>">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <?php else: ?>
+                                <button type="button" class="btn btn-sm btn-outline-secondary carpeta-accion-icono" disabled
+                                        data-bs-toggle="tooltip" data-bs-title="Eliminar (solo Administrador)"
+                                        aria-label="Eliminar (solo Administrador)">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <?php endif; ?>
+                            </span>
                         </td>
                     </tr>
                 <?php endforeach; ?>

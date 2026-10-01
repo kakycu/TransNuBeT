@@ -559,9 +559,6 @@ $totalGeneral = count($lista);
                             <td style="text-align:center;"><span class="codigo-mono"><?php echo htmlspecialchars($t['ci']); ?></span></td>
                             <td style="color:#e2e8f0;">
                                 <?php echo htmlspecialchars(trim($t['nombres'] . ' ' . $t['primer_apellido'] . ' ' . $t['segundo_apellido'])); ?>
-                                <?php if ($t['centro_costo']): ?>
-                                <span class="badge-mini neutral ms-1"><?php echo htmlspecialchars($t['centro_costo']); ?></span>
-                                <?php endif; ?>
                             </td>
                             <td><span class="campo-dbf valor-dbf"><?php echo htmlspecialchars($t['dbf_nombre']); ?></span></td>
                             <td><span class="campo-dbf valor-dbf"><?php echo htmlspecialchars($t['dbf_completo']); ?></span></td>

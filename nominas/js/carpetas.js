@@ -197,6 +197,342 @@
     }
 
     /* ==========================================
+       REDIMENSIONAR COLUMNAS (estilo Explorador de Windows)
+       Arrastrar el borde del encabezado cambia el ancho; doble clic ajusta
+       la columna al contenido. Los anchos se guardan por carpeta.
+       ========================================== */
+    (function inicializarColumnasRedimensionales() {
+        var tabla = document.getElementById('tablaCarpetas');
+        if (!tabla) return;
+
+        var carpeta = document.body.getAttribute('data-carpeta') || 'exportaciones';
+        var CLAVE = 'transnubet.carpetas.columnas.' + carpeta;
+        var ANCHO_MIN = 64;      // px, ancho minimo de la columna arrastrada
+        var ANCHO_MIN_OTRAS = 96; // px, ancho minimo de las columnas que se reparten
+        var cols = tabla.querySelectorAll('colgroup col');
+        var ths = tabla.querySelectorAll('thead th');
+        if (!cols.length || !ths.length) return;
+
+        var guia = document.createElement('div');
+        guia.className = 'guia-columna';
+        document.body.appendChild(guia);
+
+        /* ---- Anchos por defecto (proporcionales, como el Explorador) ----
+           La ultima columna (Accion) es fija: solo iconos, no se redimensiona. */
+        var ULTIMA = cols.length - 1;
+        var ANCHO_ACCION = 72; // px, ancho fijo de la columna de acciones
+        var POR_DEFECTO = [53, 15, 18, 14];
+        var anchos = POR_DEFECTO.slice();
+        anchos.length = cols.length;
+
+        /* Ancho fijo en px para la columna de acciones */
+        cols[ULTIMA].style.width = ANCHO_ACCION + 'px';
+
+        function aplicar() {
+            for (var i = 0; i < cols.length; i++) {
+                if (i === ULTIMA) {
+                    cols[i].style.width = ANCHO_ACCION + 'px';
+                } else {
+                    cols[i].style.width = anchos[i] + '%';
+                }
+            }
+        }
+
+        function guardar() {
+            try { localStorage.setItem(CLAVE, JSON.stringify(anchos)); } catch (e) { /* sin soporte */ }
+        }
+
+        function cargar() {
+            try {
+                var guardado = JSON.parse(localStorage.getItem(CLAVE));
+                if (Array.isArray(guardado) && guardado.length === cols.length) {
+                    anchos = guardado.map(function (v) {
+                        var n = Number(v);
+                        return (isFinite(n) && n > 0) ? n : 10;
+                    });
+                }
+            } catch (e) { /* usar valores por defecto */ }
+
+            /* La columna de acciones no se guarda: siempre es fija */
+            anchos[ULTIMA] = POR_DEFECTO[ULTIMA] || 15;
+        }
+
+        /* ---- Ancho minimo de cada columna, en px ----
+           Archive: suficiente para el icono + unas letras.
+           Tamaño: la cifra mas corta con su unidad.
+           Modificado: la fecha completa, que es lo mas ancho. */
+        var MIN_PX = [120, 80, 150];
+
+        /* ---- Reparte el ancho entre las columnas ----
+           La columna objetivo toma el ancho pedido; el resto se reparte
+           proporcionalmente entre las demas respetando su minimo propio.
+           Accion es fija. La suma siempre es exactamente 100. */
+        function repartir(anchos, indice, pctIndice, anchoTabla) {
+            var total = anchos.length;
+            var i;
+
+            if (indice === ULTIMA) return;
+
+            /* Anchos fijos y minimos expresados en % de la tabla */
+            var pctAccion = (ANCHO_ACCION / anchoTabla) * 100;
+            var minPct = MIN_PX.map(function (px) { return (px / anchoTabla) * 100; });
+            minPct[ULTIMA] = pctAccion;
+
+            /* Cuanto pueden tomar las demas sumando sus minimos */
+            var reservado = pctAccion;
+            for (i = 0; i < total; i++) {
+                if (i !== indice) reservado += minPct[i];
+            }
+            var maximo = 100 - reservado;
+
+            if (pctIndice > maximo) pctIndice = maximo;
+            if (pctIndice < minPct[indice]) pctIndice = minPct[indice];
+
+            /* Espacio que se reparten las demas columnas */
+            var resto = 100 - pctIndice - pctAccion;
+            var sumaResto = 0;
+            for (i = 0; i < total; i++) {
+                if (i !== indice && i !== ULTIMA) sumaResto += anchos[i];
+            }
+            if (sumaResto <= 0) sumaResto = 1;
+
+            var nuevas = anchos.slice();
+            var enMinimo = [];
+            nuevas[ULTIMA] = pctAccion;
+
+            for (i = 0; i < total; i++) {
+                if (i === indice || i === ULTIMA) continue;
+                var valor = (anchos[i] / sumaResto) * resto;
+                if (valor < minPct[i]) {
+                    valor = minPct[i];
+                    enMinimo.push(i);
+                }
+                nuevas[i] = valor;
+            }
+
+            /* La holgura que sobra (o falta) va a las columnas con espacio */
+            var sumaOtras = 0;
+            for (i = 0; i < total; i++) {
+                if (i !== indice && i !== ULTIMA) sumaOtras += nuevas[i];
+            }
+            var holgura = resto - sumaOtras;
+
+            var libres = [];
+            for (i = 0; i < total; i++) {
+                if (i !== indice && i !== ULTIMA && enMinimo.indexOf(i) === -1) libres.push(i);
+            }
+            if (libres.length && Math.abs(holgura) > 0.001) {
+                var cuota = holgura / libres.length;
+                for (i = 0; i < libres.length; i++) nuevas[libres[i]] += cuota;
+            }
+
+            nuevas[indice] = pctIndice;
+
+            /* Redondeo a 2 decimales; la diferencia va a la columna con
+               mas holgura para no romper ni la suma ni los minimos. */
+            var suma = 0;
+            for (i = 0; i < total; i++) {
+                nuevas[i] = Math.round(nuevas[i] * 100) / 100;
+                suma += nuevas[i];
+            }
+            var diferencia = Math.round((100 - suma) * 100) / 100;
+            if (diferencia !== 0) {
+                var holgado = -1;
+                var mayorHolgura = 0;
+                for (i = 0; i < total; i++) {
+                    if (i === indice) continue;
+                    var margen = nuevas[i] - minPct[i];
+                    if (margen > mayorHolgura) {
+                        mayorHolgura = margen;
+                        holgado = i;
+                    }
+                }
+                if (holgado !== -1) {
+                    nuevas[holgado] = Math.round((nuevas[holgado] + diferencia) * 100) / 100;
+                } else {
+                    nuevas[indice] = Math.round((nuevas[indice] + diferencia) * 100) / 100;
+                }
+            }
+
+            for (i = 0; i < total; i++) anchos[i] = nuevas[i];
+            aplicar();
+        }
+
+        /* ---- Arrastre ---- */
+        var arrastre = null;
+        var movido = false;
+        var UMBRAL_MOVIMIENTO = 3; // px, por debajo no cuenta como arrastre
+
+        function iniciarArrastre(evento, indice) {
+            evento.preventDefault();
+            evento.stopPropagation();
+
+            var cajaTh = ths[indice].getBoundingClientRect();
+            movido = false;
+            arrastre = {
+                indice: indice,
+                xInicial: evento.clientX,
+                anchoInicial: cajaTh.width,
+                anchoTabla: tabla.getBoundingClientRect().width
+            };
+
+            tabla.classList.add('redimensionando');
+            document.body.classList.add('redimensionando-columnas');
+            guia.style.display = 'block';
+            moverGuia(evento.clientX);
+
+            document.addEventListener('mousemove', alMover);
+            document.addEventListener('mouseup', alSoltar);
+        }
+
+        function moverGuia(x) {
+            guia.style.left = (x - 2) + 'px';
+        }
+
+        function alMover(evento) {
+            if (!arrastre) return;
+            evento.preventDefault();
+
+            var i = arrastre.indice;
+            var delta = evento.clientX - arrastre.xInicial;
+            if (Math.abs(delta) >= UMBRAL_MOVIMIENTO) movido = true;
+
+            var anchoPx = arrastre.anchoInicial + delta;
+            if (anchoPx < ANCHO_MIN) anchoPx = ANCHO_MIN;
+
+            var pctPx = (anchoPx / arrastre.anchoTabla) * 100;
+            var pctMin = (ANCHO_MIN / arrastre.anchoTabla) * 100;
+            if (pctPx < pctMin) pctPx = pctMin;
+
+            repartir(anchos, i, pctPx, arrastre.anchoTabla);
+            moverGuia(evento.clientX);
+        }
+
+        function alSoltar() {
+            document.removeEventListener('mousemove', alMover);
+            document.removeEventListener('mouseup', alSoltar);
+            tabla.classList.remove('redimensionando');
+            document.body.classList.remove('redimensionando-columnas');
+            guia.style.display = 'none';
+            if (arrastre) actualizarAria(arrastre.indice);
+            arrastre = null;
+            /* Sin movimiento real no se guarda: un doble clic generates dos
+               arrastres de cero píxeles que deformarían los anchos. */
+            if (movido) guardar();
+            movido = false;
+        }
+
+        /* ---- Ancho real de un elemento con su texto sin recortar ----
+           scrollWidth solo sirve si el texto esta siendo recortado: si la
+           columna es mas ancha, scrollWidth coincide con clientWidth y no
+           dicen nada. Se mide con un clon sin limites de ancho. */
+        function anchoReal(elemento) {
+            if (!elemento) return 0;
+            var cs = getComputedStyle(elemento);
+            if (elemento.scrollWidth > elemento.clientWidth + 1) {
+                return elemento.scrollWidth;
+            }
+            var clon = elemento.cloneNode(true);
+            clon.style.position = 'absolute';
+            clon.style.visibility = 'hidden';
+            clon.style.left = '-9999px';
+            clon.style.top = '0';
+            clon.style.width = 'max-content';
+            clon.style.maxWidth = 'none';
+            clon.style.minWidth = '0';
+            clon.style.whiteSpace = 'nowrap';
+            clon.style.overflow = 'visible';
+            clon.style.textOverflow = 'clip';
+            document.body.appendChild(clon);
+            var ancho = clon.getBoundingClientRect().width;
+            document.body.removeChild(clon);
+            return ancho || parseFloat(cs.fontSize) * elemento.textContent.length * 0.6;
+        }
+
+        /* ---- Doble clic: ajustar al contenido ----
+           Mide la columna mas larga de TODAS las filas, tambien las que
+           estan ocultas por un filtro, para que el ajuste no dependa del
+           filtro que este puesto. */
+        function ajustarAlContenido(indice) {
+            var anchoMax = 0;
+            var celdas = tabla.querySelectorAll('tbody tr');
+            var i;
+
+            for (i = 0; i < celdas.length; i++) {
+                var celda = celdas[i].children[indice];
+                if (!celda) continue;
+
+                var actual;
+                if (indice === 0) {
+                    var nombre = celda.querySelector('.carpeta-nombre');
+                    if (!nombre) continue;
+                    actual = anchoReal(nombre) + 40; // icono + holguras
+                } else {
+                    actual = anchoReal(celda) + 16;
+                }
+                if (actual > anchoMax) anchoMax = actual;
+            }
+
+            if (!anchoMax) return;
+
+            var anchoTabla = tabla.getBoundingClientRect().width;
+            if (!anchoTabla) return;
+
+            var pct = Math.min(90, (anchoMax / anchoTabla) * 100);
+            repartir(anchos, indice, pct, anchoTabla);
+            guardar();
+            actualizarAria(indice);
+        }
+
+        /* ---- Ancho actual en porcentaje, para lectores de pantalla ---- */
+        function actualizarAria(indice) {
+            var grip = ths[indice].querySelector('.th-grip');
+            if (!grip) return;
+            grip.setAttribute('aria-valuenow', Math.round(anchos[indice]));
+        }
+
+        ths.forEach(function (th, indice) {
+            var grip = th.querySelector('.th-grip');
+            if (!grip) return;
+            grip.addEventListener('mousedown', function (e) { iniciarArrastre(e, indice); });
+            grip.addEventListener('dblclick', function (e) { e.preventDefault(); ajustarAlContenido(indice); });
+
+            /* Accesible desde teclado: flechas mueven el borde */
+            grip.addEventListener('keydown', function (e) {
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                e.preventDefault();
+                var anchoTabla = tabla.getBoundingClientRect().width;
+                if (!anchoTabla) return;
+                var paso = e.shiftKey ? 40 : 8;
+                var anchoTh = ths[indice].getBoundingClientRect().width;
+                var destino = anchoTh + (e.key === 'ArrowRight' ? paso : -paso);
+                repartir(anchos, indice, (destino / anchoTabla) * 100, anchoTabla);
+                guardar();
+                actualizarAria(indice);
+            });
+
+            grip.tabIndex = 0;
+            grip.setAttribute('role', 'separator');
+            grip.setAttribute('aria-orientation', 'vertical');
+            grip.setAttribute('aria-label', 'Ajustar ancho de la columna ' + th.dataset.col);
+        });
+
+        cargar();
+        aplicar();
+        anchos.forEach(function (v, i) {
+            if (i !== ULTIMA) actualizarAria(i);
+        });
+
+        /* ---- Tooltips de Bootstrap en los iconos de accion ---- */
+        if (window.bootstrap && window.bootstrap.Tooltip) {
+            Array.prototype.forEach.call(
+                document.querySelectorAll('.carpeta-accion-icono[data-bs-toggle="tooltip"]'),
+                function (el) { new bootstrap.Tooltip(el); }
+            );
+        }
+    })();
+
+    /* ==========================================
        ELIMINAR ARCHIVO (solo rol Administrador)
        ========================================== */
     var botonesEliminar = document.querySelectorAll('.btn-eliminar-archivo');

@@ -120,6 +120,115 @@
 .main-container .carpeta-filtros .form-control:focus,
 .main-container .carpeta-filtros .form-select:focus { color: var(--txt) !important; }
 
+/* ==========================================
+   REDIMENSIONAR COLUMNAS (estilo Explorador de Windows)
+   ========================================== */
+.tabla-carpetas {
+    table-layout: fixed;
+    min-width: 40rem;
+}
+.tabla-carpetas col { width: 25%; }
+
+/* Nombre de archivo: se recorta con "..." solo si la columna queda
+   mas estrecha que el texto, como en el Explorador de Windows.
+   El flex va en un span interno, no en el <td>, para no romper la
+   distribucion de columnas de la tabla. */
+.tabla-carpetas .carpeta-archivo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+}
+.tabla-carpetas .carpeta-icono-archivo {
+    flex: 0 0 1.25rem;
+}
+.tabla-carpetas .carpeta-nombre {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Acciones: solo iconos con tooltip, en un ancho fijo */
+.tabla-carpetas .carpeta-acciones {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.25rem;
+}
+.tabla-carpetas .carpeta-accion-icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    padding: 0;
+    flex: 0 0 1.875rem;
+}
+.tabla-carpetas .carpeta-accion-icono i { margin: 0 !important; }
+
+/* Empuñe de redimensión en el borde derecho de cada encabezado */
+.tabla-carpetas thead th {
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.th-grip {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0.625rem;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 3;
+    background: transparent;
+    transition: background 0.15s ease;
+}
+.th-grip::after {
+    content: "";
+    position: absolute;
+    top: 22%;
+    right: 0.1875rem;
+    width: 0.125rem;
+    height: 56%;
+    border-radius: 999px;
+    background: var(--border-2, rgba(148,163,184,0.35));
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.th-grip:hover::after,
+.tabla-carpetas.redimensionando .th-grip:hover::after {
+    background: var(--accent);
+    box-shadow: 0 0 0.375rem rgba(var(--accent-rgb), 0.6);
+}
+
+/* Evita seleccionar texto mientras se arrastra */
+body.redimensionando-columnas,
+body.redimensionando-columnas * {
+    cursor: col-resize !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+/* Guía vertical mientras se arrastra */
+.guia-columna {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0.1875rem;
+    height: 100vh;
+    background: var(--accent);
+    box-shadow: 0 0 0.5rem rgba(var(--accent-rgb), 0.9);
+    z-index: 10800;
+    pointer-events: none;
+    display: none;
+}
+body.redimensionando-columnas .guia-columna { display: block; }
+
+/* Contenedor con scroll horizontal como en el Explorador */
+.table-responsive:has(> .tabla-carpetas) { overflow-x: auto; }
+
 .stat-card {
     background: linear-gradient(135deg, var(--panel-2), var(--panel)) !important;
     border-radius: 1rem;
@@ -317,20 +426,14 @@
     background: rgba(var(--accent-rgb), 0.45) !important;
 }
 .tabla-carpetas td, .tabla-carpetas th { vertical-align: middle; }
-/* Nombres largos: se truncan con "..." en una sola línea (word-break eliminado).
-   max-width:0 es el truco estándar para permitir ellipsis en celdas de tabla:
-   la columna Archivo toma el espacio sobrante y las demás quedan con su ancho. */
+/* El ancho de la columna lo controla el <colgroup>; el "..." ya lo
+   aplica .carpeta-nombre cuando el texto no cabe. */
 .tabla-carpetas .carpeta-archivo {
-    max-width: 0;
-    min-width: 11rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     color: var(--txt) !important;
 }
 /* Negritas del nombre al pasar el mouse por la celda (y normal al salir) */
-.tabla-carpetas td.carpeta-archivo:hover { font-weight: 700; }
-.tabla-carpetas .carpeta-icono-archivo { width: 1.25rem; color: var(--muted) !important; }
+.tabla-carpetas td.celda-archivo:hover .carpeta-nombre { font-weight: 700; }
+.tabla-carpetas .carpeta-icono-archivo { color: var(--muted) !important; }
 .tabla-carpetas .carpeta-nota { color: var(--muted) !important; font-size: 0.78rem; white-space: nowrap; }
 .tabla-carpetas .btn i { color: inherit !important; }
 
