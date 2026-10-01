@@ -125,7 +125,10 @@
    ========================================== */
 .tabla-carpetas {
     table-layout: fixed;
-    min-width: 40rem;
+    /* Sin min-width: si la tabla obliga a un ancho mayor que su contenedor,
+       Chrome la dibuja mas ancha y la columna de acciones se sale de la
+       pantalla. Los anchos van todos en porcentaje, asi que nunca hace falta. */
+    min-width: 0;
 }
 .tabla-carpetas col { width: 25%; }
 

@@ -220,21 +220,37 @@
         /* ---- Anchos por defecto (proporcionales, como el Explorador) ----
            La ultima columna (Accion) es fija: solo iconos, no se redimensiona. */
         var ULTIMA = cols.length - 1;
-        var ANCHO_ACCION = 72; // px, ancho fijo de la columna de acciones
+        var ANCHO_ACCION = 72; // px de referencia para la columna de acciones
         var POR_DEFECTO = [53, 15, 18, 14];
         var anchos = POR_DEFECTO.slice();
         anchos.length = cols.length;
 
-        /* Ancho fijo en px para la columna de acciones */
-        cols[ULTIMA].style.width = ANCHO_ACCION + 'px';
+        /* ---- Todas las columnas en porcentaje, incluida la de acciones ----
+           Mezclar porcentajes con una columna en px dentro de una tabla con
+           table-layout:fixed hace que Chrome sume todo literalmente y la
+           tabla se haga mas ancha que su contenedor (la columna de acciones
+           se sale de la pantalla); Firefox reparte el sobrante y se ve bien.
+           Con las cuatro columnas en porcentaje la suma es 100% en cualquier
+           navegador. La de acciones se recalcula a partir de ANCHO_ACCION. */
+        function pctAccion() {
+            var ancho = contenedorAncho();
+            if (!ancho) return ANCHO_ACCION / 1000 * 100;
+            return (ANCHO_ACCION / ancho) * 100;
+        }
+
+        function contenedorAncho() {
+            var caja = tabla.parentNode; // .table-responsive
+            if (caja && caja.getBoundingClientRect().width) {
+                return caja.getBoundingClientRect().width;
+            }
+            return tabla.getBoundingClientRect().width;
+        }
 
         function aplicar() {
+            var pAccion = pctAccion();
+            anchos[ULTIMA] = pAccion;
             for (var i = 0; i < cols.length; i++) {
-                if (i === ULTIMA) {
-                    cols[i].style.width = ANCHO_ACCION + 'px';
-                } else {
-                    cols[i].style.width = anchos[i] + '%';
-                }
+                cols[i].style.width = anchos[i] + '%';
             }
         }
 
@@ -253,8 +269,36 @@
                 }
             } catch (e) { /* usar valores por defecto */ }
 
-            /* La columna de acciones no se guarda: siempre es fija */
-            anchos[ULTIMA] = POR_DEFECTO[ULTIMA] || 15;
+            ajustarPorcentajeTotal();
+        }
+
+        /* ---- Suma exacta de 100% ----
+           Las columnas se guardan en porcentaje, pero la de acciones depende
+           del ancho real de la tabla. Se reescalan las otras para que las
+           cuatro sumen 100% y nigun navegador tenga que repartirse el
+           sobrante por su cuenta. */
+        function ajustarPorcentajeTotal() {
+            var pAccion = pctAccion();
+            var disponible = 100 - pAccion;
+            var suma = 0;
+            var i;
+
+            for (i = 0; i < ULTIMA; i++) suma += anchos[i];
+            if (suma <= 0) return;
+
+            var factor = disponible / suma;
+            for (i = 0; i < ULTIMA; i++) {
+                anchos[i] = Math.round((anchos[i] * factor) * 100) / 100;
+            }
+            anchos[ULTIMA] = Math.round(pAccion * 100) / 100;
+
+            /* El redondeo deja algun decimal de diferencia: se compensa */
+            var total = 0;
+            for (i = 0; i < cols.length; i++) total += anchos[i];
+            var diferencia = Math.round((100 - total) * 100) / 100;
+            if (diferencia !== 0) {
+                anchos[0] = Math.round((anchos[0] + diferencia) * 100) / 100;
+            }
         }
 
         /* ---- Ancho minimo de cada columna, en px ----
@@ -274,12 +318,12 @@
             if (indice === ULTIMA) return;
 
             /* Anchos fijos y minimos expresados en % de la tabla */
-            var pctAccion = (ANCHO_ACCION / anchoTabla) * 100;
+            var pctAccionCol = pctAccion();
             var minPct = MIN_PX.map(function (px) { return (px / anchoTabla) * 100; });
-            minPct[ULTIMA] = pctAccion;
+            minPct[ULTIMA] = pctAccionCol;
 
             /* Cuanto pueden tomar las demas sumando sus minimos */
-            var reservado = pctAccion;
+            var reservado = pctAccionCol;
             for (i = 0; i < total; i++) {
                 if (i !== indice) reservado += minPct[i];
             }
@@ -289,7 +333,7 @@
             if (pctIndice < minPct[indice]) pctIndice = minPct[indice];
 
             /* Espacio que se reparten las demas columnas */
-            var resto = 100 - pctIndice - pctAccion;
+            var resto = 100 - pctIndice - pctAccionCol;
             var sumaResto = 0;
             for (i = 0; i < total; i++) {
                 if (i !== indice && i !== ULTIMA) sumaResto += anchos[i];
@@ -298,7 +342,7 @@
 
             var nuevas = anchos.slice();
             var enMinimo = [];
-            nuevas[ULTIMA] = pctAccion;
+            nuevas[ULTIMA] = pctAccionCol;
 
             for (i = 0; i < total; i++) {
                 if (i === indice || i === ULTIMA) continue;
@@ -521,6 +565,18 @@
         aplicar();
         anchos.forEach(function (v, i) {
             if (i !== ULTIMA) actualizarAria(i);
+        });
+
+        /* ---- Al cambiar el tamaño de la ventana ----
+           Los anchos estan en porcentaje, pero la columna de acciones
+           necesita seguir midiendo unos 72px: se reescala al nuevo ancho. */
+        var temporizadorResize = null;
+        window.addEventListener('resize', function () {
+            if (temporizadorResize) clearTimeout(temporizadorResize);
+            temporizadorResize = setTimeout(function () {
+                ajustarPorcentajeTotal();
+                aplicar();
+            }, 150);
         });
 
         /* ---- Tooltips de Bootstrap en los iconos de accion ---- */
