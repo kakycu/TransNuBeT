@@ -49,7 +49,8 @@ function gd(k,def){
     if(v===null&&kk!==k)v=s.getItem(k);
     return v!==null?v:def;
 }
-var theme=gd('transnubet_theme','win11');
+var theme=<?php echo (defined('TN_THEME_FORZADO') && TN_THEME_FORZADO) ? json_encode(TN_THEME_FORZADO) : 'null' ?>;
+if(theme===null){theme=gd('transnubet_theme','win11');}
 if(theme!=='light'&&theme!=='dark'&&theme!=='blue'&&theme!=='verde'&&theme!=='orgullo'&&theme!=='win11')theme='win11';
 var accDef={dark:'blue',light:'blue',blue:'cyan',verde:'green',orgullo:'purple',win11:'winblue'};
 var accent=gd('transnubet_accent_'+theme,null)||accDef[theme]||'blue';

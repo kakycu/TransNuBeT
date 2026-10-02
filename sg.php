@@ -356,11 +356,10 @@ if (!function_exists('licencia_tipos')) {
             'info'             => licencia_tipo_info($tipo),
         );
     }
-    function licencia_leer_archivo_lic($ruta) {
-        if (!is_file($ruta) || !is_readable($ruta)) return null;
-        $contenido = @file_get_contents($ruta);
-        if ($contenido === false) return null;
+    function licencia_leer_texto_lic($contenido) {
+        if (!is_string($contenido)) return null;
         $contenido = trim($contenido);
+        if ($contenido === '') return null;
         $valor = $contenido;
         if (strpos($contenido, 'sigesnom://licencia?') === 0) {
             $valor = substr($contenido, strlen('sigesnom://licencia?'));
@@ -371,6 +370,12 @@ if (!function_exists('licencia_tipos')) {
         if (!is_array($d) || !isset($d['r'], $d['u'], $d['k'])) return null;
         if (!licencia_validar_serial($d['r'], $d['u'], $d['k'])) return null;
         return licencia_leer_datos_planos($plano);
+    }
+    function licencia_leer_archivo_lic($ruta) {
+        if (!is_file($ruta) || !is_readable($ruta)) return null;
+        $contenido = @file_get_contents($ruta);
+        if ($contenido === false) return null;
+        return licencia_leer_texto_lic($contenido);
     }
     function licencia_importar_archivo($ruta) {
         $datos = licencia_leer_archivo_lic($ruta);
@@ -815,6 +820,7 @@ if ($ip_bloqueada || !$token_valido) {
   }
   .btn-login:hover { background: linear-gradient(180deg, #60a5fa, #3b82f6); }
   .btn-login:active { transform: translateY(1px); }
+
   .alert-soft {
     background: var(--danger-soft);
     border: 1px solid var(--danger-border);
@@ -1065,6 +1071,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $accion !== 'rotar_token') {
                 $flash['ok'][] = 'Licencia instalada correctamente para ' . $lic['registro'] . '.';
                 break;
 
+            case 'instalar_codigo':
+                $codigo = isset($_POST['codigo']) ? trim((string)$_POST['codigo']) : '';
+                $forzar = !empty($_POST['forzar_codigo']);
+
+                if ($codigo === '') { $flash['err'][] = 'Pegue o escriba el codigo de la licencia.'; break; }
+                if (strlen($codigo) > 8192) { $flash['err'][] = 'El codigo pegado es demasiado largo.'; break; }
+
+                $datos = licencia_leer_texto_lic($codigo);
+                if ($datos === null) { $flash['err'][] = 'El texto no corresponde a una licencia valida. Verifique que se copio completo.'; break; }
+
+                $fpMaquina = licencia_fingerprint_machine();
+                if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fpMaquina)) {
+                    $flash['err'][] = 'Este codigo fue emitido para OTRO equipo.'; break;
+                }
+                if (licencia_activada()) {
+                    if (!$forzar) { $flash['err'][] = 'Ya existe una licencia ACTIVA. Marque "Forzar reemplazo".'; break; }
+                    if (!licencia_borrar()) { $flash['err'][] = 'No se pudo eliminar la licencia actual.'; break; }
+                }
+                $ok = licencia_guardar($datos['registro'], $datos['usuario'], $datos['serial'], $datos['fecha_activacion']);
+                if ($ok === false) { $flash['err'][] = 'No se pudo guardar la licencia (permisos de escritura).'; break; }
+
+                $_SESSION['accion_vista'] = 'instalar_manual';
+                $lic = licencia_leer();
+                $flash['ok'][] = 'Licencia instalada desde el codigo para ' . $lic['registro']
+                    . ' (' . $lic['info']['nombre'] . ').';
+                break;
+
             case 'eliminar':
                 if (!licencia_tiene_valor_guardado()) { $flash['ok'][] = 'No hay licencia instalada.'; break; }
                 if (!licencia_borrar()) { $flash['err'][] = 'No se pudo eliminar la licencia.'; break; }
@@ -1091,6 +1124,53 @@ unset($_SESSION['accion_vista']);
 if ($accion === 'test' && isset($_GET['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(licencia_test(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+/* =====================================================================
+   VALIDAR EN VIVO EL TEXTO DE LA LICENCIA (sin instalarlo)
+   El descifrado y la comprobacion del serial ocurren aqui, en el
+   servidor: el secreto nunca llega al navegador.
+   ===================================================================== */
+if ($accion === 'validar_texto' && isset($_GET['ajax'])) {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $resp = array('ok' => false, 'mensaje' => 'Pegue o escriba el codigo de la licencia.');
+    $codigo = ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['codigo']))
+        ? trim((string)$_POST['codigo'])
+        : '';
+
+    if ($codigo !== '') {
+        if (strlen($codigo) > 8192) {
+            $resp['mensaje'] = 'El texto es demasiado largo para ser una licencia.';
+        } else {
+            $datos = licencia_leer_texto_lic($codigo);
+            if ($datos === null) {
+                $resp['mensaje'] = 'El texto no corresponde a una licencia valida. Verifique que se copio completo.';
+            } else {
+                $fpMaquina = licencia_fingerprint_machine();
+                $esGenerica = ($datos['huella'] === '');
+                $otraPc     = !$esGenerica && !hash_equals($datos['huella'], $fpMaquina);
+                $vence      = licencia_vencimiento($datos);
+
+                $resp['ok']      = true;
+                $resp['mensaje'] = 'Licencia valida.';
+                $resp['datos']   = array(
+                    'registro' => $datos['registro'],
+                    'usuario'  => $datos['usuario'],
+                    'serial'   => licencia_formatear_serial($datos['serial']),
+                    'tipo'     => $datos['info']['nombre'] . ' (' . $datos['tipo'] . ')',
+                    'periodo'  => ($datos['info']['meses'] === null) ? 'Permanente' : $datos['info']['meses'] . ' meses',
+                    'vence'    => ($vence === null) ? 'Sin vencimiento (Permanente)' : date('d/m/Y', $vence),
+                    'generica' => $esGenerica,
+                    'otraPc'   => $otraPc,
+                    'huella'   => $esGenerica ? '' : licencia_formatear_fingerprint($datos['huella']),
+                );
+            }
+        }
+    }
+
+    echo json_encode($resp, JSON_UNESCAPED_UNICODE);
     exit;
 }
 if ($accion === 'descargar' && !empty($_GET['archivo'])) {
@@ -1295,6 +1375,83 @@ $flashJson = json_encode($flash, JSON_UNESCAPED_UNICODE);
     color: var(--text); border-radius: 10px;
   }
   .form-control::placeholder { color: var(--text-mute); }
+  textarea.form-control {
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: .85rem; line-height: 1.5; resize: vertical;
+    word-break: break-all;
+  }
+
+  /* Validación en vivo del texto de la licencia */
+  .lic-feedback {
+    display: none; margin-top: .7rem; padding: 0; overflow: hidden;
+    border: 1px solid var(--border-col); border-left-width: 4px;
+    border-radius: 12px; background: var(--input-bg);
+    font-size: .88rem; line-height: 1.5;
+    box-shadow: 0 6px 20px rgba(0,0,0,.14);
+  }
+  .lic-feedback.visible { display: block; animation: licFade .18s ease-out; }
+  @keyframes licFade {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .lic-feedback.ok   { border-left-color: #22c55e; }
+  .lic-feedback.warn { border-left-color: #f59e0b; }
+  .lic-feedback.bad  { border-left-color: var(--danger, #ef4444); }
+
+  .lic-feedback-head {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .7rem .9rem; font-weight: 600;
+  }
+  .lic-ico {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.6rem; height: 1.6rem; border-radius: 50%;
+    flex: 0 0 auto; font-size: .82rem; color: #0b1220;
+  }
+  .lic-feedback.ok   .lic-ico { background: #4ade80; }
+  .lic-feedback.warn .lic-ico { background: #fbbf24; }
+  .lic-feedback.bad  .lic-ico { background: var(--danger, #ef4444); color: #fff; }
+  .lic-feedback.ok   .lic-feedback-head { background: rgba(34,197,94,.12);  color: #4ade80; }
+  .lic-feedback.warn .lic-feedback-head { background: rgba(245,158,11,.14); color: #fbbf24; }
+  .lic-feedback.bad  .lic-feedback-head { background: var(--danger-soft);   color: var(--danger); }
+
+  .lic-feedback-body { padding: .8rem .9rem .9rem; }
+  .lic-tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); gap: .5rem;
+  }
+  .lic-tile {
+    min-width: 0; padding: .45rem .6rem .5rem;
+    background: var(--surface); border: 1px solid var(--border-col); border-radius: 9px;
+  }
+  .lic-tile .k {
+    display: block; margin-bottom: .12rem;
+    color: var(--text-mute); font-size: .67rem;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .lic-tile .v { display: block; color: var(--text); font-weight: 600; word-break: break-word; }
+  .lic-tile.mono .v {
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-weight: 500; font-size: .78rem; letter-spacing: .4px;
+  }
+  .lic-tile.val-ok   .v { color: #4ade80; }
+  .lic-tile.val-warn .v { color: #fbbf24; }
+
+  .lic-codigos {
+    display: flex; flex-direction: column; gap: .4rem; margin-top: .55rem;
+  }
+  .lic-codigo {
+    display: flex; align-items: center; gap: .55rem;
+    padding: .45rem .6rem; border: 1px dashed var(--border-col);
+    border-radius: 9px; background: var(--input-bg-focus, rgba(127,127,127,.10));
+  }
+  .lic-codigo .k {
+    flex: 0 0 auto; min-width: 3.9rem;
+    color: var(--text-mute); font-size: .67rem;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .lic-codigo .v {
+    min-width: 0; color: var(--text); font-size: .8rem; letter-spacing: .8px;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; word-break: break-all;
+  }
   .form-control:focus, .form-select:focus {
     background: var(--input-bg-focus);
     border-color: var(--accent);
@@ -1908,6 +2065,39 @@ $flashJson = json_encode($flash, JSON_UNESCAPED_UNICODE);
             </div>
           </form>
         </div>
+
+        <div class="surface p-4 mt-4">
+          <h6 class="mb-3"><i class="fa-solid fa-code me-2" style="color:var(--accent)"></i>Instalar licencia pegando el código</h6>
+          <p style="color:var(--text-mute); font-size:.9rem">
+            Pegue o escriba el <b>código de la licencia</b> que le remitió el proveedor.
+            No necesita el archivo <code>.lic</code> ni conocer los datos:
+            el nombre, el usuario y el periodo se verifican solos.
+          </p>
+
+          <form method="post" id="formInstalarCodigo">
+            <input type="hidden" name="accion" value="instalar_codigo">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>">
+
+            <label class="form-label small" for="txtCodigoLicencia">Código de la licencia</label>
+            <textarea name="codigo" id="txtCodigoLicencia" class="form-control" rows="4" required
+                      placeholder="Pegue aquí el código de la licencia que le envió el proveedor..."></textarea>
+            <div class="lic-feedback" id="codigoFeedback" role="status" aria-live="polite"></div>
+
+            <?php if ($estado['activa']): ?>
+              <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" name="forzar_codigo" id="chkForzarCodigo">
+                <label class="form-check-label" for="chkForzarCodigo">Forzar reemplazo</label>
+              </div>
+            <?php endif; ?>
+
+            <div class="d-flex gap-2 mt-3">
+              <button class="btn btn-primary flex-fill"><i class="fa-solid fa-code me-1"></i> Instalar desde el código</button>
+              <button type="button" class="btn btn-outline-primary" onclick="limpiarFormulario('formInstalarCodigo')" title="Limpiar campos">
+                <i class="fa-solid fa-eraser me-1"></i> Limpiar
+              </button>
+            </div>
+          </form>
+        </div>
       </section>
 
       <section class="section d-none" id="section-huella">
@@ -2133,6 +2323,117 @@ function copiar(id) {
   copiarTexto(el.innerText);
 }
 
+/* ---------------------------------------------------------------------
+   Validación en vivo del texto de la licencia (pegado o escrito).
+   El descifrado y la comprobación del serial se hacen en el servidor
+   mediante ?accion=validar_texto&ajax=1: el secreto nunca llega al DOM.
+   --------------------------------------------------------------------- */
+(function validarLicenciaEnVivo() {
+  const ta   = document.getElementById('txtCodigoLicencia');
+  const caja = document.getElementById('codigoFeedback');
+  if (!ta || !caja) return;
+
+  const TOKEN = <?= json_encode(tool_token_esperado(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+  let t = null, seq = 0;
+
+  const esc = s => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const ICONOS = { ok: 'fa-circle-check', warn: 'fa-triangle-exclamation', bad: 'fa-circle-exclamation' };
+
+  /* estado: 'ok' | 'warn' | 'bad'
+     fichas: [etiqueta, valor, claseOpcional]
+     codigos: [etiqueta, valor] en tipografía monoespaciada (serial, huella) */
+  function pintar(estado, titulo, fichas, codigos) {
+    caja.className = 'lic-feedback visible ' + estado;
+    let html = '<div class="lic-feedback-head"><span class="lic-ico"><i class="fa-solid ' +
+               ICONOS[estado] + '"></i></span><span>' + esc(titulo) + '</span></div>';
+    if (fichas && fichas.length) {
+      html += '<div class="lic-feedback-body"><div class="lic-tiles">';
+      fichas.forEach(f => {
+        html += '<div class="lic-tile' + (f[2] ? ' ' + f[2] : '') + '"><span class="k">' + esc(f[0]) +
+                '</span><span class="v">' + esc(f[1]) + '</span></div>';
+      });
+      html += '</div>';
+      if (codigos && codigos.length) {
+        html += '<div class="lic-codigos">';
+        codigos.forEach(c => {
+          html += '<div class="lic-codigo"><span class="k">' + esc(c[0]) + '</span><span class="v">' +
+                  esc(c[1]) + '</span></div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    caja.innerHTML = html;
+  }
+
+  function borrarValidacion() {
+    clearTimeout(t);
+    seq++;                       // invalida cualquier respuesta en vuelo
+    caja.className = 'lic-feedback';
+    caja.innerHTML = '';
+  }
+
+  async function validar() {
+    const codigo = ta.value.trim();
+    if (codigo === '') {
+      caja.className = 'lic-feedback';
+      caja.innerHTML = '';
+      return;
+    }
+    const mio = ++seq;
+    try {
+      const fd = new FormData();
+      fd.append('codigo', codigo);
+      const r = await fetch('?accion=validar_texto&ajax=1&token=' + encodeURIComponent(TOKEN),
+                             { method: 'POST', body: fd, cache: 'no-store' });
+      const j = await r.json();
+      if (mio !== seq) return;  // llegó una respuesta más nueva
+
+      if (!j.ok) { pintar('bad', j.mensaje); return; }
+
+      const d = j.datos || {};
+      const fichas = [
+        ['Registro', d.registro],
+        ['Usuario',  d.usuario],
+        ['Tipo',     d.tipo],
+        ['Periodo',  d.periodo],
+        ['Vence',    d.vence]
+      ];
+      if (d.generica) {
+        fichas.push(['Vinculación', 'Genérica · se genera aquí', 'val-ok']);
+      } else if (d.otraPc) {
+        fichas.push(['Vinculación', 'Otra máquina', 'val-warn']);
+      } else {
+        fichas.push(['Vinculación', 'Esta máquina', 'val-ok']);
+      }
+      // Serial y huella se muestran en el mismo formato monoespaciado.
+      const codigos = [['Serial', d.serial]];
+      if (!d.generica) codigos.push(['Huella', d.huella]);
+
+      pintar(d.otraPc ? 'warn' : 'ok',
+             d.otraPc ? 'Licencia válida, pero es de otra máquina' : 'Licencia válida',
+             fichas, codigos);
+    } catch (e) {
+      if (mio !== seq) return;
+      pintar('bad', 'No se pudo contactar al servidor para validar el texto.');
+    }
+  }
+
+  ta.addEventListener('input', function () {
+    clearTimeout(t);
+    t = setTimeout(validar, 450);
+  });
+  ta.addEventListener('paste', function () { setTimeout(validar, 60); });
+  // "Limpiar" debe borrar tambien la ficha de validación.
+  const form = document.getElementById('formInstalarCodigo');
+  if (form) {
+    form.addEventListener('reset', borrarValidacion);
+    const btn = form.querySelector('button[onclick*="limpiarFormulario"]');
+    if (btn) btn.addEventListener('click', function () { setTimeout(borrarValidacion, 0); });
+  }
+})();
+
 /* Copia la licencia completa (no solo el serial) */
 function copiarLicencia(datos) {
   if (!datos) return;
@@ -2173,6 +2474,8 @@ function copiarLicencia(datos) {
 function limpiarFormulario(id) {
   const form = document.getElementById(id);
   if (!form) return;
+  // Limpiar tambien cualquier panel de validacion asociado al formulario.
+  form.querySelectorAll('.lic-feedback').forEach(c => { c.className = 'lic-feedback'; c.innerHTML = ''; });
   form.querySelectorAll('input, select, textarea').forEach(el => {
     if (el.name === 'csrf' || el.name === 'accion') return;
     if (el.type === 'checkbox' || el.type === 'radio') {

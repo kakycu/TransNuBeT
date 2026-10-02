@@ -8102,11 +8102,19 @@ $licInfoRegistro = function_exists('licencia_leer') ? licencia_leer() : null;
 $licHasRegistro = is_array($licInfoRegistro) && $licInfoRegistro['registro'] !== '';
 // Solo los roles Admin y Soft pueden eliminar el registro de licencia del equipo.
 $puede_eliminar_licencia = in_array(strtolower(trim((string)$user_rol_codigo)), ['admin', 'soft'], true);
+// Importar una licencia nueva es exclusivo del rol 1 (Administrador).
+$puede_importar_licencia = function_exists('permiso_rol_codigo') && (permiso_rol_codigo() === 'Admin');
 // Token CSRF para el envío de eliminar_licencia.php.
 $csrf_eliminar_licencia = $_SESSION['csrf_eliminar_licencia'] ?? '';
 if ($csrf_eliminar_licencia === '') {
     $csrf_eliminar_licencia = function_exists('random_bytes') ? bin2hex(random_bytes(32)) : md5(uniqid('', true));
     $_SESSION['csrf_eliminar_licencia'] = $csrf_eliminar_licencia;
+}
+// Token CSRF para el envío de importar_licencia.php.
+$csrf_importar_licencia = $_SESSION['csrf_importar_licencia'] ?? '';
+if ($csrf_importar_licencia === '') {
+    $csrf_importar_licencia = function_exists('random_bytes') ? bin2hex(random_bytes(32)) : md5(uniqid('', true));
+    $_SESSION['csrf_importar_licencia'] = $csrf_importar_licencia;
 }
 // Texto plano para la exportación a Licencia.txt (solo si hay licencia).
 $licInfoRegistro_txt = '';
@@ -8465,6 +8473,37 @@ body > .swal2-container { z-index: 10500 !important; }
     outline-offset: 2px;
 }
 
+/* Importar una licencia nueva (solo Administrador) */
+#mirOverlay .btn-iso-importar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-right: 0.5rem;
+    padding: 0.5rem 1.125rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #dbeafe;
+    background: linear-gradient(180deg, #1d4ed8, #1e3a8a);
+    border: 1px solid rgba(0, 0, 0, 0.20);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: filter 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+#mirOverlay .btn-iso-importar:hover {
+    filter: brightness(1.12);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.40);
+}
+#mirOverlay .btn-iso-importar:active {
+    transform: translateY(1px);
+    filter: brightness(0.95);
+}
+#mirOverlay .btn-iso-importar:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
 /* ---------- Estado sin licencia ---------- */
 #mirOverlay .mir-sin-lic {
     text-align: center;
@@ -8585,6 +8624,13 @@ body > .swal2-container { z-index: 10500 !important; }
                 <?php endif; ?>
             </div>
             <div class="actions">
+                
+<?php if ($puede_importar_licencia): ?>
+
+                <button type="button" class="btn-iso-importar" onclick="abrirModalImportarLicencia()">
+                    <i class="fas fa-file-import"></i>Importar Licencia
+                </button>
+                <?php endif; ?>
                 <?php if ($puede_eliminar_licencia): ?>
                 <button type="button" class="btn-iso-eliminar" onclick="eliminarRegistroLicencia(this)">
                     <i class="fas fa-trash-alt"></i>Eliminar Reg.
@@ -8600,6 +8646,480 @@ body > .swal2-container { z-index: 10500 !important; }
 </template>
 <script>var LIC_INFO_TXT = <?php echo json_encode($licInfoRegistro_txt); ?>;
 var LIC_INFO_NOMBRE = <?php echo json_encode($licHasRegistro ? $licInfoRegistro['registro'] : ''); ?>;
-var CSRF_ELIMINAR_LICENCIA = <?php echo json_encode($csrf_eliminar_licencia); ?>;</script>
+var CSRF_ELIMINAR_LICENCIA = <?php echo json_encode($csrf_eliminar_licencia); ?>;
+var CSRF_IMPORTAR_LICENCIA = <?php echo json_encode($csrf_importar_licencia); ?>;</script>
+
+
+<?php if ($puede_importar_licencia): ?>
+<!-- ==========================================================================
+     Importar Licencia (solo rol 1 / Administrador)
+     Lo usan el boton del dialogo Informacion del Registro y la opcion
+     "Importar Licencia" del menu de acciones de users.php.
+     Modal propio (sin dependencia de Bootstrap) con dos vias:
+       1) Importar archivo  -> selector de archivos .lic
+       2) Escribir manual   -> pegar el texto de la licencia
+     ========================================================================== -->
+<style id="licImpStyle">
+.licimp-overlay {
+    position: fixed; inset: 0; z-index: 10450;
+    display: none; align-items: center; justify-content: center;
+    padding: 1rem; background: rgba(2, 6, 23, 0.72);
+}
+.licimp-overlay.licimp-abierto { display: flex; }
+.licimp-box {
+    width: min(34rem, 100%); max-height: 92vh; overflow-y: auto;
+    background: var(--card-bg, #1e293b);
+    color: var(--txt, #e2e8f0);
+    border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+    border-radius: 10px;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+.licimp-titlebar {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.65rem 0.9rem;
+    background: linear-gradient(180deg, rgba(0, 120, 212, 0.28), rgba(0, 120, 212, 0.10));
+    border-bottom: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+    font-size: 0.85rem; font-weight: 700;
+}
+.licimp-titlebar i { color: #60a5fa; }
+.licimp-title { flex: 1; }
+.licimp-close {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.6rem; height: 1.6rem;
+    color: #cbd5e1; background: rgba(148, 163, 184, 0.14);
+    border: 0; border-radius: 5px; cursor: pointer;
+}
+.licimp-close:hover { color: #fff; background: #dc2626; }
+.licimp-body { padding: 1rem 1.1rem 1.1rem; }
+.licimp-intro { margin: 0 0 0.85rem; font-size: 0.85rem; color: var(--muted, #cbd5e1); }
+.licimp-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+@media (max-width: 480px) { .licimp-opciones { grid-template-columns: 1fr; } }
+.licimp-opcion {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem;
+    padding: 0.85rem 0.9rem; text-align: left;
+    color: var(--txt, #e2e8f0);
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+    border-radius: 8px; cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+.licimp-opcion:hover {
+    background: rgba(0, 120, 212, 0.14);
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+}
+.licimp-opcion:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+.licimp-opcion > i { font-size: 1.1rem; color: #60a5fa; }
+.licimp-opcion-titulo { font-size: 0.85rem; font-weight: 700; }
+.licimp-opcion-desc { font-size: 0.75rem; color: var(--muted, #cbd5e1); line-height: 1.4; }
+.licimp-zona { margin-top: 0.9rem; }
+.licimp-label { display: block; margin-bottom: 0.35rem; font-size: 0.8rem; font-weight: 600; }
+.licimp-estado {
+    display: flex; align-items: flex-start; gap: 0.45rem;
+    margin-top: 0.5rem; padding: 0.5rem 0.6rem;
+    font-size: 0.75rem; line-height: 1.45;
+    border: 1px solid transparent; border-radius: 6px;
+}
+.licimp-estado i { margin-top: 0.1rem; flex-shrink: 0; }
+.licimp-estado-espera { color: var(--muted, #cbd5e1); background: rgba(148, 163, 184, 0.10); border-color: rgba(148, 163, 184, 0.22); }
+.licimp-estado-espera i { color: #94a3b8; }
+.licimp-estado-ok { color: #bbf7d0; background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.32); }
+.licimp-estado-ok i { color: #22c55e; }
+.licimp-estado-error { color: #fecaca; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.32); }
+.licimp-estado-error i { color: #ef4444; }
+.licimp-estado-datos { display: block; margin-top: 0.25rem; opacity: 0.9; }
+.licimp-textarea {
+    width: 100%; padding: 0.6rem 0.7rem; resize: vertical;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.75rem; line-height: 1.45; word-break: break-all;
+    color: var(--txt, #e2e8f0);
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+    border-radius: 6px;
+}
+.licimp-textarea:focus { outline: none; border-color: #3b82f6; }
+.licimp-acciones, .licimp-pie {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+    margin-top: 0.9rem;
+}
+.licimp-pie {
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color, rgba(148, 163, 184, 0.18));
+}
+.licimp-nota { flex: 1; font-size: 0.72rem; color: var(--muted, #cbd5e1); }
+.licimp-nota i { color: #fbbf24; margin-right: 0.25rem; }
+.licimp-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.45rem 0.95rem; font-size: 0.8rem; font-weight: 600;
+    color: #fff; background: linear-gradient(180deg, #1d4ed8, #1e3a8a);
+    border: 1px solid rgba(0, 0, 0, 0.2); border-radius: 6px; cursor: pointer;
+}
+.licimp-btn:hover { filter: brightness(1.12); }
+.licimp-btn:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+.licimp-btn[disabled] { opacity: 0.6; cursor: progress; }
+.licimp-btn-secundario { color: #e2e8f0; background: rgba(148, 163, 184, 0.18); }
+.licimp-btn-secundario:hover { background: rgba(148, 163, 184, 0.30); }
+</style>
+
+<div class="licimp-overlay" id="licImpOverlay">
+    <div class="licimp-box" role="dialog" aria-modal="true" aria-labelledby="licImpTitulo">
+        <div class="licimp-titlebar">
+            <i class="fas fa-file-import"></i>
+            <span class="licimp-title" id="licImpTitulo">Importar Licencia</span>
+            <button type="button" class="licimp-close" onclick="cerrarModalImportarLicencia()" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="licimp-body">
+            <p class="licimp-intro"><i class="fas fa-circle-question" style="color:#60a5fa;"></i> &iquest;C&oacute;mo desea importar la licencia?</p>
+
+            <div class="licimp-opciones" id="licImpOpciones">
+                <button type="button" class="licimp-opcion" onclick="licImportarElegirArchivo()">
+                    <i class="fas fa-folder-open"></i>
+                    <span class="licimp-opcion-titulo">Importar archivo</span>
+                    <span class="licimp-opcion-desc">Seleccione un archivo <b>.lic</b> desde el computador.</span>
+                </button>
+                <button type="button" class="licimp-opcion" onclick="licImportarMostrarManual()">
+                    <i class="fas fa-keyboard"></i>
+                    <span class="licimp-opcion-titulo">Escribir manual</span>
+                    <span class="licimp-opcion-desc">Pegue el texto de la licencia entregado por el sistema.</span>
+                </button>
+            </div>
+
+            <div class="licimp-zona" id="licImpZonaManual" hidden>
+                <label class="licimp-label" for="licImpTexto"><i class="fas fa-paste" style="color:#34d399;"></i> Texto de la licencia</label>
+                <textarea class="licimp-textarea" id="licImpTexto" rows="5" spellcheck="false" oninput="licImportarValidarTexto()" placeholder="Pegue aqui la licencia, por ejemplo:&#10;yCd9ilbVOXsNz7nMSvwFnGqLa4FQxw5kv+HK18QA2z5..."></textarea>
+                <div class="licimp-estado licimp-estado-espera" id="licImpEstadoTexto">
+                    <i class="fas fa-circle-info"></i>
+                    <span id="licImpEstadoTextoMsg">Pegue el texto de la licencia para verificarlo.</span>
+                </div>
+                <div class="licimp-acciones">
+                    <button type="button" class="licimp-btn licimp-btn-secundario" onclick="licImportarVolver()">
+                        <i class="fas fa-recycle"></i> Resetear
+                    </button>
+                    <button type="button" class="licimp-btn" id="licImpBtnEnviar" onclick="licImportarEnviarManual()">
+                        <i class="fas fa-file-import"></i> Importar
+                    </button>
+                </div>
+            </div>
+
+            <div class="licimp-pie">
+                <span class="licimp-nota">
+                    <i class="fas fa-shield-halved"></i>
+                    Solo el Administrador puede cambiar la licencia de este equipo.
+                </span>
+                <button type="button" class="licimp-btn licimp-btn-secundario" onclick="cerrarModalImportarLicencia()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Selector de archivo .lic, oculto: lo dispara la opcion "Importar archivo" -->
+<input type="file" id="archivoLicImportar" accept=".lic" class="d-none" onchange="importarLicenciaArchivo(this)">
+
+<script>
+/* ---------- Montaje en document.body ----------
+   Este include se imprime dentro de la barra superior, que aplica
+   backdrop-filter; eso convierte la barra en bloque contenedor y rompe el
+   position: fixed del modal (no queda centrado) y lo deja por detras del
+   modal "Informacion del Registro". Por eso el modal, su estilo y el input
+   de archivo se mueven al body, igual que hace abrirModalInfoRegistro(). */
+(function () {
+    var nodos = ['licImpStyle', 'licImpOverlay', 'archivoLicImportar'];
+    for (var i = 0; i < nodos.length; i++) {
+        var n = document.getElementById(nodos[i]);
+        if (!n) continue;
+        if (nodos[i] === 'licImpStyle') {
+            if (n.parentNode !== document.head) document.head.appendChild(n);
+        } else if (n.parentNode !== document.body) {
+            document.body.appendChild(n);
+        }
+    }
+})();
+
+/* ---------- Modal de importacion de licencia ---------- */
+
+function abrirModalImportarLicencia() {
+    var overlay = document.getElementById('licImpOverlay');
+    if (!overlay) return;
+    var texto = document.getElementById('licImpTexto');
+    if (texto) texto.value = '';
+    licImportarEstadoTexto('espera', 'Pegue el texto de la licencia para verificarlo.');
+    licImportarHabilitarBoton(false);
+    licImportarMostrarOpciones();
+    overlay.classList.add('licimp-abierto');
+    document.body.style.overflow = 'hidden';
+    var opciones = document.getElementById('licImpOpciones');
+    if (opciones && opciones.querySelector('.licimp-opcion')) {
+        opciones.querySelector('.licimp-opcion').focus();
+    }
+}
+
+function cerrarModalImportarLicencia() {
+    var overlay = document.getElementById('licImpOverlay');
+    if (overlay) overlay.classList.remove('licimp-abierto');
+    document.body.style.overflow = '';
+    var input = document.getElementById('archivoLicImportar');
+    if (input) input.value = '';
+}
+
+function licImportarMostrarOpciones() {
+    var opciones = document.getElementById('licImpOpciones');
+    var zona = document.getElementById('licImpZonaManual');
+    if (opciones) opciones.hidden = false;
+    if (zona) zona.hidden = true;
+}
+
+function licImportarMostrarManual() {
+    var opciones = document.getElementById('licImpOpciones');
+    var zona = document.getElementById('licImpZonaManual');
+    if (opciones) opciones.hidden = true;
+    if (zona) zona.hidden = false;
+    licImportarEstadoTexto('espera', 'Pegue el texto de la licencia para verificarlo.');
+    licImportarHabilitarBoton(false);
+    var texto = document.getElementById('licImpTexto');
+    if (texto) { texto.focus(); texto.setSelectionRange(texto.value.length, texto.value.length); }
+}
+
+function licImportarVolver() {
+    var texto = document.getElementById('licImpTexto');
+    if (texto) texto.value = '';
+    licImportarEstadoTexto('espera', 'Pegue el texto de la licencia para verificarlo.');
+    licImportarHabilitarBoton(false);
+}
+
+/* ---------- Validacion en vivo del texto pegado (check / X) ---------- */
+
+var licImportarTemporizador = null;
+
+function licImportarEstadoTexto(estado, mensaje, datos) {
+    var caja = document.getElementById('licImpEstadoTexto');
+    var texto = document.getElementById('licImpEstadoTextoMsg');
+    if (!caja || !texto) return;
+    caja.className = 'licimp-estado licimp-estado-' + estado;
+    var icono = caja.querySelector('i');
+    if (icono) icono.className = estado === 'ok' ? 'fas fa-circle-check' : (estado === 'error' ? 'fas fa-circle-xmark' : 'fas fa-circle-info');
+    texto.innerHTML = licImportarEsc(mensaje) + (datos ? '<span class="licimp-estado-datos">' + datos + '</span>' : '');
+}
+
+function licImportarHabilitarBoton(activar) {
+    var boton = document.getElementById('licImpBtnEnviar');
+    if (boton) boton.disabled = !activar;
+}
+
+/* Se dispara con oninput al escribir o pegar; espera a que el usuario termine. */
+function licImportarValidarTexto() {
+    var campo = document.getElementById('licImpTexto');
+    if (!campo) return;
+    if (licImportarTemporizador) clearTimeout(licImportarTemporizador);
+    var texto = campo.value.trim();
+    if (texto.length < 20) {
+        licImportarEstadoTexto('espera', 'Pegue el texto de la licencia para verificarlo.');
+        licImportarHabilitarBoton(false);
+        return;
+    }
+    licImportarEstadoTexto('espera', 'Verificando la licencia...');
+    licImportarHabilitarBoton(false);
+    licImportarTemporizador = setTimeout(function () { licImportarComprobarTexto(texto); }, 400);
+}
+
+function licImportarComprobarTexto(texto) {
+    var datos = new FormData();
+    datos.append('csrf', typeof CSRF_IMPORTAR_LICENCIA !== 'undefined' ? CSRF_IMPORTAR_LICENCIA : '');
+    datos.append('accion', 'validar');
+    datos.append('modo', 'manual');
+    datos.append('texto', texto);
+
+    fetch('<?php echo $base_prefix; ?>includes/importar_licencia.php', {
+        method: 'POST',
+        body: datos,
+        credentials: 'same-origin'
+    }).then(function (r) { return r.json(); })
+      .then(function (respuesta) {
+          if (respuesta.ok) {
+              var detalle = '<b>Registro:</b> ' + licImportarEsc(respuesta.registro)
+                          + ' &nbsp;|&nbsp; <b>Usuario:</b> ' + licImportarEsc(respuesta.usuario)
+                          + ' &nbsp;|&nbsp; <b>Termino:</b> ' + licImportarEsc(respuesta.termino)
+                          + ' &nbsp;|&nbsp; <b>Vence:</b> ' + licImportarEsc(respuesta.vence)
+                          + ' &nbsp;|&nbsp; <b>Estado:</b> ' + licImportarEsc(respuesta.estado);
+              licImportarEstadoTexto('ok', 'Licencia valida para este equipo.', detalle);
+              licImportarHabilitarBoton(true);
+          } else {
+              licImportarEstadoTexto('error', respuesta.mensaje);
+              licImportarHabilitarBoton(false);
+          }
+      })
+      .catch(function () {
+          licImportarEstadoTexto('error', 'No se pudo verificar la licencia. Intente de nuevo.');
+          licImportarHabilitarBoton(false);
+      });
+}
+
+/* "Importar archivo": cierra el modal y abre el explorador de archivos. */
+function licImportarElegirArchivo() {
+    cerrarModalImportarLicencia();
+    var input = document.getElementById('archivoLicImportar');
+    if (input) input.click();
+}
+
+/* Escape con el modal abierto lo cierra. */
+document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    var overlay = document.getElementById('licImpOverlay');
+    if (overlay && overlay.classList.contains('licimp-abierto')) {
+        ev.preventDefault();
+        cerrarModalImportarLicencia();
+    }
+});
+
+/* ---------- Envio al servidor (archivo o texto pegado) ---------- */
+
+function licImportarEsc(texto) {
+    var div = document.createElement('div');
+    div.textContent = (texto === null || texto === undefined) ? '' : String(texto);
+    return div.innerHTML;
+}
+
+function licImportarMostrarError(mensaje) {
+    if (typeof Swal === 'undefined') { window.alert(mensaje); return; }
+    Swal.fire({
+        title: '<i class="fas fa-triangle-exclamation" style="color:#f87171"></i> No se pudo importar',
+        text: mensaje,
+        icon: 'error',
+        confirmButtonText: '<i class="fas fa-check"></i> Entendido',
+        confirmButtonColor: '#0078d4',
+        background: '#1e1e2f',
+        color: '#ffffff',
+        zIndex: 10600
+    });
+}
+
+function licImportarRestaurarBoton(boton) {
+    if (!boton) return;
+    boton.disabled = false;
+    boton.innerHTML = '<i class="fas fa-file-import"></i> Importar';
+}
+
+/* Envia los datos ya armados y muestra el resultado. */
+function licImportarEnviar(datos, boton) {
+    fetch('<?php echo $base_prefix; ?>includes/importar_licencia.php', {
+        method: 'POST',
+        body: datos,
+        credentials: 'same-origin'
+    }).then(function (r) {
+        return r.json().catch(function () {
+            return { ok: false, mensaje: 'Respuesta invalida del servidor (codigo ' + r.status + ').' };
+        });
+    }).then(function (respuesta) {
+        licImportarRestaurarBoton(boton);
+        if (typeof Swal === 'undefined') { if (respuesta.ok) window.location.reload(); return; }
+        Swal.fire({
+            title: respuesta.ok
+                ? '<i class="fas fa-circle-check" style="color:#34d399"></i> Licencia importada'
+                : '<i class="fas fa-triangle-exclamation" style="color:#f87171"></i> No se pudo importar',
+            html: respuesta.ok
+                ? 'La licencia quedo instalada en este equipo.<br><br>' +
+                  (respuesta.registro ? '<b>Registro:</b> ' + licImportarEsc(respuesta.registro) + '<br>' : '') +
+                  (respuesta.usuario ? '<b>Usuario:</b> ' + licImportarEsc(respuesta.usuario) + '<br>' : '') +
+                  (respuesta.termino ? '<b>Termino:</b> ' + licImportarEsc(respuesta.termino) + '<br>' : '') +
+                  (respuesta.vence ? '<b>Vence:</b> ' + licImportarEsc(respuesta.vence) + '<br>' : '') +
+                  (respuesta.estado ? '<b>Estado:</b> ' + licImportarEsc(respuesta.estado) : '') +
+                  '<br><br>La pagina se recarga para mostrar los datos nuevos.'
+                : licImportarEsc(respuesta.mensaje),
+            icon: respuesta.ok ? 'success' : 'error',
+            confirmButtonText: '<i class="fas fa-check"></i> Entendido',
+            confirmButtonColor: '#0078d4',
+            background: '#1e1e2f',
+            color: '#ffffff',
+            allowOutsideClick: false,
+            zIndex: 10600
+        }).then(function () { if (respuesta.ok) window.location.reload(); });
+    }).catch(function () {
+        licImportarRestaurarBoton(boton);
+        licImportarMostrarError('No se pudo contactar al servidor. Intente de nuevo.');
+    });
+}
+
+/* ---------- Opcion 1: archivo .lic ---------- */
+function importarLicenciaArchivo(input) {
+    var archivo = input && input.files ? input.files[0] : null;
+    if (!archivo) return;
+
+    var nombre = archivo.name || '';
+    if (nombre.toLowerCase().slice(-4) !== '.lic') {
+        input.value = '';
+        licImportarMostrarError('Seleccione un archivo de licencia con extension .lic');
+        return;
+    }
+
+    Swal.fire({
+        title: '<i class="fas fa-file-import" style="color:#60a5fa"></i> Importar archivo .lic',
+        html: 'Se instalara <b>' + licImportarEsc(nombre) + '</b> en este equipo.' +
+              (typeof LIC_INFO_NOMBRE !== 'undefined' && LIC_INFO_NOMBRE
+                  ? '<br><br>La licencia actual (<b>' + licImportarEsc(LIC_INFO_NOMBRE) + '</b>) sera reemplazada.' : '') +
+              '<br><br>El archivo debe haber sido emitido para este equipo.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-file-import"></i> Sí, importar',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+        confirmButtonColor: '#0078d4',
+        cancelButtonColor: '#64748b',
+        reverseButtons: true,
+        background: '#1e1e2f',
+        color: '#ffffff',
+        zIndex: 10600
+    }).then(function (r) {
+        input.value = '';
+        if (!r.isConfirmed) return;
+        var datos = new FormData();
+        datos.append('csrf', typeof CSRF_IMPORTAR_LICENCIA !== 'undefined' ? CSRF_IMPORTAR_LICENCIA : '');
+        datos.append('modo', 'archivo');
+        datos.append('archivo_lic', archivo);
+        licImportarEnviar(datos, null);
+    });
+}
+
+/* ---------- Opcion 2: texto de la licencia pegado a mano ---------- */
+function licImportarEnviarManual() {
+    var campo = document.getElementById('licImpTexto');
+    var texto = campo ? campo.value.trim() : '';
+    if (texto === '') {
+        licImportarMostrarError('Pegue el texto de la licencia.');
+        if (campo) campo.focus();
+        return;
+    }
+
+    Swal.fire({
+        title: '<i class="fas fa-file-import" style="color:#60a5fa"></i> Importar licencia',
+        html: 'Se instalara la licencia pegada en este equipo.' +
+              (typeof LIC_INFO_NOMBRE !== 'undefined' && LIC_INFO_NOMBRE
+                  ? '<br><br>La licencia actual (<b>' + licImportarEsc(LIC_INFO_NOMBRE) + '</b>) sera reemplazada.' : '') +
+              '<br><br>Debe haber sido emitida para este equipo.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-file-import"></i> Sí, importar',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+        confirmButtonColor: '#0078d4',
+        cancelButtonColor: '#64748b',
+        reverseButtons: true,
+        background: '#1e1e2f',
+        color: '#ffffff',
+        zIndex: 10600
+    }).then(function (r) {
+        if (!r.isConfirmed) return;
+        var boton = document.getElementById('licImpBtnEnviar');
+        if (boton) { boton.disabled = true; boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando'; }
+        var datos = new FormData();
+        datos.append('csrf', typeof CSRF_IMPORTAR_LICENCIA !== 'undefined' ? CSRF_IMPORTAR_LICENCIA : '');
+        datos.append('modo', 'manual');
+        datos.append('texto', texto);
+        licImportarEnviar(datos, boton);
+    });
+}
+</script>
+<?php endif; ?>
 
 <?php include __DIR__ . '/theme_panel.php'; ?>

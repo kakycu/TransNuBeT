@@ -671,15 +671,15 @@ function licencia_leer_datos_planos($plano) {
 }
 
 /**
- * Lee un archivo .lic exportado (sin instalarlo).
- * @param string $ruta
- * @return array|null Datos de la licencia del archivo o null si falla.
+ * Lee y valida una licencia a partir de su texto (blob cifrado en Base64).
+ * Acepta tambien la cabecera antigua "sigesnom://licencia?".
+ * @param string $contenido Texto de la licencia.
+ * @return array|null Datos de la licencia o null si falla.
  */
-function licencia_leer_archivo_lic($ruta) {
-    if (!is_file($ruta) || !is_readable($ruta)) return null;
-    $contenido = @file_get_contents($ruta);
-    if ($contenido === false) return null;
+function licencia_leer_texto_lic($contenido) {
+    if (!is_string($contenido)) return null;
     $contenido = trim($contenido);
+    if ($contenido === '') return null;
     $valor = $contenido;
     // Compatibilidad con archivos antiguos con cabecera sigesnom://licencia?...
     if (strpos($contenido, 'sigesnom://licencia?') === 0) {
@@ -695,6 +695,44 @@ function licencia_leer_archivo_lic($ruta) {
 }
 
 /**
+ * Lee un archivo .lic exportado (sin instalarlo).
+ * @param string $ruta
+ * @return array|null Datos de la licencia del archivo o null si falla.
+ */
+function licencia_leer_archivo_lic($ruta) {
+    if (!is_file($ruta) || !is_readable($ruta)) return null;
+    $contenido = @file_get_contents($ruta);
+    if ($contenido === false) return null;
+    return licencia_leer_texto_lic($contenido);
+}
+
+/**
+ * Instala unos datos de licencia ya validados en este equipo.
+ * Verifica que la licencia no este dirigida a otra maquina y que no haya
+ * ya una licencia activa (en ese caso debe borrarse antes con licencia_borrar()).
+ * @param array $datos Datos devueltos por licencia_leer_texto_lic().
+ * @return array|false Datos instalados o false si no se pudo.
+ */
+function licencia_instalar_datos($datos) {
+    if (!is_array($datos)) return false;
+    if (licencia_activada()) return false;
+    $fp = licencia_fingerprint_machine();
+    if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fp)) return false;
+    return licencia_guardar($datos['registro'], $datos['usuario'], $datos['serial'], $datos['fecha_activacion']);
+}
+
+/**
+ * Importa (instala) una licencia desde su texto en Base64, sin archivo.
+ * @param string $contenido Texto de la licencia.
+ * @return array|false Datos instalados o false si no se pudo.
+ */
+function licencia_importar_texto($contenido) {
+    $datos = licencia_leer_texto_lic($contenido);
+    if ($datos === null) return false;
+    return licencia_instalar_datos($datos);
+}
+
+/**
  * Importa (instala) una licencia desde un archivo .lic exportado.
  * Se guarda únicamente si no hay una licencia válida activa en el equipo.
  * @param string $ruta Ruta del archivo .lic.
@@ -703,10 +741,7 @@ function licencia_leer_archivo_lic($ruta) {
 function licencia_importar_archivo($ruta) {
     $datos = licencia_leer_archivo_lic($ruta);
     if ($datos === null) return false;
-    if (licencia_activada()) return false;
-    $fp = licencia_fingerprint_machine();
-    if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fp)) return false;
-    $ok = licencia_guardar($datos['registro'], $datos['usuario'], $datos['serial'], $datos['fecha_activacion']);
+    $ok = licencia_instalar_datos($datos);
     if ($ok === false) return false;
     // Marcar el .lic como "ya activado en este equipo" (un solo uso).
     if ($datos['huella'] === '' && is_writable($ruta)) {
@@ -715,7 +750,7 @@ function licencia_importar_archivo($ruta) {
             'u' => $ok['usuario'],
             'k' => licencia_normalizar_serial($ok['serial']),
             'd' => $ok['fecha_activacion'],
-            'm' => $fp,
+            'm' => licencia_fingerprint_machine(),
         ));
         @file_put_contents($ruta, licencia_cifrar($plano), LOCK_EX);
     }

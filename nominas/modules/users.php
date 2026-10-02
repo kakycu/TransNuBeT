@@ -116,6 +116,10 @@ $error_no_encontrado = false;
 $es_admin = permiso_puede('usuarios', 'ver');
 $puede_editar_usuario = permiso_puede('usuarios', 'editar');
 $es_propio = ($id == $usuario_actual_id);
+// Importar una licencia nueva es exclusivo del rol 1 (Administrador).
+// Ojo: $es_admin tambien es true para el rol 5 (Soft), por eso se compara
+// el codigo de rol y no solo el permiso.
+$es_rol_admin_importar = (permiso_rol_codigo() === 'Admin');
 
 if (!$usuario) {
     if ($id == $usuario_actual_id) {
@@ -1443,6 +1447,14 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         <li><a class="dropdown-item" href="usuarios.php"><i class="fas fa-user-cog me-2" style="color:#a78bfa;"></i>Gestionar Usuarios</a></li>
         <?php endif; ?>
         <li><hr class="dropdown-divider"></li>
+        <?php if ($es_rol_admin_importar): ?>
+        <li>
+            <a class="dropdown-item" href="#" id="btnImportarLicencia"
+               onclick="event.preventDefault(); if (typeof abrirModalImportarLicencia === 'function') { abrirModalImportarLicencia(); }">
+                <i class="fas fa-file-import me-2" style="color:#60a5fa;"></i>Importar Licencia
+            </a>
+        </li>
+        <?php endif; ?>
         <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>includes/bloquear_sesion.php"><i class="fas fa-user-lock me-2" style="color:#f59e0b;"></i>Bloquear Sesión</a></li>
         <li><a class="dropdown-item text-danger" href="#" id="btnCerrarSesionPerfil"><i class="fas fa-sign-out-alt me-2"></i>Cerrar sesión</a></li>
     </ul>
