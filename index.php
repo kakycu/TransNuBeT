@@ -73,6 +73,7 @@ if (isset($_GET['licencia_json']) && $_GET['licencia_json'] === '1') {
         'registro' => ($datos !== null && ($datos['registro'] ?? '') !== '') ? $datos['registro'] : '—',
         'usuario'  => ($datos !== null && ($datos['usuario'] ?? '') !== '') ? $datos['usuario'] : '—',
         'tipo'     => ($datos !== null && ($datos['info']['nombre'] ?? '') !== '') ? $datos['info']['nombre'] : '—',
+        'instalada' => ($datos !== null && !empty($datos['fecha_activacion'])) ? date('d/m/Y', (int)$datos['fecha_activacion']) : '—',
         'vence'    => licencia_texto_vencimiento($datos),
         'serial'   => ($datos !== null && ($datos['serial'] ?? '') !== '') ? licencia_formatear_serial($datos['serial']) : '—',
         'huella'   => licencia_fingerprint_equipo(),
@@ -99,6 +100,19 @@ $SITE_NAME = $COMPANY_NAME . ' - Centro de Control.';
 $SITE_EMAIL = defined('EMAIL_EMPRESA') ? EMAIL_EMPRESA : 'kakycu@gmail.com';
 $SITE_PHONE = defined('TELEFONO_EMPRESA') ? TELEFONO_EMPRESA : '+53 5 2712861';
 $SITE_PHONE_LINK = preg_replace('/[^0-9+]/', '', $SITE_PHONE);
+// Segundo movil empresarial y correo de soporte fijo: datos de contacto adicionales
+// que se muestran en un bloque aparte, bajo las vias de contacto de la base de datos.
+$CONTACTO_MOVIL_ALT      = '+53 52712861';
+$CONTACTO_MOVIL_ALT_LINK = preg_replace('/[^0-9+]/', '', $CONTACTO_MOVIL_ALT);
+$CONTACTO_EMAIL_ALT      = 'kakycu@gmail.com';
+// Rotulo de las vias de contacto que vienen de la base de datos.
+$CONTACTO_TITULO_VIAS = '<strong>V&iacute;as de contacto</strong><br>';
+// Bloque fijo de soporte. Usa entidades numericas para los emojis y asi no
+// depender de la codificacion del archivo.
+$CONTACTO_ADICIONAL =
+        '<br>' . "\n" . '<strong>Contacto de Soporte Fijo:</strong><br>'
+    . '&#128241; <strong>M&oacute;vil Empresarial:</strong> <a href="tel:' . $CONTACTO_MOVIL_ALT_LINK . '" style="color:#60a5fa;">' . $CONTACTO_MOVIL_ALT . '</a><br>'
+    . "\n" . '&#9993;&#65039; <strong>Email Soporte:</strong> <a href="mailto:' . $CONTACTO_EMAIL_ALT . '" style="color:#60a5fa;">' . $CONTACTO_EMAIL_ALT . '</a>';
 $SLOGAN = defined('SLOGAN') ? SLOGAN : 'Eslogan Corporativo Identificativo.';
 
 // Intentar conexión a MySQL
@@ -112,6 +126,14 @@ try {
         $server_status['mysql_error'] = $conn->connect_error;
     } else {
         $server_status['mysql'] = true;
+
+        // Version real del motor MySQL/MariaDB en uso, para el pie de pagina.
+        $mysql_info = (string) $conn->server_info;
+        if (preg_match('/^\d+(\.\d+){1,2}/', $mysql_info, $m)) {
+            $MYSQL_VERSION_REAL = $m[0];
+        } else {
+            $MYSQL_VERSION_REAL = $mysql_info;
+        }
         
         // 1. Obtener estados de subsistemas
         $res = $conn->query("SELECT codigo, estado FROM subsistemas");
@@ -163,6 +185,27 @@ try {
 
 $current_year = date('Y');
 $server_ok = $server_status['php'] && $server_status['mysql'];
+
+// Versiones reales que se muestran en el pie de pagina (nunca se inventan).
+$PHP_VERSION_REAL = PHP_VERSION;
+if (!isset($MYSQL_VERSION_REAL) || $MYSQL_VERSION_REAL === '') {
+    $MYSQL_VERSION_REAL = 'No disponible';
+}
+
+// Marca del sistema. La version viene de config.php (SITE_VERSION) y la
+// empresa es la que tiene el sistema instalado, leida de configuracion_general.
+// Se arma despues de la consulta para que siempre use el nombre de la base.
+$MARCA_PRODUCTO   = 'SisGesNom';
+$VERSION_PRODUCTO = trim((string) $SITE_VERSION);
+if ($VERSION_PRODUCTO === '') {
+    $VERSION_PRODUCTO = 'v0.0.0';
+} elseif ($VERSION_PRODUCTO[0] !== 'v') {
+    $VERSION_PRODUCTO = 'v' . $VERSION_PRODUCTO;
+}
+// "SisGesNom® v2.0.1"
+$MARCA_SISTEMA = $MARCA_PRODUCTO . '&reg; ' . $VERSION_PRODUCTO;
+// "SisGesNom® v2.0.1 - PDL TransNuBeT®"
+$LICENCIA_MARCA = $MARCA_SISTEMA . ' - ' . $COMPANY_NAME;
 
 if (!isset($mantenimiento_activo)) {
     $mantenimiento_activo = false;
@@ -281,7 +324,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             background: rgba(15, 23, 42, 0.7);
             backdrop-filter: blur(20px);
             border-radius: 28px;
-            margin-bottom: 40px;
+            margin-bottom: 16px;
             border: 1px solid rgba(59, 130, 246, 0.2);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
             animation: fadeInDown 0.6s ease-out;
@@ -374,7 +417,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             backdrop-filter: blur(20px);
             border-radius: 32px;
             padding: 2px 8px;
-            margin-bottom: 40px;
+            margin-bottom: 16px;
             border: 1px solid rgba(59, 130, 246, 0.3);
             text-align: center;
             animation: fadeInUp 0.8s ease-out;
@@ -406,7 +449,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 24px;
-            margin-bottom: 40px;
+            margin-bottom: 16px;
         }
 
         .subsystem-card {
@@ -792,9 +835,9 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
 
         .footer-info-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 16px;
-            padding: 20px 28px;
+            padding: 0px 28px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
@@ -857,6 +900,43 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             font-size: 0.7rem;
             color: #64748b;
             text-align: center;
+        }
+
+        /* Enlaces del pie (Terminos, Privacidad, Soporte, Contactenos) */
+        .footer-link {
+            color: #64748b;
+            text-decoration: none;
+            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            transition: color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+        }
+
+        .footer-link i {
+            transition: transform 0.25s ease, color 0.25s ease;
+        }
+
+        .footer-link:hover {
+            color: #60a5fa;
+            background: rgba(59, 130, 246, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .footer-link:hover i {
+            color: #60a5fa;
+            transform: scale(1.25) rotate(-8deg);
+        }
+
+        .footer-link:active {
+            transform: translateY(0) scale(0.96);
+        }
+
+        .footer-link:focus-visible {
+            outline: 2px solid #60a5fa;
+            outline-offset: 2px;
         }
 
         .footer-copyright:hover .unicorn-icon {
@@ -957,6 +1037,22 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             background: rgba(59, 130, 246, 0.15);
             color: #60a5fa;
             padding-left: 24px;
+        }
+
+        /* Aviso de licencia: fondo rojo cuando no hay licencia o esta vencida */
+        .custom-dropdown-menu .dropdown-item.lic-alerta {
+            background: rgba(239, 68, 68, 0.16);
+            color: #fca5a5;
+            box-shadow: inset 3px 0 0 #ef4444;
+        }
+
+        .custom-dropdown-menu .dropdown-item.lic-alerta i {
+            color: #f87171;
+        }
+
+        .custom-dropdown-menu .dropdown-item.lic-alerta:hover {
+            background: rgba(239, 68, 68, 0.26);
+            color: #fecaca;
         }
 
         .custom-dropdown-menu .dropdown-item i {
@@ -1125,7 +1221,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             </div>
             <div class="logo-text">
                 <h2><?php echo htmlspecialchars($COMPANY_NAME); ?> · <?php echo htmlspecialchars($SLOGAN); ?></h2>
-                <span style="font-size: 18px">Plataforma de Desarrollo de Subsistemas · <?php echo htmlspecialchars($SITE_VERSION); ?></span>
+                <span style="font-size: 18px">Plataforma de Desarrollo de Subsistemas <?php echo $MARCA_SISTEMA; ?></span>
             </div>
         </div>
         <div class="header-badge">
@@ -1147,7 +1243,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
                         <i class="fas fa-print"></i> Ficha Costo Impres. Papel Adhesivo
                     </button>
                     <div class="dropdown-divider"></div>
-                    <button class="dropdown-item" data-servicio="licencia">
+                    <button class="dropdown-item" data-servicio="licencia" id="opcionLicencia">
                         <i class="fas fa-key"></i> Estado de la Licencia
                     </button>
                     <div class="dropdown-divider"></div>
@@ -1337,7 +1433,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             <div class="footer-brand">
                 <i class="fas fa-cog"></i>
                 <div class="brand-text">
-                    <h4><?php echo htmlspecialchars($COMPANY_NAME); ?></h4>
+                    <h4><?php echo $MARCA_SISTEMA; ?> - <?php echo htmlspecialchars($COMPANY_NAME); ?></h4>
                     <p><?php echo htmlspecialchars($SLOGAN); ?></p>
                 </div>
             </div>
@@ -1352,7 +1448,14 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
                 <i class="fas fa-database"></i>
                 <div class="info-details">
                     <h4>Base de Datos</h4>
-                    <p>MySQL 8.0 · Alta disponibilidad</p>
+                    <p>MySQL <?php echo htmlspecialchars($MYSQL_VERSION_REAL); ?> · Alta disponibilidad</p>
+                </div>
+            </div>
+            <div class="footer-info-item" onclick="abrirModalIndex('php')">
+                <i class="fab fa-php"></i>
+                <div class="info-details">
+                    <h4>PHP</h4>
+                    <p>v<?php echo htmlspecialchars($PHP_VERSION_REAL); ?> · Motor del sistema</p>
                 </div>
             </div>
             <div class="footer-info-item" onclick="abrirModalIndex('seguridad')">
@@ -1383,19 +1486,19 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
                 <img src="images/Unicorn.png" alt="Unicornio" class="unicorn-icon">
                 <span>Copyright © <?php echo $current_year; ?> UnicornioSoftware° - Kaky&reg;. Todos los derechos reservados.</span>
                 <div style="display: inline-flex; gap: 12px; align-items: center;">
-                    <a href="terminos.php" style="color: #64748b; text-decoration: none; font-size: 0.7rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px;">
+                    <a href="terminos.php" class="footer-link" target="_blank" rel="noopener noreferrer">
                         <i class="fas fa-file-contract"></i> Términos
                     </a>
                     <span style="color: #64748b;">•</span>
-                    <a href="privacidad.php" style="color: #64748b; text-decoration: none; font-size: 0.7rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px;">
+                    <a href="privacidad.php" class="footer-link" target="_blank" rel="noopener noreferrer">
                         <i class="fas fa-lock"></i> Privacidad
                     </a>
                     <span style="color: #64748b;">•</span>
-                    <a href="soporte.php" style="color: #64748b; text-decoration: none; font-size: 0.7rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px;">
+                    <a href="soporte.php" class="footer-link" target="_blank" rel="noopener noreferrer">
                         <i class="fas fa-headset"></i> Soporte
                     </a>
                     <span style="color: #64748b;">•</span>
-                    <a href="contacto.php" style="color: #64748b; text-decoration: none; font-size: 0.7rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px;">
+                    <a href="contacto.php" class="footer-link" target="_blank" rel="noopener noreferrer">
                         <i class="fas fa-envelope"></i> Cont&aacute;ctenos
                     </a>
                 </div>
@@ -1456,8 +1559,9 @@ function showModuleWelcome(card) {
         Swal.fire({
             title: '⚠️ Servidor no disponible',
             html: `No es posible acceder porque el servidor (PHP/MySQL) no está funcionando correctamente.<br><br>
-                   📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br><br>
+                   <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
+                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
+                   <?php echo $CONTACTO_ADICIONAL; ?><br><br>
                    Contacte al administrador.`,
             background: '#0f172a',
             color: '#e2e8f0',
@@ -1471,8 +1575,9 @@ function showModuleWelcome(card) {
         Swal.fire({
             title: '⛔ Subsistema inactivo',
             html: `El subsistema de: <b>${moduleName}</b> se encuentra deshabilitado temporalmente.<br><br>
-                   📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br><br>
+                   <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
+                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
+                   <?php echo $CONTACTO_ADICIONAL; ?><br><br>
                    Contacte al administrador para más información.`,
             background: '#0f172a',
             color: '#e2e8f0',
@@ -1540,8 +1645,9 @@ function accessModule(url, moduleName, moduleActivo) {
         Swal.fire({
             title: '⚠️ Servidor no disponible',
             html: `No es posible acceder porque el servidor (PHP/MySQL) no está funcionando correctamente.<br><br>
-                   📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br><br>
+                   <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
+                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
+                   <?php echo $CONTACTO_ADICIONAL; ?><br><br>
                    Contacte al administrador.`,
             icon: 'error',
             background: '#0f172a',
@@ -1555,8 +1661,9 @@ function accessModule(url, moduleName, moduleActivo) {
         Swal.fire({
             title: '⛔ Subsistema inactivo',
             html: `El subsistema de: <b>${moduleName}</b> se encuentra deshabilitado temporalmente.<br><br>
-                   📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br><br>
+                   <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
+                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
+                   <?php echo $CONTACTO_ADICIONAL; ?><br><br>
                    No es posible acceder.`,
             icon: 'warning',
             background: '#0f172a',
@@ -1591,8 +1698,9 @@ function accessModule(url, moduleName, moduleActivo) {
             Swal.fire({
                 title: '❌ Subsistema no disponible',
                 html: `El módulo <b>${moduleName}</b> no se encuentra instalado o la ruta es incorrecta.<br><br>
-                       📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                       ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br><br>
+<?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
+✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
+                     <?php echo $CONTACTO_ADICIONAL; ?><br><br>
                        Contacte al administrador para instalar o corregir la ruta.`,
                 icon: 'error',
                 background: '#0f172a',
@@ -1801,10 +1909,23 @@ const licenciaRaiz = {
     registro: <?php echo json_encode(($lic_raiz_datos['registro'] ?? '') !== '' ? $lic_raiz_datos['registro'] : '—'); ?>,
     usuario: <?php echo json_encode(($lic_raiz_datos['usuario'] ?? '') !== '' ? $lic_raiz_datos['usuario'] : '—'); ?>,
     tipo: <?php echo json_encode((($lic_raiz_datos['info']['nombre'] ?? '') !== '') ? $lic_raiz_datos['info']['nombre'] : '—'); ?>,
+    instalada: <?php echo json_encode($lic_raiz_datos !== null ? date('d/m/Y', (int)$lic_raiz_datos['fecha_activacion']) : '—'); ?>,
     vence: <?php echo json_encode(licencia_texto_vencimiento($lic_raiz_datos)); ?>,
     serial: <?php echo json_encode($lic_raiz_datos !== null && ($lic_raiz_datos['serial'] ?? '') !== '' ? licencia_formatear_serial($lic_raiz_datos['serial']) : '—'); ?>,
     huella: <?php echo json_encode($lic_raiz_huella); ?>
 };
+
+// La opcion "Estado de la Licencia" del menu se pinta en rojo cuando no hay
+// licencia registrada o la que hay esta vencida.
+(function () {
+    var opcion = document.getElementById('opcionLicencia');
+    if (!opcion) return;
+    var sinLicencia = !licenciaRaiz.tiene || !licenciaRaiz.activa || licenciaRaiz.vencida;
+    opcion.classList.toggle('lic-alerta', sinLicencia);
+    opcion.setAttribute('title', sinLicencia
+        ? 'No hay una licencia vigente en este equipo. Click para registrarla.'
+        : '');
+})();
 
 function licenciaHTML(d) {
     const color = d.activa ? '#22c55e' : (d.tiene ? '#ef4444' : '#f59e0b');
@@ -1817,6 +1938,7 @@ function licenciaHTML(d) {
     ${fila('Registro', `<i class="fas fa-building" style="color:#3b82f6;"></i> ${d.registro}`)}
     ${fila('Usuario', `<i class="fas fa-user" style="color:#3b82f6;"></i> ${d.usuario}`)}
     ${fila('Tipo', d.tipo)}
+    ${fila('Fecha Instalada', d.instalada)}
     ${fila('Vence el', d.vence)}
     ${fila('Licencia', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.serial}</span>${iconoCopiar(d.serial, 'Copiar licencia al portapapeles')}`, '#60a5fa')}
     ${fila('Huella del PC', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.huella}</span>${iconoCopiar(d.huella, 'Copiar huella del PC al portapapeles')}`, '#94a3b8')}`;
@@ -2112,8 +2234,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <hr style="margin: 15px 0; border-color: rgba(255,255,255,0.1);">
                             <p><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> Verifica el servicio de MySQL</p>
                             <br>
-                            📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                            ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a>
+                            <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
+                            ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
+                            <?php echo $CONTACTO_ADICIONAL; ?><br>
                         </div>
                     `,
                     icon: 'warning',
@@ -2229,6 +2352,11 @@ document.addEventListener('keydown', function (e) {
     overflow-y: auto;
     padding-right:0.375rem;
 }
+/* Modal de licencia (estado y aviso): un row mas de alto y un poco mas de
+   ancho, para que se vean todos los datos (serial y huella del equipo)
+   completos y sin tener que hacer scroll. */
+#modalIndex.licencia-amplio .iso-scroll { max-height:22.5rem; }
+#modalIndex.licencia-amplio .iso27001-box { max-width:41rem; }
 .iso27001-body h4 {
     font-size:0.9062rem;
     font-weight: 700;
@@ -2308,12 +2436,14 @@ var CONTENIDO_MODALES_INDEX = {
         icono: 'fa-key',
         titulo: 'Estado de la Licencia',
         sub: 'Registro y huella del equipo',
+        empresa: '<?= $LICENCIA_MARCA ?>',
         html: licenciaHTML(licenciaRaiz)
     },
     licencia_alerta: {
         icono: 'fa-triangle-exclamation',
         titulo: 'Licencia del sistema',
         sub: 'Se requiere una licencia vigente para operar',
+        empresa: '<?= $LICENCIA_MARCA ?>',
         html: (function() {
             const d = licenciaRaiz;
             const vencida = d.vencida;
@@ -2324,9 +2454,10 @@ var CONTENIDO_MODALES_INDEX = {
             </div>
             <h4>${vencida ? 'Su licencia ha vencido' : 'El sistema no tiene una licencia registrada'}</h4>
             <p>${vencida ? 'La licencia registrada para este equipo ya no tiene vigencia. Contacte al administrador para renovarla o instalar una nueva.' : 'Para operar con normalidad debe registrar una licencia válida correspondiente a la huella de este equipo.'}</p>
-            <h4>Vías de contacto</h4>
+            <h4>Vías de contacto:</h4>
             <p>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-            ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a></p>
+            ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
+            <?php echo $CONTACTO_ADICIONAL; ?></p>
             <p style="font-size:0.78rem; color:#64748b;">Huella de este equipo:
                 <span style="font-family:Consolas,monospace; color:#94a3b8;">${d.huella}</span>
                 <i class="fas fa-copy" title="Copiar huella al portapapeles" onclick="copiarHuella(this)"
@@ -2358,13 +2489,24 @@ var CONTENIDO_MODALES_INDEX = {
     bd: {
         icono: 'fa-database',
         titulo: 'Base de Datos',
-        sub: 'MySQL 8.0 · Alta disponibilidad',
+        sub: 'MySQL <?php echo htmlspecialchars($MYSQL_VERSION_REAL, ENT_QUOTES, "UTF-8"); ?> · Alta disponibilidad',
         html: '<h4>Motor robusto y confiable</h4>' +
-            '<p>El sistema opera sobre MySQL 8.0, un motor de bases de datos reconocido por su rendimiento, estabilidad y madurez a nivel mundial.</p>' +
+            '<p>El sistema opera sobre MySQL <?php echo htmlspecialchars($MYSQL_VERSION_REAL, ENT_QUOTES, "UTF-8"); ?>, un motor de bases de datos reconocido por su rendimiento, estabilidad y madurez a nivel mundial.</p>' +
             '<h4>Integridad y consistencia</h4>' +
             '<p>Los movimientos de nóminas, submayores y pagos se registran con integridad referencial y transacciones atómicas, garantizando que los cálculos siempre sean verificables.</p>' +
             '<h4>Alta disponibilidad</h4>' +
             '<p>Diseñado para operar en servidores locales con alta disponibilidad, permitiendo consultas y procesos en tiempo real dentro de la red de la institución.</p>'
+    },
+    php: {
+        icono: 'fa-code',
+        titulo: 'PHP',
+        sub: 'v<?php echo htmlspecialchars($PHP_VERSION_REAL, ENT_QUOTES, "UTF-8"); ?> · Motor del sistema',
+        html: '<h4>Lenguaje de ejecución</h4>' +
+            '<p>El sistema está desarrollado en PHP y se ejecuta sobre la versión v<?php echo htmlspecialchars($PHP_VERSION_REAL, ENT_QUOTES, "UTF-8"); ?> instalada en el servidor, con mejoras de rendimiento y tipado que garantizan estabilidad y seguridad.</p>' +
+            '<h4>Compatibilidad</h4>' +
+            '<p>El código sigue las prácticas recomendadas de la versión en uso, con consultas preparadas, manejo de sesiones seguro y soporte de UTF-8 en toda la aplicación.</p>' +
+            '<h4>Rendimiento</h4>' +
+            '<p>El motor de PHP procesa las nóminas, reportes y consultas del sistema en tiempo real dentro de la red local de la institución.</p>'
     },
     seguridad: {
         icono: 'fa-shield-alt',
@@ -2408,10 +2550,22 @@ function abrirModalIndex(tipo, htmlOverride) {
     document.getElementById('modalIdxIcon').className = 'fas ' + cfg.icono + ' tt-icon';
     document.getElementById('modalIdxTitulo').textContent = cfg.titulo;
     document.getElementById('modalIdxSub').textContent = cfg.sub;
+    // Todos los modales muestran el rotulo completo del sistema:
+    // SisGesNom® v<version config.php> - <empresa que lo tiene instalado>.
+    var isoEmpresa = document.querySelector('#modalIndex .iso-empresa');
+    if (isoEmpresa) {
+        isoEmpresa.innerHTML = '<i class="fas fa-building"></i>'
+            + (cfg.empresa || '<?= $LICENCIA_MARCA ?>');
+    }
     document.getElementById('modalIdxContenido').innerHTML = htmlOverride || cfg.html;
+    // "Registrar Licencia" aparece tanto en el aviso de licencia faltante/vencida
+    // como en el modal de estado de la licencia.
     var btnReg = document.getElementById('btnRegistrarLicencia');
-    if (btnReg) btnReg.style.display = (tipo === 'licencia_alerta') ? 'inline-block' : 'none';
-    document.getElementById('modalIndex').style.display = 'flex';
+    if (btnReg) btnReg.style.display = (tipo === 'licencia_alerta' || tipo === 'licencia') ? 'inline-block' : 'none';
+    var overlay = document.getElementById('modalIndex');
+    // Los modales de licencia usan una caja mas alta/ancha (clase licencia-amplio).
+    overlay.classList.toggle('licencia-amplio', String(tipo || '').indexOf('licencia') === 0);
+    overlay.style.display = 'flex';
 }
 function cerrarModalIndex() {
     modalIndexActual = null;

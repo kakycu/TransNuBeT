@@ -204,14 +204,36 @@ $base_prefix = $is_in_modules ? '../' : '';
     color: var(--corp-text-muted);
     text-decoration: none;
     font-size:0.7rem;
-    transition: all 0.2s ease;
+    transition: color 0.25s ease, background 0.25s ease, transform 0.25s ease;
     display: inline-flex;
     align-items: center;
     gap:0.25rem;
+    padding:0.125rem 0.375rem;
+    border-radius:0.5rem;
+}
+
+.copyright-link i {
+    transition: transform 0.25s ease, color 0.25s ease;
 }
 
 .copyright-link:hover {
     color: var(--corp-accent);
+    background: var(--corp-icon-bg);
+    transform: translateY(-0.125rem);
+}
+
+.copyright-link:hover i {
+    color: var(--corp-accent);
+    transform: scale(1.25) rotate(-8deg);
+}
+
+.copyright-link:active {
+    transform: translateY(0) scale(0.96);
+}
+
+.copyright-link:focus-visible {
+    outline: 0.125rem solid var(--corp-accent);
+    outline-offset: 0.125rem;
 }
 
 /* Separador de enlaces legales (antes estilo inline) */

@@ -3699,12 +3699,12 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 [data-theme="win11"] .table-snc tbody td { color:#ffffff !important; border-bottom-color:#3d3d3d !important; }
 [data-theme="win11"] .table-snc tbody td.text-muted { color:#9d9d9d !important; }
 /* ===== WIN11: BOTONES DE CERRAR (X) VISIBLES ===== */
-[data-theme="win11"] .btn-close-white,
-[data-theme="win11"] .modal .btn-close,
-[data-theme="win11"] .modal-content .btn-close,
-[data-theme="win11"] .modal-content-modern .btn-close,
-[data-theme="win11"] #modalTarjeta .btn-close,
-[data-theme="win11"] .btn-close {
+[data-theme="win11"] .btn-close-white:not(.btn-close-save),
+[data-theme="win11"] .modal .btn-close:not(.btn-close-save),
+[data-theme="win11"] .modal-content .btn-close:not(.btn-close-save),
+[data-theme="win11"] .modal-content-modern .btn-close:not(.btn-close-save),
+[data-theme="win11"] #modalTarjeta .btn-close:not(.btn-close-save),
+[data-theme="win11"] .btn-close:not(.btn-close-save) {
     filter:none !important;
     opacity:0.9 !important;
     color:#ffffff !important;
@@ -3715,11 +3715,11 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
     background-position:center !important;
     --bs-btn-close-bg:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") !important;
 }
-[data-theme="win11"] .modal .btn-close:hover,
-[data-theme="win11"] .modal-content .btn-close:hover,
-[data-theme="win11"] .modal-content-modern .btn-close:hover,
-[data-theme="win11"] #modalTarjeta .btn-close:hover,
-[data-theme="win11"] .btn-close:hover {
+[data-theme="win11"] .modal .btn-close:hover:not(.btn-close-save),
+[data-theme="win11"] .modal-content .btn-close:hover:not(.btn-close-save),
+[data-theme="win11"] .modal-content-modern .btn-close:hover:not(.btn-close-save),
+[data-theme="win11"] #modalTarjeta .btn-close:hover:not(.btn-close-save),
+[data-theme="win11"] .btn-close:hover:not(.btn-close-save) {
     opacity:1 !important;
     transform:none;
     filter:none !important;
@@ -8173,7 +8173,7 @@ if ($licHasRegistro) {
 
 /* ---------- Caja principal (superficie Mica del tema) ---------- */
 #mirOverlay .iso27001-box {
-    max-width: 36rem;
+    max-width: 52rem;
     width: 100%;
     background: var(--card, rgba(32, 32, 36, 0.88));
     backdrop-filter: blur(30px) saturate(160%);
@@ -8324,7 +8324,7 @@ body > .swal2-container { z-index: 10500 !important; }
 /* ---------- Grid de 3 columnas (Registro + Tiempo Restante + Por Término) ---------- */
 #mirOverlay .mir-grid-3 {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.5rem;
     margin-bottom: 0.5rem;
 }
@@ -8332,6 +8332,22 @@ body > .swal2-container { z-index: 10500 !important; }
 @media (max-width: 420px) {
     #mirOverlay .mir-grid-3 { grid-template-columns: 1fr; }
     #mirOverlay .mir-grid-3 .mir-row { margin-bottom: 0.5rem; }
+}
+
+/* ---------- Grid de 2 columnas (A Nombre de + Código) ---------- */
+#mirOverlay .mir-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+#mirOverlay .mir-grid-2 .mir-row { margin-bottom: 0; }
+#mirOverlay .mir-grid-2 .mir-row:nth-child(2)::before {
+    background: linear-gradient(90deg, var(--faint, #64748b), var(--muted, #94a3b8));
+}
+@media (max-width: 620px) {
+    #mirOverlay .mir-grid-2 { grid-template-columns: 1fr; }
+    #mirOverlay .mir-grid-2 .mir-row { margin-bottom: 0.5rem; }
 }
 
 /* ---------- Filas (tarjetas planas tintadas con el acento del tema) ---------- */
@@ -8588,33 +8604,35 @@ body > .swal2-container { z-index: 10500 !important; }
                         <span class="mir-value"><?php echo htmlspecialchars(date('d/m/Y h:i:s A', $licInfoRegistro['fecha_activacion'])); ?></span>
                     </div>
                     <div class="mir-row">
-                        <span class="mir-label"><i class="fas fa-clock"></i>Tiempo Restante</span>
-                        <?php $_mirVence = licencia_vencimiento($licInfoRegistro); ?>
-                        <span class="mir-value"><?php echo $_mirVence === null ? 'Permanente (no vence)' : htmlspecialchars(licencia_texto_vencimiento($licInfoRegistro)); ?></span>
-                    </div>
-                    <div class="mir-row">
                         <span class="mir-label"><i class="fas fa-hourglass-half"></i>Por Término de</span>
                         <span class="mir-value"><?php echo htmlspecialchars($licInfoRegistro['info']['nombre']); ?></span>
                     </div>
+                    <div class="mir-row">
+                        <span class="mir-label"><i class="fas fa-clock"></i>Tiempo Restante</span>
+                        <?php $_mirVence = licencia_vencimiento($licInfoRegistro); ?>
+                        <span class="mir-value"><?php echo $_mirVence === null ? 'Permanente (no vence)' : htmlspecialchars(licencia_texto_vencimiento($licInfoRegistro, '—', true)); ?></span>
+                    </div>
                 </div>
-                <div class="mir-row">
-                    <span class="mir-label"><i class="fas fa-user-tag"></i>A Nombre de</span>
-                    <span class="mir-value"><?php echo htmlspecialchars($licInfoRegistro['registro']); ?></span>
-                    <?php if ((string)($licInfoRegistro['usuario'] ?? '') !== ''): ?>
-                    <span class="mir-label mir-label-sep"><i class="fas fa-user"></i>Usuario</span>
-                    <span class="mir-value"><?php echo htmlspecialchars($licInfoRegistro['usuario']); ?></span>
-                    <?php endif; ?>
-                </div>
-                <div class="mir-row">
-                    <span class="mir-label"><i class="fas fa-key"></i>Código</span>
-                    <span class="mir-value mir-serial"><?php echo htmlspecialchars(licencia_formatear_serial($licInfoRegistro['serial'])); ?><i class="fas fa-copy mir-copiar" role="button" tabindex="0" title="Copiar código al portapapeles" aria-label="Copiar código al portapapeles" data-mir-titulo="Copiar código al portapapeles" data-mir-copiar="<?php echo htmlspecialchars(licencia_formatear_serial($licInfoRegistro['serial'])); ?>" onclick="copiarRegistroLicencia(this)"></i></span>
-                    <span class="mir-label mir-label-sep"><i class="fas fa-fingerprint"></i>Huella del Equipo</span>
-                    <?php if ($licInfoRegistro['huella'] !== ''): ?>
-                        <?php $_mirCoincide = hash_equals($licInfoRegistro['huella'], licencia_fingerprint_machine()); ?>
-                        <span class="mir-value mir-value-print"><?php echo htmlspecialchars(licencia_formatear_fingerprint($licInfoRegistro['huella'])); ?><i class="fas fa-copy mir-copiar" role="button" tabindex="0" title="Copiar huella del equipo al portapapeles" aria-label="Copiar huella del equipo al portapapeles" data-mir-titulo="Copiar huella del equipo al portapapeles" data-mir-copiar="<?php echo htmlspecialchars(licencia_formatear_fingerprint($licInfoRegistro['huella'])); ?>" onclick="copiarRegistroLicencia(this)"></i></span>
-                    <?php else: ?>
-                        <span class="mir-value">No vinculada a un equipo</span>
-                    <?php endif; ?>
+                <div class="mir-grid-2">
+                    <div class="mir-row">
+                        <span class="mir-label"><i class="fas fa-user-tag"></i>A Nombre de</span>
+                        <span class="mir-value"><?php echo htmlspecialchars($licInfoRegistro['registro']); ?></span>
+                        <?php if ((string)($licInfoRegistro['usuario'] ?? '') !== ''): ?>
+                        <span class="mir-label mir-label-sep"><i class="fas fa-user"></i>Usuario</span>
+                        <span class="mir-value"><?php echo htmlspecialchars($licInfoRegistro['usuario']); ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="mir-row">
+                        <span class="mir-label"><i class="fas fa-key"></i>Código</span>
+                        <span class="mir-value mir-serial"><?php echo htmlspecialchars(licencia_formatear_serial($licInfoRegistro['serial'])); ?><i class="fas fa-copy mir-copiar" role="button" tabindex="0" title="Copiar código al portapapeles" aria-label="Copiar código al portapapeles" data-mir-titulo="Copiar código al portapapeles" data-mir-copiar="<?php echo htmlspecialchars(licencia_formatear_serial($licInfoRegistro['serial'])); ?>" onclick="copiarRegistroLicencia(this)"></i></span>
+                        <span class="mir-label mir-label-sep"><i class="fas fa-fingerprint"></i>Huella del Equipo</span>
+                        <?php if ($licInfoRegistro['huella'] !== ''): ?>
+                            <?php $_mirCoincide = hash_equals($licInfoRegistro['huella'], licencia_fingerprint_machine()); ?>
+                            <span class="mir-value mir-value-print"><?php echo htmlspecialchars(licencia_formatear_fingerprint($licInfoRegistro['huella'])); ?><i class="fas fa-copy mir-copiar" role="button" tabindex="0" title="Copiar huella del equipo al portapapeles" aria-label="Copiar huella del equipo al portapapeles" data-mir-titulo="Copiar huella del equipo al portapapeles" data-mir-copiar="<?php echo htmlspecialchars(licencia_formatear_fingerprint($licInfoRegistro['huella'])); ?>" onclick="copiarRegistroLicencia(this)"></i></span>
+                        <?php else: ?>
+                            <span class="mir-value">No vinculada a un equipo</span>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <?php else: ?>
                 <div class="mir-sin-lic">

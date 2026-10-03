@@ -591,8 +591,7 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
         .swal2-popup { background: var(--panel) !important; color: var(--txt) !important; }
         .swal2-title { color: #ffffff !important; }
         .swal2-html-container { color: #d1d5db !important; }
-        .swal2-styled.swal2-confirm { background-color: var(--color-success) !important; }
-        .swal2-styled.swal2-cancel { background-color: #6b7280 !important; }
+
         
         .search-box { position: relative; }
         .search-box i { position: absolute; left:0.75rem; top:50%; transform: translateY(-50%); color: rgba(255,255,255,0.5); z-index: 10; }

@@ -677,6 +677,22 @@ $config_mail = [
 ];
 $proveedores_smtp = getProveedoresSMTP();
 
+// Valores que el sistema usará realmente al enviar. Si un campo quedó vacío,
+// cargarConfigMail() lo completa con los datos del proveedor elegido, así que
+// la pantalla avisaría de un campo vacío mientras el envío usa otro servidor.
+$cfg_mail_efectiva = cargarConfigMail($pdo);
+$host_guardado     = trim($config_mail['host']);
+$host_efectivo     = trim((string)$cfg_mail_efectiva['host']);
+$port_efectivo     = (int)$cfg_mail_efectiva['port'];
+$port_guardado     = (int)$config_mail['port'];
+
+$aviso_host = ($host_guardado === '' && $host_efectivo !== '')
+    ? 'Vacío: se enviará usando ' . $host_efectivo . ':' . $port_efectivo . ' (datos del proveedor seleccionado).'
+    : '';
+$aviso_port = ($port_guardado <= 0)
+    ? 'Vacío: se usará el puerto ' . $port_efectivo . '.'
+    : '';
+
 // Configuración de Google (OAuth) - client_id y client_secret cifrados en BD
 $config_google = [
     'client_id'     => descifrarSecreto($config['google_client_id'] ?? ''),
@@ -1107,8 +1123,7 @@ $modo_mantenimiento_activo = modo_mantenimiento_activo($pdo);
         .swal2-popup { background: var(--panel) !important; color: var(--txt) !important; }
         .swal2-title { color: #ffffff !important; }
         .swal2-html-container { color: #d1d5db !important; }
-        .swal2-styled.swal2-confirm { background-color: var(--color-success) !important; }
-        .swal2-styled.swal2-cancel { background-color: #6b7280 !important; }
+
         
         .search-box { position: relative; }
         .search-box i { position: absolute; left:0.75rem; top:50%; transform: translateY(-50%); color: rgba(255,255,255,0.5); z-index: 10; }
@@ -2663,10 +2678,12 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">Servidor SMTP (Host)</label>
                                 <input type="text" class="form-control" name="mail_host" id="mail_host" value="<?php echo htmlspecialchars($config_mail['host']); ?>" placeholder="smtp.gmail.com">
+                                <small class="text-secondary d-block mt-1" id="mailHostAviso"><?php echo htmlspecialchars($aviso_host); ?></small>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">Puerto</label>
                                 <input type="number" class="form-control" name="mail_port" id="mail_port" value="<?php echo htmlspecialchars($config_mail['port']); ?>" min="1" max="65535">
+                                <small class="text-secondary d-block mt-1" id="mailPortAviso"><?php echo htmlspecialchars($aviso_port); ?></small>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">Usuario SMTP</label>
@@ -2814,6 +2831,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                 $lic_info_activa = licencia_activada() && $lic_info_datos !== null;
                                 $lic_info_vence  = ($lic_info_datos !== null) ? licencia_vencimiento($lic_info_datos) : null;
                                 $lic_info_huella = licencia_fingerprint_equipo();
+                                $lic_info_instalada = ($lic_info_datos !== null && !empty($lic_info_datos['fecha_activacion'])) ? date('d/m/Y h:i:s A', (int)$lic_info_datos['fecha_activacion']) : '—';
                                 $lic_info_serial = ($lic_info_datos !== null && ($lic_info_datos['serial'] ?? '') !== '') ? licencia_formatear_serial($lic_info_datos['serial']) : '—';
                                 ?>
                                 <label class="form-label d-block text-secondary mb-2"><i class="fas fa-id-card me-1" style="color: #60a5fa;"></i> Licencia del Sistema</label>
@@ -2832,6 +2850,10 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                     <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
                                         <span class="text-secondary">Tipo</span>
                                         <span class="fw-semibold text-end"><?php echo htmlspecialchars(($lic_info_datos['info']['nombre'] ?? '') !== '' ? $lic_info_datos['info']['nombre'] : '—'); ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
+                                        <span class="text-secondary">Instalada en</span>
+                                        <span class="fw-semibold text-end"><?php echo htmlspecialchars($lic_info_instalada); ?></span>
                                     </div>
                                     <div class="d-flex justify-content-between border-bottom border-white-10 py-1">
                                         <span class="text-secondary">Vence el</span>
@@ -4284,6 +4306,34 @@ function toggleGoogleOauth() {
     });
 }
 
+// Avisos bajo Host y Puerto: el sistema completa los campos vacíos con los
+// datos del proveedor elegido, así que se avisa de lo que se usará en realidad.
+function actualizarAvisosMail() {
+    const host = document.getElementById('mail_host');
+    const port = document.getElementById('mail_port');
+    const sel = document.getElementById('mail_proveedor');
+    const avHost = document.getElementById('mailHostAviso');
+    const avPort = document.getElementById('mailPortAviso');
+    if (!host || !port || !sel || !avHost || !avPort) return;
+
+    const prov = proveedoresSMTP[sel.value];
+    const puerto = parseInt(port.value, 10);
+
+    if (String(host.value).trim() === '' && prov && sel.value !== 'custom' && prov.host) {
+        const p = puerto > 0 ? puerto : prov.puerto;
+        avHost.textContent = 'Vacío: se enviará usando ' + prov.host + ':' + p + ' (datos del proveedor seleccionado).';
+    } else {
+        avHost.textContent = '';
+    }
+
+    avPort.textContent = puerto > 0
+        ? ''
+        : 'Vacío: se usará el puerto ' + (prov && sel.value !== 'custom' && prov.puerto ? prov.puerto : 587) + '.';
+}
+
+document.getElementById('mail_host')?.addEventListener('input', actualizarAvisosMail);
+document.getElementById('mail_port')?.addEventListener('input', actualizarAvisosMail);
+
 document.getElementById('mail_proveedor')?.addEventListener('change', function() {
     const prov = proveedoresSMTP[this.value];
     const host = document.getElementById('mail_host');
@@ -4303,6 +4353,7 @@ document.getElementById('mail_proveedor')?.addEventListener('change', function()
         });
         enc.value = 'tls';
         enc.disabled = false;
+        actualizarAvisosMail();
         return;
     }
 
@@ -4324,6 +4375,7 @@ document.getElementById('mail_proveedor')?.addEventListener('change', function()
     });
     enc.value = recomendado;
     enc.disabled = false;
+    actualizarAvisosMail();
 });
 
 // Al cargar, preseleccionar el cifrado recomendado según el proveedor guardado (sin bloquear opciones)

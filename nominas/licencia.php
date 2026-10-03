@@ -3,7 +3,7 @@
 // Corre antes del login y NO requiere base de datos.
 // Almacena los datos UNA sola vez, cifrados, en el registro de Windows
 // o en un archivo cifrado del disco (Linux/otros).
-// Soporta licencias por tiempo (1, 3, 6 meses, 1 ó 2 años) o permanentes.
+// Soporta licencias por tiempo (1, 3, 5 meses, 1, 2 ó 5 años) o permanentes.
 
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
@@ -117,6 +117,26 @@ function licencia_texto_verificar($texto) {
     return $resp;
 }
 
+if (!function_exists('licencia_responder_json')) {
+    /**
+     * Emite la respuesta JSON de un endpoint interno y termina.
+     *
+     * La cabecera se fija aqui, justo antes de imprimir, porque
+     * config/database.php declara 'Content-Type: text/html' y si se cargara
+     * despues (al resolver el destino de correo o la configuracion SMTP)
+     * sustituiria la cabecera enviada al inicio del endpoint.
+     *
+     * @param array $datos Contenido de la respuesta.
+     */
+    function licencia_responder_json($datos) {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode($datos);
+        exit;
+    }
+}
+
 // Endpoint interno para validar en vivo el texto de una licencia (pegado o escrito).
 if (isset($_REQUEST['validar_texto']) && (string)$_REQUEST['validar_texto'] === '1') {
     header('Content-Type: application/json; charset=utf-8');
@@ -154,54 +174,100 @@ if (isset($_REQUEST['validar_serial']) && (string)$_REQUEST['validar_serial'] ==
     exit;
 }
 
+// Endpoint interno: devuelve los correos configurados en Configuracion del
+// sistema (configuracion_general.email_soporte y .mail_usuario). Se consulta al
+// abrir el modal para no cargar la base de datos durante el render de esta
+// pantalla y para que el boton de mailto: apunte al mismo correo que usa el
+// envio por SMTP.
+if (isset($_REQUEST['solicitar_licencia_destino']) && (string)$_REQUEST['solicitar_licencia_destino'] === '1') {
+    require_once __DIR__ . '/includes/solicitud_licencia_correo.php';
+    licencia_responder_json(array(
+        'destino'    => solicitud_licencia_destino(),
+        'solicitante' => solicitud_licencia_correo_remitente(),
+        'whatsapp'   => solicitud_licencia_correo_whatsapp(),
+    ));
+}
+
 // Endpoint interno: envia la solicitud de licencia por correo electronico.
 if (isset($_REQUEST['solicitar_licencia']) && (string)$_REQUEST['solicitar_licencia'] === '1') {
-    header('Content-Type: application/json; charset=utf-8');
     require_once __DIR__ . '/includes/solicitud_licencia_correo.php';
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        echo json_encode(array('ok' => false, 'mensaje' => 'Metodo no permitido.'));
-        exit;
+        licencia_responder_json(array('ok' => false, 'mensaje' => 'Metodo no permitido.'));
+    }
+
+    // Freno anti-inundacion: el correo va al proveedor de licencias, asi que se
+    // cuentan todos los POST (validos o no) por IP antes de hacer nada mas.
+    $espera = solicitud_licencia_rate_limitar();
+    if ($espera !== null) {
+        $minutos = max(1, (int)ceil($espera / 60));
+        licencia_responder_json(array(
+            'ok'      => false,
+            'mensaje' => 'Ha enviado demasiadas solicitudes. Intente nuevamente en ' . $minutos . ' minuto' . ($minutos > 1 ? 's' : '') . '.',
+        ));
     }
 
     $entrada = array(
-        'nombre'    => isset($_POST['nombre'])    ? $_POST['nombre']    : '',
-        'apellidos' => isset($_POST['apellidos']) ? $_POST['apellidos'] : '',
-        'ci'        => isset($_POST['ci'])        ? $_POST['ci']        : '',
-        'email'     => isset($_POST['email'])     ? $_POST['email']     : '',
-        'generica'  => isset($_POST['generica'])  ? $_POST['generica']  : '0',
-        'usuario'   => isset($_POST['usuario'])   ? $_POST['usuario']   : '',
-        'entidad'   => isset($_POST['entidad'])   ? $_POST['entidad']   : '',
-        'periodo'   => isset($_POST['periodo'])   ? $_POST['periodo']   : '',
+        'nombre'        => isset($_POST['nombre'])        ? $_POST['nombre']        : '',
+        'apellidos'     => isset($_POST['apellidos'])     ? $_POST['apellidos']     : '',
+        'ci'            => isset($_POST['ci'])            ? $_POST['ci']            : '',
+        'email'         => isset($_POST['email'])         ? $_POST['email']         : '',
+        'email_soporte' => isset($_POST['email_soporte']) ? $_POST['email_soporte'] : '',
+        'huella'       => isset($_POST['huella'])       ? $_POST['huella']       : '',
+        'generica'      => isset($_POST['generica'])      ? $_POST['generica']      : '0',
+        'usuario'       => isset($_POST['usuario'])       ? $_POST['usuario']       : '',
+        'entidad'       => isset($_POST['entidad'])       ? $_POST['entidad']       : '',
+        'periodo'       => isset($_POST['periodo'])       ? $_POST['periodo']       : '',
     );
 
     $validacion = solicitud_licencia_validar($entrada);
     if (!$validacion['ok']) {
-        echo json_encode(array(
+        licencia_responder_json(array(
             'ok'       => false,
             'mensaje'  => 'Revise los campos marcados.',
             'errores'  => $validacion['errores'],
         ));
-        exit;
     }
 
     $envio = solicitud_licencia_enviar($validacion['datos']);
     if ($envio['success']) {
-        echo json_encode(array(
+        licencia_responder_json(array(
             'ok'      => true,
             'mensaje' => 'Su solicitud fue enviada. Le responderemos con la licencia generada.',
         ));
-        exit;
     }
 
-    $mensajes = array(
-        'mail_not_configured' => 'El envio de correo no esta configurado en el sistema. Contacte al administrador.',
+    $motivos = array(
+        'mail_not_configured' => 'El envío de correo no está activo o no está configurado en el sistema.',
         'sin_email'           => 'No se pudo determinar el destinatario de la solicitud.',
+        'sin_bd'              => 'El sistema no pudo leer la configuración de correo.',
     );
-    $detalle = isset($mensajes[$envio['error']]) ? $mensajes[$envio['error']] : ('No se pudo enviar la solicitud: ' . $envio['error']);
+    $motivo = isset($motivos[$envio['error']])
+        ? $motivos[$envio['error']]
+        : 'Ocurrió un problema al enviar el correo.';
 
-    echo json_encode(array('ok' => false, 'mensaje' => $detalle));
-    exit;
+    // El detalle técnico (autenticación SMTP, host, clave) no se muestra al
+    // usuario final: queda únicamente en el log del servidor.
+    error_log('[licencia] solicitud no enviada desde ' . solicitud_licencia_ip()
+        . ': ' . $envio['error']);
+
+    // El aviso incluye versión y correo del proveedor para que el usuario pueda
+    // enviar la solicitud a mano aunque el sistema no pueda hacerlo. Si el
+    // cliente cambio el destino en el formulario, se muestra ese.
+    $version = htmlspecialchars(solicitud_licencia_version(), ENT_QUOTES, 'UTF-8');
+    $destino_cliente = isset($validacion['datos']['email_soporte']) ? $validacion['datos']['email_soporte'] : '';
+    $ayuda   = htmlspecialchars(
+        $destino_cliente !== '' ? $destino_cliente : solicitud_licencia_destino(),
+        ENT_QUOTES,
+        'UTF-8'
+    );
+
+    licencia_responder_json(array(
+        'ok'      => false,
+        'mensaje' => 'No se pudo enviar la solicitud.<br>' . $motivo . '<br>'
+            . 'Contacte al Proveedor de SisGesNom ' . $version . ': ' . $ayuda . '<br>'
+            . 'Puede intentar utilizar la opción "Enviar con mi Correo".',
+    ));
 }
 
 // Licencia previamente guardada (para diagnosticar y mostrar el motivo).
@@ -428,6 +494,29 @@ if ($guardado_ok) {
         }
         .titlebar-title { color:var(--txt,#ffffff); font-size:0.95rem; font-weight:600; display:flex; align-items:center; gap:0.5rem; }
         .titlebar-title i { color:var(--accent,#0078d4); }
+        /* Lado izquierdo de la barra: titulo + rotulo de activacion unica. */
+        .titlebar-izq { display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; }
+        /* Botones de la barra de titulo: abren en pestana nueva. */
+        .titlebar-nav { display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; }
+        .titlebar-nav a {
+            display:inline-flex; align-items:center; gap:0.35rem;
+            padding:0.28rem 0.6rem; border-radius:0.25rem;
+            border:0.0625rem solid #3d3d3d; background:#2b2b2b;
+            font-size:0.74rem; line-height:1.2; text-decoration:none;
+            color:var(--muted,#9d9d9d);
+            transition:border-color 0.15s, background 0.15s, color 0.15s;
+        }
+        .titlebar-nav a i { font-size:0.7rem; }
+        .titlebar-nav a:hover { color:var(--accent,#0078d4); border-color:var(--accent,#0078d4); background:#2f2f2f; }
+        .titlebar-nav a:focus-visible { outline:2px solid var(--accent,#0078d4); outline-offset:2px; }
+        /* Cierre del formulario: mismo aspecto que la X del modal. */
+        .titlebar-x {
+            background:transparent; border:0.0625rem solid transparent; border-radius:0.25rem;
+            color:var(--muted,#9d9d9d); font-size:1rem; padding:0.3rem 0.5rem; cursor:pointer;
+            transition:background 0.1s, color 0.1s;
+        }
+        .titlebar-x:hover { background:#2d2d2d; color:#ffffff; }
+        .titlebar-x:focus-visible { outline:2px solid var(--accent,#0078d4); outline-offset:2px; }
         .lic-layout {
             display:flex; align-items:stretch;
             background: var(--panel, #202020);
@@ -497,7 +586,47 @@ if ($guardado_ok) {
         .input-group { margin-bottom:0.65rem; }
         .input-fila { display:grid; grid-template-columns:1fr 1fr; gap:0 0.875rem; align-items:start; }
         .input-fila.full { grid-template-columns:1fr; }
+        /* Filas de 12 columnas para repartir los campos en proporciones exactas
+           (por ejemplo 7 + 1 boton + 4). Cada celda declara solo su ancho en
+           --col, para que la regla de una sola columna gane despues. */
+        .input-fila.cols12 { grid-template-columns:repeat(12,1fr); align-items:stretch; }
+        .input-fila.cols12 > * { grid-column:span var(--col, 6); }
+        .input-fila.cols12 > .c1 { --col:1; }
+        .input-fila.cols12 > .c2 { --col:2; }
+        .input-fila.cols12 > .c3 { --col:3; }
+        .input-fila.cols12 > .c4 { --col:4; }
+        .input-fila.cols12 > .c5 { --col:5; }
+        .input-fila.cols12 > .c6 { --col:6; }
+        .input-fila.cols12 > .c7 { --col:7; }
+        .input-fila.cols12 > .c8 { --col:8; }
+        .input-fila.cols12 > .c9 { --col:9; }
+        .input-fila.cols12 > .c10 { --col:10; }
+        .input-fila.cols12 > .c11 { --col:11; }
+        .input-fila.cols12 > .c12 { --col:12; }
+        /* Controles pegados abajo: si un label ocupa dos lineas, los inputs de la
+           fila siguen alineados horizontalmente. */
+        .input-fila.cols12 > .input-group { display:flex; flex-direction:column; }
+        .input-fila.cols12 > .input-group > input,
+        .input-fila.cols12 > .input-group > select,
+        .input-fila.cols12 > .input-group > .switch-bloque { margin-top:auto; }
+        /* La celda del lapiz se alinea con el input, no con el label. */
+        .input-fila.cols12 > .celda-boton { align-self:end; margin-bottom:0.6rem; }
+        .lic-modal .btn-editar.ancho { width:100%; }
         @media (max-width:34rem) { .input-fila { grid-template-columns:1fr; } }
+        @media (max-width:34rem) {
+            .input-fila.cols12 { grid-template-columns:1fr; }
+            .input-fila.cols12 > * { grid-column:auto; margin-bottom:0.6rem; }
+        }
+        /* En pantallas estrechas no hay sitio para anclar a un lado: el tooltip se
+           fija al ancho completo del modal para que no se salga ni se corte. */
+        @media (max-width:34rem) {
+            .lic-modal-body { position:relative; }
+            .lic-modal .has-tip[data-tooltip] { position:static; }
+            .lic-modal .has-tip[data-tooltip]::after {
+                left:0.5rem; right:0.5rem; bottom:auto; top:0.25rem;
+                width:auto; max-width:none; transform:none;
+            }
+        }
         .input-group label { display:block; color:#e5e5e5; font-size:0.82rem; margin-bottom:0.4rem; }
         .input-group label i { color:var(--accent,#0078d4); margin-right:0.35rem; }
         .input-with-icon { position:relative; }
@@ -660,8 +789,28 @@ if ($guardado_ok) {
             transition:background 0.15s;
         }
         .btn-correo:hover { background: rgba(34,197,94,0.24); }
+        .btn-correo .caret { font-size:0.65rem; opacity:0.8; }
+        /* Desplegable de canales de envio */
+        .enviar-menu { position:relative; flex:0 0 auto; }
+        .enviar-menu-lista {
+            position:absolute; right:0; bottom:calc(100% + 0.4rem); z-index:30;
+            min-width:14rem; padding:0.3rem;
+            background:#202020; border:0.0625rem solid #3d3d3d; border-radius:0.4rem;
+            box-shadow:0 0.35rem 1rem rgba(0,0,0,0.45);
+        }
+        .enviar-menu-lista[hidden] { display:none; }
+        .enviar-menu-item {
+            display:flex; align-items:center; gap:0.55rem; width:100%;
+            padding:0.55rem 0.6rem; background:none; border:0; border-radius:0.25rem;
+            color:#e5e5e5; font-size:0.85rem; font-family:inherit; text-align:left;
+            cursor:pointer;
+        }
+        .enviar-menu-item:hover, .enviar-menu-item:focus-visible {
+            background:#2f2f2f; color:var(--accent-light,#4cc2ff); outline:none;
+        }
+        .enviar-menu-item i { width:1rem; text-align:center; }
         .lic-modal {
-            width:100%; max-width:44rem; max-height:calc(100vh - 2.5rem);
+            width:100%; max-width:50rem; max-height:calc(100vh - 2.5rem);
             display:flex; flex-direction:column;
             background: var(--card, #262626);
             border:0.0625rem solid #3d3d3d;
@@ -682,6 +831,27 @@ if ($guardado_ok) {
             color:var(--muted,#9d9d9d); font-size:1rem; padding:0.3rem 0.5rem; cursor:pointer;
         }
         .lic-modal-x:hover { background:#2d2d2d; color:#ffffff; }
+        /* Al presionar (mousedown) el cierre se pone rojo, en el modal y en el formulario. */
+        .lic-modal-x:active,
+        .titlebar-x:active { background:#b91c1c; border-color:#b91c1c; color:#ffffff; }
+        /* Enlaces de informacion en la barra del modal (abren en pestana nueva). */
+        .sol-modal-nav { display:flex; align-items:center; gap:0.3rem; flex-wrap:wrap; margin-left:auto; }
+        .sol-modal-nav a {
+            display:inline-flex; align-items:center; gap:0.3rem;
+            padding:0.2rem 0.45rem; border-radius:0.2rem;
+            border:0.0625rem solid #3d3d3d; background:#2b2b2b;
+            font-size:0.7rem; line-height:1.2; text-decoration:none;
+            color:var(--muted,#9d9d9d);
+            transition:border-color 0.15s, background 0.15s, color 0.15s;
+        }
+        .sol-modal-nav a i { font-size:0.66rem; }
+        .sol-modal-nav a:hover { color:var(--accent,#0078d4); border-color:var(--accent,#0078d4); background:#2f2f2f; }
+        .sol-modal-nav a:focus-visible { outline:2px solid var(--accent,#0078d4); outline-offset:2px; }
+        /* En pantallas cortas los enlaces pasan a su propia linea. */
+        @media (max-width:44rem) {
+            .lic-modal-head { flex-wrap:wrap; }
+            .sol-modal-nav { order:3; width:100%; margin-left:0; justify-content:flex-start; }
+        }
         .lic-modal-body { padding:0.9rem 1rem; overflow-y:auto; }
         .lic-modal-intro { margin:0 0 0.75rem; font-size:0.8rem; line-height:1.55; color:#e5e5e5; }
         .lic-modal-intro b { color:var(--accent-light,#4cc2ff); }
@@ -722,6 +892,35 @@ if ($guardado_ok) {
         /* Correo + slider "Generica" en la misma linea */
         .input-linea { display:flex; align-items:center; gap:0.6rem; }
         .input-linea input[type="email"] { flex:1 1 auto; min-width:0; }
+        /* Titulo del slider: "Tipo de Lic." */
+        .switch-bloque { display:flex; flex-direction:column; align-items:flex-start; gap:0.25rem; flex:0 0 auto; }
+        .switch-titulo { font-size:0.72rem; line-height:1.1; color:var(--muted,#9d9d9d); white-space:nowrap; }
+        /* Codigo de equipo: solo lectura + lapiz para editarlo */
+        .lic-modal input.solo-lectura { color:var(--muted,#9d9d9d); font-family:Consolas, "Courier New", monospace; letter-spacing:0.02rem; }
+        /* Consolas tiene una caja de linea mas baja que Segoe UI: sin esto el input
+           monoespaciado queda 3px mas corto que los demas de la misma fila. */
+        .lic-modal input.solo-lectura { line-height:1.39; }
+        .lic-modal input.solo-lectura:disabled { opacity:0.85; cursor:not-allowed; }
+        .lic-modal input.solo-lectura.editable { color:var(--txt,#ffffff); }
+        /* Texto de apoyo bajo una etiqueta: explica el comportamiento del campo. */
+        .label-nota {
+            display:block; margin:-0.2rem 0 0.4rem;
+            font-size:0.68rem; line-height:1.3; color:var(--muted,#9d9d9d);
+        }
+        .btn-editar {
+            flex:0 0 auto; width:2.35rem; height:2.35rem; display:inline-flex;
+            align-items:center; justify-content:center; cursor:pointer;
+            background:#2b2b2b; border:0.0625rem solid #3d3d3d; border-radius:0.25rem;
+            color:var(--accent,#0078d4); font-size:0.8rem; transition:border-color 0.15s, background 0.15s;
+        }
+        .btn-editar:hover { border-color:var(--accent,#0078d4); background:#2f2f2f; }
+        .btn-editar:focus-visible { outline:2px solid var(--accent,#0078d4); outline-offset:2px; }
+        /* Lapiz bloqueado cuando la licencia es Generica: se apaga el boton. */
+        .lic-modal .btn-editar:disabled,
+        .lic-modal .btn-editar:disabled:hover {
+            opacity:0.4; cursor:not-allowed; border-color:#3d3d3d; background:#2b2b2b;
+            color:var(--muted,#9d9d9d);
+        }
         .lic-modal .input-group label.lic-switch {
             display:inline-flex; align-items:center; gap:0.4rem;
             flex:0 0 auto; margin:0; cursor:pointer; user-select:none;
@@ -754,12 +953,27 @@ if ($guardado_ok) {
             width:max-content; max-width:15rem; padding:0.45rem 0.6rem;
             background:#1e1e2f; border:0.0625rem solid #3d3d3d; border-radius:0.3rem;
             color:#ffffff; font-size:0.72rem; line-height:1.35; text-align:left;
+            /* Fuente de texto propia: si el portador es un icono Font Awesome (.fas),
+               sin esto el tooltip hereda "Font Awesome 6 Free" y los acentos se dibujan
+               con los glifos de los iconos en lugar de letras. */
+            font-family:"Segoe UI",Inter,-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+            font-weight:400; font-style:normal; letter-spacing:normal;
             white-space:normal; display:none;
             pointer-events:none; z-index:10;
         }
         .has-tip[data-tooltip]:hover::after, .has-tip[data-tooltip]:focus-visible::after { display:block; animation:tipIn 0.15s ease-out; }
         /* Ancla a la derecha para elementos pegados al borde derecho del modal. */
         .tip-der[data-tooltip]::after { left:auto; right:0; transform:none; }
+        /* Ancla a la izquierda para elementos del borde izquierdo: por defecto el
+           tooltip se abre hacia la izquierda y se sale del modal, que tiene
+           overflow:hidden, y el texto queda cortado. */
+        .tip-izq[data-tooltip]::after { left:0; right:auto; transform:none; }
+        /* Icono de ayuda junto a las etiquetas con tooltip */
+        .tip-info {
+            font-size:0.62rem; color:var(--muted,#9d9d9d); cursor:help;
+            margin-left:0.3rem; vertical-align:middle;
+        }
+        .tip-info:hover, .tip-info:focus-visible { color:var(--accent-light,#4cc2ff); }
         @keyframes tipIn { from { opacity:0; } to { opacity:1; } }
         .lic-modal-foot {
             display:flex; justify-content:flex-start; gap:0.7rem; flex-wrap:wrap;
@@ -768,6 +982,88 @@ if ($guardado_ok) {
             border-top:0.0625rem solid #3d3d3d;
         }
         .lic-modal-foot .btn-registrar, .lic-modal-foot .btn-home { flex:0 0 auto; min-width:11rem; }
+
+        /* =====================================================================
+           TEMA AZUL DEL MODAL DE SOLICITUD
+           Sobrescribe los grises del tema oscuro con una paleta azul propia.
+           Todas las reglas van agrupadas bajo .lic-modal / .lic-modal-overlay
+           para no afectar el formulario de la pagina, que sigue con su tema.
+           ===================================================================== */
+        .lic-modal-overlay {
+            /* Fondo de la ventana: azul profundo en lugar de negro plano. */
+            background: radial-gradient(circle at 50% 0%, rgba(20,64,128,0.55), rgba(4,14,32,0.86));
+        }
+        .lic-modal {
+            background: linear-gradient(180deg, #14396e 0%, #0e2a52 100%);
+            border:0.0625rem solid #2f6fb5;
+            box-shadow: 0 0.5rem 1.75rem rgba(2,10,26,0.6);
+        }
+        .lic-modal-head {
+            background: linear-gradient(180deg, #1b4b8f 0%, #153c74 100%);
+            border-bottom:0.0625rem solid #2f6fb5;
+        }
+        .lic-modal-foot {
+            background: linear-gradient(0deg, #0b2549 0%, #10305c 100%);
+            border-top:0.0625rem solid #2a6bb5;
+        }
+        .lic-modal-title { color:#eaf3ff; }
+        .lic-modal-title i { color:#7cc4ff; }
+        .lic-modal-x { color:#a9c8ec; }
+        .lic-modal-x:hover { background:#1c4d90; color:#ffffff; }
+        /* Enlaces de informacion del encabezado del modal. */
+        .sol-modal-nav a {
+            border-color:#2f6fb5; background:#16406f; color:#c3daf7;
+        }
+        .sol-modal-nav a:hover { color:#ffffff; border-color:#7cc4ff; background:#1f5590; }
+        /* Textos del cuerpo. */
+        .lic-modal-intro { color:#d7e7fb; }
+        .lic-modal-intro b { color:#8ecdff; }
+        .lic-modal .input-group label { color:#d7e7fb; }
+        .lic-modal .input-group label i { color:#7cc4ff; }
+        .lic-modal-fp {
+            background: rgba(8,26,52,0.55); border:0.0625rem solid #2f6fb5;
+        }
+        .lic-modal-fp-label, .switch-titulo, .label-nota, .tip-info { color:#a9c8ec; }
+        .lic-modal-fp-label i { color:#7cc4ff; }
+        .lic-modal-fp-value { color:#ffffff; }
+        .lic-modal-fp .copiar-valor { color:#a9c8ec; }
+        .lic-modal-fp .copiar-valor:hover { color:#8ecdff; }
+        /* Campos de texto y lista desplegable. */
+        .lic-modal input[type="text"], .lic-modal input[type="email"], .lic-select {
+            background:#0d2b55; border:0.0625rem solid #2f6fb5; color:#f2f8ff;
+        }
+        .lic-modal input[type="text"]::placeholder, .lic-modal input[type="email"]::placeholder { color:#7ba0cc; }
+        .lic-modal input[type="text"]:hover, .lic-modal input[type="email"]:hover, .lic-select:hover { border-color:#4a8fd4; }
+        .lic-modal input[type="text"]:focus, .lic-modal input[type="email"]:focus, .lic-select:focus {
+            border-color:#7cc4ff; background:#103561;
+            box-shadow: 0 0 0 0.1875rem rgba(124,196,255,0.18);
+        }
+        .lic-select option { background:#0d2b55; color:#f2f8ff; }
+        .lic-modal input.solo-lectura { color:#a9c8ec; }
+        .lic-modal input.solo-lectura.editable { color:#ffffff; }
+        /* Lapiz del codigo de equipo. */
+        .btn-editar {
+            background:#16406f; border:0.0625rem solid #2f6fb5; color:#8ecdff;
+        }
+        .btn-editar:hover { border-color:#7cc4ff; background:#1f5590; color:#ffffff; }
+        .lic-modal .btn-editar:disabled,
+        .lic-modal .btn-editar:disabled:hover {
+            background:#12345c; border-color:#274f80; color:#7ba0cc;
+        }
+        /* Interruptor Generica / Especifica: la pista en azul. */
+        .lic-switch-track { background:#0d2b55; border:0.0625rem solid #2f6fb5; }
+        .lic-switch .lic-switch-track::after { background:#8ecdff; }
+        .lic-switch-txt { color:#d7e7fb; }
+        /* Tooltips. */
+        .has-tip[data-tooltip]::after {
+            background:#0b2a52; border:0.0625rem solid #3d7cc4; color:#eaf3ff;
+        }
+        /* Desplegable de canales de envio. */
+        .enviar-menu-lista { background:#0e2a52; border:0.0625rem solid #2f6fb5; box-shadow:0 0.35rem 1rem rgba(2,10,26,0.55); }
+        .enviar-menu-item { color:#d7e7fb; }
+        .enviar-menu-item:hover, .enviar-menu-item:focus-visible { background:#1c4d90; color:#8ecdff; }
+        .sol-feedback.ok { color:#4ade80; }
+        .sol-feedback.mal { color:#f87171; }
         .fp-box {
             margin-bottom:1rem;
             padding:0.75rem 0.875rem 0.7rem;
@@ -808,12 +1104,31 @@ if ($guardado_ok) {
 
             <div class="lic-head">
             <div class="titlebar-lic">
-                <div class="titlebar-title">
-                    <i class="fas fa-key"></i> Formulario de Registro / Solicitud de Licencia
+                <div class="titlebar-izq">
+                    <div class="titlebar-title">
+                        <i class="fas fa-key"></i> Formulario de Registro / Solicitud de Licencia
+                    </div>
+                    <div class="titlebar-title" style="font-size:0.8rem; color:#9d9d9d;">
+                        <i class="fas fa-shield-halved"></i> Activación única
+                    </div>
+                    <button type="button" class="titlebar-x" id="btnCerrarLicencia" aria-label="Cerrar el formulario de licencia">
+                        <i class="fas fa-xmark"></i>
+                    </button>
                 </div>
-                <div class="titlebar-title" style="font-size:0.8rem; color:#9d9d9d;">
-                    <i class="fas fa-shield-halved"></i> Activación única
-                </div>
+                <nav class="titlebar-nav" aria-label="Enlaces de información">
+                    <a href="/terminos.php" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-file-contract"></i> Términos
+                    </a>
+                    <a href="/privacidad.php" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-lock"></i> Privacidad
+                    </a>
+                    <a href="/soporte.php" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-headset"></i> Soporte
+                    </a>
+                    <a href="/contacto.php" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-address-book"></i> Contáctenos
+                    </a>
+                </nav>
             </div>
 
             <div class="logo-area">
@@ -958,15 +1273,29 @@ if ($guardado_ok) {
                 <div class="lic-modal-title" id="solTitulo">
                     <i class="fas fa-envelope"></i> Solicitar Licencia por Correo
                 </div>
+                <nav class="sol-modal-nav" aria-label="Enlaces de información">
+                    <a href="/terminos.php" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-file-contract"></i> Términos
+                    </a>
+                    <a href="/privacidad.php" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-lock"></i> Privacidad
+                    </a>
+                    <a href="/soporte.php" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-headset"></i> Soporte
+                    </a>
+                    <a href="/contacto.php" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-address-book"></i> Contáctenos
+                    </a>
+                </nav>
                 <button type="button" class="lic-modal-x" id="solCerrar" aria-label="Cerrar">
                     <i class="fas fa-xmark"></i>
                 </button>
             </div>
             <div class="lic-modal-body">
-                <p class="lic-modal-intro">
+<p class="lic-modal-intro">
                     Complete sus datos y el periodo de validez deseado. Se enviara la solicitud con el
-                    <b>Codigo de equipo</b> de esta PC y la licencia sera remitida al
-                    <b>correo electronico</b> que registre.
+                    <b>Codigo de equipo</b> de esta PC, o con el de otro equipo si lo escribe con el lapiz, y la
+                    licencia sera remitida al <b>correo electronico</b> que registre del Solicitante.
                 </p>
                 <div class="lic-modal-fp">
                     <span class="lic-modal-fp-label"><i class="fas fa-fingerprint"></i> Codigo de Equipo:</span>
@@ -1011,18 +1340,50 @@ if ($guardado_ok) {
                             </select>
                         </div>
                     </div>
-                    <div class="input-fila full">
-                        <div class="input-group">
-                            <label for="solEmail"><i class="fas fa-envelope"></i> Correo electronico</label>
-                            <div class="input-linea">
-                                <input type="email" id="solEmail" name="email" maxlength="120" placeholder="correo@ejemplo.com" spellcheck="false" autocapitalize="off" autocomplete="email">
-                                <label class="lic-switch has-tip tip-der" for="solGenerica" data-tooltip="Se generará automáticamente en la máquina que instale la licencia.">
+                    <div class="input-fila cols12">
+                        <div class="input-group c2">
+                            <label for="solGenerica"><i class="fas fa-id-badge"></i> Tipo de Lic.<i class="fas fa-circle-info tip-info has-tip tip-izq" id="solGenericaTip" role="button" tabindex="0" data-tooltip="Se generará automáticamente a partir del código de equipo indicado."></i></label>
+                            <div class="switch-bloque">
+                                <label class="lic-switch" for="solGenerica">
                                     <input type="checkbox" id="solGenerica" name="generica" value="1">
                                     <span class="lic-switch-track"></span>
-                                    <span class="lic-switch-txt">Genérica</span>
+                                    <span class="lic-switch-txt" id="solGenericaTxt">Especifica</span>
                                 </label>
                             </div>
+                            <small class="sol-feedback" id="solGenericaFeedback"></small>
+                        </div>
+                        <div class="input-group c5">
+                            <label for="solHuellaInput"><i class="fas fa-fingerprint"></i> Código Equipo Actual</label>
+                            <small class="label-nota" id="solHuellaNota">Por defecto es el de esta PC. Con el lápiz puede escribir el de otro equipo.</small>
+                            <input type="text" id="solHuellaInput" name="huella" class="solo-lectura" maxlength="29"
+                                   value="<?php echo htmlspecialchars(licencia_formatear_fingerprint(licencia_fingerprint_machine()), ENT_QUOTES, 'UTF-8'); ?>"
+                                   placeholder="#####-#####-#####-#####" spellcheck="false" autocapitalize="characters" disabled>
+                            <small class="sol-feedback" id="solHuellaInputFeedback"></small>
+                        </div>
+                        <div class="celda-boton c1">
+                            <button type="button" class="btn-editar has-tip tip-der ancho" id="solEditarHuella"
+                                    data-tooltip="Escribir el código de otro equipo">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                        </div>
+                        <div class="input-group c4">
+                            <label for="solWhatsapp"><i class="fab fa-whatsapp"></i> No. Soporte WhatsApp<i class="fas fa-circle-info tip-info has-tip tip-der" role="button" tabindex="0" data-tooltip="A este número se envía la solicitud con WhatsApp. Viene del teléfono de soporte de Configuración; si lo cambia, el envío también se hace a ese."></i></label>
+                            <input type="text" id="solWhatsapp" name="whatsapp" maxlength="20" inputmode="numeric" placeholder="5359860773"
+                                   value="<?php echo htmlspecialchars(solicitud_licencia_correo_whatsapp(), ENT_QUOTES, 'UTF-8'); ?>"
+                                   spellcheck="false" autocapitalize="off" autocomplete="off">
+                            <small class="sol-feedback" id="solWhatsappFeedback"></small>
+                        </div>
+                    </div>
+                    <div class="input-fila cols12">
+                        <div class="input-group c6">
+                            <label for="solEmail"><i class="fas fa-envelope"></i> Correo Electrónico del Solicitante</label>
+                            <input type="email" id="solEmail" name="email" maxlength="120" placeholder="correo@ejemplo.com" spellcheck="false" autocapitalize="off" autocomplete="email">
                             <small class="sol-feedback" id="solEmailFeedback"></small>
+                        </div>
+                        <div class="input-group c6">
+                            <label for="solEmailSoporte"><i class="fas fa-headset"></i> Email Proveedor Soporte Técnico<i class="fas fa-circle-info tip-info has-tip tip-der" role="button" tabindex="0" data-tooltip="A esta dirección se envía la solicitud. Si la cambia, el envío también se hace a esa."></i></label>
+                            <input type="email" id="solEmailSoporte" name="email_soporte" maxlength="120" placeholder="soporte@ejemplo.com" spellcheck="false" autocapitalize="off" autocomplete="off">
+                            <small class="sol-feedback" id="solEmailSoporteFeedback"></small>
                         </div>
                     </div>
                 </form>
@@ -1034,9 +1395,24 @@ if ($guardado_ok) {
                 <button type="button" class="btn-registrar" id="solEnviar">
                     <i class="fas fa-paper-plane"></i> Enviar Solicitud
                 </button>
-                <button type="button" class="btn-correo" id="solCorreo" data-destino="<?php echo htmlspecialchars(solicitud_licencia_destino(), ENT_QUOTES, 'UTF-8'); ?>" title="Abre el cliente de correo configurado en esta PC con la solicitud ya redactada">
-                    <i class="fas fa-envelope-open-text"></i> Enviar con mi Correo
-                </button>
+                <div class="enviar-menu" id="solEnviarMenu">
+                    <button type="button" class="btn-correo" id="solCorreo" aria-haspopup="true" aria-expanded="false"
+                            data-destino="<?php echo htmlspecialchars(solicitud_licencia_destino_fallback(), ENT_QUOTES, 'UTF-8'); ?>" data-destino-resuelto="0"
+                            title="Abre la solicitud redactada en su correo de esta PC, en WhatsApp o en Gmail">
+                        <i class="fas fa-envelope-open-text"></i> Enviar con... <i class="fas fa-chevron-down caret"></i>
+                    </button>
+                    <div class="enviar-menu-lista" id="solEnviarLista" hidden>
+                        <button type="button" class="enviar-menu-item" data-canal="correo">
+                            <i class="fas fa-envelope-open-text"></i> Enviar con mi correo
+                        </button>
+                        <button type="button" class="enviar-menu-item" data-canal="whatsapp">
+                            <i class="fab fa-whatsapp"></i> Enviar con WhatsApp
+                        </button>
+                        <button type="button" class="enviar-menu-item" data-canal="gmail">
+                            <i class="fab fa-google"></i> Enviar con Gmail
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1290,6 +1666,14 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
             window.location.href = '../index.php';
         });
 
+        // X de la barra de titulo: cierra el formulario y vuelve al inicio.
+        var btnCerrarLic = document.getElementById('btnCerrarLicencia');
+        if (btnCerrarLic) {
+            btnCerrarLic.addEventListener('click', function () {
+                window.location.href = '../index.php';
+            });
+        }
+
         var form = document.getElementById('licForm');
         form.addEventListener('submit', function (e) {
             var v = serial.value.replace(/[^A-Z0-9]/g, '');
@@ -1349,6 +1733,8 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
             var btnCancel= document.getElementById('solCancelar');
             var btnEnviar= document.getElementById('solEnviar');
             var btnCorreo= document.getElementById('solCorreo');
+            var huellaInput   = document.getElementById('solHuellaInput');
+            var btnEditarHuella = document.getElementById('solEditarHuella');
             if (!overlay || !btnAbrir || !btnCorreo) { return; }
 
             var CAMPOS = [
@@ -1361,9 +1747,45 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
                 { id: 'solPeriodo',   clave: 'periodo' }
             ];
 
+            // Correos tomados de Configuracion del sistema: el del solicitante es la
+            // cuenta SMTP configurada (mail_usuario) y el del proveedor el destino
+            // de la solicitud (email_soporte). Se piden al servidor la primera vez
+            // que se abre el modal, para no cargar la base de datos al renderizar,
+            // y el cliente puede cambiarlos.
+            var correosConfig = { destino: '', solicitante: '', whatsapp: '', resuelto: false };
+
+            function aplicarCorreosConfig() {
+                if (correosConfig.destino) {
+                    document.getElementById('solEmailSoporte').value = correosConfig.destino;
+                    btnCorreo.setAttribute('data-destino', correosConfig.destino);
+                    btnCorreo.setAttribute('data-destino-resuelto', '1');
+                }
+                if (correosConfig.solicitante) {
+                    document.getElementById('solEmail').value = correosConfig.solicitante;
+                }
+            }
+
+            function cargarCorreos() {
+                aplicarCorreosConfig();
+                if (correosConfig.resuelto) { return; }
+                fetch(location.pathname + '?solicitar_licencia_destino=1')
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j && j.destino) {
+                            correosConfig.destino = j.destino;
+                            correosConfig.solicitante = j.solicitante || '';
+                            correosConfig.whatsapp = j.whatsapp || '';
+                            correosConfig.resuelto = true;
+                            aplicarCorreosConfig();
+                        }
+                    })
+                    .catch(function () { /* se conservan los correos de respaldo */ });
+            }
+
             function abrir() {
                 overlay.hidden = false;
                 document.getElementById('solNombre').focus();
+                cargarCorreos();
             }
             function cerrar() {
                 overlay.hidden = true;
@@ -1394,6 +1816,7 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
                 return {
                     valido: true,
                     mensaje: 'CI valido | ' + genero + ' | Nac: ' + dia + '/' + mes + '/' + anioTexto,
+                    genero: genero,
                     icono: digitoGenero % 2 === 0 ? 'fa-mars' : 'fa-venus'
                 };
             }
@@ -1401,6 +1824,9 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
             // Espejo en cliente de FILTER_VALIDATE_EMAIL del servidor: sin espacios,
             // un unico @, ningun punto consecutivo y dominio con extension de 2+ letras.
             var RE_EMAIL = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+
+            // Mismo formato que licencia_formatear_fingerprint(): 4 grupos de 5.
+            var RE_HUELLA = /^[A-Z0-9]{5}(-[A-Z0-9]{5}){3}$/;
 
             function validarEmail(email) {
                 var v = String(email).trim();
@@ -1512,6 +1938,20 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
                     return null;
                 }
 
+                // Numero de WhatsApp: viene prelleno con el de Configuracion. Si el cliente
+                // escribe algo tiene que quedar un numero internacional utilizable;
+                // si lo deja vacio se usa el configurado.
+                var campoWa = document.getElementById('solWhatsapp');
+                campoWa.classList.remove('error');
+                mostrarFeedback('solWhatsapp', null);
+                if (campoWa.value.trim() !== '' && normalizarWhatsapp(campoWa.value) === '') {
+                    campoWa.classList.add('error');
+                    mostrarFeedback('solWhatsapp', { valido: false, mensaje: 'Numero de WhatsApp invalido' });
+                    alerta('Numero de WhatsApp invalido', 'Debe tener entre 8 y 15 digitos, con el prefijo del pais.');
+                    campoWa.focus();
+                    return null;
+                }
+
                 // Correo: debe ser una direccion valida para recibir la licencia.
                 var mail = document.getElementById('solEmail');
                 var resMail = validarEmail(mail.value);
@@ -1523,13 +1963,44 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
                     return null;
                 }
 
+                // Correo del proveedor: viene prelleno, pero puede estar vacio (se
+                // usaria el configurado) y si se escribe debe ser una direccion valida.
+                var mailSoporte = document.getElementById('solEmailSoporte');
+                var resSoporte = validarEmail(mailSoporte.value);
+                mailSoporte.classList.remove('error');
+                mostrarFeedback('solEmailSoporte', null);
+                if (mailSoporte.value.trim() !== '') {
+                    if (!resSoporte.valido) {
+                        mailSoporte.classList.add('error');
+                        mostrarFeedback('solEmailSoporte', resSoporte);
+                        alerta('Correo del proveedor invalido', resSoporte.mensaje + '.');
+                        mailSoporte.focus();
+                        return null;
+                    }
+                    mostrarFeedback('solEmailSoporte', resSoporte);
+                }
+
+                // Código de equipo: viene deshabilitado con el de esta PC. Si el cliente lo
+                // habilita con el lápiz puede escribir el de otra máquina, siempre
+                // que respete el formato de 4 grupos de 5.
+                var huella = (huellaInput.value || '').trim().toUpperCase();
+                huellaInput.classList.remove('error');
+                mostrarFeedback('solHuellaInput', null);
+                if (huella !== '' && !RE_HUELLA.test(huella)) {
+                    huellaInput.classList.add('error');
+                    mostrarFeedback('solHuellaInput', { valido: false, mensaje: 'Formato de codigo de equipo invalido' });
+                    alerta('Codigo de equipo invalido', 'Debe tener el formato #####-#####-#####-#####.');
+                    huellaInput.focus();
+                    return null;
+                }
+
                 valores.ci       = ci.value.replace(/\D/g, '');
                 valores.email    = mail.value.trim();
+                valores.email_soporte = mailSoporte.value.trim();
                 // Slider "Generica": la licencia se emite al equipo que la instala.
                 var chkGenerica   = document.getElementById('solGenerica');
                 valores.generica = (chkGenerica && chkGenerica.checked) ? '1' : '0';
-                valores.huella   = (document.getElementById('solHuella').textContent || '').trim();
-                valores.destino  = (btnCorreo.getAttribute('data-destino') || '').trim();
+                valores.huella   = huella;
                 return valores;
             }
 
@@ -1540,6 +2011,8 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
 
                 var fd = new FormData();
                 CAMPOS.forEach(function (c) { fd.append(c.clave, datos[c.clave]); });
+                fd.append('email_soporte', datos.email_soporte);
+                fd.append('huella', datos.huella);
                 fd.append('generica', datos.generica);
 
                 btnEnviar.disabled = true;
@@ -1569,6 +2042,15 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
                                         if (c.clave === k) { document.getElementById(c.id).classList.add('error'); }
                                     });
                                 });
+                                if (j.errores.email_soporte) {
+                                    document.getElementById('solEmailSoporte').classList.add('error');
+                                    mostrarFeedback('solEmailSoporte', { valido: false, mensaje: j.errores.email_soporte });
+                                }
+                                if (j.errores.huella) {
+                                    huellaInput.disabled = false;
+                                    huellaInput.classList.add('editable', 'error');
+                                    mostrarFeedback('solHuellaInput', { valido: false, mensaje: j.errores.huella });
+                                }
                             }
                             Swal.fire({
                                 icon: 'error',
@@ -1598,14 +2080,113 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
                     });
             });
 
-            // Envio usando el cliente de correo local predeterminado (mailto:).
-            btnCorreo.addEventListener('click', function () {
-                var d = prepararSolicitud();
-                if (!d) { return; }
+            // Si el cliente cambia el destino, el boton de mailto: apunta al nuevo.
+            document.getElementById('solEmailSoporte').addEventListener('input', function () {
+                var v = (this.value || '').trim();
+                if (v !== '') { btnCorreo.setAttribute('data-destino', v); }
+            });
 
+            // Numero de WhatsApp: quita el error en cuanto deja de ser invalido.
+            document.getElementById('solWhatsapp').addEventListener('input', function () {
+                var v = (this.value || '').trim();
+                if (v !== '' && normalizarWhatsapp(v) !== '') {
+                    this.classList.remove('error');
+                    mostrarFeedback('solWhatsapp', null);
+                }
+            });
+
+            // Estado visual del codigo de equipo. Solo cambia como se ve y se puede tocar
+            // el campo: nunca altera el valor que viaja en la solicitud.
+            var chkGenerica = document.getElementById('solGenerica');
+            var notaHuella  = document.getElementById('solHuellaNota');
+            var huellaEditando = false;
+            var NOTA_POR_DEFECTO = 'Por defecto es el de esta PC. Con el lápiz puede escribir el de otro equipo.';
+            var NOTA_EDITABLE    = 'Editable: está escribiendo el código de otro equipo. Vuelva a pulsar el lápiz para usar el de esta PC.';
+            var NOTA_GENERICA    = 'Licencia Genérica: el código se crea en el equipo donde se instale, por eso queda bloqueado.';
+
+            function aplicarEstadoHuella() {
+                if (!huellaInput || !btnEditarHuella) { return; }
+                // Con licencia Generica el codigo no se escribe: se bloquea el campo.
+                var generica = !!(chkGenerica && chkGenerica.checked);
+                btnEditarHuella.disabled = generica;
+                huellaInput.disabled = generica ? true : !huellaEditando;
+                huellaInput.classList.toggle('editable', !generica && huellaEditando);
+                btnEditarHuella.setAttribute('data-tooltip', generica
+                    ? 'No se modifica con licencia Genérica'
+                    : (huellaEditando ? 'Restaurar el código de esta PC' : 'Escribir el código de otro equipo'));
+                if (notaHuella) {
+                    notaHuella.textContent = generica ? NOTA_GENERICA
+                        : (huellaEditando ? NOTA_EDITABLE : NOTA_POR_DEFECTO);
+                }
+            }
+
+            // Tipo de licencia: el interruptor muestra el tipo que se va a pedir
+            // y el icono de ayuda explica el criterio de cada uno.
+            (function () {
+                var chk = document.getElementById('solGenerica');
+                var txt = document.getElementById('solGenericaTxt');
+                var tip = document.getElementById('solGenericaTip');
+                if (!chk || !txt) { return; }
+                var TIP_GENERICA  = 'Se generará automáticamente en la máquina que instale la licencia.';
+                var TIP_ESPECIFICA = 'Se generará automáticamente a partir del código de equipo indicado.';
+                var aplica = function () {
+                    txt.textContent = chk.checked ? 'Genérica' : 'Especifica';
+                    if (tip) { tip.setAttribute('data-tooltip', chk.checked ? TIP_GENERICA : TIP_ESPECIFICA); }
+                    // Generica => el codigo de equipo queda bloqueado; especifica => disponible.
+                    aplicarEstadoHuella();
+                };
+                aplica();
+                chk.addEventListener('change', aplica);
+            })();
+
+            // Lapiz del codigo de equipo: alterna entre solo lectura y editable.
+            // Al volver a solo lectura se restaura el codigo de esta PC.
+            if (huellaInput && btnEditarHuella) {
+                var huellaMaquina = huellaInput.value;
+
+                // Mientras se escribe, arma los guiones solo: xxxxx-xxxxx-xxxxx-xxxxx.
+                huellaInput.addEventListener('input', function () {
+                    if (this.disabled) { return; }
+                    var cursor = this.selectionStart === null ? this.value.length : this.selectionStart;
+                    var antes = (this.value.slice(0, cursor).match(/[A-Za-z0-9]/g) || []).length;
+                    var limpio = (this.value.match(/[A-Za-z0-9]/g) || []).join('')
+                        .toUpperCase().slice(0, 20);
+                    var formateado = limpio.replace(/(.{5})(?=.)/g, '$1-');
+
+                    // Reubica el cursor contando solo los caracteres del codigo.
+                    var n = 0, nueva = 0;
+                    while (n < antes && nueva < formateado.length) {
+                        if (formateado.charAt(nueva) !== '-') { n++; }
+                        nueva++;
+                    }
+                    this.value = formateado;
+                    try { this.setSelectionRange(nueva, nueva); } catch (e) { /* sin cursor */ }
+                });
+
+                btnEditarHuella.addEventListener('click', function () {
+                    if (huellaEditando) {
+                        // Al cerrar la edicion se restaura el codigo de esta PC.
+                        huellaEditando = false;
+                        huellaInput.value = huellaMaquina;
+                    } else {
+                        huellaEditando = true;
+                        huellaInput.classList.remove('error');
+                        mostrarFeedback('solHuellaInput', null);
+                    }
+                    aplicarEstadoHuella();
+                    if (huellaEditando) { huellaInput.focus(); huellaInput.select(); }
+                });
+            }
+
+            // Arma el texto de la solicitud: lo usan los tres canales externos
+            // (cliente de correo, WhatsApp y Gmail) con los mismos datos.
+            function construirMensaje(d) {
                 var sel     = document.getElementById('solPeriodo');
                 var periodo = sel.options[sel.selectedIndex].text;
                 var linea   = new Array(41).join('=');
+                // Sexo por el digito de genero del carné, igual que el correo por SMTP.
+                var resCI   = validarCI(d.ci);
+                var sexo    = (resCI && resCI.valido && resCI.genero) ? resCI.genero : '';
                 var cuerpo  = [
                     'SOLICITUD DE LICENCIA SisGesNom',
                     linea,
@@ -1613,27 +2194,125 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
                     'Nombre:             ' + d.nombre,
                     'Apellidos:          ' + d.apellidos,
                     'Carne de identidad: ' + d.ci,
+                    'Sexo:                ' + sexo,
                     'Correo electronico: ' + d.email,
                     'Usuario:            ' + d.usuario,
                     'Entidad:            ' + d.entidad,
                     'Periodo de validez: ' + periodo,
-                    'Codigo de equipo:   ' + d.huella
+                    'Codigo de equipo:   ' + d.huella,
+                    'Tipo de Licencia:   ' + (d.generica === '1' ? 'Generica' : 'Especifica')
                 ];
-                if (d.generica === '1') { cuerpo.push('Tipo:               Generica'); }
                 cuerpo.push('', linea);
-                var texto = cuerpo.join('\n');
-                var asunto = 'Solicitud de licencia - ' + d.entidad + ' (' + periodo + ')';
+                return {
+                    asunto: 'Solicitud de licencia - ' + d.entidad + ' (' + periodo + ')',
+                    texto: cuerpo.join('\n')
+                };
+            }
 
+            function abrirEnlace(url) {
                 // Se dispara un enlace real para no alterar la URL de la pagina.
-                // encodeURI (no encodeURIComponent) para no escapar la arroba del destinatario.
                 var enlace = document.createElement('a');
-                enlace.href = 'mailto:' + encodeURI(d.destino)
-                    + '?subject=' + encodeURIComponent(asunto)
-                    + '&body=' + encodeURIComponent(texto);
+                enlace.href = url;
+                enlace.target = '_blank';
+                enlace.rel = 'noopener noreferrer';
                 document.body.appendChild(enlace);
                 enlace.click();
                 document.body.removeChild(enlace);
-            });
+            }
+
+            // Cliente de correo local predeterminado. encodeURI (no
+            // encodeURIComponent) para no escapar la arroba del destinatario.
+            function enviarPorCorreo(m) {
+                abrirEnlace('mailto:' + encodeURI(destinoActual())
+                    + '?subject=' + encodeURIComponent(m.asunto)
+                    + '&body=' + encodeURIComponent(m.texto));
+            }
+
+            // Deja un numero en formato internacional para api.whatsapp.com, con las
+            // mismas reglas que solicitud_licencia_formatear_whatsapp() del servidor:
+            // solo digitos, sin el 00 inicial, y con 53 delante cuando quedan
+            // 8 digitos que no empiezan por 53. Vacio si no queda de 8 a 15 digitos.
+            function normalizarWhatsapp(valor) {
+                var n = (valor || '').replace(/\D/g, '');
+                if (n.indexOf('00') === 0) { n = n.slice(2); }
+                if (n.length === 8 && n.slice(0, 2) !== '53') { n = '53' + n; }
+                return (n.length >= 8 && n.length <= 15) ? n : '';
+            }
+
+            // Destino de WhatsApp: lo que haya escrito el cliente y, si lo dejo
+            // vacio, el numero configurado que trae el servidor.
+            function whatsappActual() {
+                var escrito = document.getElementById('solWhatsapp');
+                return normalizarWhatsapp(escrito ? escrito.value : '')
+                    || normalizarWhatsapp(correosConfig.whatsapp);
+            }
+
+            // WhatsApp: el numero sale del input (prelleno con el de Configuracion).
+            function enviarPorWhatsApp(m) {
+                var numero = whatsappActual();
+                if (numero === '') {
+                    alerta('Servicio no disponible', 'WhatsApp no esta configurado en el sistema.');
+                    return;
+                }
+                abrirEnlace('https://api.whatsapp.com/send?phone=' + numero + '&text=' + encodeURIComponent(m.texto));
+            }
+
+            // Gmail en el navegador: abre un borrador con destinatario, asunto y cuerpo.
+            function enviarPorGmail(m) {
+                abrirEnlace('https://mail.google.com/mail/?view=cm&to=' + encodeURIComponent(destinoActual())
+                    + '&su=' + encodeURIComponent(m.asunto)
+                    + '&body=' + encodeURIComponent(m.texto));
+            }
+
+            function enviarPor(canal) {
+                cerrarMenuEnvio();
+                var d = prepararSolicitud();
+                if (!d) { return; }
+                var m = construirMensaje(d);
+                if (canal === 'whatsapp') { return enviarPorWhatsApp(m); }
+                if (canal === 'gmail')    { return enviarPorGmail(m); }
+                enviarPorCorreo(m);
+            }
+
+            // Desplegable de canales
+            var menuEnvio  = document.getElementById('solEnviarMenu');
+            var listaEnvio = document.getElementById('solEnviarLista');
+
+            function destinoActual() {
+                return (document.getElementById('solEmailSoporte').value || '').trim()
+                    || (btnCorreo.getAttribute('data-destino') || '').trim();
+            }
+            function abrirMenuEnvio() {
+                listaEnvio.hidden = false;
+                btnCorreo.setAttribute('aria-expanded', 'true');
+            }
+            function cerrarMenuEnvio() {
+                if (!listaEnvio || listaEnvio.hidden) { return; }
+                listaEnvio.hidden = true;
+                btnCorreo.setAttribute('aria-expanded', 'false');
+            }
+            function alternarMenuEnvio() {
+                if (listaEnvio.hidden) { abrirMenuEnvio(); } else { cerrarMenuEnvio(); }
+            }
+
+            if (btnCorreo && listaEnvio) {
+                btnCorreo.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    alternarMenuEnvio();
+                });
+                listaEnvio.addEventListener('click', function (e) {
+                    var item = e.target.closest('.enviar-menu-item');
+                    if (!item) { return; }
+                    e.preventDefault();
+                    enviarPor(item.getAttribute('data-canal'));
+                });
+                document.addEventListener('click', function (e) {
+                    if (menuEnvio && !menuEnvio.contains(e.target)) { cerrarMenuEnvio(); }
+                });
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape') { cerrarMenuEnvio(); }
+                });
+            }
         })();
     });
     </script>

@@ -2253,6 +2253,15 @@ body { word-wrap: break-word; overflow-wrap: break-word; }
 }
 .btn-close-save:hover::before { content: "\f058"; color: var(--accent); }
 
+/* Los temas (win11, etc.) reimprimen el fondo del X de Bootstrap con
+   background-image !important, que gana en especificidad a
+   ".btn-close-save { background: transparent !important }" y deja el X
+   encima del icono de guardar. Este selector con ID lo anula. */
+#empleadoModal .btn-close-save,
+#empleadoModal .btn-close-save:hover {
+    background-image: none !important;
+}
+
 /* ============ CONTROLES DE NAVEGACIÓN DEL MODAL ============ */
 .nav-controls {
     min-width: 0 !important;

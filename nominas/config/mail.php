@@ -127,6 +127,12 @@ function cargarConfigMail($pdo) {
         if (empty($cfg['encryption'])) $cfg['encryption'] = $proveedores[$cfg['proveedor']]['encriptacion'];
     }
 
+    // Puerto por defecto: vacio, cero o no numerico se traduzca a 587. Sin esto,
+    // un puerto vacio con proveedor "custom" llegaba a PHPMailer como puerto 0.
+    if ((int)$cfg['port'] <= 0) {
+        $cfg['port'] = 587;
+    }
+
     return $cfg;
 }
 
@@ -373,7 +379,7 @@ function enviarCorreoConConfig($cfg, $to, $toName, $subject, $html, $text) {
         $mail->SMTPAuth   = true;
         $mail->Username   = $cfg['usuario'];
         $mail->Password   = $cfg['password'];
-        $mail->Port       = (int)$cfg['port'];
+        $mail->Port       = ((int)$cfg['port'] > 0) ? (int)$cfg['port'] : 587;
         if ($cfg['encryption'] === 'ssl') {
             $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
         } elseif ($cfg['encryption'] === 'tls') {

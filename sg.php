@@ -217,7 +217,17 @@ if (!function_exists('licencia_tipos')) {
         if ($datos === null) return null;
         $meses = isset($datos['info']['meses']) ? $datos['info']['meses'] : null;
         if ($meses === null) return null;
-        return strtotime('+' . (int)$meses . ' months', (int)$datos['fecha_activacion']);
+        $tz     = new DateTimeZone(date_default_timezone_get());
+        $inicio = (new DateTimeImmutable('@' . (int)$datos['fecha_activacion']))->setTimezone($tz);
+        $anio   = (int)$inicio->format('Y');
+        $mes    = (int)$inicio->format('n');
+        $dia    = (int)$inicio->format('j');
+        $total  = ($anio * 12 + ($mes - 1)) + (int)$meses;
+        $anioDest = intdiv($total, 12);
+        $mesDest  = ($total % 12) + 1;
+        $ultimoDia = (int)$inicio->setDate($anioDest, $mesDest, 1)->format('t');
+        $diaDest   = min($dia, $ultimoDia);
+        return $inicio->setDate($anioDest, $mesDest, $diaDest)->getTimestamp();
     }
     function licencia_vencida($datos) {
         if ($datos === null) return true;
@@ -228,7 +238,11 @@ if (!function_exists('licencia_tipos')) {
     function licencia_dias_restantes($datos) {
         $vence = licencia_vencimiento($datos);
         if ($vence === null) return null;
-        return max(0, (int)ceil(((int)$vence - time()) / 86400));
+        $tz       = new DateTimeZone(date_default_timezone_get());
+        $hoy      = new DateTimeImmutable('today', $tz);
+        $diaVence = (new DateTimeImmutable('@' . (int)$vence))->setTimezone($tz)->setTime(0, 0, 0);
+        $dias     = (int)$hoy->diff($diaVence)->format('%r%a');
+        return max(0, $dias);
     }
     function licencia_activada() {
         $datos = licencia_leer();

@@ -1378,7 +1378,7 @@ html.focus-mode .fluid-container {
         </div>
         <div id="sidebarIdleCountdown" class="sidebar-text" hidden data-tooltip="Tiempo restante antes del bloqueo por inactividad" data-tooltip-theme="primary">
             <i class="fas fa-hourglass-half idle-cd-icon"></i>
-            <span class="idle-cd-label">Bloqueo en</span>
+            <span class="idle-cd-label">Bloquear sesión en</span>
             <span class="idle-cd-time" id="sidebarIdleCdTime">--:--</span>
         </div>
     </div>

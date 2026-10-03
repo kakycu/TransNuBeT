@@ -373,6 +373,8 @@ function licencia_leer() {
 
 /**
  * Timestamp de vencimiento de la licencia (null si es permanente).
+ * Suma meses de CALENDARIO sin desbordar el día: 31-ene + 1 mes = 28/29-feb
+ * (no 3-mar). Conserva la hora/minuto/segundo de activación.
  * @param array|null $datos Datos de licencia (de licencia_leer()).
  * @return int|null
  */
@@ -380,8 +382,18 @@ function licencia_vencimiento($datos) {
     if ($datos === null) return null;
     $meses = isset($datos['info']['meses']) ? $datos['info']['meses'] : null;
     if ($meses === null) return null; // permanente
-    $fecha = $datos['fecha_activacion'];
-    return strtotime('+' . (int)$meses . ' months', (int)$fecha);
+    $tz     = new DateTimeZone(date_default_timezone_get());
+    $inicio = (new DateTimeImmutable('@' . (int)$datos['fecha_activacion']))->setTimezone($tz);
+    $anio   = (int)$inicio->format('Y');
+    $mes    = (int)$inicio->format('n');
+    $dia    = (int)$inicio->format('j');
+    $total  = ($anio * 12 + ($mes - 1)) + (int)$meses;
+    $anioDest = intdiv($total, 12);
+    $mesDest  = ($total % 12) + 1;
+    // Si el mes destino tiene menos días, se ajusta al último día de ese mes.
+    $ultimoDia = (int)$inicio->setDate($anioDest, $mesDest, 1)->format('t');
+    $diaDest   = min($dia, $ultimoDia);
+    return $inicio->setDate($anioDest, $mesDest, $diaDest)->getTimestamp();
 }
 
 /**
@@ -397,14 +409,19 @@ function licencia_vencida($datos) {
 }
 
 /**
- * Días restantes hasta el vencimiento (0 si vencida).
+ * Días restantes hasta el vencimiento (0 si vence hoy o ya venció).
+ * Cuenta días de CALENDARIO (medianoche a medianoche), sin redondear horas
+ * residuales, para evitar el desfase de +1 día que producía ceil().
  * @param array|null $datos
  * @return int|null null si permanente/inválida
  */
 function licencia_dias_restantes($datos) {
     $vence = licencia_vencimiento($datos);
     if ($vence === null) return null;
-    $dias = (int)ceil(((int)$vence - time()) / 86400);
+    $tz       = new DateTimeZone(date_default_timezone_get());
+    $hoy      = new DateTimeImmutable('today', $tz);
+    $diaVence = (new DateTimeImmutable('@' . (int)$vence))->setTimezone($tz)->setTime(0, 0, 0);
+    $dias     = (int)$hoy->diff($diaVence)->format('%r%a');
     return max(0, $dias);
 }
 
@@ -426,18 +443,20 @@ function licencia_activada() {
 
 /**
  * Etiqueta entre paréntesis con los días que faltan para el vencimiento:
- * "(en 27 días)", "(vence hoy)" o "(vencida)".
+ * "(en 27 días)", "(vence en: 27 días)", "(vence hoy)" o "(vencida)".
  * Las licencias permanentes no llevan etiqueta.
  * @param array|null $datos
+ * @param bool       $conPrefijo Anteponer "vence en: " a la cantidad de días.
  * @return string Cadena vacía si no aplica.
  */
-function licencia_etiqueta_dias_restantes($datos) {
+function licencia_etiqueta_dias_restantes($datos, $conPrefijo = false) {
     if ($datos === null) return '';
     $vence = licencia_vencimiento($datos);
     if ($vence === null) return '';
     $dias = licencia_dias_restantes($datos);
     if ((int)$dias === 0) return (time() > (int)$vence) ? ' (vencida)' : ' (vence hoy)';
-    return ' (en ' . (int)$dias . ' ' . ((int)$dias === 1 ? 'día' : 'días') . ')';
+    $cantidad = (int)$dias . ' ' . ((int)$dias === 1 ? 'día' : 'días');
+    return ' (' . ($conPrefijo ? 'vence en: ' : 'en ') . $cantidad . ')';
 }
 
 /**
@@ -460,17 +479,19 @@ function licencia_etiqueta_estado($datos = null, $prefijo = 'LICENCIA ', $activa
 
 /**
  * Texto de vencimiento listo para mostrar, con los días restantes entre
- * paréntesis: "25/10/2026 (en 27 días)", "25/10/2026 (vence hoy)".
+ * paréntesis: "25/10/2026 (en 27 días)", "25/10/2026 (vence en: 27 días)",
+ * "25/10/2026 (vence hoy)".
  *
- * @param array|null $datos     Datos de la licencia (null = no hay licencia).
- * @param string     $sin_datos Texto cuando no hay licencia.
+ * @param array|null $datos      Datos de la licencia (null = no hay licencia).
+ * @param string     $sin_datos  Texto cuando no hay licencia.
+ * @param bool       $conPrefijo Anteponer "vence en: " a la cantidad de días.
  * @return string
  */
-function licencia_texto_vencimiento($datos, $sin_datos = '—') {
+function licencia_texto_vencimiento($datos, $sin_datos = '—', $conPrefijo = false) {
     if ($datos === null) return $sin_datos;
     $vence = licencia_vencimiento($datos);
     if ($vence === null) return 'Permanente (no vence)';
-    return date('d/m/Y', $vence) . licencia_etiqueta_dias_restantes($datos);
+    return date('d/m/Y', $vence) . licencia_etiqueta_dias_restantes($datos, $conPrefijo);
 }
 
 /**
