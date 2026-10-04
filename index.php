@@ -390,6 +390,29 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             border: 1px solid rgba(59, 130, 246, 0.3);
         }
 
+        .version-chip.licencia-caida {
+            background: #b91c1c;
+            color: #fde047;
+            border-color: rgba(253, 224, 71, 0.6);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            text-decoration: none;
+            cursor: pointer;
+            animation: licencia-caida-fade 1.8s ease-in-out infinite;
+        }
+
+        .version-chip.licencia-caida:hover {
+            box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.45);
+        }
+
+        /* El badge intercambia color con el texto: amarillo sobre rojo y,
+           en la mitad del ciclo, rojo sobre amarillo. */
+        @keyframes licencia-caida-fade {
+            0%, 100% { color: #fde047; background-color: #b91c1c; border-color: rgba(253, 224, 71, 0.6); }
+            50% { color: #b91c1c; background-color: #fde68a; border-color: rgba(185, 28, 28, 0.6); }
+        }
+
         .status-dot {
             display: flex;
             align-items: center;
@@ -1256,9 +1279,15 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
                 </div>
             </div>
 
+            <?php if ($lic_raiz_activa): ?>
             <div class="version-chip">
                 <i class="fas fa-code-branch"></i> Enterprise · Estable
             </div>
+            <?php else: ?>
+            <a class="version-chip licencia-caida" href="nominas/licencia.php">
+                <i class="fas fa-triangle-exclamation"></i> Licencia Vencida o inexistente. Renueve, Registre o adquiera una nueva licencia.
+            </a>
+            <?php endif; ?>
             <div class="status-dot" id="serverStatusDot">
                 <i class="fas fa-circle" id="statusIcon"></i>
                 <span id="statusText">Verificando...</span>
@@ -1986,7 +2015,7 @@ function mostrarEstadoLicencia() {
     fetch('index.php?licencia_json=1', { cache: 'no-store' })
         .then(r => r.ok ? r.json() : Promise.reject('HTTP ' + r.status))
         .then(d => {
-            abrirModalIndex('licencia', licenciaHTML(d));
+            abrirModalIndex('licencia', licenciaHTML(d), d);
         })
         .catch(() => {
             // Fallback: mostrar los datos del render inicial
@@ -2100,24 +2129,24 @@ function mostrarEstadoLicencia() {
                 // Cerrar el menú
                 closeMenu();
 
-                // Acción para "salarios": redirigir a la consulta pública
+                // Acción para "salarios": abrir la consulta pública en pestaña nueva
                 if (servicio === 'salarios') {
-                    window.location.href = '/nominas/solic_userinfo/';
+                    window.open('/nominas/solic_userinfo/', '_blank');
                 } else if (servicio === 'charangon') {
-                    // Redirigir a fcostocharangon/
-                    window.location.href = 'fcostoCharangon/';
+                    // Abrir fcostocharangon/ en pestaña nueva
+                    window.open('fcostoCharangon/', '_blank');
                 } else if (servicio === 'papel-adhesivo') {
-                    // Redirigir a la ficha de costo del papel adhesivo
-                    window.location.href = 'fcostoAdhesivo/';
+                    // Abrir la ficha de costo del papel adhesivo en pestaña nueva
+                    window.open('fcostoAdhesivo/', '_blank');
                 } else if (servicio === 'licencia') {
                     // Mostrar el estado e info de la licencia
                     mostrarEstadoLicencia();
                 } else if (servicio === 'contacto') {
-                    // Redirigir al formulario de contacto
-                    window.location.href = '/contacto.php';
+                    // Abrir el formulario de contacto en pestaña nueva
+                    window.open('/contacto.php', '_blank');
                 } else if (servicio === 'sobre-autor') {
-                    // Redirigir al explorador de portafolio del autor
-                    window.location.href = '/explorer.php';
+                    // Abrir el explorador de portafolio del autor en pestaña nueva
+                    window.open('/explorer.php', '_blank');
                 } else {
                     // Por si hubiera otros, aunque ahora solo está este
                     Swal.fire({
@@ -2544,7 +2573,7 @@ var CONTENIDO_MODALES_INDEX = {
 };
 
 var modalIndexActual = null;
-function abrirModalIndex(tipo, htmlOverride) {
+function abrirModalIndex(tipo, htmlOverride, licOverride) {
     var cfg = CONTENIDO_MODALES_INDEX[tipo] || CONTENIDO_MODALES_INDEX.proyecto;
     modalIndexActual = tipo;
     document.getElementById('modalIdxIcon').className = 'fas ' + cfg.icono + ' tt-icon';
@@ -2558,10 +2587,12 @@ function abrirModalIndex(tipo, htmlOverride) {
             + (cfg.empresa || '<?= $LICENCIA_MARCA ?>');
     }
     document.getElementById('modalIdxContenido').innerHTML = htmlOverride || cfg.html;
-    // "Registrar Licencia" aparece tanto en el aviso de licencia faltante/vencida
-    // como en el modal de estado de la licencia.
+    // "Registrar Licencia" solo se muestra en los modales de licencia cuando NO
+    // hay una licencia vigente (registro inexistente o vencido); con licencia
+    // activa se oculta.
+    var licEstado = licOverride || licenciaRaiz;
     var btnReg = document.getElementById('btnRegistrarLicencia');
-    if (btnReg) btnReg.style.display = (tipo === 'licencia_alerta' || tipo === 'licencia') ? 'inline-block' : 'none';
+    if (btnReg) btnReg.style.display = ((tipo === 'licencia_alerta' || tipo === 'licencia') && !licEstado.activa) ? 'inline-block' : 'none';
     var overlay = document.getElementById('modalIndex');
     // Los modales de licencia usan una caja mas alta/ancha (clase licencia-amplio).
     overlay.classList.toggle('licencia-amplio', String(tipo || '').indexOf('licencia') === 0);
