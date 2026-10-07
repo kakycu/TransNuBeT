@@ -1,0 +1,62 @@
+/* Indicador del "Período en curso" (puntero real de la BD).
+ *
+ * Vive en su propia hoja porque no todas las paginas del modulo cargan la misma
+ * CSS: nominas.php usa modules/CSS/nominas.css, dashboard.php usa
+ * css/dashboard.css y configuracion.php no carga ninguna de las dos. En vez de
+ * duplicar el bloque en cada tema, cada pagina enlaza este fichero.
+ *
+ * Todos los colores salen de variables del tema activo (--accent, --muted,
+ * --color-success-soft...) con un fallback, para que el badge cambie de color
+ * solo con cambiar el tema, sin editar nada aqui.
+ *
+ * No es el periodo que se esta viendo en pantalla, sino el mes abierto mas
+ * antiguo de configuracion_general.periodo_nominas_en_curso, que es el que
+ * decide que periodos se pueden generar. */
+.periodo-curso-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+    padding: 0.25rem 0.75rem;
+    border: 0.0625rem solid rgba(var(--accent-rgb), 0.45);
+    border-radius: 999rem;
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.periodo-curso-chip i {
+    font-size: 0.9rem;
+    align-self: center;
+}
+
+.periodo-curso-label {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.periodo-curso-valor {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.01em;
+}
+
+/* Variante compacta para cabeceras de tarjeta, donde el chip va en una fila
+   con otros elementos y no puede ocupar altura extra. */
+.periodo-curso-chip-sm {
+    margin-top: 0;
+    padding: 0.2rem 0.6rem;
+}
+
+.periodo-curso-chip-sm .periodo-curso-valor {
+    font-size: 0.95rem;
+}
+
+@media (max-width: 575.98px) {
+    .periodo-curso-chip {
+        white-space: normal;
+    }
+}

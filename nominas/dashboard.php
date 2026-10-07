@@ -507,6 +507,30 @@ try {
     }
     
     $anio_seleccionado = isset($_GET['anio_distrib']) ? intval($_GET['anio_distrib']) : $anos_disponibles[0];
+
+    // Estado de cierres del anio seleccionado. El dashboard es de solo lectura,
+    // asi que no bloquea nada; lo que hace es mostrar cuantos meses quedan
+    // congelados para que se entienda por que un dato ya no se puede mover.
+    $cierres_anio = ['cerrados' => 0, 'total' => 12, 'pendientes' => 0, 'sin_contabilizar' => []];
+    try {
+        $meses_estado = mesesDelAnioConEstado($pdo, $anio_seleccionado);
+        $anual_sel = obtenerCierrePeriodoNominas($pdo, $anio_seleccionado, 0);
+        $cerrados_anual = $anual_sel && $anual_sel['estado'] === 'cerrado';
+        foreach ($meses_estado as $info_mes) {
+            if ($info_mes['estado'] === 'cerrado' || $cerrados_anual) {
+                $cierres_anio['cerrados']++;
+            } elseif ((int)($info_mes['filas_pendientes'] ?? 0) > 0) {
+                $cierres_anio['sin_contabilizar'][] = $info_mes['etiqueta'];
+            } elseif ($info_mes['tiene_datos']) {
+                $cierres_anio['pendientes']++;
+            }
+        }
+        if ($cerrados_anual) {
+            $cierres_anio['total'] = 12;
+        }
+    } catch (Throwable $e) {
+        $cierres_anio = null;
+    }
     
     $montos_stmt = $pdo->prepare("SELECT mes, importe_dis, fecha_registro FROM montos_distrib WHERE anio = ? ORDER BY fecha_registro ASC");
     $montos_stmt->execute([$anio_seleccionado]);
@@ -1105,6 +1129,85 @@ foreach (array_keys($cierres_meses) as $ym_cierres) {
     }
 }
 rsort($anios_cierres_meses);
+
+// ============================================
+// RESUMEN DE CIERRES REALIZADOS (cierres_periodo_nomina)
+// A diferencia del Visor de Cuadres, que lista un renglon por LOTE (una fila de
+// cierres_nomina por cada tipo de nomina del mes), aqui se listan los cierres de
+// PERIODO: una fila por mes cerrado y una por el anio completo. Son los cierres
+// que congelan los datos, asi que no se deben mezclar con los cuadres contables.
+// ============================================
+$cierres_realizados = [];
+$cierres_realizados_total = 0;
+$anios_cierres_realizados = [];
+try {
+    $cr_filas = listarCierresNominas($pdo);
+
+    foreach ($cr_filas as $cr) {
+        $anio = (int)$cr['periodo_anio'];
+        $esAnual = ((int)$cr['tipo'] === 2) || ((int)$cr['periodo_mes'] === 0);
+
+        if (!isset($cierres_realizados[$anio])) {
+            $cierres_realizados[$anio] = [
+                'cerrados' => 0, 'revertidos' => 0, 'anual_cerrado' => false,
+                'total_devengado' => 0.0, 'total_neto' => 0.0,
+                'total_deducciones' => 0.0, 'total_trabajadores' => 0,
+                'filas' => [],
+            ];
+            $anios_cierres_realizados[] = $anio;
+        }
+
+        if ($cr['estado'] === 'cerrado') {
+            // 'cerrados' es el contador de MESES cerrados del encabezado (su
+            // tooltip dice "Meses cerrados"): el cierre anual no es un mes, se
+            // marca aparte con el badge "Año completo" para no inflarlo.
+            if ($esAnual) {
+                $cierres_realizados[$anio]['anual_cerrado'] = true;
+            } else {
+                $cierres_realizados[$anio]['cerrados']++;
+            }
+        } else {
+            $cierres_realizados[$anio]['revertidos']++;
+        }
+
+        $cierres_realizados[$anio]['filas'][] = [
+            'es_anual'    => $esAnual,
+            'etiqueta'    => $esAnual
+                ? 'Año completo ' . $anio
+                : etiquetaMesNominas((int)$cr['periodo_mes']) . ' ' . $anio,
+            'estado'      => $cr['estado'],
+            'lotes'       => (int)($cr['total_lotes'] ?? 0),
+            'trabajadores'=> (int)($cr['total_trabajadores'] ?? 0),
+            'devengado'   => (float)($cr['total_devengado'] ?? 0),
+            'deducciones' => (float)($cr['total_deducciones'] ?? 0),
+            'neto'        => (float)($cr['total_neto'] ?? 0),
+            'fecha'       => $cr['fecha_cierre'],
+            'usuario'     => $cr['usuario_cierre'] ?? '',
+            'observaciones'=> $cr['observaciones'] ?? '',
+        ];
+
+        $cierres_realizados_total++;
+    }
+
+    // Los totales del anio se suman solo con los cierres mensuales: si el anio
+    // esta cerrado se contarian dos veces los mismos importes.
+    foreach ($cr_filas as $cr) {
+        if ((int)$cr['tipo'] === 2 || (int)$cr['periodo_mes'] === 0) {
+            continue;
+        }
+        if ($cr['estado'] !== 'cerrado') {
+            continue;
+        }
+        $anio = (int)$cr['periodo_anio'];
+        $cierres_realizados[$anio]['total_devengado']    += (float)($cr['total_devengado'] ?? 0);
+        $cierres_realizados[$anio]['total_neto']         += (float)($cr['total_neto'] ?? 0);
+        $cierres_realizados[$anio]['total_deducciones']  += (float)($cr['total_deducciones'] ?? 0);
+        $cierres_realizados[$anio]['total_trabajadores'] += (int)($cr['total_trabajadores'] ?? 0);
+    }
+} catch (Throwable $e) {
+    $cierres_realizados = [];
+}
+rsort($anios_cierres_realizados);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -1120,6 +1223,7 @@ rsort($anios_cierres_meses);
     <link href="css/datatables/1.13.6/jquery.dataTables.min.css" rel="stylesheet">
     <link href="css/datatables/1.13.6/buttons.dataTables.min.css" rel="stylesheet">
     <link href="css/sweetalert2.min.css" rel="stylesheet">
+    <link href="modules/CSS/periodo-curso.css" rel="stylesheet">
     <link href="css/dashboard.css" rel="stylesheet">
     <script src="js/chart.umd.min.js"></script>
     
@@ -1131,39 +1235,79 @@ rsort($anios_cierres_meses);
     <script src="js/jspdf.umd.min.js"></script>
     <style>
         /* ===== Visor de Cuadres por Meses - tabla ===== */
-        #tablaCierresMeses {
+        .tabla-cierres-meses {
             background: var(--panel-2) !important;
             width: 100%;
         }
-        #tablaCierresMeses thead th {
-            background: rgba(22, 22, 30, 0.98) !important;
-            color: rgba(255, 255, 255, 0.9) !important;
-            border-bottom: 0.0625rem solid rgba(255, 255, 255, 0.15) !important;
+        .tabla-cierres-meses thead th {
+            background: var(--panel, #161b1e) !important;
+            color: var(--txt, rgba(255, 255, 255, 0.9)) !important;
+            border-bottom: 0.0625rem solid var(--border-2, rgba(255, 255, 255, 0.15)) !important;
             letter-spacing: 0.0312rem;
             font-weight: 600;
             padding: 0.625rem 0.5rem !important;
             vertical-align: middle;
         }
-        #tablaCierresMeses tbody tr {
+        .tabla-cierres-meses tbody tr {
             background: var(--panel-2) !important;
         }
-        #tablaCierresMeses tbody tr:hover {
+        .tabla-cierres-meses tbody tr:hover {
             background: rgba(96, 165, 250, 0.1) !important;
         }
-        #tablaCierresMeses td {
+        .tabla-cierres-meses td {
             background: transparent !important;
             border: none !important;
             border-bottom: 0.0625rem solid var(--border, rgba(255,255,255,0.05)) !important;
             padding: 0.5625rem 0.5rem !important;
             vertical-align: middle;
         }
-        #tablaCierresMeses .cierre-numero { color: var(--accent, #60a5fa); font-weight:600; }
-        #tablaCierresMeses .cierre-trab { color: var(--txt, #e8edf6); }
-        #tablaCierresMeses .cierre-devengado { color: var(--color-success, #10b981); font-weight:600; }
-        #tablaCierresMeses .cierre-dedu { color: var(--faint, #64748b); }
-        #tablaCierresMeses .cierre-contrib { color: var(--muted, #97a5bb); }
-        #tablaCierresMeses .cierre-neto { color: var(--txt, #ffffff); font-weight:600; }
-        #tablaCierresMeses .cierre-fecha { color: var(--faint, rgba(255,255,255,0.6)); font-size:0.75rem; }
+        .tabla-cierres-meses .cierre-numero { color: var(--accent, #60a5fa); font-weight:600; }
+        .tabla-cierres-meses .cierre-trab { color: var(--txt, #e8edf6); }
+        .tabla-cierres-meses .cierre-devengado { color: var(--color-success, #10b981); font-weight:600; }
+        .tabla-cierres-meses .cierre-dedu { color: var(--faint, #64748b); }
+        .tabla-cierres-meses .cierre-contrib { color: var(--muted, #97a5bb); }
+        .tabla-cierres-meses .cierre-neto { color: var(--txt, #ffffff); font-weight:600; }
+        .tabla-cierres-meses .cierre-fecha { color: var(--faint, rgba(255,255,255,0.6)); font-size:0.75rem; }
+
+        /* ===== Resumen de Cierres Realizados - tabla =====
+           Esta tabla no tenía reglas propias: sus <td> heredaban el
+           --bs-table-bg:#fff que Bootstrap pone en :root, así que salían
+           BLANCAS en los temas oscuros (Oscuro, Mar) aunque el contenedor ya
+           estuviera pintado con var(--panel-2). Se replica el criterio de la
+           tabla de meses: fondo transparente en las celdas, el color lo pone
+           el <tr>/contenedor con las variables del tema. */
+        .tabla-cierres-realizados {
+            background: var(--panel-2) !important;
+            width: 100%;
+        }
+        .tabla-cierres-realizados thead th {
+            background: var(--panel, #161b1e) !important;
+            color: var(--txt, rgba(255, 255, 255, 0.9)) !important;
+            border-bottom: 0.0625rem solid var(--border-2, rgba(255, 255, 255, 0.15)) !important;
+            letter-spacing: 0.0312rem;
+            font-weight: 600;
+            padding: 0.625rem 0.5rem !important;
+            vertical-align: middle;
+        }
+        .tabla-cierres-realizados tbody tr {
+            background: var(--panel-2) !important;
+        }
+        .tabla-cierres-realizados tbody tr:hover {
+            background: var(--accent-bg2, rgba(96, 165, 250, 0.1)) !important;
+        }
+        .tabla-cierres-realizados td {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 0.0625rem solid var(--border, rgba(255,255,255,0.05)) !important;
+            padding: 0.5625rem 0.5rem !important;
+            vertical-align: middle;
+            color: var(--txt, #e8edf6);
+        }
+        .tabla-cierres-realizados .cierre-numero { color: var(--accent, #60a5fa); font-weight:600; }
+        .tabla-cierres-realizados .cierre-devengado { color: var(--color-success, #10b981); font-weight:600; }
+        .tabla-cierres-realizados .cierre-dedu { color: var(--faint, #64748b); }
+        .tabla-cierres-realizados .cierre-neto { color: var(--txt, #ffffff); font-weight:600; }
+        .tabla-cierres-realizados .cierre-fecha { color: var(--faint, rgba(255,255,255,0.6)); font-size:0.75rem; }
 
 /* ============================================ */
 /* RESPONSIVE DASHBOARD — Refuerzo complementario */
@@ -1347,7 +1491,7 @@ canvas[id$="Chart"] {
         width: 100%;
         justify-content: space-between;
     }
-    #tablaCierresMeses {
+    .tabla-cierres-meses {
         min-width: 36rem;
         font-size: 0.72rem;
     }
@@ -1651,6 +1795,7 @@ body.solo-lectura .btn-win-success {
                 <option value="collapseDistribucionTipo">Distribución por Tipo</option>
                 <option value="collapseRegistroMontos">Registro Histórico de Montos</option>
                 <option value="collapseCentrosCosto">Distribución por Centros de Costo</option>
+                <option value="collapseCierresRealizados">Resumen de Cierres Realizados</option>
                 <option value="collapseCierresMeses">Visor de Cuadres por Meses</option>
                 <option value="collapseUltimasNominas">Últimas Nóminas Generadas</option>
                 <option value="collapseAccionesRapidas">Acciones Rápidas</option>
@@ -1751,6 +1896,16 @@ body.solo-lectura .btn-win-success {
         </div>
     </div>
     <?php endif; ?>
+
+    <!-- Puntero real de la BD, debajo de los avisos. No es lo mismo que el periodo
+         que se esta viendo en pantalla (puede ser otro): es el mes abierto mas
+         antiguo, el que decide que periodos se pueden generar. -->
+    <?php $periodoCurso = periodoNominasEnCurso($pdo); ?>
+    <div class="periodo-curso-chip mb-3 fade-in-up" title="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas" data-tooltip="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas" data-tooltip-theme="info">
+        <i class="fas fa-calendar-days"></i>
+        <span class="periodo-curso-label">Per&iacute;odo en curso:</span>
+        <span class="periodo-curso-valor"><?php echo htmlspecialchars(etiquetaMesNominas($periodoCurso['mes']) . ' / ' . (int)$periodoCurso['anio']); ?></span>
+    </div>
 
     <!-- KPI -->
     <div class="kpi-grid fade-in-up" style="animation-delay: 0.05s;">
@@ -1858,6 +2013,37 @@ body.solo-lectura .btn-win-success {
                 </h6>
                 <span class="badge-win"><i class="fas fa-database me-1"></i> secuencias + nóminas</span>
             </div>
+            <!-- Estado de cierres del año. Va fuera del collapse porque es el dato que
+                 explica por qué una nómina ya no se puede mover: si estuviera oculto
+                 tras el chevron, el aviso se perdería. -->
+            <?php if (!empty($cierres_anio)): ?>
+                <div class="d-flex flex-wrap align-items-center gap-2 px-3 py-2 mx-3 mb-3 rounded"
+                     style="background: rgba(var(--accent-rgb),0.08);">
+                    <i class="fas fa-lock" style="color: var(--accent);"></i>
+                    <span style="color: var(--txt); font-size:0.85rem;">
+                        Cierres <?php echo (int)$cierres_anio['cerrados']; ?>/<?php echo (int)$cierres_anio['total']; ?>
+                        meses de <?php echo (int)$anio_seleccionado; ?>
+                    </span>
+                    <?php if (!empty($cierres_anio['sin_contabilizar'])): ?>
+                        <span class="badge" style="background: rgba(245,158,11,0.15); color: var(--warning);">
+                            <?php echo count($cierres_anio['sin_contabilizar']); ?>
+                            mes(es) con n&oacute;minas sin contabilizar
+                        </span>
+                    <?php elseif ($cierres_anio['pendientes'] > 0): ?>
+                        <span class="badge" style="background: rgba(var(--accent-rgb),0.15); color: var(--accent);">
+                            <?php echo (int)$cierres_anio['pendientes']; ?> mes(es) por cerrar
+                        </span>
+                    <?php else: ?>
+                        <span class="badge" style="background: rgba(var(--color-success-soft-rgb),0.15); color: var(--color-success-soft);">
+                            Sin pendientes
+                        </span>
+                    <?php endif; ?>
+                    <a href="modules/cierres.php?anio=<?php echo (int)$anio_seleccionado; ?>"
+                       class="ms-auto text-decoration-none" style="color: var(--accent); font-size:0.85rem;">
+                        Ir a Cierres <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            <?php endif; ?>
             <div class="p-3 collapse" id="collapseResumenNominas">
 
                 <!-- ========================================== -->
@@ -2508,6 +2694,108 @@ body.solo-lectura .btn-win-success {
 
 	
 	
+    <!-- Resumen de Cierres Realizados (cierres_periodo_nomina) -->
+    <div class="row g-4 mt-1 fade-in-up" style="animation-delay: 0.2s;">
+        <div class="col-12">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseCierresRealizados" aria-expanded="false" aria-controls="collapseCierresRealizados">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-lock me-2" style="color: var(--accent, #60a5fa);"></i> Resumen de Cierres Realizados
+                        <span class="badge ms-2" style="background: rgba(var(--accent-rgb), 0.14); color: var(--accent); border: 0.0625rem solid var(--accent); font-size:0.65rem;"><?php echo $cierres_realizados_total; ?> cierre<?php echo $cierres_realizados_total === 1 ? '' : 's'; ?></span>
+                    </h6>
+                    <select id="filtroAnioCierresRealizados" class="form-select form-select-sm" style="width: auto; min-width: 9rem; background: var(--panel); border: 0.0625rem solid rgba(255,255,255,0.15); color: var(--txt); border-radius: 0.5rem;" title="Filtrar por año" data-tooltip="Filtrar por año" data-tooltip-theme="secondary">
+                        <option value="">Todos los años</option>
+                        <?php foreach ($anios_cierres_realizados as $anio_cr): ?>
+                            <option value="<?php echo (int)$anio_cr; ?>"><?php echo (int)$anio_cr; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div id="collapseCierresRealizados" class="collapse">
+                <div class="p-4">
+                    <?php if (empty($cierres_realizados)): ?>
+                        <div class="text-center py-4" style="color: var(--faint, #64748b);">
+                            <i class="fas fa-inbox fa-2x mb-2 d-block" style="color: var(--faint, rgba(255,255,255,0.2));"></i>
+                            Todavía no hay cierres de período registrados.
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($cierres_realizados as $anio_cr => $cr_anio): ?>
+                        <div class="mb-3 bloque-cierre-realizado" data-anio="<?php echo (int)$anio_cr; ?>" style="border: 0.0625rem solid var(--border, rgba(255,255,255,0.08)); border-radius: 0.75rem; overflow: hidden;">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 py-2" style="background: rgba(var(--accent-rgb), 0.08); border-bottom: 0.0625rem solid var(--border, rgba(255,255,255,0.08)); cursor: pointer;" onclick="toggleCierreRealizado('creal_<?php echo (int)$anio_cr; ?>', this)">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-chevron-down cierres-chevon" style="font-size:0.75rem; color: var(--accent); transition: transform 0.25s ease;"></i>
+                                    <strong style="color: var(--accent);"><i class="fas fa-calendar-alt me-2"></i><?php echo (int)$anio_cr; ?></strong>
+                                    <?php if ($cr_anio['anual_cerrado']): ?>
+                                        <span class="badge" style="background: rgba(var(--color-success-rgb), 0.14); color: var(--color-success-soft, #34d399); border: 0.0625rem solid var(--color-success, #10b981); font-size:0.62rem;">Año completo</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size:0.78rem; color: var(--muted, #97a5bb);">
+                                    <span title="Meses cerrados" data-tooltip="Meses cerrados" data-tooltip-theme="info"><i class="fas fa-lock me-1" style="color: var(--accent);"></i><?php echo (int)$cr_anio['cerrados']; ?></span>
+                                    <span title="Devengado" data-tooltip="Devengado" data-tooltip-theme="info"><i class="fas fa-money-bill-wave me-1" style="color: var(--color-success, #10b981);"></i><?php echo formatearMoneda($cr_anio['total_devengado']); ?></span>
+                                    <span title="Deducciones" data-tooltip="Deducciones" data-tooltip-theme="danger"><i class="fas fa-minus-circle me-1"></i><?php echo formatearMoneda($cr_anio['total_deducciones']); ?></span>
+                                    <span title="Neto a pagar" data-tooltip="Neto a pagar" data-tooltip-theme="warning"><i class="fas fa-hand-holding-usd me-1"></i><?php echo formatearMoneda($cr_anio['total_neto']); ?></span>
+                                    <a href="modules/cierres.php?anio=<?php echo (int)$anio_cr; ?>" class="text-decoration-none" style="color: var(--accent);">Ir a Cierres <i class="fas fa-arrow-right ms-1" style="font-size:0.65rem;"></i></a>
+                                </div>
+                            </div>
+                            <div id="creal_<?php echo (int)$anio_cr; ?>" class="cierre-realizado-body" style="display:none;">
+                                <div class="table-responsive" style="border:none; background: var(--panel-2, #151b2a); padding:0;">
+                                    <table id="tablaCierresRealizados_<?php echo (int)$anio_cr; ?>" class="table table-sm tabla-cierres-realizados" style="background: var(--panel-2, #151b2a); margin-bottom:0;">
+                                        <thead>
+                                            <tr>
+                                                <th style="font-size:0.68rem; text-transform:uppercase;">Período</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase;">Tipo</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase;">Estado</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase; text-align:center;">Lotes</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase; text-align:center;">Trab.</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase; text-align:right;">Devengado</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase; text-align:right;">Deducciones</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase; text-align:right;">Neto</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase;">Fecha Cierre</th>
+                                                <th style="font-size:0.68rem; text-transform:uppercase;">Usuario</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($cr_anio['filas'] as $fila_cr): ?>
+                                            <tr>
+                                                <td class="cierre-numero">
+                                                    <i class="fas <?php echo $fila_cr['es_anual'] ? 'fa-calendar-check' : 'fa-calendar-alt'; ?> me-1" style="color: var(--accent);"></i><?php echo htmlspecialchars($fila_cr['etiqueta']); ?>
+                                                </td>
+                                                <td>
+                                                    <span class="badge" style="background: <?php echo $fila_cr['es_anual'] ? 'rgba(var(--accent-rgb),0.16)' : 'rgba(255,255,255,0.08)'; ?>; color: <?php echo $fila_cr['es_anual'] ? 'var(--accent)' : 'var(--muted)'; ?>; border: 0.0625rem solid <?php echo $fila_cr['es_anual'] ? 'var(--accent)' : 'var(--border, rgba(255,255,255,0.15))'; ?>; font-size:0.62rem;"><?php echo $fila_cr['es_anual'] ? 'Año completo' : 'Mensual'; ?></span>
+                                                </td>
+                                                <td>
+                                                    <?php if ($fila_cr['estado'] === 'cerrado'): ?>
+                                                        <span class="badge" style="background: rgba(var(--color-success-rgb),0.14); color: var(--color-success-soft, #34d399); border: 0.0625rem solid var(--color-success, #10b981); font-size:0.62rem;"><i class="fas fa-lock me-1"></i>Cerrado</span>
+                                                    <?php else: ?>
+                                                        <span class="badge" style="background: rgba(245,158,11,0.14); color: var(--warning, #fbbf24); border: 0.0625rem solid var(--warning, #fbbf24); font-size:0.62rem;"><i class="fas fa-unlock me-1"></i>Revertido</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td style="text-align:center;"><?php echo (int)$fila_cr['lotes']; ?></td>
+                                                <td style="text-align:center;"><?php echo number_format($fila_cr['trabajadores'], 0, '.', ','); ?></td>
+                                                <td class="cierre-devengado" style="text-align:right;"><?php echo formatearMoneda($fila_cr['devengado']); ?></td>
+                                                <td class="cierre-dedu" style="text-align:right;"><?php echo formatearMoneda($fila_cr['deducciones']); ?></td>
+                                                <td class="cierre-neto" style="text-align:right;"><?php echo formatearMoneda($fila_cr['neto']); ?></td>
+                                                <td class="cierre-fecha">
+                                                    <i class="fas fa-clock me-1" style="color: var(--accent); font-size:0.65rem;"></i><?php echo $fila_cr['fecha'] ? date('d/m/Y H:i', strtotime($fila_cr['fecha'])) : '—'; ?>
+                                                </td>
+                                                <td style="font-size:0.75rem; color: var(--muted);"><?php echo htmlspecialchars($fila_cr['usuario'] !== '' ? $fila_cr['usuario'] : '—'); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <small class="text-secondary" style="font-size:0.75rem; color: var(--muted);">
+                            <i class="fas fa-info-circle me-1"></i>Datos procedentes de la tabla <code>cierres_periodo_nomina</code>: cierres de período (mes y año completo), no cuadres por lote.
+                        </small>
+                    <?php endif; ?>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Visor de Cuadres por Meses (cierres_nomina) -->
     <div class="row g-4 mt-1 fade-in-up" style="animation-delay: 0.2s;">
         <div class="col-12">
@@ -2555,7 +2843,7 @@ body.solo-lectura .btn-win-success {
                             </div>
                             <div id="cmes_<?php echo $ym; ?>" class="cierres-body" style="display:none;">
                                 <div class="table-responsive" style="border:none; background: var(--panel-2, #151b2a); padding:0;">
-                                    <table id="tablaCierresMeses" class="table table-sm" style="background: var(--panel-2, #151b2a); margin-bottom:0;">
+                                    <table id="tablaCierresMeses_<?php echo htmlspecialchars($ym); ?>" class="table table-sm tabla-cierres-meses" style="background: var(--panel-2, #151b2a); margin-bottom:0;">
                                         <thead>
                                             <tr>
                                                 <th style="font-size:0.68rem; text-transform:uppercase;">Nº Nómina</th>
@@ -2768,6 +3056,13 @@ body.solo-lectura .btn-win-success {
                                 <i class="fas fa-umbrella-beach fa-2x mb-2 d-block"></i> Vacaciones
                             </a>
                         </div>
+                        <?php if (permiso_puede('cierres', 'ver')): ?>
+                        <div class="col">
+                            <a href="modules/cierres.php?anio=<?php echo (int)$anio_seleccionado; ?>" class="btn-win w-100 text-center py-3" title="Cerrar meses y años de nómina" data-tooltip="Cerrar meses y años de nómina" data-tooltip-theme="primary">
+                                <i class="fas fa-calendar-check fa-2x mb-2 d-block"></i> Cierres Mes/Año
+                            </a>
+                        </div>
+                        <?php endif; ?>
                         <?php if (permiso_puede('configuracion', 'ver')): ?>
                         <div class="col">
                             <a href="modules/configuracion.php" class="btn-win w-100 text-center py-3" title="Configuración del sistema" data-tooltip="Configuración del sistema" data-tooltip-theme="secondary">
@@ -6424,11 +6719,34 @@ function toggleCierresMes(id, header) {
     body.style.display = visible ? 'none' : 'block';
     if (chevron) chevron.style.transform = visible ? '' : 'rotate(180deg)';
 }
+// Mismo comportamiento para el Resumen de Cierres Realizados, que agrupa por año
+// en lugar de por mes.
+function toggleCierreRealizado(id, header) {
+    toggleCierresMes(id, header);
+}
 // Si el card principal se colapsa/expande, mantener coherencia visual del chevron global
 document.getElementById('collapseCierresMeses')?.addEventListener('hidden.bs.collapse', function () {
     document.querySelectorAll('.cierres-body').forEach(function (el) { el.style.display = 'none'; });
     document.querySelectorAll('.cierres-chevon').forEach(function (el) { el.style.transform = ''; });
 });
+// El Resumen de Cierres Realizados tiene su propio cuerpo: se resetea aparte para
+// que colapsar un card no apague el chevron del otro.
+document.getElementById('collapseCierresRealizados')?.addEventListener('hidden.bs.collapse', function () {
+    document.querySelectorAll('.cierre-realizado-body').forEach(function (el) { el.style.display = 'none'; });
+    document.querySelectorAll('#collapseCierresRealizados .cierres-chevon').forEach(function (el) { el.style.transform = ''; });
+});
+
+// Filtro por año del Resumen de Cierres Realizados
+(function () {
+    var sel = document.getElementById('filtroAnioCierresRealizados');
+    if (!sel) return;
+    sel.addEventListener('change', function () {
+        var anio = sel.value;
+        document.querySelectorAll('.bloque-cierre-realizado').forEach(function (bloque) {
+            bloque.style.display = (!anio || bloque.getAttribute('data-anio') === anio) ? '' : 'none';
+        });
+    });
+})();
 
 // Filtro por año del Visor de Cuadres por Meses
 (function () {

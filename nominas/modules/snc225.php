@@ -332,16 +332,18 @@ if (file_exists($ruta_logo)) {
 
         /* Chevron toggle wrapper */
         .snc-select-wrap { position: relative; display: inline-flex; align-items: center; }
-        .snc-select-wrap select { appearance: none; -webkit-appearance: none; background-image: none !important; padding-right:1.75rem !important; cursor: pointer; }
-        [data-theme="light"] .snc-select-wrap select { background-image: none !important; }
+        .snc-select-wrap select.form-select { appearance: none; -webkit-appearance: none; background-image: none !important; padding-right:1.75rem !important; cursor: pointer; }
+        [data-theme="light"] .snc-select-wrap select.form-select { background-image: none !important; }
         .snc-select-wrap .snc-chevron {
             position: absolute; right:0.5rem; top:50%; transform: translateY(-50%);
             pointer-events: none; font-size:0.65rem; color: rgba(255,255,255,0.5);
             transition: transform 0.2s ease, color 0.2s ease;
         }
         [data-theme="light"] .snc-select-wrap .snc-chevron { color: rgba(0,0,0,0.45); }
+        [data-theme="orgullo"] .snc-select-wrap .snc-chevron { color: rgba(51,38,77,0.55); }
         .snc-select-wrap.open .snc-chevron { transform: translateY(-50%) rotate(180deg); color: #60a5fa; }
         [data-theme="light"] .snc-select-wrap.open .snc-chevron { color: #0078d4; }
+        [data-theme="orgullo"] .snc-select-wrap.open .snc-chevron { color: #7c3aed; }
 
         /* ======== SNC-225 Complete Light Theme Overrides ======== */
         /* Using html[data-theme="light"] for higher specificity than user_menu.php */

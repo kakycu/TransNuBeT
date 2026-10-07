@@ -53,7 +53,7 @@ if ($user_id && isset($pdo) && $pdo instanceof PDO) {
     }
 }
 
-// Carpetas del sistema (Exportaciones / Descargas):
+// Carpetas del sistema (Exportaciones / Descargas / Salvas):
 // solo Administrador (Admin), Contador/Editor (Editor) y Programador (Soft).
 $sidebar_rol_codigo = function_exists('permiso_rol_codigo')
     ? (string)permiso_rol_codigo()
@@ -65,9 +65,22 @@ $sidebar_rol_permitido = function_exists('carpetas_sistema_permitido')
 // ==========================================
 // ESTADÍSTICAS PARA BADGES DEL MENÚ
 // ==========================================
+// funciones.php vive aparte (footer.php también lo carga). El resumen de cierres
+// sale de ahí, así que se asegura su carga antes de leer el periodo en curso.
+if (!function_exists('resumenCierresAnioNominas') && is_readable(__DIR__ . '/funciones.php')) {
+    require_once __DIR__ . '/funciones.php';
+}
+
 $stats_sidebar = [
     'empleados' => 0,
     'nominas_anio' => 0,
+    'cierres_anio' => [
+        'anio'         => (int)date('Y'),
+        'cerrados'     => 0,
+        'total'        => 12,
+        'anio_cerrado' => false,
+        'etiqueta'     => '0/12',
+    ],
     'clasificadores' => 0,
     'usuarios' => 0,
     'historico' => 0,
@@ -79,6 +92,11 @@ if (isset($pdo) && $pdo instanceof PDO) {
     try {
         $stats_sidebar['nominas_anio'] = (int)$pdo->query("SELECT COUNT(DISTINCT CONCAT(DATE_FORMAT(periodo_desde, '%Y-%m'), '-', tipo_nomina)) FROM nominas WHERE estado != 'borrador' AND periodo_desde >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)")->fetchColumn();
     } catch (PDOException $e) {}
+    if (function_exists('resumenCierresAnioNominas')) {
+        try {
+            $stats_sidebar['cierres_anio'] = resumenCierresAnioNominas($pdo);
+        } catch (PDOException $e) {}
+    }
     $clasificadores_tablas = [
         'areas',
         'cargos_plantilla',
@@ -1213,6 +1231,18 @@ html.focus-mode .fluid-container {
                     <i class="fas fa-download"></i>
                     <span class="sidebar-text">Carpeta Descargas</span>
                 </a>
+                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=salvas" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'salvas') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de Salvas del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                    <i class="fas fa-box-archive"></i>
+                    <span class="sidebar-text">Carpeta de Salvas</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=temp" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'temp') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de archivos temporales del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span class="sidebar-text">Carpeta Temporales</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=logs" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'logs') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de registros (logs) del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span class="sidebar-text">Carpeta de Logs</span>
+                </a>
             </div>
         </div>
         <?php endif; ?>
@@ -1265,7 +1295,7 @@ html.focus-mode .fluid-container {
 
         <?php if (permiso_puede('nominas', 'ver')): ?>
         <span class="nav-category">Nóminas y Procesos</span>
-        <div class="nav-group <?php echo (in_array($current_file, ['nominas.php'])) ? 'open' : ''; ?>" id="nominasNavGroup">
+        <div class="nav-group <?php echo (in_array($current_file, ['nominas.php', 'cierres.php'])) ? 'open' : ''; ?>" id="nominasNavGroup">
             <a href="<?php echo $base_prefix; ?>modules/nominas.php" class="nav-item <?php echo ($current_file == 'nominas.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Nóminas" data-tooltip-theme="primary">
                 <i class="fas fa-calculator"></i>
                 <span class="sidebar-text">Nóminas</span>
@@ -1289,6 +1319,34 @@ html.focus-mode .fluid-container {
                     <i class="fas fa-user-slash"></i>
                     <span class="sidebar-text">Trabajadores Sin Nómina</span>
                 </a>
+                <?php
+                $tope_he_tooltip = 160;
+                if (isset($pdo)) {
+                    try {
+                        $v_tope_he = $pdo->query("SELECT valor FROM configuracion_general WHERE parametro = 'tope_he_anual' LIMIT 1")->fetchColumn();
+                        if ($v_tope_he !== false) {
+                            $tope_he_tooltip = max(1, (int)$v_tope_he);
+                        }
+                    } catch (Throwable $e) {}
+                }
+                ?>
+                <a href="<?php echo $base_prefix; ?>modules/nominas.php#he_anuales" class="nav-item" data-tooltip="Horas extraordinarias acumuladas por trabajador en el año · tope <?php echo (int)$tope_he_tooltip; ?> h" data-tooltip-theme="primary">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span class="sidebar-text">HE Anuales</span>
+                </a>
+                <?php if (permiso_puede('cierres', 'ver')): ?>
+                <?php
+                $cierres_sidebar = $stats_sidebar['cierres_anio'];
+                $cierres_sidebar_tooltip = $cierres_sidebar['anio_cerrado']
+                    ? 'Año ' . $cierres_sidebar['anio'] . ' cerrado por completo'
+                    : $cierres_sidebar['cerrados'] . ' de ' . $cierres_sidebar['total'] . ' periodos cerrados de ' . $cierres_sidebar['anio'];
+                ?>
+                <a href="<?php echo $base_prefix; ?>modules/cierres.php" class="nav-item <?php echo ($current_file == 'cierres.php') ? 'active' : ''; ?>" data-tooltip="<?php echo htmlspecialchars('Cierre de meses y años · ' . $cierres_sidebar_tooltip, ENT_QUOTES); ?>" data-tooltip-theme="primary">
+                    <i class="fas fa-calendar-check"></i>
+                    <span class="sidebar-text">Cierres</span>
+                    <span class="nav-badge sidebar-text"><?php echo htmlspecialchars($cierres_sidebar['etiqueta'], ENT_QUOTES); ?></span>
+                </a>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>

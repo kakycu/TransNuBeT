@@ -120,7 +120,7 @@ if (isset($_GET['accion']) && $_GET['accion'] === 'verificar_cuadre_lote') {
 
     $cfg = [];
     try {
-        $st = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('dias_mensuales','horas_jornada_diaria','recargo_nocturno')");
+        $st = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('dias_mensuales','horas_jornada_diaria')");
         while ($rw = $st->fetch()) { $cfg[$rw['parametro']] = $rw['valor']; }
     } catch (Exception $e) {}
     $dm = floatval($cfg['dias_mensuales'] ?? 0) ?: 24;
@@ -524,7 +524,7 @@ if (isset($_POST['accion']) && $_POST['accion'] === 'verificar_cuadre') {
 
     $cfg = [];
     try {
-        $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('dias_mensuales','horas_jornada_diaria','recargo_nocturno')");
+        $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('dias_mensuales','horas_jornada_diaria')");
         while ($r = $stmt->fetch()) { $cfg[$r['parametro']] = $r['valor']; }
     } catch (Exception $e) {}
     $dias_mensuales = floatval($cfg['dias_mensuales'] ?? 0) ?: 24;

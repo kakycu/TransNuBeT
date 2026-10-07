@@ -1,0 +1,681 @@
+/* modules/CSS/cierres.css - Cierre de períodos de nómina (mes y año)
+ *
+ * Reglas de la app:
+ *   - Los colores salen de variables de tema (--txt, --muted, --accent, --panel...).
+ *   - El fondo, la barra superior y el margen del sidebar los aporta theme_config.php,
+ *     que inyecta su <style> al FINAL del documento con !important: cualquier regla de
+ *     este archivo que compita con él debe llevar también !important.
+ *   - theme_config.php aporta el margin-left; el padding vive aquí.
+ *
+ * Los estados semánticos (cerrado / revertido / pendiente / sin nómina) no tienen
+ * equivalente en el tema, así que se declaran una única vez aquí como --cierre-*
+ * y el resto del archivo solo consume esas variables.
+ */
+
+/* Tinta de los chips de estado.
+ * No se fija un color: se mezcla sobre --txt, que ya se invierte con el tema
+ * (claro en temas oscuros, oscuro en Claro y Orgullo). Con poca proporcion del
+ * color semantico --y mucho de --txt-- el chip sale como un tono pastel del
+ * estado sobre fondo oscuro, y como un tono oscuro del estado sobre fondo
+ * claro: contraste alto en los seis temas sin duplicar reglas por tema. */
+:root {
+    --cierre-cerrado:    #22c55e;
+    --cierre-revertido:  #f59e0b;
+    --cierre-pendiente:  var(--accent);
+    --cierre-vacio:      var(--muted);
+
+    --cierre-cerrado-ink:   color-mix(in srgb, var(--cierre-cerrado) 28%, var(--txt));
+    --cierre-revertido-ink: color-mix(in srgb, var(--cierre-revertido) 30%, var(--txt));
+}
+
+/* Fallback del fondo win11 (el tema de la app aporta el suyo con !important) */
+.win11-bg {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f1a 100%);
+}
+
+.main-container { padding: 1.25rem; }
+
+/* ===== Aviso de solo lectura ===== */
+.cierre-aviso-lectura {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: var(--radius, 0.75rem);
+    background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    color: var(--txt);
+}
+.cierre-aviso-lectura > i { color: var(--accent); margin-top: 0.15rem; }
+
+/* ===== Barra de contexto ===== */
+.cierre-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.cierre-periodo-actual {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius, 0.75rem);
+    background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.cierre-periodo-icono {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #ffffff;
+    flex-shrink: 0;
+}
+.cierre-periodo-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+}
+.cierre-periodo-valor {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--txt);
+}
+
+.cierre-selector-anio {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    /* El icono, la etiqueta y el desplegable forman una sola pieza: nunca se
+     * parte en dos lineas, porque un selector partido se lee como dos campos. */
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+.cierre-selector-anio label {
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+
+/* Chevron dibujado con bordes: al tomar el color de una variable del tema,
+ * se ve igual de bien en los cuatro temas. El que trae Bootstrap es una
+ * imagen fija que en el tema oscuro se pierde sobre el fondo del select. */
+.cierre-select-wrap {
+    position: relative;
+    display: inline-flex;
+}
+.cierre-select-wrap select {
+    min-width: 7rem;
+    padding-right: 2rem;
+    appearance: none;
+    -webkit-appearance: none;
+    /* Los temas 'light' y 'orgullo' inyectan su propio chevron como
+     * background-image con !important. Se anula con un selector mas
+     * especifico para que no queden dos flechas superpuestas. */
+    background-image: none !important;
+}
+[data-theme] .cierre-select-wrap select {
+    background-image: none !important;
+}
+/* El fondo se fija aqui y no se deja al tema: el chevron se dibuja con
+ * var(--txt), y si el campo quedara con el blanco de Bootstrap en un tema
+ * oscuro la flecha seria blanca sobre blanco. En 'light' y 'orgullo' el tema
+ * impone blanco con !important, y ahi var(--txt) es oscuro, asi que la flecha
+ * se sigue leyendo. */
+[data-theme] .cierre-select-wrap select {
+    background-color: var(--panel-2);
+    color: var(--txt);
+    border-color: var(--border);
+}
+.cierre-select-wrap::after {
+    content: '';
+    position: absolute;
+    right: 0.7rem;
+    top: 50%;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-top: -0.35rem;
+    border-right: 2px solid var(--txt);
+    border-bottom: 2px solid var(--txt);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+.cierre-select-wrap:hover::after {
+    border-color: var(--accent);
+}
+.cierre-select-wrap:focus-within::after {
+    border-color: var(--accent);
+}
+
+/* ===== Panel ===== */
+.cierre-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 0.75rem);
+    padding: 1rem 1.1rem 1.15rem;
+    margin-bottom: 1rem;
+}
+.cierre-panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+}
+.cierre-panel-header h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--txt);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.cierre-panel-header h2 i { color: var(--accent); }
+
+.cierre-subtitulo {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin: 1.1rem 0 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.cierre-subtitulo i { color: var(--accent); }
+
+/* ===== Chips de estado ===== */
+.cierre-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--panel-2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+.cierre-chip-cerrado {
+    background: color-mix(in srgb, var(--cierre-cerrado) 18%, var(--panel));
+    color: var(--cierre-cerrado-ink);
+    border-color: color-mix(in srgb, var(--cierre-cerrado) 45%, transparent);
+}
+.cierre-chip-revertido {
+    background: color-mix(in srgb, var(--cierre-revertido) 18%, var(--panel));
+    color: var(--cierre-revertido-ink);
+    border-color: color-mix(in srgb, var(--cierre-revertido) 45%, transparent);
+}
+.cierre-chip-listo {
+    background: color-mix(in srgb, var(--cierre-cerrado) 14%, var(--panel));
+    color: var(--txt);
+    border-color: color-mix(in srgb, var(--cierre-cerrado) 35%, transparent);
+}
+.cierre-chip-pendiente {
+    background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+    color: var(--txt);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* ===== Grilla de meses ===== */
+.cierre-meses {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.cierre-mes {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.55rem 0.25rem 0.45rem;
+    border-radius: var(--radius, 0.75rem);
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--txt);
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    opacity: 1;
+}
+.cierre-mes:hover { transform: translateY(-2px); border-color: var(--accent); }
+.cierre-mes:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cierre-mes-num { font-size: 1.15rem; font-weight: 800; line-height: 1; }
+.cierre-mes-nombre {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+}
+/* Numero y abreviaturacomparten linea: el numero grande y las tres letras
+ * se alinean por su linea base, de modo que la ficha se lee como '1 ENE' y no
+ * como dos filas apiladas. Cada uno conserva su tamano y su color. */
+.cierre-mes-cabecera {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.3rem;
+}
+.cierre-mes i { font-size: 0.7rem; margin-top: 0.1rem; }
+
+.cierre-mes.activo { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+.cierre-mes.estado-cerrado    { border-color: color-mix(in srgb, var(--cierre-cerrado) 50%, transparent); }
+.cierre-mes.estado-cerrado i  { color: var(--cierre-cerrado); }
+.cierre-mes.estado-revertido  { border-color: color-mix(in srgb, var(--cierre-revertido) 50%, transparent); }
+.cierre-mes.estado-revertido i { color: var(--cierre-revertido); }
+.cierre-mes.estado-pendiente i { color: var(--accent); }
+.cierre-mes.estado-sin_nomina { opacity: 0.55; }
+.cierre-mes.estado-sin_nomina i { color: var(--cierre-vacio); }
+
+.cierre-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--border);
+}
+.cierre-leyenda span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+/* ===== Lista de meses del panel anual ===== */
+.cierre-lista-anio {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    max-height: 22rem;
+    overflow-y: auto;
+}
+.cierre-lista-anio li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 0.5rem;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--txt);
+}
+.cierre-lista-anio li > i { width: 1rem; text-align: center; font-size: 0.72rem; }
+.cierre-lista-anio .cierre-li-nombre { flex: 1; font-weight: 600; }
+/* Meses con nomina automatica: el nombre es un enlace. La flecha solo se ve al
+ * pasar por encima, igual que en el desglose por tipo. */
+.cierre-lista-anio .cierre-li-enlace {
+    flex: 1;
+    font-weight: 600;
+    color: var(--txt);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 0.3rem;
+    padding: 0 0.15rem;
+    margin-left: -0.15rem;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.cierre-lista-anio .cierre-li-enlace:hover,
+.cierre-lista-anio .cierre-li-enlace:focus-visible {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.cierre-lista-anio .cierre-li-enlace:hover i,
+.cierre-lista-anio .cierre-li-enlace:focus-visible i {
+    opacity: 1;
+}
+.cierre-lista-anio .cierre-li-enlace i {
+    font-size: 0.6rem;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    transform: translateX(-2px);
+}
+.cierre-lista-anio .cierre-li-enlace:hover i,
+.cierre-lista-anio .cierre-li-enlace:focus-visible i {
+    transform: translateX(0);
+}
+.cierre-lista-anio .cierre-li-dato { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cierre-lista-anio li.estado-cerrado > i    { color: var(--cierre-cerrado); }
+.cierre-lista-anio li.estado-revertido > i  { color: var(--cierre-revertido); }
+.cierre-lista-anio li.estado-pendiente > i { color: var(--accent); }
+.cierre-lista-anio li.estado-sin_nomina > i { color: var(--cierre-vacio); }
+.cierre-lista-anio li.estado-sin_nomina { opacity: 0.7; }
+
+/* ===== Alerta informativa ===== */
+.cierre-alerta {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    margin-bottom: 0.9rem;
+    border-radius: 0.6rem;
+    font-size: 0.82rem;
+    background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    color: var(--txt);
+}
+.cierre-alerta > i { color: var(--accent); margin-top: 0.1rem; flex-shrink: 0; }
+.cierre-alerta.es-advertencia {
+    background: color-mix(in srgb, var(--cierre-revertido) 14%, var(--panel));
+    border-color: color-mix(in srgb, var(--cierre-revertido) 40%, transparent);
+}
+.cierre-alerta.es-advertencia > i { color: var(--cierre-revertido); }
+.cierre-alerta.es-ok {
+    background: color-mix(in srgb, var(--cierre-cerrado) 12%, var(--panel));
+    border-color: color-mix(in srgb, var(--cierre-cerrado) 35%, transparent);
+}
+.cierre-alerta.es-ok > i { color: var(--cierre-cerrado); }
+
+/* ===== Desglose por tipo ===== */
+.cierre-desglose { display: flex; flex-direction: column; gap: 0.55rem; }
+.cierre-desglose-fila {
+    display: grid;
+    grid-template-columns: minmax(8rem, 1fr) 3fr auto;
+    gap: 0.35rem 0.75rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.6rem;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+.cierre-desglose-fila:hover,
+.cierre-desglose-fila:focus-visible {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--panel-2));
+    transform: translateX(2px);
+}
+.cierre-desglose-fila:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+/* La flecha solo aparece al pasar por encima: antes de tocar el raton el
+ * desglose se lee como una lista, no como un menu. */
+.js-ir-nomina-icono {
+    align-self: center;
+    font-size: 0.75rem;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.cierre-desglose-fila:hover .js-ir-nomina-icono,
+.cierre-desglose-fila:focus-visible .js-ir-nomina-icono {
+    opacity: 1;
+}
+.cierre-desglose-etiqueta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--txt);
+}
+.cierre-desglose-etiqueta small { font-weight: 500; color: var(--muted); font-size: 0.7rem; }
+.cierre-desglose-barra {
+    align-self: center;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--txt) 10%, transparent);
+    overflow: hidden;
+}
+.cierre-desglose-barra > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+}
+.cierre-desglose-cifras {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+.cierre-desglose-cifras b { color: var(--txt); font-weight: 700; }
+
+/* ===== Botones de acción =====
+ * theme_config.php solo sobrescribe color y border-color de .btn-win (y lo hace
+ * con !important al final del documento). La forma base --padding, borde,
+ * radio, fuente, cursor-- no venia de ningun lado en esta pagina, asi que los
+ * botones salian sin estilo. Se declara aqui con variables de tema para que
+ * funcione igual en los seis temas.
+ */
+.btn-win {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 0.5rem);
+    background: var(--panel-2);
+    color: var(--txt);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+                transform 0.2s ease, filter 0.2s ease;
+}
+.btn-win-sm { padding: 0.3125rem 0.625rem; font-size: 0.7rem; }
+.btn-win-lg { padding: 0.625rem 1.1rem; font-size: 0.9rem; }
+.btn-win-block { width: 100%; }
+.btn-win:disabled,
+.btn-win.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.4);
+    transform: none;
+}
+/* Los botones de cierre se pueden dejar inoperables por el servidor: el JS marca
+ * el atributo para que el motivo se vea en el propio boton. */
+.btn-win[data-motivo]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.cierre-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+    padding-top: 0.9rem;
+    border-top: 1px dashed var(--border);
+}
+.cierre-acciones .btn-win { flex: 1 1 12rem; }
+
+/* ===== Tarjetas de cifras =====
+ * Peticion de maquetacion: icono junto al importe en la primera linea y la
+ * descripcion debajo. Todo con variables de tema, sin colores fijos.
+ */
+.cierre-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    height: 100%;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius, 0.75rem);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.cierre-stat:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); transform: translateY(-1px); }
+.cierre-stat-cifra {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+.cierre-stat-icono {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    border-radius: 0.55rem;
+    font-size: 0.9rem;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+}
+.cierre-stat-valor {
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--txt);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+.cierre-stat-label {
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+}
+
+/* ===== Estados de carga / vacío / error ===== */
+.cierre-estado-carga {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 2rem 1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+.cierre-estado-carga .spinner-border { width: 1.15rem; height: 1.15rem; }
+
+.cierre-vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 2.25rem 1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+.cierre-vacio i { font-size: 1.6rem; opacity: 0.6; }
+
+.cierre-error {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.6rem;
+    font-size: 0.82rem;
+    background: color-mix(in srgb, var(--red, #ef4444) 14%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--red, #ef4444) 40%, transparent);
+    color: var(--txt);
+}
+.cierre-error i { color: var(--red, #ef4444); }
+
+/* ===== Tabla del historial ===== */
+.cierre-tabla-wrap { overflow-x: auto; }
+.cierre-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.cierre-tabla thead th {
+    position: sticky;
+    top: 0;
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+.cierre-tabla tbody td {
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--txt);
+    vertical-align: middle;
+}
+.cierre-tabla tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.cierre-tabla .text-end { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* Encabezados ordenables del historial */
+.cierre-tabla thead th.js-orden {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.cierre-tabla thead th.js-orden:hover,
+.cierre-tabla thead th.js-orden:focus-visible {
+    color: var(--txt);
+    background: var(--panel);
+    outline: none;
+}
+.cierre-tabla thead th.js-orden:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(var(--accent-rgb), 0.55);
+}
+.cierre-tabla thead th.orden-activo {
+    color: var(--accent);
+}
+.cierre-tabla thead th.orden-activo i {
+    color: var(--accent);
+}
+.cierre-tabla .text-center { text-align: center; }
+.cierre-tabla .cierre-monto-neto { font-weight: 700; }
+
+.cierre-accion-icono {
+    border-radius: 0.45rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--cierre-revertido) 45%, transparent);
+    background: color-mix(in srgb, var(--cierre-revertido) 14%, transparent);
+    /* Se mezcla con --txt: el ambar puro no alcanza contraste sobre panel blanco. */
+    color: var(--cierre-revertido-ink);
+    cursor: pointer;
+    transition: filter 0.15s ease;
+    opacity: 1;
+}
+.cierre-accion-icono:hover:not(:disabled) { filter: brightness(1.15); }
+.cierre-accion-icono:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cierre-periodo-nombre { font-weight: 700; }
+.cierre-periodo-nombre small { display: block; font-weight: 500; color: var(--muted); font-size: 0.7rem; }
+
+/* ===== Adaptación a pantallas pequeñas ===== */
+@media (max-width: 767.98px) {
+    .cierre-toolbar { flex-direction: column; align-items: stretch; }
+    .cierre-selector-anio { justify-content: space-between; }
+    .cierre-meses { grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr)); }
+    .cierre-desglose-fila { grid-template-columns: 1fr; }
+}

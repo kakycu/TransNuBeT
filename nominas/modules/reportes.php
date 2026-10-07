@@ -103,6 +103,38 @@ try {
     $es_todos_meses = false;
 }
 
+// ==================== ESTADO DEL PERÍODO FILTRADO ====================
+// Reportes es de solo lectura: aquí no se bloquea nada, solo se avisa cuando
+// el período filtrado ya está cerrado, porque entonces sus datos están
+// congelados y son definitivos. Un año sin cierre anual no muestra nada,
+// aunque algún mes suelto esté cerrado: el indicador refleja el alcance del
+// filtro activo (mes concreto) o del cierre que engloba la vista (año).
+$aviso_periodo_reporte = '';
+$aviso_periodo_reporte_corto = '';
+try {
+    if (!$es_todos_meses && $num_mes_seleccionado > 0) {
+        $etiqueta_periodo_rep = nombreMesEspanol($num_mes_seleccionado) . ' ' . $anio_tot_seleccionado;
+        $estado_rep = estado_operacion_periodo_nominas(
+            $pdo,
+            sprintf('%04d-%02d', $anio_tot_seleccionado, $num_mes_seleccionado)
+        );
+        if (empty($estado_rep['operable']) && ($estado_rep['motivo'] ?? '') === 'periodo_cerrado') {
+            $aviso_periodo_reporte = $estado_rep['mensaje'];
+            $aviso_periodo_reporte_corto = 'Período cerrado: ' . $etiqueta_periodo_rep;
+        }
+    } else {
+        $cierre_anual_rep = obtenerCierrePeriodoNominas($pdo, $anio_tot_seleccionado, 0);
+        if ($cierre_anual_rep && ($cierre_anual_rep['estado'] ?? '') === 'cerrado') {
+            $aviso_periodo_reporte = 'El año ' . $anio_tot_seleccionado . ' está cerrado desde el '
+                . $cierre_anual_rep['fecha_cierre'] . ': los datos de este período están congelados.';
+            $aviso_periodo_reporte_corto = 'Año cerrado: ' . $anio_tot_seleccionado;
+        }
+    }
+} catch (Throwable $e) {
+    $aviso_periodo_reporte = '';
+    $aviso_periodo_reporte_corto = '';
+}
+
 // ==================== ESTADÍSTICAS DE TRABAJADORES ====================
 // Fechas del período del filtro global Año/Mes (año completo si TODOS)
 if ($es_todos_meses || !$num_mes_seleccionado) {
@@ -488,6 +520,109 @@ $cierres_nomina = $pdo->query("
     ORDER BY fecha_cierre DESC 
     LIMIT 10
 ")->fetchAll();
+
+// ============================================
+// RESUMEN DE CIERRES REALIZADOS DEL AÑO SELECCIONADO
+// A diferencia de $cierres_nomina (que son cuadres por lote), aquí se listan
+// los cierres de PERÍODO de cierres_periodo_nomina: uno por mes cerrado y el
+// del año completo. Es el mismo criterio que usa el dashboard, y respeta el
+// filtro global de año que gobierna este tab.
+// ============================================
+$cierres_resumen_anio = [
+    'cerrados' => 0,
+    'revertidos' => 0,
+    'total_devengado' => 0.0,
+    'total_neto' => 0.0,
+    'total_deducciones' => 0.0,
+    'total_trabajadores' => 0,
+];
+$cierres_resumen_anual = null;
+$cierres_resumen_filas = [];
+try {
+    $anio_resumen = (int)$anio_tot_seleccionado;
+    foreach (listarCierresNominas($pdo, ['anio' => $anio_resumen]) as $cr) {
+        $es_anual = ((int)$cr['tipo'] === 2) || ((int)$cr['periodo_mes'] === 0);
+        $mes = (int)$cr['periodo_mes'];
+
+        if ($es_anual) {
+            $cierres_resumen_anual = $cr;
+        } else {
+            $cierres_resumen_filas[$mes] = $cr;
+            // Los totales del año se suman solo con los meses: si el año está
+            // cerrado, su fila traería los mismos importes y se contarían dos
+            // veces.
+            if ($cr['estado'] === 'cerrado') {
+                $cierres_resumen_anio['cerrados']++;
+                $cierres_resumen_anio['total_devengado']   += (float)($cr['total_devengado'] ?? 0);
+                $cierres_resumen_anio['total_neto']        += (float)($cr['total_neto'] ?? 0);
+                $cierres_resumen_anio['total_deducciones'] += (float)($cr['total_deducciones'] ?? 0);
+            } else {
+                $cierres_resumen_anio['revertidos']++;
+            }
+        }
+    }
+} catch (Throwable $e) {
+    // Se conservan los contadores a cero: vaciar el array haria que el card
+    // leyera claves inexistentes y soltara avisos por pantalla.
+    $cierres_resumen_anual = null;
+    $cierres_resumen_filas = [];
+}
+$cierres_resumen_anual_cerrado = $cierres_resumen_anual
+    && ($cierres_resumen_anual['estado'] ?? '') === 'cerrado';
+
+// Fila TOTAL del año. Se suman SOLO los meses cerrados: la fila "Año completo"
+// arrastra los mismos importes y sumarla duplicaría el año. Cuando el año está
+// cerrado, el total coincide con su fila; cuando no, es la suma de lo que haya
+// cerrado hasta la fecha. Los trabajadores NO se suman: es la plantilla
+// distincta calculada más abajo.
+$cierres_resumen_totales = [
+    'filas'          => 0,
+    'lotes'          => 0,
+    'trabajadores'   => 0,
+    'devengado'      => 0.0,
+    'deducciones'    => 0.0,
+    'neto'           => 0.0,
+];
+foreach ($cierres_resumen_filas as $fila_tot) {
+    if (($fila_tot['estado'] ?? '') !== 'cerrado') {
+        continue;
+    }
+    $cierres_resumen_totales['filas']++;
+    $cierres_resumen_totales['lotes']       += (int)($fila_tot['total_lotes'] ?? 0);
+    $cierres_resumen_totales['devengado']   += (float)($fila_tot['total_devengado'] ?? 0);
+    $cierres_resumen_totales['deducciones'] += (float)($fila_tot['total_deducciones'] ?? 0);
+    $cierres_resumen_totales['neto']        += (float)($fila_tot['total_neto'] ?? 0);
+}
+$cierres_resumen_totales['trabajadores'] = 0; // se rellena tras contar los distinct
+
+// Los trabajadores NO se suman mes a mes: eso contaría a la misma persona
+// una vez por cada mes cerrado (231 = 4 meses x ~57) en lugar de la plantilla
+// real. Se cuentan las personas DISTINTAS de las nóminas contabilizadas de los
+// meses que están cerrados, que es lo que guarda el propio módulo Cierres.
+try {
+    // Solo los meses CERRADOS: un mes revertido no consolida nada y sus
+    // nóminas no forman parte del total del año.
+    $mesesCerradosCard = [];
+    foreach ($cierres_resumen_filas as $mes_tot => $fila_tot) {
+        if (($fila_tot['estado'] ?? '') === 'cerrado') {
+            $mesesCerradosCard[] = (int)$mes_tot;
+        }
+    }
+    $st_desc = $pdo->prepare("SELECT COUNT(DISTINCT n.trabajador_id) AS total
+                                FROM nominas n
+                                WHERE n.estado = 'contabilizado'
+                                  AND n.numero_nomina IS NOT NULL
+                                  AND YEAR(n.periodo_desde) = ?
+                                  AND MONTH(n.periodo_desde) IN (" .
+                                  ($mesesCerradosCard
+                                     ? implode(',', $mesesCerradosCard)
+                                     : '0') . ")");
+    $st_desc->execute([(int)$anio_tot_seleccionado]);
+    $cierres_resumen_anio['total_trabajadores'] = (int)$st_desc->fetchColumn();
+} catch (Throwable $e) {
+    $cierres_resumen_anio['total_trabajadores'] = 0;
+}
+$cierres_resumen_totales['trabajadores'] = $cierres_resumen_anio['total_trabajadores'];
 
 // Masa salarial total
 $masa_salarial_total = $pdo->query("
@@ -1401,6 +1536,14 @@ $ultimas_bajas = $pdo->query("
             <button type="submit" class="btn-win btn-win-sm" title="Filtrar todas las consultas por el período seleccionado" data-tooltip="Filtrar por período" data-tooltip-theme="primary">
                 <i class="fas fa-filter me-1"></i>Filtrar
             </button>
+            <?php if ($aviso_periodo_reporte !== ''): ?>
+            <span class="badge align-self-end"
+                  style="background: rgba(245,158,11,0.15); color: var(--warning, #fbbf24); border: 0.0625rem solid var(--warning, #fbbf24); font-size:0.72rem; padding: 0.55rem 0.7rem;"
+                  title="<?php echo htmlspecialchars($aviso_periodo_reporte); ?>"
+                  data-tooltip="<?php echo htmlspecialchars($aviso_periodo_reporte); ?>" data-tooltip-theme="warning">
+                <i class="fas fa-lock me-1"></i><?php echo htmlspecialchars($aviso_periodo_reporte_corto); ?>
+            </span>
+            <?php endif; ?>
         </form>
     </div>
 
@@ -2074,6 +2217,165 @@ $ultimas_bajas = $pdo->query("
                     </div>
                 </div>
             </div>
+
+            <!-- Resumen de Cierres Realizados (mensuales y anual del año seleccionado) -->
+            <div class="row g-3 fade-in-up">
+                <div class="col-md-12">
+                    <div class="glass-card p-4">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                            <h6 class="mb-0">
+                                <i class="fas fa-lock me-2" style="color: #60a5fa;"></i>
+                                Resumen de Cierres Realizados
+                                <span class="badge ms-2" style="background: rgba(96,165,250,0.14); color: #60a5fa; border: 0.0625rem solid #60a5fa; font-size:0.65rem;">
+                                    <?php echo (int)$cierres_resumen_anio['cerrados'] + (int)$cierres_resumen_anio['revertidos']; ?> cierre<?php echo ((int)$cierres_resumen_anio['cerrados'] + (int)$cierres_resumen_anio['revertidos']) === 1 ? '' : 's'; ?>
+                                </span>
+                            </h6>
+                            <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size: 0.78rem;">
+                                <?php if ($cierres_resumen_anual_cerrado): ?>
+                                    <span class="badge" style="background: rgba(16,185,129,0.14); color: #34d399; border: 0.0625rem solid #10b981; font-size:0.65rem;">
+                                        <i class="fas fa-calendar-check me-1"></i>Año <?php echo (int)$anio_tot_seleccionado; ?> cerrado
+                                    </span>
+                                <?php elseif ($cierres_resumen_anual): ?>
+                                    <span class="badge" style="background: rgba(245,158,11,0.14); color: #fbbf24; border: 0.0625rem solid #f59e0b; font-size:0.65rem;">
+                                        <i class="fas fa-unlock me-1"></i>Cierre anual revertido
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge" style="background: rgba(255,255,255,0.08); color: #94a3b8; border: 0.0625rem solid rgba(255,255,255,0.15); font-size:0.65rem;">
+                                        <i class="fas fa-calendar-alt me-1"></i>Año sin cierre
+                                    </span>
+                                <?php endif; ?>
+                                <a href="cierres.php?anio=<?php echo (int)$anio_tot_seleccionado; ?>" class="text-decoration-none" style="color: #60a5fa; font-size: 0.78rem;">
+                                    Ir a Cierres <i class="fas fa-arrow-right ms-1" style="font-size:0.65rem;"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6 col-lg-3">
+                                <div class="p-3 h-100" style="border: 0.0625rem solid rgba(255,255,255,0.08); border-radius: 0.75rem; background: rgba(255,255,255,0.02);">
+                                    <small style="color: #94a3b8;" data-tooltip="Meses cerrados del año" data-tooltip-theme="info">
+                                        <i class="fas fa-lock me-1" style="color: #60a5fa;"></i>Meses cerrados
+                                    </small>
+                                    <div style="font-size: 1.35rem; font-weight: 700;"><?php echo (int)$cierres_resumen_anio['cerrados']; ?><span style="font-size:0.85rem; font-weight:400; color:#94a3b8;"> /12</span></div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="p-3 h-100" style="border: 0.0625rem solid rgba(255,255,255,0.08); border-radius: 0.75rem; background: rgba(255,255,255,0.02);">
+                                    <small style="color: #94a3b8;" data-tooltip="Trabajadores en cierres mensuales" data-tooltip-theme="info">
+                                        <i class="fas fa-users me-1" style="color: #a78bfa;"></i>Trabajadores
+                                    </small>
+                                    <div style="font-size: 1.35rem; font-weight: 700;"><?php echo number_format((int)$cierres_resumen_anio['total_trabajadores'], 0, '.', ','); ?></div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="p-3 h-100" style="border: 0.0625rem solid rgba(255,255,255,0.08); border-radius: 0.75rem; background: rgba(255,255,255,0.02);">
+                                    <small style="color: #94a3b8;" data-tooltip="Devengado de los meses cerrados" data-tooltip-theme="info">
+                                        <i class="fas fa-money-bill-wave me-1" style="color: #34d399;"></i>Devengado
+                                    </small>
+                                    <div style="font-size: 1.35rem; font-weight: 700; color: #34d399;"><?php echo formatearMoneda($cierres_resumen_anio['total_devengado'] ?? 0); ?></div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-lg-3">
+                                <div class="p-3 h-100" style="border: 0.0625rem solid rgba(255,255,255,0.08); border-radius: 0.75rem; background: rgba(255,255,255,0.02);">
+                                    <small style="color: #94a3b8;" data-tooltip="Neto de los meses cerrados" data-tooltip-theme="warning">
+                                        <i class="fas fa-hand-holding-usd me-1" style="color: #fbbf24;"></i>Neto a pagar
+                                    </small>
+                                    <div style="font-size: 1.35rem; font-weight: 700; color: #fbbf24;"><?php echo formatearMoneda($cierres_resumen_anio['total_neto'] ?? 0); ?></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <?php
+                            $meses_resumen = [1 => 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                            foreach ($meses_resumen as $num_mes_r => $nombre_r):
+                                $fila_r = $cierres_resumen_filas[$num_mes_r] ?? null;
+                                if ($fila_r && $fila_r['estado'] === 'cerrado'):
+                                    $bg_r = 'rgba(16,185,129,0.14)'; $col_r = '#34d399'; $bor_r = '#10b981'; $ico_r = 'fa-lock';
+                                elseif ($fila_r):
+                                    $bg_r = 'rgba(245,158,11,0.14)'; $col_r = '#fbbf24'; $bor_r = '#f59e0b'; $ico_r = 'fa-unlock';
+                                else:
+                                    $bg_r = 'rgba(255,255,255,0.05)'; $col_r = '#94a3b8'; $bor_r = 'rgba(255,255,255,0.12)'; $ico_r = 'fa-minus';
+                                endif;
+                            ?>
+                                <span class="badge d-inline-flex align-items-center gap-1" style="background: <?php echo $bg_r; ?>; color: <?php echo $col_r; ?>; border: 0.0625rem solid <?php echo $bor_r; ?>; font-size:0.7rem;"
+                                    data-tooltip="<?php echo $fila_r ? ($fila_r['estado'] === 'cerrado' ? 'Cerrado' : 'Revertido') . ': ' . formatearMoneda($fila_r['total_neto'] ?? 0) : 'Sin cierre'; ?>"
+                                    data-tooltip-theme="info">
+                                    <i class="fas <?php echo $ico_r; ?>" style="font-size:0.55rem;"></i><?php echo $nombre_r; ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <?php if (!empty($cierres_resumen_filas) || $cierres_resumen_anual): ?>
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm table-dark">
+                                <thead>
+                                    <tr><th>Período</th><th>Estado</th><th class="text-center">Lotes</th><th class="text-center">Trab.</th><th class="text-end">Devengado</th><th class="text-end">Deducciones</th><th class="text-end">Neto</th><th>Fecha Cierre</th></tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($cierres_resumen_filas as $mes_r => $fila_r): ?>
+                                    <tr>
+                                        <td><i class="fas fa-calendar-alt me-1" style="color: #60a5fa;"></i><?php echo htmlspecialchars(etiquetaMesNominas((int)$mes_r) . ' ' . (int)$anio_tot_seleccionado); ?></td>
+                                        <td>
+                                            <?php if ($fila_r['estado'] === 'cerrado'): ?>
+                                                <span class="badge-custom badge-success">Cerrado</span>
+                                            <?php else: ?>
+                                                <span class="badge-custom badge-warning">Revertido</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center"><?php echo (int)($fila_r['total_lotes'] ?? 0); ?></td>
+                                        <td class="text-center"><?php echo number_format((int)($fila_r['total_trabajadores'] ?? 0), 0, '.', ','); ?></td>
+                                        <td class="text-end">$<?php echo number_format((float)($fila_r['total_devengado'] ?? 0), 2); ?></td>
+                                        <td class="text-end">$<?php echo number_format((float)($fila_r['total_deducciones'] ?? 0), 2); ?></td>
+                                        <td class="text-end">$<?php echo number_format((float)($fila_r['total_neto'] ?? 0), 2); ?></td>
+                                        <td><i class="fas fa-clock me-1" style="font-size:0.65rem; color:#94a3b8;"></i><?php echo $fila_r['fecha_cierre'] ? date('d/m/Y H:i', strtotime($fila_r['fecha_cierre'])) : '—'; ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                    <?php if ($cierres_resumen_anual): ?>
+                                    <tr style="background: rgba(16,185,129,0.08);">
+                                        <td><i class="fas fa-calendar-check me-1" style="color: #34d399;"></i><strong><?php echo htmlspecialchars('Año completo ' . (int)$anio_tot_seleccionado); ?></strong></td>
+                                        <td>
+                                            <?php if ($cierres_resumen_anual['estado'] === 'cerrado'): ?>
+                                                <span class="badge-custom badge-success">Cerrado</span>
+                                            <?php else: ?>
+                                                <span class="badge-custom badge-warning">Revertido</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center"><?php echo (int)($cierres_resumen_anual['total_lotes'] ?? 0); ?></td>
+                                        <td class="text-center"><?php echo number_format((int)($cierres_resumen_anual['total_trabajadores'] ?? 0), 0, '.', ','); ?></td>
+                                        <td class="text-end">$<?php echo number_format((float)($cierres_resumen_anual['total_devengado'] ?? 0), 2); ?></td>
+                                        <td class="text-end">$<?php echo number_format((float)($cierres_resumen_anual['total_deducciones'] ?? 0), 2); ?></td>
+                                        <td class="text-end">$<?php echo number_format((float)($cierres_resumen_anual['total_neto'] ?? 0), 2); ?></td>
+                                        <td><i class="fas fa-clock me-1" style="font-size:0.65rem; color:#34d399;"></i><?php echo $cierres_resumen_anual['fecha_cierre'] ? date('d/m/Y H:i', strtotime($cierres_resumen_anual['fecha_cierre'])) : '—'; ?></td>
+                                    </tr>
+                                    <?php endif; ?>
+                                    <?php if ($cierres_resumen_totales['filas'] > 0): ?>
+                                    <tr style="background: rgba(96,165,250,0.10); border-top: 0.0625rem solid rgba(96,165,250,0.4);">
+                                        <td><i class="fas fa-calculator me-1" style="color: #60a5fa;"></i><strong>TOTAL <?php echo (int)$anio_tot_seleccionado; ?></strong></td>
+                                        <td><?php echo $cierres_resumen_anual_cerrado
+                                                ? '<span class="badge-custom badge-success">Cerrado</span>'
+                                                : '<span class="badge-custom badge-success">Sumado</span>'; ?></td>
+                                        <td class="text-center"><strong><?php echo number_format($cierres_resumen_totales['lotes'], 0, '.', ','); ?></strong></td>
+                                        <td class="text-center"><strong><?php echo number_format($cierres_resumen_totales['trabajadores'], 0, '.', ','); ?></strong></td>
+                                        <td class="text-end"><strong>$<?php echo number_format($cierres_resumen_totales['devengado'], 2); ?></strong></td>
+                                        <td class="text-end"><strong>$<?php echo number_format($cierres_resumen_totales['deducciones'], 2); ?></strong></td>
+                                        <td class="text-end"><strong>$<?php echo number_format($cierres_resumen_totales['neto'], 2); ?></strong></td>
+                                        <td></td>
+                                    </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php else: ?>
+                        <div class="text-center py-3" style="color: #64748b;">
+                            <i class="fas fa-inbox fa-2x mb-2 d-block" style="color: rgba(255,255,255,0.2);"></i>
+                            Todavía no hay cierres de período registrados para <?php echo (int)$anio_tot_seleccionado; ?>.
+                        </div>
+                        <?php endif; ?>
+
+                        </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2686,6 +2988,53 @@ window.printData = {
         rangos_salariales: <?php echo json_encode($rangos_salariales); ?>,
         centros: <?php echo json_encode($centros_stats); ?>,
         cierres: <?php echo json_encode($cierres_nomina); ?>,
+        cierres_periodo: <?php echo json_encode([
+            'anio'                  => (int)$anio_tot_seleccionado,
+            'cerrados'              => (int)$cierres_resumen_anio['cerrados'],
+            'revertidos'            => (int)$cierres_resumen_anio['revertidos'],
+            'anual_cerrado'         => (bool)$cierres_resumen_anual_cerrado,
+            'total_trabajadores'    => (int)$cierres_resumen_anio['total_trabajadores'],
+            'total_devengado'       => (float)$cierres_resumen_anio['total_devengado'],
+            'total_deducciones'     => (float)$cierres_resumen_anio['total_deducciones'],
+            'total_neto'            => (float)$cierres_resumen_anio['total_neto'],
+            'totales'              => [
+                'meses'        => (int)$cierres_resumen_totales['filas'],
+                'lotes'        => (int)$cierres_resumen_totales['lotes'],
+                'trabajadores' => (int)$cierres_resumen_totales['trabajadores'],
+                'devengado'    => (float)$cierres_resumen_totales['devengado'],
+                'deducciones'  => (float)$cierres_resumen_totales['deducciones'],
+                'neto'         => (float)$cierres_resumen_totales['neto'],
+            ],
+            'meses'                 => array_map(static function ($mes, $fila) {
+                return [
+                    'mes'            => (int)$mes,
+                    'etiqueta'       => etiquetaMesNominas((int)$mes),
+                    'anual'          => false,
+                    'estado'         => (string)$fila['estado'],
+                    'lotes'          => (int)($fila['total_lotes'] ?? 0),
+                    'trabajadores'   => (int)($fila['total_trabajadores'] ?? 0),
+                    'devengado'      => (float)($fila['total_devengado'] ?? 0),
+                    'deducciones'    => (float)($fila['total_deducciones'] ?? 0),
+                    'neto'           => (float)($fila['total_neto'] ?? 0),
+                    'fecha_cierre'   => (string)($fila['fecha_cierre'] ?? ''),
+                ];
+            }, array_keys($cierres_resumen_filas), $cierres_resumen_filas),
+            // El cierre anual va como última fila de la misma lista, que es
+            // como lo presenta el dashboard: así no queda en un sitio distinto
+            // del resto de cierres.
+            'anual'                => $cierres_resumen_anual ? [
+                'mes'            => 0,
+                'etiqueta'       => 'Año completo',
+                'anual'          => true,
+                'estado'         => (string)$cierres_resumen_anual['estado'],
+                'lotes'          => (int)($cierres_resumen_anual['total_lotes'] ?? 0),
+                'trabajadores'   => (int)($cierres_resumen_anual['total_trabajadores'] ?? 0),
+                'devengado'      => (float)($cierres_resumen_anual['total_devengado'] ?? 0),
+                'deducciones'    => (float)($cierres_resumen_anual['total_deducciones'] ?? 0),
+                'neto'           => (float)($cierres_resumen_anual['total_neto'] ?? 0),
+                'fecha_cierre'   => (string)($cierres_resumen_anual['fecha_cierre'] ?? ''),
+            ] : null,
+        ]); ?>,
         totales_por_tipo: <?php echo json_encode($totales_por_tipo); ?>,
         totales_generales: <?php echo json_encode($totales_generales); ?>,
         totales_por_tipo_mes: <?php echo json_encode($totales_por_tipo_mes); ?>,
@@ -2765,6 +3114,75 @@ function construirHtmlInformeGeneral(opts) {
         const fecha = new Date(cn.fecha_cierre).toLocaleDateString('es-ES');
         cierresHtml += `<tr><td>${fecha}</td><td>${escapeHtml(cn.numero_nomina || '-')}</td><td style="text-align: center;">${cn.total_trabajadores}</td><td style="text-align: right;">${fmt(cn.total_devengado)}</td><td style="text-align: right;">${fmt(cn.total_neto)}</td></tr>`;
     });
+
+    // Resumen de cierres de PERÍODO (mensuales + anual): el mismo contenido del
+    // card de la pantalla, para que impresión, Word y PDF lleven la misma
+    // información que se ve en pantalla.
+    const cp = data.financiero.cierres_periodo || {};
+    let resumenCierresHtml = '';
+    if (cp.anio) {
+        const listaCp = (cp.meses || []).concat(cp.anual ? [cp.anual] : []);
+        let filasCp = '';
+        listaCp.forEach(m => {
+            const fechaCp = m.fecha_cierre ? new Date(m.fecha_cierre.replace(' ', 'T')).toLocaleDateString('es-ES') : '—';
+            const etiquetaCp = m.anual ? 'Año completo ' + cp.anio : (escapeHtml(m.etiqueta) + ' ' + cp.anio);
+            const estiloCp = m.anual ? ' style="font-weight:bold;"' : '';
+            filasCp += `<tr${estiloCp}>
+                <td>${etiquetaCp}</td>
+                <td style="text-align: center;">${m.estado === 'cerrado' ? 'Cerrado' : 'Revertido'}</td>
+                <td style="text-align: center;">${m.lotes}</td>
+                <td style="text-align: center;">${m.trabajadores}</td>
+                <td style="text-align: right;">${fmt(m.devengado)}</td>
+                <td style="text-align: right;">${fmt(m.deducciones)}</td>
+                <td style="text-align: right;">${fmt(m.neto)}</td>
+                <td style="text-align: center;">${fechaCp}</td>
+            </tr>`;
+        });
+        const sinCierresCp = listaCp.length === 0;
+        const totCp = cp.totales || {};
+        const filaTotalCp = totCp.meses
+            ? `<tr style="font-weight:bold; background:#eef2f7;">
+                   <td>TOTAL ${cp.anio}</td>
+                   <td style="text-align: center;">${cp.anual_cerrado ? 'Cerrado' : 'Sumado'}</td>
+                   <td style="text-align: center;">${totCp.lotes || 0}</td>
+                   <td style="text-align: center;">${totCp.trabajadores || 0}</td>
+                   <td style="text-align: right;">${fmt(totCp.devengado || 0)}</td>
+                   <td style="text-align: right;">${fmt(totCp.deducciones || 0)}</td>
+                   <td style="text-align: right;">${fmt(totCp.neto || 0)}</td>
+                   <td style="text-align: center;">—</td>
+               </tr>`
+            : '';
+        resumenCierresHtml = `
+            <table style="width:100%; margin-bottom:0.375rem; border-collapse:collapse;">
+                <tbody>
+                    <tr>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db;"><strong>Meses cerrados</strong></td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db; text-align:center;">${cp.cerrados || 0} /12</td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db;"><strong>Trabajadores</strong></td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db; text-align:center;">${cp.total_trabajadores || 0}</td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db;"><strong>Cierre anual</strong></td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db; text-align:center;">${cp.anual_cerrado ? 'Cerrado' : 'Sin cierre'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db;"><strong>Total devengado</strong></td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db; text-align:right;">${fmt(cp.total_devengado || 0)}</td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db;"><strong>Total neto</strong></td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db; text-align:right;">${fmt(cp.total_neto || 0)}</td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db;"><strong>Deducciones</strong></td>
+                        <td style="padding:0.1875rem 0.375rem; border:0.0625rem solid #d1d5db; text-align:right;">${fmt(cp.total_deducciones || 0)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <table>
+                <thead><tr>
+                    <th>Período</th><th style="text-align: center;">Estado</th>
+                    <th style="text-align: center;">Lotes</th><th style="text-align: center;">Trab.</th>
+                    <th style="text-align: right;">Devengado</th><th style="text-align: right;">Deducciones</th>
+                    <th style="text-align: right;">Neto</th><th style="text-align: center;">Fecha Cierre</th>
+                </tr></thead>
+                <tbody>${sinCierresCp ? '<tr><td colspan="8" style="text-align:center;">Sin cierres de período registrados para el año ' + cp.anio + '.</td></tr>' : filasCp + filaTotalCp}</tbody>
+            </table>`;
+    }
 
     // Renderizar totales acumulados por tipo de nómina
     let totalesPorTipoHtml = '';
@@ -3189,7 +3607,7 @@ function construirHtmlInformeGeneral(opts) {
 					</thead>
 					<tbody>${ultimasBajasHtml || '<tr><td colspan="8" style="text-align:center;">No hay bajas registradas</td></tr>'}</tbody>
 				</table>
-                ${pageFooter('Módulo de Reportes Consolidados de Personal', 'Página 1 de 4')}
+                ${pageFooter('Módulo de Reportes Consolidados de Personal', 'Página 1 de 6')}
             </div>
 
             <!-- PÁGINA 2: ESTRUCTURA DE CONTRATACIÓN Y SALARIOS -->
@@ -3216,7 +3634,7 @@ function construirHtmlInformeGeneral(opts) {
                     <tbody>${topSalariosHtml}</tbody>
                 </table>
 
-                ${pageFooter('Estructura de Plantilla y Compensación', 'Página 2 de 4')}
+                ${pageFooter('Estructura de Plantilla y Compensación', 'Página 2 de 6')}
             </div>
 
             <!-- PÁGINA 3: INFORME FINANCIERO -->
@@ -3269,10 +3687,20 @@ function construirHtmlInformeGeneral(opts) {
                     <tbody>${centrosHtml}</tbody>
                 </table>
 
-                ${pageFooter('Informe de Contabilidad y Finanzas', 'Página 3 de 4')}
+                ${pageFooter('Informe de Contabilidad y Finanzas', 'Página 3 de 6')}
             </div>
 
-            <!-- PÁGINA 4: HISTORIAL DE CIERRES, APORTES MENSUALES Y FIRMAS DE AUTORIZACIÓN -->
+            <!-- PÁGINA 4: RESUMEN DE CIERRES REALIZADOS DEL AÑO -->
+            <div class="page-sheet">
+                ${pageHeader('Resumen de Cierres Realizados')}
+
+                <div class="section-title">Resumen de Cierres Realizados - Año ${cp.anio || ''}</div>
+                ${resumenCierresHtml}
+
+                ${pageFooter('Resumen de Cierres Realizados', 'Página 4 de 6')}
+            </div>
+
+            <!-- PÁGINA 5: HISTORIAL DE CIERRES, APORTES MENSUALES Y FIRMAS DE AUTORIZACIÓN -->
             <div class="page-sheet last">
                 ${pageHeader('Historial de Cierres, Aportes Mensuales y Firmas')}
 
@@ -3301,7 +3729,13 @@ function construirHtmlInformeGeneral(opts) {
                     </tr></thead>
                     <tbody>${aportesMensualesHtml}</tbody>
                 </table>
-                <div style="font-size:7.5pt; color: #666; margin-top:0.375rem;">La Contribución Especial (CESS) corresponde a los trabajadores. El aporte patronal (12.5%) se calcula sobre el PAGADO (importe neto) de las nóminas, igual que en el módulo de Aporte de Seguridad Social.</div>
+
+                ${pageFooter('Historial de Cierres de Nómina', 'Página 5 de 6')}
+            </div>
+
+            <!-- PÁGINA 6: REDISTRIBUCIÓN DE MONTOS Y FIRMAS DE AUTORIZACIÓN -->
+            <div class="page-sheet last">
+                ${pageHeader('Redistribución de Montos y Firmas')}
 
                 <div class="section-title">Redistribución de Montos por Mes - Año <?php echo (int)$anio_montos_seleccionado; ?></div>
                 <table>
@@ -3313,11 +3747,10 @@ function construirHtmlInformeGeneral(opts) {
                     </tr></thead>
                     <tbody>${montosDistribHtml}</tbody>
                 </table>
-                <div style="font-size:7.5pt; color: #666; margin-top:0.375rem;">Montos redistribuidos mensualmente (tabla montos_distrib), igual que en el Historial de Montos del módulo de Nóminas.</div>
 
                 ${signaturesHtml()}
 
-                ${pageFooter('Historial de Cierres de Nómina', 'Página 4 de 4')}
+                ${pageFooter('Redistribución de Montos por Mes', 'Página 6 de 6')}
             </div>
             ${paraWord ? '</div>' : ''}
         </body>
@@ -3541,6 +3974,45 @@ function exportarInformeExcel() {
     ]);
     wsCierres['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, wsCierres, 'Cierres de Nómina');
+
+    // Resumen de cierres de período (mensuales + anual), el mismo card que
+    // muestra la pantalla: la hoja incluye los meses cerrados y el estado del
+    // cierre anual del año filtrado.
+    const cp = data.financiero.cierres_periodo || {};
+    const filasCierresPeriodo = [
+        ['RESUMEN DE CIERRES REALIZADOS - ' + (cp.anio || '')],
+        [],
+        ['Meses cerrados', (cp.cerrados || 0) + ' /12'],
+        ['Trabajadores (distintos)', cp.total_trabajadores || 0],
+        ['Total devengado', cp.total_devengado || 0],
+        ['Total deducciones', cp.total_deducciones || 0],
+        ['Total neto', cp.total_neto || 0],
+        ['Cierre anual', cp.anual_cerrado ? 'Cerrado' : 'Sin cierre'],
+        [],
+        ['TOTAL ' + (cp.anio || ''), (cp.totales || {}).meses ? 'Meses sumados: ' + cp.totales.meses : '—',
+            'Lotes', (cp.totales || {}).lotes || 0,
+            'Trabajadores', (cp.totales || {}).trabajadores || 0,
+            'Devengado', (cp.totales || {}).devengado || 0,
+            'Deducciones', (cp.totales || {}).deducciones || 0,
+            'Neto', (cp.totales || {}).neto || 0],
+        [],
+        ['Período', 'Estado', 'Lotes', 'Trab.', 'Devengado', 'Deducciones', 'Neto', 'Fecha Cierre'],
+        ...(cp.meses || []).map(m => [
+            m.etiqueta + ' ' + (cp.anio || ''),
+            m.estado === 'cerrado' ? 'Cerrado' : 'Revertido',
+            m.lotes, m.trabajadores, m.devengado, m.deducciones, m.neto,
+            m.fecha_cierre ? new Date(m.fecha_cierre.replace(' ', 'T')).toLocaleString('es-BO') : '—'
+        ]),
+        ...(cp.anual ? [[
+            'Año completo ' + (cp.anio || ''),
+            cp.anual.estado === 'cerrado' ? 'Cerrado' : 'Revertido',
+            cp.anual.lotes, cp.anual.trabajadores, cp.anual.devengado, cp.anual.deducciones, cp.anual.neto,
+            cp.anual.fecha_cierre ? new Date(cp.anual.fecha_cierre.replace(' ', 'T')).toLocaleString('es-BO') : '—'
+        ]] : [])
+    ];
+    const wsCierresPeriodo = XLSX.utils.aoa_to_sheet(filasCierresPeriodo);
+    wsCierresPeriodo['!cols'] = [{ wch: 24 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, wsCierresPeriodo, 'Resumen Cierres');
 
     const ceeExcel = data.financiero.contribucion_mensual || [];
     const patExcel = data.financiero.patronal_mensual || [];

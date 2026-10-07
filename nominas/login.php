@@ -1320,6 +1320,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $db_ok) {
                     $_SESSION['logged_in'] = true;
                     $_SESSION['login_time'] = time();
 
+                    // ===== Estructura de cierres de periodo (idempotente) =====
+                    require_once 'config/migraciones.php';
+                    asegurarTablaCierresPeriodo($pdo);
+                    asegurarPeriodoNominasEnCurso($pdo);
+
                     // ===== NUEVO: auditar login exitoso local =====
                     logAction(
                         'iniciar_sesion',

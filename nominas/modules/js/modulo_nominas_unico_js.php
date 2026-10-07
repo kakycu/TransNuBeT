@@ -209,13 +209,737 @@ var aniosDisponibles = <?php
     echo json_encode($stmt_anios_all->fetchAll(PDO::FETCH_COLUMN));
 ?>;
 //var periodoTexto = '<?php echo $nombre_mes . " " . $anio; ?>';
-var periodoTexto = '<?php echo date("d/m/Y", strtotime($periodo_desde)) . " al " . date("d/m/Y", strtotime($periodo_hasta)); ?>';
+<?php
+    /* strtotime() no sirve para esto: con PHP de 32 bits no puede representar
+     * periodos posteriores a 2038, devuelve false y ademas escribe el warning
+     * de PHP dentro del literal de JavaScript, lo que rompia el script entero
+     * con "string literal contains an unescaped line break". Se resuelve con
+     * DateTimeImmutable y se emite con json_encode para que ningun valor
+     * (comillas o saltos de linea) pueda volver a romper el literal. */
+    $periodoDesdeTxt = fechaComoDateTime($periodo_desde);
+    $periodoHastaTxt = fechaComoDateTime($periodo_hasta);
+    $periodoTexto = ($periodoDesdeTxt && $periodoHastaTxt)
+        ? $periodoDesdeTxt->format('d/m/Y') . ' al ' . $periodoHastaTxt->format('d/m/Y')
+        : '';
+?>
+var periodoTexto = <?php echo json_encode($periodoTexto, JSON_UNESCAPED_UNICODE); ?>;
 var periodo = '<?php echo addslashes($periodo); ?>'; 
+// Bloqueo por periodo no operable: el servidor ya lo valida en cada accion,
+// esto solo evita que el usuario llegue a intentarlo y avisa antes de perder
+// el viaje. Cubre dos motivos distintos: 'periodo_cerrado' y 'periodo_futuro'.
+var periodoCerrado = <?php echo $periodo_bloqueado !== '' ? 'true' : 'false'; ?>;
+var motivoPeriodoCerrado = <?php echo json_encode($periodo_bloqueado); ?>;
+var motivoPeriodoOperable = <?php echo json_encode($motivo_periodo_bloqueado); ?>;
+// Año previo del periodo EN PANTALLA, calculado por el servidor con la misma
+// regla que usa el guard de generación (anioPrecedenteOperableNominas).
+var anioPrecedenteEstado = <?php echo json_encode($previo_anio_nominas); ?>;
+var anioPantalla = <?php echo (int)$anio; ?>;
+
+// ==========================================
+// CADENA DE AÑOS: NO SE GENERA SI EL AÑO ANTERIOR NO ESTÁ CERRADO
+// ==========================================
+// El servidor ya bloquea la generación, pero eso deja al usuario en un viaje
+// perdido: llega a la página de "No existe nómina... Crear Nueva" o con el
+// modal de tipo de descuento abierto. Aquí se corta ANTES: no se consulta, no
+// se genera y no se abre ningún modal, y se avisa con alerta + SweetAlert.
+// El veredicto del año en pantalla ya viene del servidor; el de otro año
+// elegido en el selector se pide por AJAX y se cachea.
+var CACHE_ANIO_PREVIO = {};
+CACHE_ANIO_PREVIO[anioPantalla] = anioPrecedenteEstado;
+var PENDIENTES_ANIO_PREVIO = {};
+var replayAnioPrevio = false;
+
+function mensajeAnioPrevioTexto(anio, estado) {
+    // El servidor es la fuente del texto: si el año pendiente no es el
+    // inmediato lo nombra, porque "el año anterior" sería engañoso.
+    if (estado && estado.mensaje) { return estado.mensaje; }
+    return 'No se puede generar nómina de ' + anio + ': el año anterior todavía no está cerrado. '
+         + 'Cierre ese año en el módulo Cierres antes de trabajar con ' + anio + '.';
+}
+
+function anioSeleccionadoNominas() {
+    var sel = document.getElementById('anioSelect');
+    var val = sel ? parseInt(sel.value, 10) : 0;
+    return val || anioPantalla;
+}
+
+function pedirEstadoAnioPrevio(anio, callback) {
+    anio = parseInt(anio, 10);
+    if (!anio) { callback({ permitido: true, motivo: 'anio_invalido' }); return; }
+    if (CACHE_ANIO_PREVIO[anio]) { callback(CACHE_ANIO_PREVIO[anio]); return; }
+    if (PENDIENTES_ANIO_PREVIO[anio]) {
+        PENDIENTES_ANIO_PREVIO[anio].push(callback);
+        return;
+    }
+    PENDIENTES_ANIO_PREVIO[anio] = [callback];
+    var url = 'nominas.php?action=verificar_anio_previo&ajax=1&anio=' + encodeURIComponent(anio);
+    fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
+        .then(function (data) {
+            // Fall-closed: si el servidor no responde no se deja pasar nada.
+            var estado = (data && typeof data.permitido !== 'undefined')
+                ? data
+                : { permitido: false, motivo: 'consulta_fallida' };
+            CACHE_ANIO_PREVIO[anio] = estado;
+            var cbs = PENDIENTES_ANIO_PREVIO[anio] || [];
+            delete PENDIENTES_ANIO_PREVIO[anio];
+            cbs.forEach(function (cb) { cb(estado); });
+        });
+}
+
+// Deja el aviso visible en la página, reutilizando el bloque que el servidor
+// ya pintó cuando el año en pantalla está bloqueado.
+function mostrarAvisoAnioPrevio(anio) {
+    var contenedor = document.getElementById('alertasGenerales');
+    if (!contenedor) { return; }
+    var aviso = document.getElementById('avisoAnioPrevio');
+    if (!aviso) {
+        aviso = document.createElement('div');
+        aviso.id = 'avisoAnioPrevio';
+        aviso.className = 'alert alert-warning bg-warning bg-opacity-25 border-warning text-white mb-4 fade-in-up';
+        aviso.innerHTML = '<i class="fas fa-lock me-2"></i><span class="texto-anio-previo"></span>'
+            + '<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>';
+        contenedor.appendChild(aviso);
+    }
+    var texto = aviso.querySelector('.texto-anio-previo');
+    if (texto) { texto.textContent = mensajeAnioPrevioTexto(anio, CACHE_ANIO_PREVIO[anio]); }
+}
+
+function swalAnioPrevio(anio) {
+    var texto = mensajeAnioPrevioTexto(anio, CACHE_ANIO_PREVIO[anio]);
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'warning',
+            title: '<i class="fas fa-calendar-xmark me-2" style="color:#f59e0b;"></i>Año anterior sin cerrar',
+            html: '<p style="margin:0">' + texto + '</p>'
+                + '<p style="margin:0.6rem 0 0;font-size:0.85rem;opacity:0.75">Cierre y reapertura: módulo Cierres.</p>',
+            confirmButtonColor: '#f59e0b',
+            confirmButtonText: '<i class="fas fa-check me-1"></i>Entendido',
+            customClass: { confirmButton: 'btn btn-warning' },
+            background: '#1a1a2e',
+            color: '#fff'
+        });
+    } else {
+        alert(texto);
+    }
+}
+
+function bloquearPorAnioPrevio(anio) {
+    mostrarAvisoAnioPrevio(anio);
+    swalAnioPrevio(anio);
+}
+
+// Todo lo que ABRE una nomina, su modal de tipo de descuento o la consulta del
+// periodo. Los botones con data-bs-target se cubren por atributo para atrapar
+// tambien el boton fantasma que crea la autoapertura con ?abrir_descuento=1.
+//
+// '#consultarBtn' entra aqui porque los avisos de "meses anteriores sin cerrar"
+// y "el periodo aun no ha llegado" tambien sirven al consultar: son Informed,
+// no solo al generar. Lo que NO se avisa al consultar es el cierre, porque un
+// periodo cerrado se puede ver e imprimir con normalidad.
+var SELECTORES_CONSULTA_NOMINA = '#consultarBtn, #consultaRapidaBtn';
+
+var SELECTORES_ANIO_PREVIO = [
+    '#btnGenerarAutomaticaModal',
+    '#btnConfirmarTipoDescuento',
+    '#btnConfirmarDescuentoGen',
+    '[data-bs-target="#modalSeleccionDescuento"]',
+    '[data-bs-target="#modalSeleccionDescuentoGeneral"]',
+    SELECTORES_CONSULTA_NOMINA
+].join(',');
+
+// true si el clic es solo una consulta (no genera ni modifica nada).
+function esConsultaNomina(destino) {
+    if (!destino || !destino.closest) { return false; }
+    try { return !!destino.closest(SELECTORES_CONSULTA_NOMINA); } catch (e) { return false; }
+}
+
+// El card "Consultar de Forma Rapida" tiene sus propios selectores, no los
+// globales: si se leyera el periodo de ahi se anunciaria un mes que el usuario
+// no eligio.
+function esConsultaRapida(destino) {
+    if (!destino || !destino.closest) { return false; }
+    try { return !!destino.closest('#consultaRapidaBtn'); } catch (e) { return false; }
+}
+
+// Periodo elegido en el card de consulta rapida. Vacio si falta anio o mes, en
+// cuyo caso el propio boton avisa de la seleccion incompleta.
+function periodoSeleccionadoConsultaRapida() {
+    var a = document.getElementById('consultaAnioSelect');
+    var m = document.getElementById('consultaMesSelect');
+    if (!a || !m || !a.value || !m.value) { return ''; }
+    if (!/^\d{4}$/.test(a.value) || !/^\d{2}$/.test(m.value)) { return ''; }
+    return a.value + '-' + m.value;
+}
+
+// Motivos por los que un periodo esta congelado. Consultar uno de estos sigue
+// siendo valido (de hecho es justamente cuando mas hace falta verlo), asi que
+// la consulta no se avisa.
+function motivoEsPeriodoCongelado(motivo) {
+    return motivo === 'periodo_cerrado'
+        || motivo === 'anio_cerrado_definitivo'
+        || motivo === 'anio_previo_sin_cerrar';
+}
+
+(function candadoAnioPrevio() {
+    function alHacerClick(evento) {
+        if (replayAnioPrevio) { replayAnioPrevio = false; return; }
+        var destino = evento.target;
+        if (!destino || !destino.closest) { return; }
+        var coincide;
+        try { coincide = destino.closest(SELECTORES_ANIO_PREVIO); } catch (e) { return; }
+        if (!coincide || coincide.disabled) { return; }
+
+        // La cadena de anios existe para no CREAR nominas desordenadas. Ver un
+        // ano que no cumple la cadena no rompe nada, asi que la consulta pasa.
+        if (esConsultaNomina(destino)) { return; }
+
+        var anio = anioSeleccionadoNominas();
+        var estado = CACHE_ANIO_PREVIO[anio];
+
+        if (estado && estado.permitido) { return; }
+
+        evento.preventDefault();
+        evento.stopPropagation();
+        evento.stopImmediatePropagation();
+
+        if (estado) {
+            bloquearPorAnioPrevio(anio);
+            return;
+        }
+        // El año no se había consultado: se corta ya (fail-closed) y, si el
+        // servidor confirma que sí se puede, se repite el clic.
+        pedirEstadoAnioPrevio(anio, function (res) {
+            if (res && res.permitido) {
+                replayAnioPrevio = true;
+                coincide.click();
+            } else {
+                bloquearPorAnioPrevio(anio);
+            }
+        });
+    }
+
+    function alCambiarAnio() {
+        var anio = anioSeleccionadoNominas();
+        function refrescarAviso(estado) {
+            // El texto del aviso depende del año: si el nuevo está bloqueado
+            // se actualiza el que ya está en pantalla (sin SweetAlert, que
+            // aquí seríamolesto: el aviso basta como advertencia preventiva).
+            var visible = document.getElementById('avisoAnioPrevio');
+            if (estado && estado.permitido === false && visible) {
+                var texto = visible.querySelector('.texto-anio-previo');
+                if (texto) { texto.textContent = mensajeAnioPrevioTexto(anio, estado); }
+            }
+        }
+        if (CACHE_ANIO_PREVIO[anio]) { refrescarAviso(CACHE_ANIO_PREVIO[anio]); return; }
+        pedirEstadoAnioPrevio(anio, refrescarAviso);
+    }
+
+    // El listener de clicks va desde ya: se registra sobre 'document', así que
+    // funciona aunque el <body> todavía se esté parseando. Eso importa porque
+    // la autoapertura con ?abrir_descuento=1 dispara su clic al terminar el
+    // parseo y debe quedar igualmente bloqueada.
+    document.addEventListener('click', alHacerClick, true);
+
+    function conectarSelectorAnio() {
+        var sel = document.getElementById('anioSelect');
+        if (sel) { sel.addEventListener('change', alCambiarAnio); }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', conectarSelectorAnio);
+    } else {
+        conectarSelectorAnio();
+    }
+})();
+
+// ==========================================
+// PERIODO ELEGIDO EN LOS SELECTORES: NO SE GENERA SI NO ES OPERABLE
+// ==========================================
+// El candado anterior mira el periodo que trae la pagina. Este mira el que
+// tiene seleccionado el usuario en los selectores de anio/mes, que NO navegan:
+// solo componen el periodo que despues viaja en el POST. Sin el, se podia
+// elegir 2027 y generar contra un servidor que lo bloquea, perdiendo el viaje
+// para recibir un error JSON crudo en vez de un aviso.
+var CACHE_PERIODO = {};
+var PENDIENTES_PERIODO = {};
+var replayPeriodoSeleccionado = false;
+
+if (periodoCerrado) {
+    CACHE_PERIODO[window.periodo] = {
+        operable: false,
+        motivo: motivoPeriodoOperable || 'periodo_cerrado',
+        mensaje: motivoPeriodoCerrado || ''
+    };
+}
+
+function periodoSeleccionadoNominas() {
+    var a = document.getElementById('anioSelect');
+    var m = document.getElementById('mesSelect');
+    if (a && m && a.value && m.value) { return a.value + '-' + m.value; }
+    return window.periodo || '';
+}
+
+function pedirEstadoPeriodo(periodo, callback) {
+    if (!periodo) { callback({ operable: true }); return; }
+    if (CACHE_PERIODO[periodo]) { callback(CACHE_PERIODO[periodo]); return; }
+    if (PENDIENTES_PERIODO[periodo]) {
+        PENDIENTES_PERIODO[periodo].push(callback);
+        return;
+    }
+    PENDIENTES_PERIODO[periodo] = [callback];
+
+    var url = 'nominas.php?action=verificar_periodo&ajax=1&periodo=' + encodeURIComponent(periodo)
+        + '&t=' + Date.now();
+    fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; })
+        .then(function (data) {
+            // Fail-closed: sin respuesta del servidor no se deja pasar nada.
+            var estado = (data && typeof data.operable !== 'undefined')
+                ? data
+                : { operable: false, motivo: 'consulta_fallida', mensaje: 'No se pudo verificar el período seleccionado. No se realizaron cambios.' };
+            CACHE_PERIODO[periodo] = estado;
+            var cbs = PENDIENTES_PERIODO[periodo] || [];
+            delete PENDIENTES_PERIODO[periodo];
+            cbs.forEach(function (cb) { cb(estado); });
+        });
+}
+
+function textoAvisoPeriodo(estado, periodo) {
+    if (estado && estado.mensaje) { return estado.mensaje; }
+    if (estado && estado.motivo === 'periodo_futuro') {
+        return 'El período ' + periodo + ' todavía no ha llegado. Solo se puede trabajar hasta el período en curso.';
+    }
+    return 'El período ' + periodo + ' está cerrado y no admite cambios. '
+         + 'Si necesita modificarlo, debe reabrir el cierre con un motivo justificado.';
+}
+
+function swalPeriodoNoOperable(estado, periodo) {
+    var texto = textoAvisoPeriodo(estado, periodo);
+    var esFuturo = (estado && estado.motivo === 'periodo_futuro')
+        || /todavía no ha llegado|no ha llegado/i.test(String(texto));
+
+    // El motivo de un mes futuro siempre tiene salida: cuando llegue, si no se
+    // paga, se cierra en cero desde Cierres. Sin esta nota el bloqueo parece
+    // un callejón sin salida y la gente espera al mes en vez de resolverlo.
+    var pie = esFuturo
+        ? '<p style="margin:0 0 0.35rem">Solo se puede trabajar hasta el período en curso.</p>'
+            + '<strong>NOTA:</strong> Por la opción Cierres podrá cerrar el mes que no se '
+            + 'pagará o que se dejará sin procesar en el año.'
+        : 'Cierre y reapertura: módulo Cierres.';
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'warning',
+            title: (esFuturo
+                ? '<i class="fas fa-calendar-xmark me-2" style="color:#f59e0b;"></i>Período que aún no ha llegado'
+                : 'Período cerrado'),
+            html: '<p style="margin:0">' + String(texto).replace(/</g, '&lt;') + '</p>',
+            footer: '<span style="font-size:0.8rem;opacity:0.75">' + pie + '</span>',
+            confirmButtonText: '<i class="fas fa-check me-1"></i>Entendido',
+            customClass: { confirmButton: 'btn btn-warning' },
+            background: '#1a1a2e',
+            color: '#fff'
+        });
+    } else {
+        alert(texto);
+    }
+}
+
+function mostrarAvisoPeriodoSeleccionado(estado, periodo) {
+    var contenedor = document.getElementById('alertasGenerales');
+    if (!contenedor) { return; }
+    var aviso = document.getElementById('avisoPeriodoCerrado');
+    if (!aviso) {
+        aviso = document.createElement('div');
+        aviso.id = 'avisoPeriodoCerrado';
+        aviso.className = 'alert alert-warning bg-warning bg-opacity-25 border-warning text-white mb-4 fade-in-up';
+        aviso.innerHTML = '<i class="fas fa-calendar-xmark me-2"></i>'
+            + '<span class="texto-periodo-Operable"></span>'
+            + '<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>';
+        contenedor.appendChild(aviso);
+    }
+    var texto = aviso.querySelector('.texto-periodo-Operable');
+    if (texto) { texto.textContent = textoAvisoPeriodo(estado, periodo); }
+}
+
+/* ==========================================
+   MESES PREVIOS SIN CERRAR: AVISO, NO BLOQUEO
+   ==========================================
+   Saltarse un mes dentro del mismo anio no es un error: el desorden se
+   recupera cerrando en orden. Pero conviene decirlo, porque al final del anio
+   un hueco obliga a cerrar ese mes en cero y asi no se explica solo.
+
+   El aviso nombra los meses y ofrece salida ("Generar de todos modos"), de modo
+   que quien realmente necesita avanzar no queda atrapado. El servidor NO
+   bloquea por esto: un periodo con meses previos abiertos sigue siendo
+   operable a proposito.
+
+   Solo se mira hacia atras dentro del mismo anio: los meses futuros ya los
+   bloquea la regla de "aun no ha llegado" y los anios anteriores los encadena el
+   cierre anual al abrir enero. */
+
+var AVISO_MESES_PREVIOS = {};   // periodo -> ya avisado en esta carga
+
+function descripcionMesPrevio(m) {
+    if (m.estado === 'sin_nomina') {
+        return m.etiqueta + ' (sin nómina)';
+    }
+    if (m.estado === 'revertido') {
+        return m.etiqueta + ' (cierre revertido)';
+    }
+    return m.etiqueta + ' (' + (m.filas || 0) + ' nóminas sin cerrar)';
+}
+
+function swalMesesPrevios(estado, periodo, alConfirmar, esConsulta) {
+    var meses = (estado && estado.meses_previos_pendientes) || [];
+    if (!meses.length || AVISO_MESES_PREVIOS[periodo]) { return false; }
+
+    var lista = document.createElement('ul');
+    lista.style.cssText = 'margin:0.5rem 0 0;padding-left:1.1rem;text-align:left';
+    meses.forEach(function (m) {
+        var li = document.createElement('li');
+        li.textContent = descripcionMesPrevio(m);
+        lista.appendChild(li);
+    });
+
+    var html = '<p style="margin:0">Antes de <strong>' + periodo + '</strong> hay meses de '
+        + String(periodo).substr(0, 4) + ' que siguen sin cerrar:</p>';
+    var contenedor = document.createElement('div');
+    contenedor.innerHTML = html;
+    contenedor.appendChild(lista);
+
+    var textoPie = '<strong>NOTA:</strong> Podrá cerrar un mes sin Nómina desde la Opción de Cierres.';
+
+    if (typeof Swal === 'undefined') { return false; }
+
+    Swal.fire({
+        icon: 'warning',
+        title: '<i class="fas fa-calendar-day me-2" style="color:#f59e0b;"></i>Meses anteriores sin cerrar',
+        html: contenedor,
+        footer: '<span style="font-size:0.8rem;opacity:0.75">' + textoPie + '</span>',
+        showCancelButton: true,
+        confirmButtonText: esConsulta
+            ? '<i class="fas fa-eye me-1"></i>Ver de todos modos'
+            : '<i class="fas fa-forward me-1"></i>Generar de todos modos',
+        cancelButtonText: '<i class="fas fa-times me-1"></i>Cancelar',
+        customClass: { confirmButton: 'btn btn-warning' }
+    }).then(function (r) {
+        if (r.isConfirmed) {
+            AVISO_MESES_PREVIOS[periodo] = true;
+            if (typeof alConfirmar === 'function') { alConfirmar(); }
+        }
+    });
+    return true;
+}
+
+/* Si el periodo es operable pero trae meses previos sin cerrar, corta el clic,
+   avisa, y solo deja pasar si el usuario lo confirma. Devuelve true cuando el
+   evento ha quedado interceptado. */
+function interceptarMesesPrevios(evento, coincide, periodo, estado, esConsulta) {
+    if (!estado || !estado.operable || AVISO_MESES_PREVIOS[periodo]) { return false; }
+    if (!(estado.meses_previos_pendientes || []).length) { return false; }
+
+    evento.preventDefault();
+    evento.stopPropagation();
+    evento.stopImmediatePropagation();
+
+    swalMesesPrevios(estado, periodo, function () {
+        replayPeriodoSeleccionado = true;
+        coincide.click();
+    }, esConsulta);
+    return true;
+}
+
+(function candadoPeriodoSeleccionado() {
+    function alHacerClick(evento) {
+        if (replayPeriodoSeleccionado) { replayPeriodoSeleccionado = false; return; }
+        var destino = evento.target;
+        if (!destino || !destino.closest) { return; }
+        var coincide;
+        try { coincide = destino.closest(SELECTORES_ANIO_PREVIO); } catch (e) { return; }
+        if (!coincide || coincide.disabled) { return; }
+
+        var rapida = esConsultaRapida(destino);
+        var periodo = rapida ? periodoSeleccionadoConsultaRapida()
+                              : periodoSeleccionadoNominas();
+        if (!periodo) { return; }
+
+        var consulta = esConsultaNomina(destino);
+
+        // Es el mismo periodo que trae la pagina: el veredicto ya esta en linea.
+        var estado;
+        if (periodo === window.periodo && periodoCerrado) {
+            // Cerrado se puede consultar: el aviso solo suena al modificar.
+            if (consulta) { return; }
+            evento.preventDefault();
+            evento.stopPropagation();
+            evento.stopImmediatePropagation();
+            swalPeriodoNoOperable(
+                { motivo: motivoPeriodoOperable, mensaje: motivoPeriodoCerrado }, periodo);
+            return;
+        }
+        if (periodo === window.periodo) {
+            // El veredicto de la pagina puede no estar cacheado todavia, asi
+            // que solo se consulta si hace falta para detectar meses previos.
+            if (CACHE_PERIODO[periodo]) {
+                interceptarMesesPrevios(evento, coincide, periodo, CACHE_PERIODO[periodo], consulta);
+            } else {
+                evento.preventDefault();
+                evento.stopPropagation();
+                evento.stopImmediatePropagation();
+                pedirEstadoPeriodo(periodo, function (res) {
+                    if (res && res.operable) {
+                        replayPeriodoSeleccionado = true;
+                        coincide.click();
+                    } else if (consulta && motivoEsPeriodoCongelado(res && res.motivo)) {
+                        // Congelado y solo lectura: el clic ya estaba cortado, asi
+                        // que hay que re-lanzarlo o el boton se queda muerto.
+                        replayPeriodoSeleccionado = true;
+                        coincide.click();
+                    } else {
+                        mostrarAvisoPeriodoSeleccionado(res, periodo);
+                        swalPeriodoNoOperable(res, periodo);
+                    }
+                });
+            }
+            return;
+        }
+
+        estado = CACHE_PERIODO[periodo];
+        if (estado) {
+            if (!estado.operable) {
+                // Un periodo congelado se consulta sin molestar; uno que aun no
+                // ha llegado no se puede consultar porque no hay nada que ver.
+                if (consulta && motivoEsPeriodoCongelado(estado.motivo)) { return; }
+                evento.preventDefault();
+                evento.stopPropagation();
+                evento.stopImmediatePropagation();
+                mostrarAvisoPeriodoSeleccionado(estado, periodo);
+                swalPeriodoNoOperable(estado, periodo);
+                return;
+            }
+            if (interceptarMesesPrevios(evento, coincide, periodo, estado, consulta)) { return; }
+            return;
+        }
+
+        // Sin veredicto: se corta ya y, si el servidor confirma que se puede,
+        // se repite el clic.
+        evento.preventDefault();
+        evento.stopPropagation();
+        evento.stopImmediatePropagation();
+        pedirEstadoPeriodo(periodo, function (res) {
+            if (res && res.operable) {
+                replayPeriodoSeleccionado = true;
+                coincide.click();
+            } else if (consulta && motivoEsPeriodoCongelado(res && res.motivo)) {
+                // El clic ya se corto para ir al servidor: si el periodo esta
+                // congelado y solo se consulta, hay que devolverlo al flujo.
+                replayPeriodoSeleccionado = true;
+                coincide.click();
+            } else {
+                mostrarAvisoPeriodoSeleccionado(res, periodo);
+                swalPeriodoNoOperable(res, periodo);
+            }
+        });
+    }
+
+    function alCambiarPeriodo() {
+        var periodo = periodoSeleccionadoNominas();
+        if (!periodo || periodo === window.periodo || CACHE_PERIODO[periodo]) { return; }
+        // Se consulta en segundo plano: aqui la alerta visible molesta, el
+        // SweetAlert del clic bloqueante ya avisa cuando hace falta.
+        pedirEstadoPeriodo(periodo, function () {});
+    }
+
+    document.addEventListener('click', alHacerClick, true);
+
+    function conectarSelectoresPeriodo() {
+        ['anioSelect', 'mesSelect'].forEach(function (id) {
+            var sel = document.getElementById(id);
+            if (sel) { sel.addEventListener('change', alCambiarPeriodo); }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', conectarSelectoresPeriodo);
+    } else {
+        conectarSelectoresPeriodo();
+    }
+
+    /* El periodo que trae la pagina tambien se consulta al entrar, para que el
+     * primer clic con meses previos sin cerrar muestre el aviso de inmediato en
+     * vez de una ida y vuelta al servidor. Solo cuando la pagina no esta
+     * bloqueada: si ya esta cerrada, el veredicto va en linea. */
+    if (!periodoCerrado && window.periodo) {
+        pedirEstadoPeriodo(window.periodo, function () {});
+    }
+})();
+
+// Selectores de acciones que modifican nominas. No hacen falta todos: el
+// candado se aplica por delegacion y el servidor es quien decide.
+//
+// Conviven dos formas de marcar un boton: los antiguos con onclick en linea y
+// los nuevos con clase enlazada por jQuery ($(document).on('click', '.btn-...')).
+// Los segundos no tienen onclick, asi que un filtro por onclick* los dejaria
+// pasar: por eso los delegantes van tambien por clase. Aqui NO entra ningun
+// control de consulta ni de impresion, porque en un periodo cerrado se debe
+// poder VER e IMPRIMIR la nomina; solo se impide tocarla.
+var SELECTORES_MUTANTES_NOMINA = [
+    '[onclick*="generarNomina"]',
+    '[onclick*="generar_nomina"]',
+    '[onclick*="eliminarNomina"]',
+    '[onclick*="eliminar_nomina"]',
+    '[onclick*="regenerarNomina"]',
+    '[onclick*="contabilizarNomina"]',
+    '[onclick*="revertirNomina"]',
+    '[onclick*="agregarVacaciones"]',
+    '[onclick*="agregarBono"]',
+    '[onclick*="agregarTrabajadores"]',
+    '[onclick*="agregarExtraordinaria"]',
+    '[onclick*="corregirCuadre"]',
+    '[onclick*="corregir"]',
+    '[onclick*="procesarAjuste"]',
+    // Botones con listener por clase (no tienen onclick que buscar).
+    '.btn-revertir-nomina',
+    '.eliminar-fila',
+    '.guardar-fila',
+    '#generarNominaBtn', '#btnGenerarNomina', '#btnEliminar',
+    'button[name="eliminar_nomina_completa"]',
+    'input[name="eliminar_nomina_completa"]',
+    'input[name="regenerar_nomina"]',
+    'input[name="contabilizar_nomina"]',
+    'input[name="revertir_nomina"]'
+];
+
+function avisarPeriodoCerrado(motivo) {
+    var texto = motivo || window.motivoPeriodoCerrado || 'Este período está cerrado y no admite cambios. '
+                 + 'Puede consultarlo e imprimirlo. Si necesita modificarlo, debe reabrir el cierre '
+                 + 'con un motivo justificado.';
+
+    // El bloqueo tiene dos causas y cada una pide un aviso distinto: un mes
+    // cerrado se puede reabrir con un motivo, un periodo futuro no existe aun.
+    var esFuturo = (window.motivoPeriodoOperable === 'periodo_futuro')
+        || /todavía no ha llegado|no ha llegado|aun no ha llegado/i.test(String(texto));
+
+    // Si el ano esta cerrado el cierre es definitivo: no hay reapertura posible,
+    // asi que el pie no debe prometer el modulo Cierres como salida.
+    var esDefinitivo = (window.motivoPeriodoOperable === 'anio_cerrado_definitivo')
+        || (window.motivoPeriodoOperable === 'cierre_anual_definitivo')
+        || /cierre anual es\s+definitivo|no se puede reabrir/i.test(String(texto));
+
+    var titulo = esFuturo ? 'Período que aún no ha llegado' : 'Período cerrado';
+    var icono  = esFuturo
+        ? '<i class="fas fa-calendar-xmark me-2" style="color:#f59e0b;"></i>'
+        : '';
+    /* El pie solo anade lo que el mensaje del servidor no dice. Si el ano esta
+     * cerrado, el mensaje ya explica que se puede consultar e imprimir y que no
+     * hay reapertura: repetirlo aqui seria leerlo dos veces. */
+    var pie;
+    if (esFuturo) {
+        pie = 'Solo se puede trabajar hasta el período en curso.';
+    } else if (esDefinitivo) {
+        pie = '';
+    } else {
+        pie = 'Cierre y reapertura: módulo Cierres.';
+    }
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'warning',
+            title: icono + titulo,
+            html: '<p style="margin:0">' + String(texto).replace(/</g, '&lt;') + '</p>' +
+                  (pie ? '<p style="margin:0.6rem 0 0;font-size:0.85rem;opacity:0.75">' + pie + '</p>' : ''),
+            confirmButtonText: '<i class="fas fa-check me-1"></i>Entendido',
+            customClass: { confirmButton: 'btn btn-warning' }
+        });
+} else {
+        alert(texto);
+    }
+}
+
+(function candadoPeriodoCerrado() {
+    if (!periodoCerrado) { return; }
+
+    // 1) Atenuar visualmente los controles que modifican el periodo.
+    document.addEventListener('DOMContentLoaded', function () {
+        SELECTORES_MUTANTES_NOMINA.forEach(function (sel) {
+            document.querySelectorAll(sel).forEach(function (el) {
+                el.classList.add('periodo-cerrado-bloqueado');
+                el.setAttribute('aria-disabled', 'true');
+                el.setAttribute('title', motivoPeriodoCerrado || 'Período cerrado');
+            });
+        });
+    });
+
+    // 2) Interceptar el clic antes de que se dispare la accion. El submit de un
+    //    formulario no pasa por onclick, asi que tambien se cubre esa via.
+    function bloquearSiCerrado(evento) {
+        var destino = evento.target;
+        if (!destino || !destino.closest) { return; }
+        var coincide = SELECTORES_MUTANTES_NOMINA.some(function (sel) {
+            try { return destino.closest(sel) !== null; } catch (e) { return false; }
+        });
+        if (coincide) {
+            evento.preventDefault();
+            evento.stopPropagation();
+            avisarPeriodoCerrado();
+        }
+    }
+    document.addEventListener('click', bloquearSiCerrado, true);
+    document.addEventListener('submit', bloquearSiCerrado, true);
+})(); 
 var usuarioNombre = '<?php echo addslashes($user_nombre_completo); ?>';
-var recargoNocturno = parseFloat('<?php echo $recargo_nocturno; ?>') || 1.25;
-var recargoExtraDiurna = parseFloat('<?php echo $recargo_extra_diurna; ?>') || 1.50;
-var recargoExtraNocturna = parseFloat('<?php echo $recargo_extra_nocturna; ?>') || 2.00;
-var recargoDobleturno = parseFloat('<?php echo $recargo_doble_turno; ?>') || 2.00;
+// Res. 15/2026 MTSS (QUINTO.2) y Ley 189/2026 "Código de Trabajo" (art. 227 y 230).
+// Estas variables son el espejo de cargarTarifasTrabajoExtraordinario() en PHP:
+// si se cambia una, hay que cambiar la otra.
+var recargoTrabajoExtraordinario = parseFloat('<?php echo $recargo_trabajo_extraordinario; ?>') || 1.25;
+var tarifaNocturnidadTemprana = parseFloat('<?php echo $tarifa_nocturnidad_temprana; ?>') || 0.60;
+var tarifaNocturnidadTardia = parseFloat('<?php echo $tarifa_nocturnidad_tardia; ?>') || 1.15;
+// Tasa de la CESS en el modo "total_rangos" (ISIP). Viene de
+// configuracion_tasas.contribucion_especial, igual que la usa PHP al guardar.
+// Si se cambia la tasa en configuracion, la previsualizacion se mueve con ella.
+var tasaCessEspecial = parseFloat('<?php echo isset($tasa_cess_especial) ? $tasa_cess_especial : 5; ?>') || 5;
+// Parametros de la CESS progresiva (PDL SOLO CESS).
+var cessTasaExceso = parseFloat('<?php echo isset($params_cess_progresiva["exceso"]) ? $params_cess_progresiva["exceso"] : 10; ?>') || 10;
+var cessLimiteProgresivo = parseFloat('<?php echo isset($params_cess_progresiva["limite"]) ? $params_cess_progresiva["limite"] : 15000; ?>') || 15000;
+// Factor para pasar de porcentaje a multiplicador, p. ej. 5 -> 0.05.
+function tasaCessFactor() { return tasaCessEspecial / 100; }
+
+/**
+ * Redondeo a dos decimales con la misma regla que roundExcel() y
+ * redondearImporte() en PHP. Math.round() redondea los medios hacia arriba, que
+ * es justamente lo que hace floor(x * 100 + 0.5) / 100, pero se explicita aquí
+ * para que ambas implementaciones queden a la vista y no dependan de que
+ * coincidan por casualidad.
+ */
+function redondearImporteJS(valor) {
+    return Math.floor((Number(valor) * 100) + 0.5) / 100;
+}
+
+/**
+ * Calcula los importes del trabajo extraordinario y de los turnos nocturnos.
+ * Espejo exacto de calcularImporteTrabajoExtraordinario() en PHP, incluida la
+ * regla de redondeo, para que la previsualización coincida con lo que guarda el
+ * servidor. Se llama con las mismas claves en los tres sitios que antes repetían
+ * la fórmula a mano.
+ */
+function calcularImporteTrabajoExtraordinarioJS(salarioHora, horasHE, noctT, noctD, dt) {
+    var recargo = recargoTrabajoExtraordinario;
+    var importeHE = redondearImporteJS(salarioHora * recargo * horasHE);
+    var importeNtT = redondearImporteJS(noctT * tarifaNocturnidadTemprana);
+    var importeNtD = redondearImporteJS(noctD * tarifaNocturnidadTardia);
+    var importeDT = redondearImporteJS(salarioHora * recargo * dt);
+    return {
+        importeHE: importeHE,
+        importeNtT: importeNtT,
+        importeNtD: importeNtD,
+        importeDT: importeDT,
+        importeNocturnas: redondearImporteJS(importeNtT + importeNtD),
+        importeSalarioLaboral: redondearImporteJS(importeHE + importeDT),
+        totalDevengado: redondearImporteJS(importeHE + importeNtT + importeNtD + importeDT)
+    };
+}
 var PRINT_TOOLBAR_HTML = '<style>#auto-hide-toolbar{transition:transform 0.3s ease}#auto-hide-toolbar.hidden{transform:translateY(-100%)}</style><div id="auto-hide-toolbar" class="no-print" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:0.625rem 1.25rem;display:flex;justify-content:center;align-items:center;gap:0.875rem;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;border-bottom:0.1875rem solid #1e40af;transition:transform 0.3s ease;">'
         + '<span style="color:#e0e7ff;font-weight:bold;font-size:0.8125rem;letter-spacing:0.0312rem;">🖨️ VISTA PREVIA DE IMPRESIÓN</span>'
         + '<button onclick="window.print()" style="padding:0.5625rem 1.375rem;background:#22c55e;color:#fff;border:none;border-radius:0.375rem;font-size:0.8125rem;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;box-shadow:0 0.125rem 0.375rem rgba(0,0,0,0.2);transition:all 0.2s;" onmouseover="this.style.background=\'#16a34a\';this.style.transform=\'translateY(-0.0625rem)\';" onmouseout="this.style.background=\'#22c55e\';this.style.transform=\'translateY(0)\';">'
@@ -281,6 +1005,13 @@ var horasJornadaDiaria = <?php
     $stmt_hjd = $pdo->query("SELECT valor FROM configuracion_general WHERE parametro = 'horas_jornada_diaria' LIMIT 1");
     echo (int)($stmt_hjd->fetchColumn() ?: 8);
 ?>;
+
+// Tope de horas extraordinarias anuales (configuracion_general; Ley 189/2026, art. 229.2).
+// El umbral "cerca del tope" se deriva como tope − 10 h.
+window.HE_TOPE_ANUAL = <?php
+    echo max(1, (int)($configs['tope_he_anual'] ?? 160));
+?>;
+window.HE_TOPE_CERCA = Math.max(0, window.HE_TOPE_ANUAL - 10);
 
 var idsEnNominaActual = <?php 
     $stmt_ids = $pdo->prepare("SELECT DISTINCT trabajador_id FROM nominas WHERE periodo_desde = ? AND periodo_hasta = ? AND tipo_nomina = ?");
@@ -1524,13 +2255,13 @@ function recalcularPreviewAjuste() {
     if (tipoDescuento === 'solo_cess') {
         contribucion = calcularCessProgresivoJS(total);
     } else {
-        contribucion = Math.roundExcel(total * 0.05, 2);
+        contribucion = Math.roundExcel(total * tasaCessFactor(), 2);
         impuesto = calcularImpuestoProgresivo(total);
     }
 
     descuentos = validarDescuentosConCESS(total, contribucion, impuesto, descuentos);
     $('#editDescuentos').val(descuentos.toFixed(2));
-
+    
     var totalDeducciones = Math.roundExcel(contribucion + impuesto + descuentos, 2);
     var neto = Math.max(0, Math.roundExcel(total - totalDeducciones, 2));
     
@@ -2689,7 +3420,7 @@ function generarHtmlCompletoConPaginacion(cuerpoHtml, alcance, filtroNombre, nom
     ` : esExtraominaria ? `
         <tr>
             <th style="width:3%">Código</th><th style="width:6%">CI</th><th style="width:22%">Nombre y Apellidos</th><th style="width:3%">Cat.</th><th style="width:3%">Tarf.</th>
-            <th style="width:4%">HE/D</th><th style="width:4%">$HE/D</th><th style="width:3%">Nt 7-23h</th><th style="width:4%">$/Nt 7-23h</th>
+            <th style="width:4%">HE/D</th><th style="width:4%">$HE/D</th><th style="width:3%">Nt 19-23h</th><th style="width:4%">$/Nt 19-23h</th>
             <th style="width:3%">Nt 23-7h</th><th style="width:4%">$/Nt 23-7h</th>
             <th style="width:3%">D/T</th><th style="width:4%">$/DT</th>
             <th style="width:6%">Deven.</th><th style="width:5%">Imp. CESS</th><th style="width:5%">Dsctos.</th><th style="width:5%">Ret. Tot.</th><th style="width:6%">Pagado</th><th style="width:8%">Firma</th>
@@ -3680,21 +4411,21 @@ function cargarModalEdicion($row) {
         
         html += '<div class="row">';
         if (tipo === 'extraordinaria') {
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-sun me-1 text-warning"></i>HE Diurnas (x' + recargoExtraDiurna + ')</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-sun me-1 text-warning"></i>Horas Extra (+' + Math.round((recargoTrabajoExtraordinario - 1) * 100) + '%)</label>';
         } else {
             html += '<div class="col-md-3 mb-3"><label class="form-label"><i class="fas fa-clock me-1 text-info"></i>Horas Laboradas</label>';
         }
         html += '<input type="number" step="0.5" class="form-control edit-field" id="editHoras" value="' + horas.toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
         
         if (tipo === 'extraordinaria') {
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1 text-info"></i>Nt 7-23h (x' + recargoExtraNocturna + ')</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1 text-info"></i>Nocturno 19:00-23:00 ($' + tarifaNocturnidadTemprana.toFixed(2) + '/h)</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctT" value="' + (originalValues.noctT || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nt 23-7h (x' + recargoExtraNocturna + ')</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nocturno 23:00-07:00 ($' + tarifaNocturnidadTardia.toFixed(2) + '/h)</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctD" value="' + (originalValues.noctD || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
             html += '</div>';
             
             html += '<div class="row">';
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (x' + recargoDobleturno + ')</label>';
+            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (+' + Math.round((recargoTrabajoExtraordinario - 1) * 100) + '%)</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editDT" value="' + (originalValues.dt || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
             html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Descuentos</label>';
             html += '<input type="number" step="0.01" class="form-control edit-field" id="editDescuentos" value="' + descuentos.toFixed(2) + '" ' + isReadOnlyAttr + ' ' + disabledAttr + '></div>';
@@ -3941,6 +4672,27 @@ function cargarModalEdicion($row) {
             recalcularPreviewAutoExtraordinaria();
         });
         recalcularPreviewAutoExtraordinaria();
+        // Aviso de tope de 160 h extraordinarias anuales (Ley 189/2026, art. 229.2)
+        var anioPeriodo = $('#periodoAnioSel').val() || new Date().getFullYear();
+        var trabId = $row.data('trabajador-id') || $('#modalEdicionRapida').attr('data-trabajador-id') || null;
+        var nominaId = $row.attr('data-id') || $row.data('id') || null;
+        if (trabId) {
+            $.ajax({
+                url: 'nominas.php?action=get_he_anuales&ajax=1',
+                type: 'GET',
+                data: { trabajador_id: trabId, anio: anioPeriodo, nomina_id: nominaId },
+                dataType: 'json',
+                cache: false,
+                success: function(r) {
+                    window.heAnualesActual = (r && r.success) ? parseFloat(r.total_he) || 0 : 0;
+                    recalcularPreviewAutoExtraordinaria();
+                },
+                error: function() {
+                    window.heAnualesActual = 0;
+                    recalcularPreviewAutoExtraordinaria();
+                }
+            });
+        }
     } else if (tipo === 'bono') {
         $('input[name="editTipoBonoRadio"]').off('change').on('change', function() {
             var metodo = $(this).val();
@@ -4394,7 +5146,7 @@ function recalcularPreviewAuto() {
         contribucion = calcularCessProgresivoJS(totalDevengado);
         impuesto = 0;
     } else {
-        contribucion = Math.roundExcel(totalDevengado * 0.05, 2);
+        contribucion = Math.roundExcel(totalDevengado * tasaCessFactor(), 2);
         impuesto = calcularImpuestoProgresivo(totalDevengado);
     }
     
@@ -4418,19 +5170,20 @@ function recalcularPreviewAuto() {
         var descuentos = parseFloat($('#editDescuentos').val()) || 0;
         var tipoDescuento = $('#tablaNominas tbody tr[data-id="' + window.editCurrentRowId + '"]').data('tipo-descuento') || 'total_rangos';
         
-        var importeHE = (salarioHora * recargoExtraDiurna) * horas;
-        var importeNtT = (salarioHora * recargoExtraNocturna) * noctT;
-        var importeNtD = (salarioHora * recargoExtraNocturna) * noctD;
-        var importeDT = (salarioHora * recargoDobleturno) * dt;
+        var calcExtra = calcularImporteTrabajoExtraordinarioJS(salarioHora, horas, noctT, noctD, dt);
+        var importeHE = calcExtra.importeHE;
+        var importeNtT = calcExtra.importeNtT;
+        var importeNtD = calcExtra.importeNtD;
+        var importeDT = calcExtra.importeDT;
 
-        var totalDevengado = importeHE + importeNtT + importeNtD + importeDT;
+        var totalDevengado = calcExtra.totalDevengado;
         
         var contribucion = 0, impuesto = 0;
         if (tipoDescuento === 'solo_cess') {
             contribucion = calcularCessProgresivoJS(totalDevengado);
             impuesto = 0;
         } else {
-            contribucion = totalDevengado * 0.05;
+        contribucion = totalDevengado * tasaCessFactor();
             impuesto = calcularImpuestoProgresivo(totalDevengado);
         }
 
@@ -4446,6 +5199,26 @@ function recalcularPreviewAuto() {
         $('#previewDevengado').text('$' + totalDevengado.toFixed(2));
         $('#previewDeducciones').text('$' + totalDeducciones.toFixed(2));
         $('#previewNeto').text('$' + neto.toFixed(2));
+        // Aviso de tope de 160 h extraordinarias anuales
+        var horasActuales = (horas || 0) + (dt || 0);
+        var acumuladas = parseFloat(window.heAnualesActual || 0);
+        var proyectadas = acumuladas + horasActuales;
+        var $aviso160 = $('#avisoTope160h');
+        if ($aviso160.length === 0) {
+            $aviso160 = $('<div id="avisoTope160h" class="alert mt-2 mb-0 py-2" role="alert"></div>');
+            $('#modalEdicionBody').find('.modal-body').append($aviso160);
+        }
+        if (proyectadas > window.HE_TOPE_ANUAL) {
+            $aviso160.removeClass('alert-info alert-success').addClass('alert-warning')
+                .html('<i class="fas fa-exclamation-triangle me-1"></i> Ley 189/2026, art. 229.2: supera las ' + window.HE_TOPE_ANUAL + ' h extraordinarias anuales (acumuladas ' + Math.round(acumuladas) + ' h + actuales ' + Math.round(horasActuales) + ' h = ' + Math.round(proyectadas) + ' h).');
+            $aviso160.show();
+        } else if (proyectadas >= window.HE_TOPE_CERCA) {
+            $aviso160.removeClass('alert-warning alert-success').addClass('alert-info')
+                .html('<i class="fas fa-info-circle me-1"></i> Cerca del tope de ' + window.HE_TOPE_ANUAL + ' h extraordinarias anuales (' + Math.round(proyectadas) + ' h proyectadas).');
+            $aviso160.show();
+        } else {
+            $aviso160.hide();
+        }
     }
 
 function recalcularPreviewBono() {
@@ -4471,7 +5244,7 @@ function recalcularPreviewBono() {
         contribucion = calcularCessProgresivoJS(monto);
         impuesto = 0;
     } else {
-        contribucion = Math.roundExcel(monto * 0.05, 2);
+        contribucion = Math.roundExcel(monto * tasaCessFactor(), 2);
         impuesto = calcularImpuestoProgresivo(monto);
     }
 
@@ -4518,7 +5291,7 @@ function recalcularPreviewVacaciones() {
         contribucion = calcularCessProgresivoJS(importe);
         impuesto = 0;
     } else {
-        contribucion = importe * 0.05;
+        contribucion = importe * tasaCessFactor();
         impuesto = calcularImpuestoProgresivo(importe);
     }
     var netoBase = importe - (contribucion + impuesto);
@@ -4982,7 +5755,7 @@ $('#btnModalActualizar').on('click', function() {
                         <div class="text-center">
                             <i class="fas fa-clock fa-3x mb-3" style="color: #f59e0b;"></i>
                             <p>El trabajador <strong>${escapeHtml(nombre)}</strong> tiene <span class="text-danger fw-bold">todos los valores en cero</span>.</p>
-                            <p class="text-muted small">No se puede guardar un trabajador sin al menos un valor (HE Diurnas, Nt 7-23h, Nt 23-7h, Doble Turno o Descuentos).</p>
+                            <p class="text-muted small">No se puede guardar un trabajador sin al menos un valor (HE Diurnas, Nt 19-23h, Nt 23-7h, Doble Turno o Descuentos).</p>
                         </div>
                     `,
                     icon: 'warning',
@@ -6298,8 +7071,8 @@ customize: function(win) {
                 <th rowspan="2" class="text-right">S. Básico</th>
                 <th rowspan="2" class="text-right">HE/D</th>
                 <th rowspan="2" class="text-right">$/HE/D</th>
-                <th rowspan="2" class="text-right">Nt 7-23h</th>
-                <th rowspan="2" class="text-right">$/Nt 7-23h</th>
+                <th rowspan="2" class="text-right">Nt 19-23h</th>
+                <th rowspan="2" class="text-right">$/Nt 19-23h</th>
                 <th rowspan="2" class="text-right">Nt 23-7h</th>
                 <th rowspan="2" class="text-right">$/Nt 23-7h</th>
                 <th rowspan="2" class="text-right">D/T</th>
@@ -6651,7 +7424,7 @@ function generarContenidoCSV(trabajadores) {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('MONTO AJUSTE'), esc('OTROS PAGOS'), esc('VAC. DÍAS'), esc('VAC. IMPORTE'), esc('DEVENGADO'), esc('CESS'), esc('RET.'), esc('NETO')];
     } else if (esExtraominaria) {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('CAT.'), esc('TARF.'),
-                  esc('HE/D'), esc('$/HE/D'), esc('NT 7-23H'), esc('$/NT 7-23H'), esc('NT 23-7H'), esc('$/NT 23-7H'),
+                  esc('HE/D'), esc('$/HE/D'), esc('NT 19-23H'), esc('$/NT 19-23H'), esc('NT 23-7H'), esc('$/NT 23-7H'),
                   esc('DT'), esc('$/DT'), esc('DEVENGADO'), esc('CESS'), esc('DSCTOS.'), esc('RET. TOT.'), esc('PAGADO')];
     } else {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('DEVENGADO'), esc('DEDUCC.'), esc('NETO')];
@@ -7303,12 +8076,460 @@ backdrop: 'rgba(0,0,0,0.6)'
         cargarSinNomina();
     });
 
+    // ==================== HORAS EXTRAORDINARIAS ANUALES ====================
+    var HE_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? COMPANY_NAME); ?>;
+    var HE_USUARIO = <?php echo json_encode($user_nombre_completo ?? 'Usuario'); ?>;
+    var heAnualesTodo = [];
+    var heAnualesVisibles = [];
+    var heAnualesTope = window.HE_TOPE_ANUAL;
+    var heTotales = { mes: 0, he: 0, dt: 0, anio: 0, superan: 0, alTope: 0, cerca: 0 };
+
+    function escHe(v) {
+        return $('<div>').text(v == null ? '' : String(v)).html();
+    }
+
+    function fmtHe(v) {
+        return String(Math.round(parseFloat(v) || 0));
+    }
+
+    function fmtSal(v) {
+        return (Math.round((parseFloat(v) || 0) * 100) / 100).toFixed(2);
+    }
+
+    function fmtPct(v) {
+        return (Math.round((parseFloat(v) || 0) * 100) / 100).toFixed(2);
+    }
+
+    function heMesSeleccionado() {
+        return parseInt($('#heAnualesMes').val(), 10) || 0;
+    }
+
+    function heAnioSeleccionado() {
+        return parseInt($('#heAnualesAnio').val(), 10) || new Date().getFullYear();
+    }
+
+    function heNombreMes() {
+        var opt = $('#heAnualesMes option:selected');
+        var v = heMesSeleccionado();
+        if (v > 0 && opt.length) { return opt.text(); }
+        return 'Todos los meses';
+    }
+
+    function heArchivoBase() {
+        return 'HE_Anuales_' + heAnioSeleccionado() + '_' + heNombreMes().replace(/\s+/g, '');
+    }
+
+    function heMesEspecifico() {
+        return heMesSeleccionado() > 0;
+    }
+
+    $('#menuHeAnuales').on('click', function(e) {
+        e.preventDefault();
+        var modal = new bootstrap.Modal(document.getElementById('modalHeAnuales'), { backdrop: 'static' });
+        modal.show();
+        abrirHeAnuales();
+    });
+
+    // El año de apertura es el del período seleccionado en el módulo de nóminas.
+    function abrirHeAnuales() {
+        var partes = String(periodoSeleccionadoNominas() || '').split('-');
+        var anioPeriodo = parseInt(partes[0], 10);
+        var mesPeriodo = partes[1] ? parseInt(partes[1], 10) : 0;
+        if (anioPeriodo && $('#heAnualesAnio option[value="' + anioPeriodo + '"]').length) {
+            $('#heAnualesAnio').val(anioPeriodo);
+        }
+        cargarHeAnuales(mesPeriodo);
+    }
+
+    function heRellenarMeses(meses, mesActual) {
+        var html = '<option value="0">Todos los meses</option>';
+        $.each(meses || [], function(i, m) {
+            html += '<option value="' + parseInt(m.valor, 10) + '">' + escHe(m.nombre) + '</option>';
+        });
+        $('#heAnualesMes').html(html);
+        // Si el mes pedido no tiene extraordinarias en la BD, queda en "Todos los meses"
+        var actual = parseInt(mesActual, 10) || 0;
+        if (actual > 0 && $('#heAnualesMes option[value="' + actual + '"]').length) {
+            $('#heAnualesMes').val(actual);
+        } else {
+            $('#heAnualesMes').val('0');
+        }
+    }
+
+    function heErrorTabla(mensaje) {
+        $('#tablaHeAnuales tbody').html(
+            '<tr><td colspan="15" class="text-center text-danger py-3"><i class="fas fa-triangle-exclamation me-2"></i>' + escHe(mensaje) + '</td></tr>'
+        );
+        $('#heAnualesResumen').html('<i class="fas fa-triangle-exclamation me-1"></i> ' + escHe(mensaje));
+    }
+
+    function cargarHeAnuales(mesPreferido) {
+        var anio = heAnioSeleccionado();
+        var mes = (typeof mesPreferido === 'number') ? mesPreferido : heMesSeleccionado();
+
+        $('#tablaHeAnuales tbody').html(
+            '<tr><td colspan="15" class="text-center text-muted"><i class="fas fa-spinner fa-pulse me-1"></i> Consultando...</td></tr>'
+        );
+        $('#heAnualesResumen').html('<i class="fas fa-spinner fa-pulse me-1"></i> Consultando...');
+
+        $.getJSON('nominas.php?action=get_he_anuales_lista&ajax=1', { anio: anio, mes: mes })
+            .done(function(data) {
+                if (!data.success) {
+                    heErrorTabla(data.mensaje || 'No se pudieron consultar las horas extraordinarias.');
+                    return;
+                }
+                heRellenarMeses(data.meses, data.mes);
+                heAnualesTodo = data.trabajadores || [];
+                heAnualesTope = (data.resumen && data.resumen.tope) ? data.resumen.tope : window.HE_TOPE_ANUAL;
+                renderHeAnuales();
+            })
+            .fail(function() {
+                heErrorTabla('No hay conexión con el servidor.');
+            });
+    }
+
+    function heFiltrados() {
+        var q = String($('#heAnualesBuscar').val() || '').trim().toLowerCase();
+        var estado = $('#heAnualesEstado').val() || 'todos';
+        return heAnualesTodo.filter(function(t) {
+            if (estado !== 'todos' && t.estado !== estado) { return false; }
+            if (!q) { return true; }
+            var todo = [t.nombre, t.codigo, t.ci, t.cargo, t.area].join(' ').toLowerCase();
+            return todo.indexOf(q) !== -1;
+        });
+    }
+
+    function heBadge(estado) {
+        if (estado === 'superado') {
+            return '<span style="color:#f87171;"><i class="fas fa-triangle-exclamation me-1"></i>Superado</span>';
+        }
+        if (estado === 'tope') {
+            return '<span style="color:#fb923c;"><i class="fas fa-circle-exclamation me-1"></i>Al tope</span>';
+        }
+        if (estado === 'cerca') {
+            return '<span style="color:#fbbf24;"><i class="fas fa-circle-exclamation me-1"></i>Cerca</span>';
+        }
+        return '<span style="color:#34d399;"><i class="fas fa-circle-check me-1"></i>En regla</span>';
+    }
+
+    function renderHeAnuales() {
+        heAnualesVisibles = heFiltrados();
+        var conMes = heMesEspecifico();
+        var tbody = '';
+        var tot = { mes: 0, he: 0, dt: 0, anio: 0, superan: 0, alTope: 0, cerca: 0 };
+
+        if (heAnualesVisibles.length === 0) {
+            tbody = '<tr><td colspan="15" class="text-center text-success py-3">'
+                  + '<i class="fas fa-check-circle me-2"></i>No hay trabajadores con horas en los filtros aplicados.</td></tr>';
+        } else {
+            $.each(heAnualesVisibles, function(i, t) {
+                tot.mes += parseFloat(t.total_mes) || 0;
+                tot.he += parseFloat(t.he_anio) || 0;
+                tot.dt += parseFloat(t.dt_anio) || 0;
+                tot.anio += parseFloat(t.total_anio) || 0;
+                if (t.estado === 'superado') { tot.superan++; }
+                else if (t.estado === 'tope') { tot.alTope++; }
+                else if (t.estado === 'cerca') { tot.cerca++; }
+                tbody += '<tr>'
+                    + '<td>' + (i + 1) + '</td>'
+                    + '<td>' + escHe(t.codigo) + '</td>'
+                    + '<td>' + escHe(t.ci) + '</td>'
+                    + '<td>' + escHe(t.nombre) + '</td>'
+                    + '<td class="text-center">' + escHe(t.cargo || '—') + '</td>'
+                    + '<td class="text-center">' + escHe(t.area || '—') + '</td>'
+                    + '<td class="text-end text-info">' + fmtSal(t.salario_mensual) + '</td>'
+                    + '<td class="text-end text-info">' + fmtSal(t.salario_diario) + '</td>'
+                    + '<td class="text-end text-info">' + fmtSal(t.salario_hora) + '</td>'
+                    + '<td class="text-center text-warning">' + (conMes ? fmtHe(t.total_mes) : '—') + '</td>'
+                    + '<td class="text-center">' + fmtHe(t.he_anio) + '</td>'
+                    + '<td class="text-center">' + fmtHe(t.dt_anio) + '</td>'
+                    + '<td class="text-center fw-semibold" style="color:#c4b5fd;">' + fmtHe(t.total_anio) + '</td>'
+                    + '<td class="text-center">' + fmtPct(t.pct_tope) + '%</td>'
+                    + '<td>' + heBadge(t.estado) + '</td>'
+                    + '</tr>';
+            });
+        }
+
+        heTotales = tot;
+
+        $('#tablaHeAnuales tbody').html(tbody);
+        $('#heTotMes').text(conMes ? fmtHe(tot.mes) : '—');
+        $('#heTotHe').text(fmtHe(tot.he));
+        $('#heTotDt').text(fmtHe(tot.dt));
+        $('#heTotAnio').text(fmtHe(tot.anio));
+        // Promedio de aprovechamiento del tope entre los trabajadores listados
+        $('#heTotPct').text(fmtPct(
+            heAnualesTope > 0 && heAnualesVisibles.length > 0
+                ? (tot.anio / (heAnualesVisibles.length * heAnualesTope) * 100)
+                : 0
+        ) + '%');
+        $('#heTotEstado').text('—');
+        $('#heTotResumen').text(heResumenStats());
+
+        var resumen = '<i class="fas fa-hourglass-half me-1"></i> '
+            + heAnualesVisibles.length + ' trabajador(es)'
+            + ' · Total año ' + fmtHe(tot.anio) + ' h';
+        if (conMes) { resumen += ' · Mes ' + fmtHe(tot.mes) + ' h'; }
+        resumen += ' · ' + tot.superan + ' superan ' + heAnualesTope + ' h'
+                + ' · ' + tot.alTope + ' al tope'
+                + ' · ' + tot.cerca + ' cerca del tope'
+                + ' · Año ' + heAnioSeleccionado() + ' · ' + heNombreMes();
+        $('#heAnualesResumen').html(resumen);
+    }
+
+    // ---------- Exportación / impresión ----------
+    function heColumnas(conHtml) {
+        var cols = ['No.', 'Expediente', 'CI', 'Nombre y Apellidos', 'Cargo', 'Área',
+                    'Salario Escala', 'Sal/Día', 'Sal/Hora',
+                    'HE Mes', 'H.E. Año', 'D.T. Año', 'Total Año', '% Tope', 'Estado'];
+        if (conHtml) {
+            cols[6] = 'Salario<br>Escala';
+        }
+        return cols;
+    }
+
+    function heFilaTexto(t, i) {
+        return [String(i + 1), String(t.codigo || ''), String(t.ci || ''), String(t.nombre || ''),
+                String(t.cargo || '—'), String(t.area || '—'),
+                fmtSal(t.salario_mensual), fmtSal(t.salario_diario), fmtSal(t.salario_hora),
+                heMesEspecifico() ? fmtHe(t.total_mes) : '—',
+                fmtHe(t.he_anio), fmtHe(t.dt_anio), fmtHe(t.total_anio),
+                fmtPct(t.pct_tope) + '%', String(t.estado_txt || '')];
+    }
+
+    function heResumenStats() {
+        var n = heAnualesVisibles.length;
+        var regla = n - (heTotales.superan + heTotales.alTope + heTotales.cerca);
+        return 'Superan: ' + heTotales.superan
+            + ' · Al tope: ' + heTotales.alTope
+            + ' · Cerca: ' + heTotales.cerca
+            + ' · En regla: ' + Math.max(0, regla)
+            + ' · ' + n + ' trabajador(es)';
+    }
+
+    function heTotalesTexto() {
+        var n = heAnualesVisibles.length;
+        return ['TOTAL GENERAL', heResumenStats(), '', '', '', '', '', '', '',
+                heMesEspecifico() ? fmtHe(heTotales.mes) : '—',
+                fmtHe(heTotales.he), fmtHe(heTotales.dt), fmtHe(heTotales.anio),
+                fmtPct(heAnualesTope > 0 && n > 0 ? (heTotales.anio / (n * heAnualesTope) * 100) : 0) + '%',
+                ''];
+    }
+
+    function heDescargar(contenido, nombre, tipo) {
+        var blob = new Blob(['\ufeff' + contenido], { type: tipo });
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = nombre;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    function heAvisoExito(nombre, registros) {
+        Swal.fire({
+            icon: 'success',
+            title: '<i class="fas fa-check-circle me-2" style="color: #34d399;"></i> Exportación completada',
+            html: '<div style="text-align: center;">'
+                + '<p><strong>Archivo generado:</strong> ' + escHe(nombre) + '</p>'
+                + '<p><strong>Registros exportados:</strong> ' + registros + '</p>'
+                + '</div>',
+            confirmButtonText: '<i class="fas fa-check me-2"></i> Aceptar',
+            confirmButtonColor: '#3b82f6',
+            background: '#1a1a2e',
+            color: '#ffffff'
+        });
+    }
+
+    function heAvisoVacio() {
+        Swal.fire({
+            icon: 'warning',
+            title: '<i class="fas fa-hourglass-half me-2" style="color:#c4b5fd;"></i> Sin datos',
+            text: 'No hay trabajadores con horas para los filtros seleccionados.',
+            confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
+            confirmButtonColor: '#3b82f6',
+            background: '#1a1a2e',
+            color: '#ffffff'
+        });
+    }
+
+    function heTablaHtml(imprimir, esExcel) {
+        var html = '<meta charset="utf-8"><style>'
+            + 'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;}'
+            + 'h1{font-size:16px;margin:0 0 2px;} h2{font-size:12px;margin:0 0 2px;font-weight:normal;color:#444;}'
+            + 'table{border-collapse:collapse;width:100%;margin-top:8px;}'
+            + 'th,td{border:1px solid #999;padding:3px 5px;text-align:left;}'
+            + 'th{background:#eee;font-weight:bold;} td.n{text-align:right;} td.c{text-align:center;}'
+            + (esExcel ? 'td.n{mso-number-format:"0.00";} td.c{mso-number-format:"0";} th{mso-number-format:"\\@";}' : '')
+            + 'tr.tot td{background:#f3f0ff;font-weight:bold;}'
+            + (imprimir ? '@page{size:landscape;margin:10mm;}' : '')
+            + '</style>';
+        html += '<h1>Horas Extraordinarias Anuales</h1>';
+        html += '<h2>' + escHe(HE_EMPRESA) + ' · Año ' + heAnioSeleccionado() + ' · ' + escHe(heNombreMes()) + '</h2>';
+        html += '<h2>Trabajadores con horas &gt; 0 · tope de referencia ' + heAnualesTope + ' h · '
+             +  heAnualesVisibles.length + ' registro(s)</h2>';
+        html += '<table><thead><tr>';
+        $.each(heColumnas(true), function(i, c) {
+            var al = (i >= 6 && i <= 8) ? 'right' : (((i >= 4 && i <= 5) || (i >= 9 && i <= 13)) ? 'center' : 'left');
+            html += '<th style="text-align:' + al + ';">' + (i === 6 ? c : escHe(c)) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        $.each(heAnualesVisibles, function(i, t) {
+            var fila = heFilaTexto(t, i);
+            html += '<tr>';
+            $.each(fila, function(j, c) {
+                var cls = (j >= 6 && j <= 8) ? ' class="n"'
+                    : (((j >= 4 && j <= 5) || (j >= 9 && j <= 13)) ? ' class="c"' : '');
+                html += '<td' + cls + '>' + escHe(c) + '</td>';
+            });
+            html += '</tr>';
+        });
+        var conMes = heMesEspecifico();
+        html += '<tr class="tot">'
+            + '<td class="c">TOTAL GENERAL</td>'
+            + '<td colspan="8" class="c">' + escHe(heResumenStats()) + '</td>'
+            + '<td' + (conMes ? ' class="c"' : '') + '>' + (conMes ? escHe(fmtHe(heTotales.mes)) : '—') + '</td>'
+            + '<td class="c">' + escHe(fmtHe(heTotales.he)) + '</td>'
+            + '<td class="c">' + escHe(fmtHe(heTotales.dt)) + '</td>'
+            + '<td class="c">' + escHe(fmtHe(heTotales.anio)) + '</td>'
+            + '<td class="c">' + escHe(fmtPct(
+                heAnualesTope > 0 && heAnualesVisibles.length > 0
+                    ? (heTotales.anio / (heAnualesVisibles.length * heAnualesTope) * 100)
+                    : 0
+            )) + '%</td>'
+            + '<td></td>'
+            + '</tr></tbody></table>';
+        html += '<p style="margin-top:8px;color:#555;">Generado: ' + escHe(new Date().toLocaleString()) + ' · ' + escHe(HE_USUARIO) + '</p>';
+        return html;
+    }
+
+    function heExportar(formato) {
+        if (heAnualesVisibles.length === 0) { heAvisoVacio(); return; }
+        var base = heArchivoBase();
+        var registros = heAnualesVisibles.length;
+
+        if (formato === 'csv' || formato === 'txt') {
+            var separador = formato === 'csv' ? ';' : ' | ';
+            var lineas = [heColumnas().join(separador)];
+            $.each(heAnualesVisibles, function(i, t) { lineas.push(heFilaTexto(t, i).join(separador)); });
+            lineas.push(heTotalesTexto().join(separador));
+            var nombre = base + '.' + formato;
+            heDescargar(lineas.join('\r\n'), nombre,
+                formato === 'csv' ? 'text/csv;charset=utf-8;' : 'text/plain;charset=utf-8;');
+            heAvisoExito(nombre, registros);
+            return;
+        }
+
+        if (formato === 'excel' || formato === 'word') {
+            var esExcel = formato === 'excel';
+            var cuerpo = heTablaHtml(false, esExcel);
+            var doc;
+            if (esExcel) {
+                doc = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
+                    + '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>'
+                    + '<x:ExcelWorksheet><x:Name>HE Anuales</x:Name>'
+                    + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'
+                    + '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'
+                    + cuerpo + '</body></html>';
+            } else {
+                doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" '
+                    + 'xmlns:w="urn:schemas-microsoft-com:office:word" '
+                    + 'xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8">'
+                    + '<title>Horas Extraordinarias Anuales</title>'
+                    + '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View>'
+                    + '<w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--></head><body>'
+                    + cuerpo + '</body></html>';
+            }
+            var nombre = base + (esExcel ? '.xls' : '.doc');
+            heDescargar(doc, nombre,
+                esExcel ? 'application/vnd.ms-excel;charset=utf-8;' : 'application/msword;charset=utf-8;');
+            heAvisoExito(nombre, registros);
+            return;
+        }
+
+        if (formato === 'pdf') {
+            var cuerpo = [heColumnas()];
+            $.each(heAnualesVisibles, function(i, t) { cuerpo.push(heFilaTexto(t, i)); });
+            var ft = heTotalesTexto();
+            var filaTotal = [
+                { text: ft[0], alignment: 'center', bold: true },
+                { text: ft[1], colSpan: 8, alignment: 'center', bold: true },
+                {}, {}, {}, {}, {}, {}, {}
+            ];
+            for (var k = 9; k <= 14; k++) {
+                filaTotal.push({ text: ft[k], alignment: (k >= 9 && k <= 13) ? 'center' : 'left', bold: true });
+            }
+            cuerpo.push(filaTotal);
+            pdfMake.createPdf({
+                pageOrientation: 'landscape',
+                pageSize: 'A4',
+                content: [
+                    { text: 'Horas Extraordinarias Anuales', fontSize: 14, bold: true },
+                    { text: HE_EMPRESA, fontSize: 10 },
+                    { text: 'Año ' + heAnioSeleccionado() + ' · ' + heNombreMes()
+                            + ' · Trabajadores con horas > 0 · tope ' + heAnualesTope + ' h',
+                      fontSize: 10, margin: [0, 0, 0, 8] },
+                    { table: { headerRows: 1, widths: ['auto', 'auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'], body: cuerpo,
+                               columnStyles: {
+                                   4: { alignment: 'center' }, 5: { alignment: 'center' },
+                                   6: { alignment: 'right' }, 7: { alignment: 'right' }, 8: { alignment: 'right' },
+                                   9: { alignment: 'center' }, 10: { alignment: 'center' }, 11: { alignment: 'center' },
+                                   12: { alignment: 'center' }, 13: { alignment: 'center' }
+                               } },
+                      layout: 'grid' },
+                    { text: 'Generado: ' + new Date().toLocaleString() + ' · ' + HE_USUARIO, fontSize: 8, margin: [0, 6, 0, 0] }
+                ],
+                defaultStyle: { fontSize: 8 }
+            }).download(base + '.pdf');
+            heAvisoExito(base + '.pdf', registros);
+            return;
+        }
+    }
+
+    function heImprimir() {
+        if (heAnualesVisibles.length === 0) { heAvisoVacio(); return; }
+        var w = window.open('', '_blank');
+        if (!w) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Ventana emergente bloqueada',
+                text: 'Permita las ventanas emergentes para imprimir el listado.',
+                confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
+                confirmButtonColor: '#3b82f6',
+                background: '#1a1a2e',
+                color: '#ffffff'
+            });
+            return;
+        }
+        w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
+            + '<title>Horas Extraordinarias Anuales · ' + heAnioSeleccionado() + '</title></head><body>'
+            + heTablaHtml(true) + '</body></html>');
+        w.document.close();
+        w.focus();
+        setTimeout(function() { w.print(); }, 500);
+    }
+
+    $('#btnBuscarHeAnuales').on('click', function() { cargarHeAnuales(); });
+    $('#heAnualesAnio, #heAnualesMes').on('change', function() { cargarHeAnuales(); });
+    $('#heAnualesEstado, #heAnualesBuscar').on('input change', function() { renderHeAnuales(); });
+    $('#heAnualesLimpiar').on('click', function() { $('#heAnualesBuscar').val(''); renderHeAnuales(); });
+    $('#heAnualesBuscar').on('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); renderHeAnuales(); } });
+    $('#btnHeAnualesPrint').on('click', function() { heImprimir(); });
+    $('#btnHeAnualesPDF').on('click', function() { heExportar('pdf'); });
+    $('#btnHeAnualesWord').on('click', function() { heExportar('word'); });
+    $('#btnHeAnualesExcel').on('click', function() { heExportar('excel'); });
+    $('#btnHeAnualesCSV').on('click', function() { heExportar('csv'); });
+    $('#btnHeAnualesTXT').on('click', function() { heExportar('txt'); });
+
     function dispararAccionHashNominas() {
         var h = window.location.hash || '';
         if (h === '#verificar_cuadres') { $('#btnVerificarCuadre').trigger('click'); }
         else if (h === '#historial_montos') { $('#menuHistorialMontos').trigger('click'); }
         else if (h === '#resumen_salarial') { $('#menuResumenSalarial').trigger('click'); }
         else if (h === '#sin_nomina') { $('#menuSinNomina').trigger('click'); }
+        else if (h === '#he_anuales') { $('#menuHeAnuales').trigger('click'); }
     }
     dispararAccionHashNominas();
     window.addEventListener('hashchange', dispararAccionHashNominas);
@@ -7323,7 +8544,8 @@ backdrop: 'rgba(0,0,0,0.6)'
         'modalSeleccionResumenSalarial',
         'modalListadoDevengadoTrabajador',
         'modalSinCuenta',
-        'modalSinNomina'
+        'modalSinNomina',
+        'modalHeAnuales'
     ];
 
     function hayModalNominasAbierto() {
@@ -8495,12 +9717,13 @@ $('#btnLimpiarFiltros').off('click').on('click', function(e) {
     }
 
     function calcularCessProgresivoJS(salario) {
-        var limite = 15000;
+        var basePct = (isNaN(tasaCessEspecial) ? 5 : tasaCessEspecial) / 100;
+        var excesoPct = (isNaN(cessTasaExceso) ? 10 : cessTasaExceso) / 100;
+        var limite = (isNaN(cessLimiteProgresivo) ? 15000 : cessLimiteProgresivo);
         if (salario <= limite) {
-            return Math.roundExcel((salario * 0.05) * 100) / 100;
-        } else {
-            return Math.roundExcel(((15000 * 0.05) + ((salario - 15000) * 0.10)) * 100) / 100;
+            return Math.roundExcel((salario * basePct) * 100) / 100;
         }
+        return Math.roundExcel(((limite * basePct) + ((salario - limite) * excesoPct)) * 100) / 100;
     }
 
     function calcularImpuestoProgresivo(salario) {
@@ -8569,7 +9792,7 @@ function recalcularFilaVacaciones(fila) {
             impuestosArr.push(0);
         }
     } else {
-        contribucion = Math.roundExcel((importe * 0.05) * 100) / 100;
+        contribucion = Math.roundExcel((importe * tasaCessFactor()) * 100) / 100;
         impuesto = calcularImpuestoProgresivo(importe);
         impuestosArr = calcularImpuestosPorRangoProgresivo(importe);
     }
@@ -8636,10 +9859,11 @@ function recalcularFilaAutomatica(fila) {
     if (tipoNominaActual === 'automatica') {
         importeFeriados = salarioDiario * diasFeriados * 2;
     } else {
-        importeHE = (salarioHora * recargoExtraDiurna) * horas;
-        importeNtT = (salarioHora * recargoExtraNocturna) * noctT;
-        importeNtD = (salarioHora * recargoExtraNocturna) * noctD;
-        importeDT = (salarioHora * recargoDobleturno) * dt;
+        var calcExtra = calcularImporteTrabajoExtraordinarioJS(salarioHora, horas, noctT, noctD, dt);
+        importeHE = calcExtra.importeHE;
+        importeNtT = calcExtra.importeNtT;
+        importeNtD = calcExtra.importeNtD;
+        importeDT = calcExtra.importeDT;
     }
 
     var factor909 = 0.0909; 
@@ -8666,7 +9890,13 @@ function recalcularFilaAutomatica(fila) {
 
     var totalDevengado;
     if (tipoNominaActual === 'extraordinaria') {
-        totalDevengado = importeHE + importeNtT + importeNtD + importeDT;
+        // Se usa el total que devuelve el helper, ya redondeado con la misma
+        // regla que PHP. Reunirlo a mano dejaba el importe sin redondear final
+        // (errores de coma flotante de menos de un centavo) y podia divergir
+        // de lo que guarda el servidor.
+        totalDevengado = (calcExtra && typeof calcExtra.totalDevengado === 'number')
+            ? calcExtra.totalDevengado
+            : redondearImporteJS(importeHE + importeNtT + importeNtD + importeDT);
     } else {
         var salarioLaboral = salarioHora * horas;
         totalDevengado = salarioLaboral + importeFeriados + otrosPagos + importeVacacionesAdicional;
@@ -8681,7 +9911,7 @@ function recalcularFilaAutomatica(fila) {
         impuestoTotal = 0;
         for (var i = 0; i < rangesImpuestosLength(); i++) { impuestosArr.push(0); }
     } else {
-        contribucion = totalDevengado * 0.05;
+        contribucion = totalDevengado * tasaCessFactor();
         impuestoTotal = calcularImpuestoProgresivo(totalDevengado);
         impuestosArr = calcularImpuestosPorRangoProgresivo(totalDevengado);
     }
@@ -8745,7 +9975,7 @@ function recalcularFilaBono(fila) {
             impuestosArr.push(0);
         }
     } else {
-        contribucion = Math.roundExcel((total * 0.05) * 100) / 100;
+        contribucion = Math.roundExcel((total * tasaCessFactor()) * 100) / 100;
         impuesto = calcularImpuestoProgresivo(total);
         impuestosArr = calcularImpuestosPorRangoProgresivo(total);
     }
@@ -8854,7 +10084,7 @@ $(document).on('click', '.guardar-fila', function() {
                     <div class="text-center">
                         <i class="fas fa-clock fa-3x mb-3" style="color: #f59e0b;"></i>
                         <p>El trabajador <strong>${escapeHtml(trabajadorNombre)}</strong> tiene <span class="text-danger fw-bold">todos los valores en cero</span>.</p>
-                        <p class="text-muted small">No se puede guardar un trabajador sin al menos un valor (HE Diurnas, Nt 7-23h, Nt 23-7h, Doble Turno o Descuentos).</p>
+                        <p class="text-muted small">No se puede guardar un trabajador sin al menos un valor (HE Diurnas, Nt 19-23h, Nt 23-7h, Doble Turno o Descuentos).</p>
                     </div>
                 `,
                 icon: 'warning',
@@ -8995,7 +10225,7 @@ $(document).on('click', '.guardar-fila', function() {
                                 </div>
                                 ` : `
                                 <div class="row">
-                                    <div class="col-6 text-start"><small>Nt 7-23h:</small></div>
+                                    <div class="col-6 text-start"><small>Nt 19-23h:</small></div>
                                     <div class="col-6 text-end"><strong>${datos.nocturnidad_temprana || 0}h</strong></div>
                                 </div>
                                 <div class="row">
@@ -9790,7 +11020,13 @@ window.mostrarAlertCuadrePendiente = function(rep) {
                 background: '#1a1a2e',
                 color: '#ffffff'
             });
-            fetch('nominas.php?action=corregir_pendientes&ajax=1&pd=' + encodeURIComponent(pd) + '&ph=' + encodeURIComponent(ph) + '&tipo=' + encodeURIComponent(rep.tipo), { cache: 'no-store' })
+            fetch('nominas.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: 'action=corregir_pendientes&ajax=1&pd=' + encodeURIComponent(pd)
+                        + '&ph=' + encodeURIComponent(ph) + '&tipo=' + encodeURIComponent(rep.tipo),
+                    cache: 'no-store'
+                })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data && data.success) {
@@ -10003,7 +11239,13 @@ $('#contabilizarBtn').on('click', function() {
                         background: '#1a1a2e',
                         color: '#ffffff'
                     });
-                    fetch('nominas.php?action=corregir_pendientes&ajax=1&pd=' + encodeURIComponent(pd) + '&ph=' + encodeURIComponent(ph) + '&tipo=' + encodeURIComponent(tipoNomina), { cache: 'no-store' })
+                    fetch('nominas.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                            body: 'action=corregir_pendientes&ajax=1&pd=' + encodeURIComponent(pd)
+                                + '&ph=' + encodeURIComponent(ph) + '&tipo=' + encodeURIComponent(tipoNomina),
+                            cache: 'no-store'
+                        })
                         .then(function(r) { return r.json(); })
                         .then(function(data) {
                             if (data && data.success) {
@@ -10518,9 +11760,9 @@ function updateExtraList(focusId) {
     var diasLaborables = <?php echo $dias_laborables; ?>;
     var html = selectedExtra.map(w => {
         var salarioDiario = w.salario_mensual / diasLaborables;
-        var valorHoraExtra = w.sh * recargoExtraDiurna;
-        var valorHoraNocturna = w.sh * recargoExtraNocturna;
-        var valorDobleTurno = w.sh * recargoDobleturno;
+        var valorHoraExtra = redondearImporteJS(w.sh * recargoTrabajoExtraordinario);
+        var valorHoraDobleTurno = redondearImporteJS(w.sh * recargoTrabajoExtraordinario);
+        var porcentajeExtra = Math.round((recargoTrabajoExtraordinario - 1) * 100);
         
         return `
             <div class="selected-worker-card" style="margin-bottom:0.9375rem; border-left: 0.1875rem solid #3b82f6;">
@@ -10545,12 +11787,12 @@ function updateExtraList(focusId) {
                         <div class="fw-bold text-info">$${w.sh.toFixed(2)}</div>
                     </div>
                     <div class="col-3 text-center">
-                        <small class="text-muted"><i class="fas fa-sun"></i> HE +50%</small>
+                        <small class="text-muted"><i class="fas fa-sun"></i> HE +${porcentajeExtra}%</small>
                         <div class="fw-bold text-warning">$${valorHoraExtra.toFixed(2)}</div>
                     </div>
                     <div class="col-3 text-center">
-                        <small class="text-muted"><i class="fas fa-bed"></i> Nt x${recargoExtraNocturna}</small>
-                        <div class="fw-bold text-success">$${valorHoraNocturna.toFixed(2)}</div>
+                        <small class="text-muted"><i class="fas fa-bed"></i> Nocturno</small>
+                        <div class="fw-bold text-success">$${tarifaNocturnidadTemprana.toFixed(2)}/h</div>
                     </div>
                 </div>
                 
@@ -10561,31 +11803,31 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm horas-input" 
                                    data-id="${w.id}" value="${w.horasExtraNormales || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#f59e0b;">
-                            <span class="input-group-text bg-dark text-warning">x${recargoExtraDiurna}</span>
+                            <span class="input-group-text bg-dark text-warning">+${porcentajeExtra}%</span>
                         </div>
                         <small class="text-muted">$${valorHoraExtra.toFixed(2)}/h</small>
                     </div>
                     
                     <div class="col-md-3">
-                        <label class="small text-info"><i class="fas fa-moon me-1"></i>Nt 7-23h</label>
+                        <label class="small text-info"><i class="fas fa-moon me-1"></i>Nocturno 19:00-23:00</label>
                         <div class="input-group input-group-sm">
                             <input type="number" step="0.5" class="form-control form-control-sm noct-temprana-input" 
                                    data-id="${w.id}" value="${w.noctTemprana || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#3b82f6;">
-                            <span class="input-group-text bg-dark text-info">x${recargoExtraNocturna}</span>
+                            <span class="input-group-text bg-dark text-info">$${tarifaNocturnidadTemprana.toFixed(2)}/h</span>
                         </div>
-                        <small class="text-muted">$${valorHoraNocturna.toFixed(2)}/h</small>
+                        <small class="text-muted">Tarifa fija</small>
                     </div>
                     
                     <div class="col-md-3">
-                        <label class="small text-purple"><i class="fas fa-moon me-1"></i>Nt 23-7h</label>
+                        <label class="small text-purple"><i class="fas fa-moon me-1"></i>Nocturno 23:00-07:00</label>
                         <div class="input-group input-group-sm">
                             <input type="number" step="0.5" class="form-control form-control-sm noct-tardia-input" 
                                    data-id="${w.id}" value="${w.noctTardia || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#8b5cf6;">
-                            <span class="input-group-text bg-dark" style="color:#8b5cf6;">x${recargoExtraNocturna}</span>
+                            <span class="input-group-text bg-dark" style="color:#8b5cf6;">$${tarifaNocturnidadTardia.toFixed(2)}/h</span>
                         </div>
-                        <small class="text-muted">$${valorHoraNocturna.toFixed(2)}/h</small>
+                        <small class="text-muted">Tarifa fija</small>
                     </div>
                     
                     <div class="col-md-3">
@@ -10594,16 +11836,16 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm doble-turno-input" 
                                    data-id="${w.id}" value="${w.dobleTurno || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#22c55e;">
-                            <span class="input-group-text bg-dark text-success">x${recargoDobleturno}</span>
+                            <span class="input-group-text bg-dark text-success">+${porcentajeExtra}%</span>
                         </div>
-                        <small class="text-muted">$${valorDobleTurno.toFixed(2)}/h</small>
+                        <small class="text-muted">$${valorHoraDobleTurno.toFixed(2)}/h</small>
                     </div>
                 </div>
                 <div class="row mt-2">
                     <div class="col-12">
                         <small class="text-muted">
                             <i class="fas fa-calculator me-1"></i>
-                            HE: $${w.sh.toFixed(2)} × ${recargoExtraDiurna} | Nt 7-23h: $${w.sh.toFixed(2)} × ${recargoExtraNocturna} | Nt 23-7h: $${w.sh.toFixed(2)} × ${recargoExtraNocturna} | DT: $${w.sh.toFixed(2)} × ${recargoDobleturno}
+                            HE: $${w.sh.toFixed(2)} × ${recargoTrabajoExtraordinario} | Nocturno 19:00-23:00: $${tarifaNocturnidadTemprana.toFixed(2)}/h | Nocturno 23:00-07:00: $${tarifaNocturnidadTardia.toFixed(2)}/h | DT: $${w.sh.toFixed(2)} × ${recargoTrabajoExtraordinario}
                         </small>
                     </div>
                 </div>
@@ -10627,6 +11869,7 @@ function updateExtraList(focusId) {
 
 function updateExtraTotals() {
     var tHorasNorm = 0, tNoctT = 0, tNoctD = 0, tDT = 0, tDev = 0, tNeto = 0, val = 0;
+    var tipoDescuento = $('#tipoDescuentoExtra').val() || window.tempSelectedDiscount || 'total_rangos';
     selectedExtra.forEach(w => {
         var hrsNorm = parseFloat(w.horasExtraNormales) || 0;
         var noctT = parseFloat(w.noctTemprana) || 0;
@@ -10639,15 +11882,18 @@ function updateExtraTotals() {
             tNoctD += noctD;
             tDT += dt;
             
-            var importeHE = (w.sh * recargoExtraDiurna) * hrsNorm;
-            var importeNtT = (w.sh * recargoExtraNocturna) * noctT;
-            var importeNtD = (w.sh * recargoExtraNocturna) * noctD;
-            var importeDT = (w.sh * recargoDobleturno) * dt;
-            var salTotal = importeHE + importeNtT + importeNtD + importeDT;
+            var calcExtra = calcularImporteTrabajoExtraordinarioJS(w.sh, hrsNorm, noctT, noctD, dt);
+            var salTotal = calcExtra.totalDevengado;
             tDev += salTotal;
             
-            var contribucion = salTotal * 0.05;
-            var impuesto = calcularImpuestoProgresivo(salTotal);
+            var contribucion = 0, impuesto = 0;
+            if (tipoDescuento === 'solo_cess') {
+                contribucion = calcularCessProgresivoJS(salTotal);
+                impuesto = 0;
+            } else {
+                contribucion = Math.roundExcel(salTotal * tasaCessFactor(), 2);
+                impuesto = calcularImpuestoProgresivo(salTotal);
+            }
             tNeto += salTotal - (contribucion + impuesto);
             val++;
         }
@@ -12161,7 +13407,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
         ` : esExtraominaria ? `
             <tr class="table-header">
                 <td>Código</td><td>CI</td><td>Nombre y Apellidos</td><td>Cat.</td><td>Tarf.</td>
-                <td>HE/D</td><td>$/HE/D</td><td>Nt 7-23h</td><td>$/Nt 7-23h</td>
+                <td>HE/D</td><td>$/HE/D</td><td>Nt 19-23h</td><td>$/Nt 19-23h</td>
                 <td>Nt 23-7h</td><td>$/Nt 23-7h</td>
                 <td>D/T</td><td>$/DT</td>
                 <td>Deven.</td><td>Imp. CESS.</td><td>Dsctos.</td><td>Ret. Tot.</td><td>Pagado</td><td>Firma</td>
@@ -12360,8 +13606,8 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                     { text: 'Tarf.', style: 'tableHeader' },
                     { text: 'HE/D', style: 'tableHeader' },
                     { text: '$/HE/D', style: 'tableHeader' },
-                    { text: 'Nt 7-23h', style: 'tableHeader' },
-                    { text: '$/Nt 7-23h', style: 'tableHeader' },
+                    { text: 'Nt 19-23h', style: 'tableHeader' },
+                    { text: '$/Nt 19-23h', style: 'tableHeader' },
                     { text: 'Nt 23-7h', style: 'tableHeader' },
                     { text: '$/Nt 23-7h', style: 'tableHeader' },
                     { text: 'D/T', style: 'tableHeader' },
@@ -13123,8 +14369,8 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Tarf.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.875rem;">HE/D</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/HE/D</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">Nt 7-23h</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/Nt 7-23h</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">Nt 19-23h</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/Nt 19-23h</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">Nt 23-7h</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/Nt 23-7h</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">DT</th>
@@ -13336,8 +14582,8 @@ function generarContenidoTXT(trabajadores) {
                  padRight("NOMBRE Y APELLIDOS", 30) + " | " + 
                  padLeft("HE/D", 10) + " | " + 
                  padLeft("$/HE/D", 10) + " | " + 
-                 padLeft("NT 7-23H", 8) + " | " + 
-                 padLeft("$/NT 7-23H", 10) + " | " + 
+                 padLeft("NT 19-23H", 8) + " | " + 
+                 padLeft("$/NT 19-23H", 10) + " | " + 
                  padLeft("NT 23-7H", 8) + " | " + 
                  padLeft("$/NT 23-7H", 10) + " | " + 
                  padLeft("DT", 4) + " | " + 

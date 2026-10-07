@@ -53,18 +53,25 @@ function permiso_matriz() {
     $NADA = ['ver' => false, 'crear' => false, 'editar' => false, 'eliminar' => false, 'exportar' => false];
     $SIN_CREAR = ['ver' => true, 'crear' => false, 'editar' => true, 'eliminar' => true, 'exportar' => true];
 
-    $modulos = ['dashboard', 'empleados', 'nominas', 'reportes', 'clasificadores', 'configuracion', 'usuarios', 'bandecnom', 'submayor', 'solapines', 'snc225', 'domiciliacion_tarjetas'];
+    $modulos = ['dashboard', 'empleados', 'nominas', 'cierres', 'reportes', 'clasificadores', 'configuracion', 'usuarios', 'bandecnom', 'submayor', 'solapines', 'snc225', 'domiciliacion_tarjetas'];
 
     foreach ($modulos as $m) {
         $matriz['Admin'][$m] = $TODO;
-        $matriz['Soft'][$m] = in_array($m, ['bandecnom'], true) ? $NADA : $TODO;
+        $matriz['Soft'][$m] = $TODO;
     }
+
+    // Soft es un rol de consulta y exportacion. En cierres se queda en
+    // solo lectura porque cerrar consolida la nomina del ano y reabrir deshace
+    // un cierre: son decisiones que exceden a un usuario de solo lectura.
+    $matriz['Soft']['bandecnom'] = $NADA;
+    $matriz['Soft']['cierres']    = $SOLO_LECTURA;
 
     // Visualizador: sin acceso a SNC-225 ni a Domiciliación de Tarjetas
     $matriz['Visor'] = [
         'dashboard' => ['ver' => true, 'crear' => false, 'editar' => false, 'eliminar' => false, 'exportar' => false],
         'empleados' => $SOLO_LECTURA,
         'nominas' => $SOLO_LECTURA,
+        'cierres' => $NADA,
         'reportes' => $SOLO_LECTURA,
         'clasificadores' => $SOLO_LECTURA,
         'configuracion' => $NADA,
@@ -80,6 +87,7 @@ function permiso_matriz() {
         'dashboard' => $TODO,
         'empleados' => $TODO,
         'nominas' => $TODO,
+        'cierres' => $SOLO_LECTURA,
         'reportes' => $TODO,
         'clasificadores' => $NADA,
         'configuracion' => $NADA,
@@ -96,6 +104,9 @@ function permiso_matriz() {
         'dashboard' => $TODO,
         'empleados' => $SIN_CREAR,
         'nominas' => $SIN_CREAR,
+        // El Supervisor General cierra y reabre periodos, pero no borra cierres:
+        // un cierre reabierto se conserva como 'revertido' con su motivo.
+        'cierres' => ['ver' => true, 'crear' => true, 'editar' => true, 'eliminar' => false, 'exportar' => true],
         'reportes' => $TODO,
         'clasificadores' => $TODO,
         'configuracion' => $TODO,
@@ -237,7 +248,7 @@ function permiso_denegar_ajax($mensaje = null) {
 }
 
 /**
- * Carpetas del sistema (Exportaciones / Descargas) del Dashboard.
+ * Carpetas del sistema (Exportaciones / Descargas / Salvas) del Dashboard.
  * Acceso: Administrador (1), Visualizador (2), Contador/Editor (3),
  * Supervisor General (4) y Programador (5); cada uno segun sus permisos.
  */
@@ -286,14 +297,42 @@ function carpetas_sistema_definicion() {
             'icono'       => 'fa-file-export',
             'descripcion' => 'Archivos generados por el sistema (DBF, Excel, PDF, ZIP).',
             'descargable' => true,
+            'descargaDir' => 'exports',
             'ruta'        => realpath(__DIR__ . '/../modules/exports'),
+        ],
+        'salvas' => [
+            'titulo'      => 'Carpeta de Salvas',
+            'icono'       => 'fa-box-archive',
+            'descripcion' => 'Copias de seguridad y salvas generadas por el sistema.',
+            'descargable' => true,
+            'descargaDir' => '../backups',
+            'ruta'        => realpath(__DIR__ . '/../backups'),
         ],
         'descargas' => [
             'titulo'      => 'Carpeta Descargas',
             'icono'       => 'fa-download',
             'descripcion' => 'Carpeta de Descargas del equipo donde el navegador guarda los archivos.',
-            'descargable' => false,
+            // Fuera del DocumentRoot: la descarga pasa por el endpoint
+            // descargar_archivo.php (PATH_INFO) en vez de una URL directa.
+            'descargable' => true,
+            'descargaDir' => 'descargar_archivo.php/descargas',
             'ruta'        => $perfil !== '' ? realpath($perfil . DIRECTORY_SEPARATOR . 'Downloads') : false,
+        ],
+        'temp' => [
+            'titulo'      => 'Carpeta Temporales',
+            'icono'       => 'fa-hourglass-half',
+            'descripcion' => 'Archivos y carpetas temporales de trabajo del sistema.',
+            'descargable' => true,
+            'descargaDir' => '../temp',
+            'ruta'        => realpath(__DIR__ . '/../temp'),
+        ],
+        'logs' => [
+            'titulo'      => 'Carpeta de Logs',
+            'icono'       => 'fa-clipboard-list',
+            'descripcion' => 'Registros de eventos y errores (logs) del sistema.',
+            'descargable' => true,
+            'descargaDir' => '../logs',
+            'ruta'        => realpath(__DIR__ . '/../logs'),
         ],
     ];
 }
@@ -301,8 +340,15 @@ function carpetas_sistema_definicion() {
 /**
  * Permisos del explorador de carpetas segun el rol.
  *
- * 1 Admin -> descargar, eliminar y abrir; 2 Visor -> sin acceso al modulo;
- * 3 Editor -> descargar y abrir; 4 Super -> solo descargar; 5 Soft -> descargar y abrir.
+ * 1 Admin  -> descargar, eliminar, abrir y vaciar;
+ * 2 Visor  -> sin acceso al modulo;
+ * 3 Editor -> descargar y abrir;
+ * 4 Super  -> descargar y vaciar;
+ * 5 Soft   -> descargar, abrir y vaciar.
+ *
+ * "vaciar" borra TODO el contenido de la carpeta abierta y queda reservado a
+ * los roles 1, 4 y 5: la misma lista valida el boton en carpetas.php y el
+ * endpoint vaciar_carpeta.php.
  *
  * @return array<int, array{clave: string, etiqueta: string, icono: string}>
  */
@@ -311,11 +357,15 @@ function carpetas_sistema_permisos_rol($codigo)
     $descargar = ['clave' => 'descargar', 'etiqueta' => 'Descargar', 'icono' => 'fa-download'];
     $eliminar  = ['clave' => 'eliminar',  'etiqueta' => 'Eliminar',  'icono' => 'fa-trash-alt'];
     $abrir     = ['clave' => 'abrir',     'etiqueta' => 'Abrir',     'icono' => 'fa-folder-open'];
+    $vaciar    = ['clave' => 'vaciar',    'etiqueta' => 'Vaciar',    'icono' => 'fa-trash-can'];
 
     switch ($codigo) {
         case 'Admin':
-            return [$descargar, $eliminar, $abrir];
+            return [$descargar, $eliminar, $abrir, $vaciar];
         case 'Soft':
+            return [$descargar, $abrir, $vaciar];
+        case 'Super':
+            return [$descargar, $vaciar];
         case 'Editor':
             return [$descargar, $abrir];
         default:
@@ -326,7 +376,7 @@ function carpetas_sistema_permisos_rol($codigo)
 /**
  * El rol actual puede realizar una accion en el explorador de carpetas?
  *
- * @param string $accion descargar|eliminar|abrir
+ * @param string $accion descargar|eliminar|abrir|vaciar
  */
 function carpetas_sistema_puede($accion)
 {
@@ -360,4 +410,399 @@ function carpetas_sistema_resolver($clave) {
     }
 
     return [$clave, $ruta];
+}
+
+/**
+ * Normaliza una ruta relativa dentro de una carpeta del sistema
+ * (subcarpetas creadas al extraer un ZIP, p. ej. "MI_ZIP/informes").
+ *
+ * Devuelve la cadena normalizada ('' para la raiz) o null si la ruta es
+ * invalida ( '..' , rutas absolutas, unidades, nulos).
+ *
+ * @return string|null
+ */
+function carpetas_ruta_relativa($ruta)
+{
+    $ruta = str_replace('\\', '/', (string)$ruta);
+    $ruta = trim($ruta);
+
+    if ($ruta === '' || strpos($ruta, "\0") !== false) {
+        return $ruta === '' ? '' : null;
+    }
+    if (strpos($ruta, '/') === 0 || preg_match('#^[A-Za-z]:#', $ruta) === 1) {
+        return null;
+    }
+
+    $trozos = [];
+    foreach (explode('/', $ruta) as $parte) {
+        $parte = trim($parte);
+        if ($parte === '' || $parte === '.') {
+            continue;
+        }
+        if ($parte === '..') {
+            return null;
+        }
+        $trozos[] = $parte;
+    }
+
+    return implode('/', $trozos);
+}
+
+/**
+ * Resuelve una ruta relativa dentro de una carpeta del sistema y devuelve su
+ * ruta real absoluta, o false si no existe o se sale de la raiz permitida.
+ *
+ * @param string $raiz      Ruta absoluta de la carpeta del sistema.
+ * @param string $relativa  Ruta relativa ('' = la propia raiz).
+ * @return string|false
+ */
+function carpetas_ruta_resolver($raiz, $relativa = '')
+{
+    $relativa = carpetas_ruta_relativa($relativa);
+    if ($relativa === null) {
+        return false;
+    }
+
+    $raizLimpia = rtrim($raiz, "/\\");
+    if ($relativa === '') {
+        return $raizLimpia;
+    }
+
+    $candidata = $raizLimpia . DIRECTORY_SEPARATOR .
+        str_replace('/', DIRECTORY_SEPARATOR, $relativa);
+
+    $real = realpath($candidata);
+    if ($real === false || !is_dir($real)) {
+        return false;
+    }
+
+    $prefijo = $raizLimpia . DIRECTORY_SEPARATOR;
+    if (stripos(rtrim($real, "/\\") . DIRECTORY_SEPARATOR, $prefijo) !== 0) {
+        return false;
+    }
+
+    return $real;
+}
+
+/**
+ * Normaliza una ruta declarada dentro de un ZIP.
+ *
+ * Devuelve null si la ruta puede salirse del directorio de destino
+ * (zip-slip: "../../windows/...", rutas absolutas, unidades, nulos).
+ *
+ * @return string|null
+ */
+function carpetas_nombre_seguro($nombre)
+{
+    $nombre = str_replace('\\', '/', (string)$nombre);
+    $nombre = ltrim($nombre, '/');
+
+    if ($nombre === '' || strpos($nombre, "\0") !== false) {
+        return null;
+    }
+    if (preg_match('#^[A-Za-z]:#', $nombre) === 1) {
+        return null;
+    }
+
+    $limpias = [];
+    foreach (explode('/', $nombre) as $parte) {
+        if ($parte === '' || $parte === '.') {
+            continue;
+        }
+        if ($parte === '..') {
+            return null;
+        }
+        $limpias[] = $parte;
+    }
+
+    return count($limpias) ? implode('/', $limpias) : null;
+}
+
+/**
+ * Borra un archivo o una carpeta con todo su contenido.
+ * No sigue enlaces simbolicos: un enlace se elimina como tal, sin recorrerlo.
+ *
+ * @return string|null null si todo se borro; el motivo del fallo en caso contrario.
+ */
+function carpetas_borrar_recursivo($ruta)
+{
+    if (is_link($ruta)) {
+        return @unlink($ruta) ? null : 'no se pudo eliminar el enlace';
+    }
+
+    if (is_dir($ruta)) {
+        $items = @scandir($ruta);
+        if ($items === false) {
+            return 'no se pudo leer la carpeta';
+        }
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $error = carpetas_borrar_recursivo($ruta . DIRECTORY_SEPARATOR . $item);
+            if ($error !== null) {
+                return $error;
+            }
+        }
+        return @rmdir($ruta) ? null : 'no se pudo eliminar la carpeta';
+    }
+
+    if (is_file($ruta)) {
+        return @unlink($ruta) ? null : 'no se pudo eliminar el archivo';
+    }
+
+    return null;   // ya no existe
+}
+
+/**
+ * Elimina una carpeta (con todo su contenido) y comprueba antes de nada que
+ * esta dentro de la raiz permitida y que no es la propia raiz.
+ *
+ * @param string $ruta Ruta absoluta de la carpeta a borrar.
+ * @param string $raiz Ruta absoluta de la carpeta del sistema.
+ * @return string|null null si se elimino; el motivo del fallo en caso contrario.
+ */
+function carpetas_eliminar_arbol($ruta, $raiz)
+{
+    $rutaReal = realpath($ruta);
+    $raizReal = realpath($raiz);
+
+    if ($rutaReal === false || !is_dir($rutaReal)) {
+        return 'La carpeta no existe.';
+    }
+    if ($raizReal === false) {
+        return 'La carpeta de origen no existe.';
+    }
+
+    $rutaLimpia = rtrim($rutaReal, "/\\");
+    $raizLimpia = rtrim($raizReal, "/\\");
+
+    if (strcasecmp($rutaLimpia, $raizLimpia) === 0) {
+        return 'No se puede eliminar la raiz de la carpeta del sistema.';
+    }
+
+    $prefijo = $raizLimpia . DIRECTORY_SEPARATOR;
+    if (stripos($rutaLimpia . DIRECTORY_SEPARATOR, $prefijo) !== 0) {
+        return 'La carpeta esta fuera de la carpeta permitida.';
+    }
+
+    $error = carpetas_borrar_recursivo($rutaLimpia);
+
+    return $error !== null ? ucfirst($error) . '.' : null;
+}
+
+/**
+ * Token CSRF de sesion para las operaciones de escritura del explorador
+ * (extraer / descargar entradas de un ZIP). Se genera una sola vez.
+ */
+function carpetas_csrf_token()
+{
+    if (empty($_SESSION['csrf_carpetas'])) {
+        $_SESSION['csrf_carpetas'] = bin2hex(random_bytes(16));
+    }
+    return $_SESSION['csrf_carpetas'];
+}
+
+/**
+ * Comprueba un token CSRF con comparacion constante.
+ */
+function carpetas_csrf_valido($token)
+{
+    if (!is_string($token) || $token === '' || empty($_SESSION['csrf_carpetas'])) {
+        return false;
+    }
+    return hash_equals($_SESSION['csrf_carpetas'], $token);
+}
+
+/**
+ * Carpetas del sistema que sirven como destino de una extraccion.
+ * Solo las que existen en disco y a las que el rol puede escribir ("abrir").
+ *
+ * @param string $actual Clave de la carpeta que contiene el ZIP (se marca como tal).
+ * @return array<int, array{clave: string, titulo: string, icono: string, actual: bool}>
+ */
+function carpetas_zip_destinos($actual = '')
+{
+    $destinos = [];
+
+    foreach (carpetas_sistema_definicion() as $clave => $info) {
+        if ($info['ruta'] === false || !is_dir($info['ruta'])) {
+            continue;
+        }
+        $destinos[] = [
+            'clave'   => $clave,
+            'titulo'  => $info['titulo'],
+            'icono'   => $info['icono'],
+            'actual'  => $clave === $actual,
+        ];
+    }
+
+    return $destinos;
+}
+
+/**
+ * CRC-32 de una entrada del ZIP en el mismo formato que hash_final()
+ * (8 digitos hexadecimales en minusculas), para poder compararlo.
+ *
+ * Ojo con el entorno: PHP corre en 32 bits, donde 0xFFFFFFFF es un double y
+ * "crc & 0xFFFFFFFF" provocaria un Deprecated; por eso la cuenta se hace con
+ * dos mitades de 16 bits, siempre dentro del rango del int. La clave del
+ * central directory se llama "crc" en estas builds de ZipArchive.
+ *
+ * Devuelve '' si el ZIP no trae CRC (entonces no se valida).
+ */
+function carpetas_zip_crc_esperado($stat)
+{
+    $crc = null;
+    if (isset($stat['crc'])) {
+        $crc = $stat['crc'];
+    } elseif (isset($stat['crc32'])) {
+        $crc = $stat['crc32'];
+    }
+
+    if ($crc === null || !is_numeric($crc)) {
+        return '';
+    }
+
+    $crc = (float)$crc;
+    if ($crc < 0) {
+        $crc += 4294967296;          // valor sin signo
+    }
+    $crc = fmod($crc, 4294967296);
+    if ($crc < 0) {
+        $crc += 4294967296;
+    }
+
+    $alto = (int)floor($crc / 65536);            // 0..65535
+    $bajo = (int)($crc - ($alto * 65536));       // 0..65535
+
+    return sprintf('%04x%04x', $alto, $bajo);
+}
+
+/**
+ * Indica que entradas de un ZIP van cifradas con contraseña.
+ *
+ * ZipArchive no expone el bit de cifrado, asi que se recorre el central
+ * directory (registro PK\x01\x02): su general purpose flag, bit 0, marca
+ * "entrada protegida con contraseña". El orden de esos registros es el mismo
+ * que el de los indices de statIndex().
+ *
+ * Si algo no cuadra (registro corrupto, offsets raros) se devuelve todo en
+ * falso: como mucho no se mostrara el aviso, nunca se rompe el visor.
+ *
+ * @param string $ruta Ruta absoluta del .zip
+ * @return array{total: int, cifradas: int, mapa: array<int, bool>}
+ */
+function carpetas_zip_flags($ruta)
+{
+    $res = ['total' => 0, 'cifradas' => 0, 'mapa' => []];
+
+    $ruta = (string)$ruta;
+    if ($ruta === '' || !is_file($ruta)) {
+        return $res;
+    }
+
+    $tam = (int)@filesize($ruta);
+    if ($tam < 22) {
+        return $res;
+    }
+
+    $h = @fopen($ruta, 'rb');
+    if ($h === false) {
+        return $res;
+    }
+
+    // El EOCD (PK\x05\x06) esta al final; con el comentario del ZIP (65535
+    // bytes maximos) bastan ~66 KB de cola.
+    $colaTam = min($tam, 65557);
+    if (@fseek($h, $tam - $colaTam) !== 0) {
+        fclose($h);
+        return $res;
+    }
+    $cola = (string)fread($h, $colaTam);
+
+    $pos = strrpos($cola, "PK\x05\x06");
+    if ($pos === false || strlen($cola) - $pos < 22) {
+        fclose($h);
+        return $res;
+    }
+
+    $eocd    = substr($cola, $pos, 22);
+    $total   = unpack('v', substr($eocd, 10, 2))[1];   // entradas totales
+    $tamCD   = unpack('V', substr($eocd, 12, 4))[1];   // tamano del CD
+    $offCD   = unpack('V', substr($eocd, 16, 4))[1];   // offset del CD
+
+    if ($total < 1 || $tamCD < 46 || $offCD < 0 || ($offCD + $tamCD) > $tam) {
+        fclose($h);
+        return $res;
+    }
+
+    if (@fseek($h, $offCD) !== 0) {
+        fclose($h);
+        return $res;
+    }
+    $cd = (string)fread($h, $tamCD);
+    fclose($h);
+
+    $len = strlen($cd);
+    if ($len < 46) {
+        return $res;
+    }
+
+    $i = 0;
+    $n = 0;
+    while (($i + 46) <= $len) {
+        if (substr($cd, $i, 4) !== "PK\x01\x02") {
+            break;
+        }
+
+        $flag     = unpack('v', substr($cd, $i + 8, 2))[1];
+        $namelen  = unpack('v', substr($cd, $i + 28, 2))[1];
+        $extralen = unpack('v', substr($cd, $i + 30, 2))[1];
+        $comlen   = unpack('v', substr($cd, $i + 32, 2))[1];
+
+        $cifrada = ((int)$flag & 1) === 1;
+        $res['mapa'][$n] = $cifrada;   // clave = numero de entrada (statIndex)
+        $res['total']++;
+        if ($cifrada) {
+            $res['cifradas']++;
+        }
+
+        $i += 46 + $namelen + $extralen + $comlen;
+        $n++;
+    }
+
+    return $res;
+}
+
+/**
+ * Aplica la contraseña del usuario al ZIP abierto.
+ *
+ * @param ZipArchive $zip      ZIP ya abierto.
+ * @param string     $password Contraseña introducida ('' = sin contraseña).
+ * @return bool true si se aplico (habia contraseña)
+ */
+function carpetas_zip_aplicar_password($zip, $password)
+{
+    $password = (string)$password;
+    if ($password === '') {
+        return false;
+    }
+
+    return (bool)$zip->setPassword($password);
+}
+
+/**
+ * Detecta si el ultimo fallo del ZIP se debio a una contraseña errónea.
+ *
+ * @param ZipArchive $zip
+ * @return bool
+ */
+function carpetas_zip_password_fallida($zip)
+{
+    $estado = (string)$zip->getStatusString();
+
+    return stripos($estado, 'password') !== false
+        || stripos($estado, 'crypt') !== false
+        || stripos($estado, 'encryption') !== false;
 }

@@ -63,8 +63,8 @@ foreach ($trabajadores as $t) {
     $t['area_id']     = (int)($t['area_id'] ?? 0);
     $t['centro_costo_id'] = (int)($t['centro_costo_id'] ?? 0);
     $t['centro_costo_nombre'] = (string)($t['centro_costo_nombre'] ?? '');
-    $t['dbf_nombre'] = domiciliacion_abreviar_nombres($t['nombres']);
-    $t['dbf_completo'] = trim($t['nombres'] . ' ' . $t['primer_apellido'] . ' ' . $t['segundo_apellido']);
+    $t['dbf_nombre']   = domiciliacion_nombre_ajustado($t['nombres']);
+    $t['dbf_completo'] = domiciliacion_nomb_apell($t['nombres'], $t['primer_apellido'], $t['segundo_apellido']);
 
     if ($t['es_valido']) $totalValidos++; else $totalErroneos++;
     if ($tieneCuenta) $totalConCuenta++; else $totalSinCuenta++;
@@ -121,7 +121,8 @@ $totalGeneral = count($lista);
             background: var(--panel-2); backdrop-filter: blur(0.625rem);
             border: 0.0625rem solid rgba(255, 255, 255, 0.06); border-radius: 0.75rem;
             transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            position: relative; overflow: hidden;
+            position: relative;
+            overflow: visible !important;
         }
         .glass-card:hover { transform: translateY(-0.125rem); border-color: rgba(0, 120, 212, 0.3); box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.3); }
         .glass-card .card-icon-bg { position: absolute; right:-0.625rem; bottom:-0.625rem; font-size:5rem; opacity: 0.08; pointer-events: none; z-index: 0; transform: rotate(-8deg); }
@@ -440,7 +441,7 @@ $totalGeneral = count($lista);
                     <button class="btn-win btn-plantilla-dbf" type="button" data-tooltip="Descargar Plantilla en blanco" data-tooltip-theme="info">
                         <i class="fas fa-file-circle-plus me-2"></i>Plantilla Domiciliación Vacía
                     </button>
-                    <button class="btn-win btn-win-success btn-generar-dbf" type="button">
+                    <button class="btn-win btn-win-success btn-generar-dbf" type="button" data-tooltip="Generar base de datos para domiciliación de tarjetas para el banco" data-tooltip-theme="success">
                         <i class="fas fa-file-export me-2"></i>Generar Base de Datos (DBF)
                     </button>
                 </div>
@@ -621,7 +622,7 @@ $totalGeneral = count($lista);
             <button class="btn-win btn-plantilla-dbf" type="button" data-tooltip="Descargar Plantilla en blanco" data-tooltip-theme="info">
                 <i class="fas fa-file-circle-plus me-2"></i>Plantilla Domiciliación Vacía
             </button>
-            <button class="btn-win btn-win-success btn-generar-dbf" type="button">
+            <button class="btn-win btn-win-success btn-generar-dbf" type="button" data-tooltip="Generar base de datos para domiciliación de tarjetas para el banco" data-tooltip-theme="success">
                 <i class="fas fa-file-export me-2"></i>Generar Base de Datos (DBF)
             </button>
         </div>

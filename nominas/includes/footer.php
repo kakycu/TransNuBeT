@@ -663,7 +663,7 @@ document.addEventListener('keydown', function (e) {
      Crea tooltips DOM para TODOS los elementos
      ============================================ -->
 <style>
-.tt-box{position:fixed;z-index:999999;padding:0.5rem 0.875rem;background:linear-gradient(135deg,#0f172a,#1e293b);color:#f1f5f9;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;font-size:.75rem;font-weight:500;line-height:1.5;white-space:nowrap;border-radius:0.5rem;box-shadow:0 0.25rem 1.25rem rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;transform:translateY(0.25rem) scale(.95);border:none;margin:0;max-width:17.5rem}
+.tt-box{position:fixed;z-index:999999;padding:0.5rem 0.875rem;background:linear-gradient(135deg,#0f172a,#1e293b);color:#f1f5f9;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;font-size:.75rem;font-weight:500;line-height:1.5;white-space:normal;border-radius:0.5rem;box-shadow:0 0.25rem 1.25rem rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;transform:translateY(0.25rem) scale(.95);border:none;margin:0;max-width:min(220px, 75vw);word-break:normal;overflow-wrap:break-word;hyphens:auto;text-align:left}
 .tt-box.visible{opacity:1;transform:translateY(0) scale(1)}
 .tt-box::after{content:'';position:absolute;bottom:-0.375rem;left:50%;transform:translateX(-50%);border:0.375rem solid transparent;border-top:0.375rem solid #1e293b}
 .tt-box.tt-bottom::after{bottom:auto;top:-0.375rem;border-top:none;border-bottom:0.375rem solid #1e293b}

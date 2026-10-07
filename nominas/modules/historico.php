@@ -1740,6 +1740,20 @@ function confirmarVaciadoCompleto() {
             if (btnCerrar) {
                 btnCerrar.addEventListener('click', function () { Swal.close(); });
             }
+            var inp = Swal.getInput();
+            if (inp) {
+                ['copy', 'cut', 'paste', 'contextmenu', 'select', 'selectstart', 'drag', 'drop'].forEach(function (ev) {
+                    inp.addEventListener(ev, function (e) { e.preventDefault(); return false; });
+                });
+                inp.addEventListener('keydown', function (e) {
+                    if ((e.ctrlKey || e.metaKey) && ['KeyC', 'KeyX', 'KeyV', 'KeyA'].indexOf(e.code) !== -1) {
+                        e.preventDefault();
+                    }
+                    if (e.code === 'Insert' && (e.ctrlKey || e.shiftKey)) {
+                        e.preventDefault();
+                    }
+                });
+            }
         },
         preConfirm: function (inputText) {
             var captcha = typeof inputText === 'string' ? inputText.trim() : '';

@@ -25,7 +25,12 @@
     font-weight: 500 !important;
     line-height:1.5 !important;
     letter-spacing:0.01em !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
+    max-width: min(220px, 75vw) !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    text-align: left !important;
     border-radius: 8px !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
     opacity: 0 !important;

@@ -42,15 +42,39 @@ if ($resuelta === null) {
 
 list($carpetaSolicitada, $rutaCarpeta) = $resuelta;
 
-@exec('explorer.exe "' . $rutaCarpeta . '"');
+// Carpeta abierta en este momento: la raiz de la carpeta del sistema o una
+// subcarpeta (parametro "ruta"). Siempre se comprueba que siga dentro de la
+// raiz permitida.
+$rutaRelativa = carpetas_ruta_relativa($_POST['ruta'] ?? '');
+if ($rutaRelativa === null) {
+    echo json_encode(['success' => false, 'mensaje' => 'Ruta invalida.']);
+    exit();
+}
+
+if ($rutaRelativa === '') {
+    $rutaObjetivo = $rutaCarpeta;
+} else {
+    $rutaObjetivo = carpetas_ruta_resolver($rutaCarpeta, $rutaRelativa);
+    if ($rutaObjetivo === false) {
+        echo json_encode(['success' => false, 'mensaje' => 'La carpeta indicada no existe o esta fuera de la carpeta de sistema.']);
+        exit();
+    }
+}
+
+@exec('explorer.exe "' . $rutaObjetivo . '"');
 
 logAction('dashboard', 'abrir_carpeta',
     'Apertura de carpeta del sistema en el explorador',
-    ['carpeta' => $carpetaSolicitada, 'ruta' => str_replace('\\', '/', $rutaCarpeta)],
+    [
+        'carpeta'    => $carpetaSolicitada,
+        'ruta'       => str_replace('\\', '/', $rutaObjetivo),
+        'subcarpeta' => $rutaRelativa,
+    ],
     null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
 
 echo json_encode([
     'success' => true,
     'carpeta' => $carpetaSolicitada,
-    'ruta'    => str_replace('\\', '/', $rutaCarpeta)
+    'ruta'    => str_replace('\\', '/', $rutaObjetivo),
+    'subruta' => $rutaRelativa,
 ]);

@@ -256,6 +256,71 @@ CREATE TABLE `cierres_nomina` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `cierres_periodo_nomina`
+--
+-- Congelamiento de nominas por mes (tipo=1) y por ano (tipo=2).
+-- Para el cierre anual se usa periodo_mes = 0. La clave unica incluye
+-- periodo_mes justamente para que 0 sea un valor valido y no un NULL:
+-- en MySQL un NULL dentro de un indice UNIQUE no genera conflicto.
+-- Un cierre reabierto no se borra: pasa a estado 'revertido' con su motivo.
+--
+
+CREATE TABLE `cierres_periodo_nomina` (
+  `id` int(11) NOT NULL,
+  `tipo` tinyint(4) NOT NULL DEFAULT '1',
+  `periodo_anio` smallint(6) NOT NULL,
+  `periodo_mes` tinyint(4) NOT NULL DEFAULT '0',
+  `periodo_desde` date DEFAULT NULL,
+  `periodo_hasta` date DEFAULT NULL,
+  `estado` enum('cerrado','revertido') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'cerrado',
+  `total_lotes` int(11) DEFAULT NULL,
+  `total_trabajadores` int(11) DEFAULT NULL,
+  `total_devengado` decimal(14,2) DEFAULT NULL,
+  `total_deducciones` decimal(14,2) DEFAULT NULL,
+  `total_neto` decimal(14,2) DEFAULT NULL,
+  `total_contribucion` decimal(14,2) DEFAULT NULL,
+  `total_vacaciones` decimal(14,2) DEFAULT NULL,
+  `desglose_tipos` text COLLATE utf8mb4_unicode_ci,
+  `motivo_reapertura` text COLLATE utf8mb4_unicode_ci,
+  `observaciones` text COLLATE utf8mb4_unicode_ci,
+  `fecha_cierre` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `usuario_cierre` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `fecha_reapertura` datetime DEFAULT NULL,
+  `usuario_reapertura` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+
+-- --------------------------------------------------------
+
+--
+-- Indices de la tabla `cierres_periodo_nomina`
+--
+
+ALTER TABLE `cierres_periodo_nomina`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_periodo` (`tipo`,`periodo_anio`,`periodo_mes`),
+  ADD KEY `idx_tipo` (`tipo`),
+  ADD KEY `idx_anio` (`periodo_anio`);
+
+--
+
+-- --------------------------------------------------------
+
+--
+-- AUTO_INCREMENT de la tabla `cierres_periodo_nomina`
+--
+
+ALTER TABLE `cierres_periodo_nomina`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
+
+-- --------------------------------------------------------
+
+--
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `clasif_rol`
 --
 
@@ -342,7 +407,6 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (9, 'jefe_proyecto', '', 'texto', 'Nombre del Jefe de Proyecto', NULL, NULL),
 (10, 'especialista_gestion', '', 'texto', 'Nombre del Especialista en Gestión Económica', NULL, NULL),
 (11, 'especialista_gestionRRHH', '', 'texto', 'Nombre del Especialista en Gestión de RRHH', NULL, NULL),
-(12, 'recargo_nocturno', '1.25', 'decimal', 'Recargo Nocturnidad', NULL, NULL),
 (13, 'intendente', '', 'texto', 'Nombre del Intendente que aprueba la plantilla', NULL, NULL),
 (14, 'nit_empresa', '', 'texto', 'NIT de la empresa', NULL, NULL),
 (15, 'mail_activo', '0', 'texto', NULL, NULL, NULL),
@@ -357,22 +421,24 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (24, 'slogan', '', 'texto', 'Eslogan de la entidad', NULL, NULL),
 (25, 'telefono_empresa', '', 'texto', 'Teléfono de contacto de la entidad', NULL, NULL),
 (26, 'email_empresa', '', 'texto', 'Correo de contacto de la entidad', NULL, NULL),
-(27, 'tarifa_nocturnidad_temprana', '0.60', 'decimal', 'Tarifa fija Nt 7-23h ($/h) - Res. 15/2026 MTSS', NULL, NULL),
-(28, 'tarifa_nocturnidad_tardia', '1.15', 'decimal', 'Tarifa fija Nt 23-7h ($/h) - Res. 15/2026 MTSS', NULL, NULL),
+(27, 'tarifa_nocturnidad_temprana', '0.60', 'decimal', 'Tarifa fija por hora del turno de 19:00 a 23:00 ($/h) - Res. 15/2026 MTSS, QUINTO.2', NULL, NULL),
+(28, 'tarifa_nocturnidad_tardia', '1.15', 'decimal', 'Tarifa fija por hora del turno de 23:00 a 07:00 ($/h) - Res. 15/2026 MTSS, QUINTO.2', NULL, NULL),
 (29, 'telefono_soporte', '', 'texto', 'Telefono de soporte técnico', NULL, NULL),
 (30, 'email_soporte', '', 'texto', 'Correo de contacto de soporte técnico', NULL, NULL),
 (31, 'google_client_id', '', 'texto', 'Client ID de la app OAuth de Google para el login con Google', NULL, NULL),
 (32, 'google_client_secret', '', 'texto', 'Client Secret de la app OAuth de Google para el login con Google', NULL, NULL),
-(33, 'recargo_extra_diurna', '1.50', 'decimal', 'Recargo hora extra diurna (multiplicador, 1.5 = 150%)', NULL, NULL),
-(34, 'recargo_extra_nocturna', '2.00', 'decimal', 'Recargo hora extra nocturna Nt 7-23h y Nt 23-7h (multiplicador, 2.0 = 200%)', NULL, NULL),
-(35, 'recargo_doble_turno', '2.00', 'decimal', 'Recargo doble turno (multiplicador, 2.0 = 200%)', NULL, NULL),
+(44, 'recargo_trabajo_extraordinario', '1.25', 'decimal', 'Multiplicador del trabajo extraordinario (horas extras y doble turno) - Ley 189/2026, art. 230: 1.25 = 25% de incremento', NULL, NULL),
 (36, 'googleoauth', 'true', 'booleano', 'Habilita o deshabilita el login con Google (OAuth 2.0) en el login', '2026-09-12 19:23:46', NULL),
 (37, 'especialista_nominas', 'Especialista de Nóminas', 'texto', 'Nombre del Especialista de Nóminas', NULL, NULL),
 (38, 'tiempo_para_bloqueo', '10', 'entero', 'Tiempo en minutos para cerrar la sesión tras bloquearse la pantalla (por defecto 10)', '2026-09-21 00:39:51', NULL),
 (39, 'cuenta_bancaria', '', 'texto', NULL, '2026-09-21 01:53:39', NULL),
 (40, 'banco', '', 'texto', NULL, '2026-09-21 01:53:39', NULL),
 (41, 'sucursal', '5783', 'texto', NULL, '2026-09-20 21:53:39', NULL),
-(42, 'modo_mantenimiento', '0', 'booleano', 'Bloquea el acceso al sistema para todos los usuarios excepto el rol 5 (Programador)', '2026-09-29 22:39:36', NULL);
+(42, 'modo_mantenimiento', '0', 'booleano', 'Bloquea el acceso al sistema para todos los usuarios excepto el rol 5 (Programador)', '2026-09-29 22:39:36', NULL),
+(43, 'periodo_nominas_en_curso', DATE_FORMAT(CURDATE(), '%Y-%m-01'), 'fecha', 'Mes de nomina en curso que se puede cerrar (YYYY-MM-01). Lo fija el cierre del mes', NULL, NULL),
+(45, 'cess_tasa_exceso', '10.00', 'decimal', 'Tasa de CESS sobre el exceso (porcentaje) para la regla progresiva PDL: 5% hasta 15000, exceso al 10%.', NULL, NULL),
+(46, 'cess_limite_progresivo', '15000.00', 'decimal', 'Límite de la regla progresiva de la CESS (CUP): aplica tasa base hasta este monto.', NULL, NULL),
+(47, 'tope_he_anual', '160', 'entero', 'Tope de horas extraordinarias anuales por trabajador (Ley 189/2026, art. 229.2)', NULL, NULL);
 
 
 -- --------------------------------------------------------
@@ -1088,7 +1154,7 @@ ALTER TABLE `clasif_usuarios`
 -- AUTO_INCREMENT de la tabla `configuracion_general`
 --
 ALTER TABLE `configuracion_general`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
 
 --
 -- AUTO_INCREMENT de la tabla `configuracion_rangos_impuesto`
@@ -1734,7 +1800,7 @@ function createDatabaseHandler(): void {
     $m->query('SET FOREIGN_KEY_CHECKS=1');
 
     logMessage('Vaciando tablas operativas (trabajadores, nóminas, etc.)...');
-    $tablasVaciar = ['areas', 'centros_costo', 'cierres_nomina', 'historial_salarios', 'montos_distrib', 'nominas', 'secuencias_nominas', 'submayor_vacaciones', 'trabajadores'];
+    $tablasVaciar = ['areas', 'centros_costo', 'cierres_nomina', 'cierres_periodo_nomina', 'historial_salarios', 'montos_distrib', 'nominas', 'secuencias_nominas', 'submayor_vacaciones', 'trabajadores'];
     $m->query('SET FOREIGN_KEY_CHECKS=0');
     foreach ($tablasVaciar as $t) {
         if (!$m->query("TRUNCATE TABLE `$t`")) {

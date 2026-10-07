@@ -29,54 +29,129 @@
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 1rem;
+    /* Encima de .win-topbar (z-index:100) y de .glass-card (DOM posterior).
+       Sin esto, el dropdown queda por detras de las tarjetas porque ambas
+       hermanas crean stacking context con transform (fade-in-up) y el orden
+       de pintado lo decide el DOM. */
+    position: relative;
+    z-index: 101 !important;
 }
 
-/* ===== Selector de carpeta =====
-   Mismo diseño que el botón "Abrir Carpeta": la activa va sólida con el par
-   de color que garantiza contraste y la inactiva, delineada. Sin colores fijos:
-   todo sale de --carpeta-accent-*, que carpetas.js calcula a partir de --accent. */
-.carpeta-selector { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.carpeta-selector .btn {
-    border-radius: 0.625rem;
-    font-weight: 600;
-    padding: 0.5rem 1rem;
+/* ===== Selector de carpeta (dropdown) =====
+   Botón sólido con el acento del tema + menú con las carpetas del sistema.
+   Sin colores fijos: salen de --carpeta-accent-* (lo calcula carpetas.js a
+   partir de --accent) y de las variables de tema. */
+.carpeta-selector {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+.carpeta-dropdown { position: relative; z-index: 99999 !important; }
+.carpeta-dropdown .dropdown-toggle::after { display: none; }
+
+.carpeta-actual {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    opacity: 1;
-    transition: filter 0.2s ease;
+    gap: 0.5rem;
+    border-radius: 0.625rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.85rem;
+    border: 0.0625rem solid var(--carpeta-accent-bg, var(--accent)) !important;
+    background: var(--carpeta-accent-bg, var(--accent)) !important;
+    background-image: none !important;
+    color: var(--carpeta-accent-fg, #ffffff) !important;
+    transition: filter 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
-.carpeta-selector .btn i { color: inherit !important; }
+.carpeta-actual:hover,
+.carpeta-actual:focus,
+.carpeta-actual[aria-expanded="true"] {
+    color: var(--carpeta-accent-fg, #ffffff) !important;
+    filter: brightness(1.22) saturate(1.1);
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.375rem 1rem rgba(var(--accent-rgb), 0.35);
+}
+.carpeta-actual:active { transform: translateY(0); box-shadow: none; }
+.carpeta-actual-icono { font-size: 0.9rem; }
+.carpeta-actual-texto { white-space: nowrap; }
+.carpeta-actual-flecha {
+    font-size: 0.65rem;
+    transition: transform 0.2s ease;
+}
+.carpeta-actual[aria-expanded="true"] .carpeta-actual-flecha { transform: rotate(180deg); }
 
-/* Activa: relleno sólido, equivalente a "Abrir Carpeta" */
-.carpeta-selector .btn-activa {
-    background: var(--carpeta-accent-bg, var(--accent)) !important;
-    color: var(--carpeta-accent-fg, #ffffff) !important;
-    border-color: var(--carpeta-accent-bg, var(--accent)) !important;
-}
-/* Inactiva: fondo de panel y texto de acento legible sobre él */
-.carpeta-selector .btn-inactiva {
+/* Menú de carpetas */
+.carpeta-menu {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    min-width: 22rem;
+    max-width: min(26rem, 92vw);
+    padding: 0.5rem;
+    border-radius: 0.75rem;
     background: var(--panel-2) !important;
+    border: 0.0625rem solid var(--border-2) !important;
+    box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.4);
+    z-index: 99999 !important;
+}
+.carpeta-menu-titulo {
+    padding: 0.35rem 0.6rem 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted) !important;
+}
+.carpeta-menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.5rem;
+    color: var(--txt) !important;
+    white-space: normal;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.carpeta-menu-icono {
+    flex: 0 0 auto;
+    width: 1.15rem;
+    text-align: center;
+    color: var(--carpeta-accent-ink, var(--accent));
+}
+.carpeta-menu-texto {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.carpeta-menu-nombre {
+    font-size: 0.83rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+.carpeta-menu-desc {
+    font-size: 0.72rem;
+    line-height: 1.3;
+    color: var(--muted);
+    white-space: normal;
+}
+.carpeta-menu-check {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--carpeta-accent-ink, var(--accent));
+}
+.carpeta-menu .dropdown-item:hover,
+.carpeta-menu .dropdown-item:focus {
+    background: rgba(var(--accent-rgb), 0.14) !important;
+    color: var(--txt) !important;
+}
+.carpeta-menu .dropdown-item.active {
+    background: rgba(var(--accent-rgb), 0.18) !important;
     color: var(--carpeta-accent-ink, var(--accent)) !important;
-    border-color: var(--border-2) !important;
 }
-.carpeta-selector .btn-activa:hover,
-.carpeta-selector .btn-activa:focus {
-    background: var(--carpeta-accent-bg, var(--accent)) !important;
-    color: var(--carpeta-accent-fg, #ffffff) !important;
-    filter: brightness(1.22) saturate(1.1);
-    transform: translateY(-0.125rem);
-    box-shadow: 0 0.375rem 1rem rgba(var(--accent-rgb), 0.35);
-}
-.carpeta-selector .btn-inactiva:hover,
-.carpeta-selector .btn-inactiva:focus {
-    background: var(--carpeta-accent-bg, var(--accent)) !important;
-    color: var(--carpeta-accent-fg, #ffffff) !important;
-    border-color: var(--carpeta-accent-bg, var(--accent)) !important;
-    filter: brightness(1.22) saturate(1.1);
-    transform: translateY(-0.125rem);
-    box-shadow: 0 0.375rem 1rem rgba(var(--accent-rgb), 0.35);
-}
+.carpeta-menu .dropdown-item.active .carpeta-menu-icono,
+.carpeta-menu .dropdown-item.active .carpeta-menu-check { color: inherit !important; }
+.carpeta-menu .dropdown-item.active:hover { background: rgba(var(--accent-rgb), 0.26) !important; }
 
 /* "Abrir Carpeta": mismo diseño que las dos anteriores.
    Doble clase para ganarle a html[data-theme=...] .btn-win-primary de theme_config.php,
@@ -362,6 +437,57 @@ body.redimensionando-columnas .guia-columna { display: block; }
 .btn-abrir-carpeta i { color: inherit !important; }
 .btn-abrir-carpeta:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* ===== Botón "Actualizar" (cualquier rol con permiso de ver) =====
+   No aporta color: se queda con el contorno de acento que define
+   .main-container .btn-win.btn-win-outline para los seis temas. */
+.btn-actualizar-carpeta i { color: inherit !important; }
+.btn-actualizar-carpeta:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ===== Botón "Vaciar Carpeta" (roles 1, 4 y 5) =====
+   Duplica la forma de .btn-abrir-carpeta pero en rojo del tema (--red / --red-rgb,
+   definidos en user_menu.php): el riesgo de la acción tiene que leerse de un vistazo.
+   El !important es por lo mismo que en el botón de apertura: theme_config.php
+   inyecta sus reglas al final del documento. */
+.carpeta-toolbar-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+/* La etiqueta nunca se parte a dos lineas: el boton mantiene su ancho y
+   la barra no salta al pulsar Actualizar. */
+.carpeta-toolbar-acciones .btn {
+    white-space: nowrap;
+}
+.btn-vaciar-carpeta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.625rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+}
+.btn-vaciar-carpeta i { color: inherit !important; }
+.btn-vaciar-carpeta:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.carpeta-toolbar .btn-vaciar-carpeta.btn-win,
+.carpeta-toolbar .btn-vaciar-carpeta.btn-win:focus {
+    background: rgba(var(--red-rgb, 239, 68, 68), 0.16) !important;
+    background-image: none !important;
+    color: var(--red, #ef4444) !important;
+    border-color: rgba(var(--red-rgb, 239, 68, 68), 0.5) !important;
+    filter: none !important;
+}
+.carpeta-toolbar .btn-vaciar-carpeta.btn-win:hover:not(:disabled) {
+    background: var(--red, #ef4444) !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border-color: var(--red, #ef4444) !important;
+    filter: none !important;
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.375rem 1rem rgba(var(--red-rgb, 239, 68, 68), 0.35);
+}
+
 /* ===== Boton "Volver al Dashboard" (misma forma que snc225.php) =====
    snc225.php define .btn-win en su propio <style>; este modulo no carga
    dashboard.css, asi que aqui se define la FORMA base. El COLOR lo siguen
@@ -440,6 +566,788 @@ body.redimensionando-columnas .guia-columna { display: block; }
 .tabla-carpetas .carpeta-nota { color: var(--muted) !important; font-size: 0.78rem; white-space: nowrap; }
 .tabla-carpetas .btn i { color: inherit !important; }
 
+/* ===== Visor de .txt y .dbf =====
+   El nombre del archivo pasa a ser un <button> cuando se puede ver: se copia
+   el formato de .carpeta-archivo y solo se quita lo propio de un boton
+   (fondo, borde, relleno, fuente) para que la fila no se mueva. */
+.tabla-carpetas button.carpeta-archivo {
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.tabla-carpetas button.carpeta-archivo .carpeta-nombre {
+    text-decoration: none;
+    text-underline-offset: 0.15rem;
+}
+.tabla-carpetas button.carpeta-archivo:hover .carpeta-nombre,
+.tabla-carpetas button.carpeta-archivo:focus .carpeta-nombre {
+    text-decoration: underline;
+    color: var(--accent) !important;
+}
+.tabla-carpetas button.carpeta-archivo:focus-visible {
+    outline: 0.125rem solid var(--accent);
+    outline-offset: 0.125rem;
+    border-radius: 0.25rem;
+}
+
+/* ===== Modal del visor: ventana estilo Windows =====
+   Barra de titulo (caption) con icono del tipo de archivo a la izquierda,
+   nombre en el centro-izquierda y boton X a la derecha; el cuerpo tiene su
+   propio scroll y abajo el boton Cerrar. El titulo de SweetAlert queda
+   oculto porque el nombre vive ahora en la caption. */
+.swal2-popup.visor-ventana {
+    padding: 0 !important;
+    border: 0.0625rem solid var(--border-2, rgba(var(--accent-rgb), 0.45));
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: var(--panel);
+    color: var(--txt);
+    text-align: left;
+    box-shadow: 0 1.5rem 3.5rem rgba(0, 0, 0, 0.55);
+}
+.swal2-popup.visor-ventana .swal2-title { display: none !important; }
+.swal2-popup.visor-ventana .swal2-html-container {
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    font-size: inherit;
+    text-align: left;
+}
+.swal2-popup.visor-ventana .swal2-actions {
+    width: 100%;
+    margin: 0;
+    padding: 0.55rem 0.85rem;
+    justify-content: flex-end;
+    border-top: 0.0625rem solid var(--border);
+    background: var(--panel-2);
+}
+/* El tema inyecta .swal2-confirm{background:var(--accent)!important} y eso
+   anula el hover nativo de SweetAlert: aqui se recupera el efecto. */
+.swal2-popup.visor-ventana .swal2-confirm {
+    transition: background-color 0.15s ease, transform 0.15s ease,
+        box-shadow 0.15s ease;
+}
+.swal2-popup.visor-ventana .swal2-confirm:hover,
+.swal2-popup.visor-ventana .swal2-confirm:focus-visible {
+    background: var(--accent-dark, #005a9e) !important;
+    transform: translateY(-0.0625rem);
+    box-shadow: 0 0.25rem 0.75rem rgba(var(--accent-rgb), 0.35);
+}
+.swal2-popup.visor-ventana .swal2-confirm:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* --- Pregunta de descarga (subclase de .visor-ventana, texto centrado).
+   Muestra el titulo que .visor-ventana oculta y centra icono, texto y
+   acciones; el nombre del archivo puede ser largo y se corta por palabras. */
+.swal2-popup.visor-ventana.visor-pregunta {
+    text-align: center;
+}
+.swal2-popup.visor-ventana.visor-pregunta .swal2-title {
+    display: block !important;
+    margin-top: 1.1rem;
+    padding: 0 1.5rem;
+    font-size: 1.15rem;
+    text-align: center;
+}
+.swal2-popup.visor-ventana.visor-pregunta .swal2-icon {
+    margin: 1.1rem auto 0;
+}
+.swal2-popup.visor-ventana.visor-pregunta .swal2-html-container {
+    margin: 0;
+    padding: 0.4rem 1.75rem 1.25rem;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+.swal2-popup.visor-ventana.visor-pregunta .swal2-actions {
+    justify-content: center;
+}
+
+.visor-caption {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.3rem 0.4rem 0.85rem;
+    background: linear-gradient(180deg,
+        rgba(var(--accent-rgb), 0.30),
+        rgba(var(--accent-rgb), 0.14));
+    border-bottom: 0.0625rem solid var(--border);
+    user-select: none;
+}
+.visor-caption-icono {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    text-align: center;
+    font-size: 0.95rem;
+}
+.visor-caption[data-tipo='txt'] .visor-caption-icono { color: #60a5fa; }
+.visor-caption[data-tipo='dbf'] .visor-caption-icono { color: #34d399; }
+.visor-caption[data-tipo='xml'] .visor-caption-icono { color: var(--amber, #f59e0b); }
+.visor-caption[data-tipo='csv'] .visor-caption-icono { color: #a3e635; }
+.visor-caption[data-tipo='memo'] .visor-caption-icono { color: #f472b6; }
+.visor-caption-titulo {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--txt);
+}
+.visor-caption-cerrar {
+    flex: 0 0 auto;
+    margin-left: auto;
+    width: 2.5rem;
+    height: 1.7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease,
+        transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+}
+/* Hover: el recuadro se rellena en rojo (estilo Windows), el icono crece con
+   un ligero rebote y proyecta un halo. :active lo hunde al pulsar. */
+.visor-caption-cerrar:hover {
+    background: var(--red, #e81123);
+    color: #fff;
+    transform: scale(1.12);
+    box-shadow: 0 0 0 0.25rem rgba(232, 17, 35, 0.16);
+    animation: visor-x-latido 1.4s ease-in-out infinite;
+}
+.visor-caption-cerrar:active {
+    transform: scale(0.9);
+    animation: none;
+    box-shadow: none;
+}
+.visor-caption-cerrar:focus-visible {
+    outline: 0.125rem solid var(--accent);
+    outline-offset: -0.125rem;
+}
+.visor-caption-cerrar i {
+    transition: transform 0.15s ease;
+}
+.visor-caption-cerrar:hover i { transform: rotate(90deg); }
+
+@keyframes visor-x-latido {
+    0%, 100% { box-shadow: 0 0 0 0.25rem rgba(232, 17, 35, 0.16); }
+    50% { box-shadow: 0 0 0 0.4rem rgba(232, 17, 35, 0.05); }
+}
+
+/* ===== Ventana apilada (memo sobre el modal de la DBF) =====
+   SweetAlert2 solo admite un modal a la vez: el memo se pinta en esta capa
+   propia, por encima del Swal, con el mismo aspecto de .visor-ventana. */
+.visor-capa {
+    position: fixed;
+    inset: 0;
+    z-index: 40500; /* por encima del contenedor de SweetAlert */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.45);
+}
+.visor-ventana-propia {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    max-width: 100%;
+    max-height: 100%;
+    background: var(--panel);
+    color: var(--txt);
+    border: 0.0625rem solid var(--border-2, rgba(var(--accent-rgb), 0.45));
+    border-radius: 0.5rem;
+    overflow: hidden;
+    text-align: left;
+    box-shadow: 0 1.5rem 3.5rem rgba(0, 0, 0, 0.55);
+}
+.visor-ventana-propia .visor-cuerpo { min-height: 0; }
+.visor-pie {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.55rem 0.85rem;
+    border-top: 0.0625rem solid var(--border);
+    background: var(--panel-2);
+}
+.visor-boton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 1.1rem;
+    border: 0.0625rem solid var(--accent);
+    border-radius: 0.35rem;
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.visor-boton:hover {
+    background: var(--accent);
+    color: #fff;
+}
+.visor-boton:focus-visible {
+    outline: 0.125rem solid var(--accent);
+    outline-offset: 0.125rem;
+}
+/* Carga y error dentro de la ventana apilada (nunca con Swal, que cerraria
+   el modal de la DBF). */
+.visor-cargando,
+.visor-fallo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+}
+.visor-cargando { color: var(--muted); }
+.visor-fallo { color: var(--red, #e81123); }
+
+.visor-cuerpo { padding: 0.85rem 1rem 1rem; }
+.visor-scroll {
+    max-height: 58vh;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.2rem;
+}
+
+/* --- Modal: cabecera informativa --- */
+.visor-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.35rem 0.9rem;
+    margin-bottom: 0.6rem;
+    font-size: 0.76rem;
+    color: var(--muted);
+    text-align: left;
+}
+.visor-meta .visor-meta-item { display: inline-flex; align-items: center; gap: 0.3rem; }
+.visor-meta .visor-meta-item i { color: var(--accent); }
+
+/* --- Modal: texto (.txt) --- */
+/* El scroll lo maneja .visor-scroll: el pre solo ocupa lo que necesita. */
+.visor-txt {
+    margin: 0;
+    padding: 0.75rem;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--panel-2);
+    border: 0.0625rem solid var(--border);
+    border-radius: 0.5rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--txt);
+}
+
+/* --- Modal: XML coloreado --- */
+.visor-xml {
+    margin: 0;
+    padding: 0.75rem;
+    text-align: left;
+    white-space: pre;
+    overflow-x: auto;
+    background: var(--panel-2);
+    border: 0.0625rem solid var(--border);
+    border-radius: 0.5rem;
+    font-size: 0.76rem;
+    line-height: 1.55;
+    color: var(--txt);
+}
+.visor-xml .xml-tag { color: #60a5fa; font-weight: 600; }
+.visor-xml .xml-attr { color: var(--amber, #f59e0b); }
+.visor-xml .xml-val { color: #34d399; }
+.visor-xml .xml-dec { color: var(--muted); }
+.visor-xml .xml-com { color: var(--muted); font-style: italic; }
+
+/* --- Modal: tabla (.dbf) --- */
+/* El scroll tambien vive en .visor-scroll (dentro no se corta), asi el
+   thead sticky se queda pegado al panelear la tabla. */
+.visor-tabla {
+    overflow: visible;
+    border: 0.0625rem solid var(--border);
+    border-radius: 0.5rem;
+    text-align: left;
+}
+.visor-tabla .visor-tabla-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 0.76rem;
+    color: var(--txt);
+}
+.visor-tabla .visor-tabla-tabla th,
+.visor-tabla .visor-tabla-tabla td {
+    padding: 0.35rem 0.55rem;
+    border-bottom: 0.0625rem solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+}
+.visor-tabla .visor-tabla-tabla thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--panel);
+    color: var(--accent);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.visor-tabla .visor-tipo {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--muted);
+}
+/* Filas cebra + hover: el resaltado va en los <td> (no en la <tr>, que no
+   pinta fondo con border-collapse) y con !important para ganarle a la cebra.
+   La transicion evita el salto seco al mover el raton por la tabla. */
+.visor-tabla .visor-tabla-tabla tbody tr:nth-child(even) td {
+    background: rgba(var(--accent-rgb), 0.07);
+}
+.visor-tabla .visor-tabla-tabla tbody td {
+    transition: background-color 0.12s ease;
+}
+.visor-tabla .visor-tabla-tabla tbody tr:hover td,
+.visor-tabla .visor-tabla-tabla tbody tr:focus-within td {
+    background: rgba(var(--accent-rgb), 0.28) !important;
+}
+.visor-tabla .visor-tabla-tabla tbody tr:hover .visor-nro,
+.visor-tabla .visor-tabla-tabla tbody tr:focus-within .visor-nro {
+    color: var(--txt);
+}
+.visor-tabla .visor-nro {
+    color: var(--muted);
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+}
+/* Celda con acceso al contenido de un campo memo (.dbt / .fpt) */
+.visor-tabla .visor-celda-memo { padding: 0.22rem 0.5rem; }
+.visor-memo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.12rem 0.5rem;
+    border: 0.0625rem dashed rgba(var(--accent-rgb), 0.6);
+    border-radius: 0.3rem;
+    background: rgba(var(--accent-rgb), 0.12);
+    color: var(--accent);
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+.visor-memo:hover {
+    background: rgba(var(--accent-rgb), 0.32);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+.visor-memo:active { transform: translateY(0); }
+.visor-memo:focus-visible {
+    outline: 0.125rem solid var(--accent);
+    outline-offset: 0.125rem;
+}
+.visor-vacio { padding: 1.5rem; color: var(--muted); text-align: center; }
+.visor-nota {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    text-align: left;
+    color: var(--amber, #f59e0b);
+}
+
+/* ===== Visor ZIP: navegacion, barra de acciones, tabla y extraccion ===== */
+/* --- Barra de navegacion interna (raiz / niveles / atras) --- */
+.visor-zip-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.6rem;
+    margin-bottom: 0.55rem;
+    border: 0.0625rem solid var(--border-2);
+    border-radius: 0.5rem;
+    background: var(--panel-2);
+}
+.visor-zip-cmd {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.6rem;
+    border: 0.0625rem solid var(--border-2);
+    border-radius: 0.4rem;
+    background: transparent;
+    color: var(--txt);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.visor-zip-cmd:hover:not(:disabled),
+.visor-zip-cmd:focus-visible:not(:disabled) {
+    background: rgba(var(--accent-rgb), 0.16);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    color: var(--accent);
+}
+.visor-zip-cmd:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.visor-zip-ruta-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1 1 auto;
+    padding-left: 0.35rem;
+    border-left: 0.0625rem solid var(--border-2);
+}
+.visor-zip-nivel {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 14rem;
+    padding: 0.18rem 0.45rem;
+    border: none;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.visor-zip-nivel:hover,
+.visor-zip-nivel:focus-visible { background: rgba(var(--accent-rgb), 0.18); }
+.visor-zip-nivel.activo {
+    background: rgba(var(--accent-rgb), 0.24);
+    color: var(--accent);
+    cursor: default;
+}
+.visor-zip-sep { color: var(--muted); font-size: 0.72rem; }
+.visor-zip-ruta-txt {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40%;
+}
+
+/* --- Barra de acciones + selector de carpeta destino --- */
+.visor-zip-barra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.5rem 0.7rem;
+    margin-bottom: 0.6rem;
+    border: 0.0625rem solid var(--border-2);
+    border-radius: 0.5rem;
+    background: var(--panel-2);
+}
+.visor-zip-barra-txt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.visor-zip-acciones {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+}
+.visor-zip-destino-lbl {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.visor-zip-destino {
+    max-width: 13rem;
+    padding: 0.3rem 0.5rem;
+    border: 0.0625rem solid var(--border-2);
+    border-radius: 0.4rem;
+    background: var(--panel);
+    color: var(--txt);
+    font-size: 0.76rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+.visor-zip-destino:hover,
+.visor-zip-destino:focus-visible { border-color: rgba(var(--accent-rgb), 0.55); }
+
+.visor-zip-accion {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    border: 0.0625rem solid rgba(var(--accent-rgb), 0.5);
+    border-radius: 0.45rem;
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        transform 0.15s ease, opacity 0.15s ease;
+}
+.visor-zip-accion:hover,
+.visor-zip-accion:focus-visible {
+    background: rgba(var(--accent-rgb), 0.32);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+.visor-zip-accion:active { transform: translateY(0); }
+.visor-zip-accion:disabled,
+.visor-zip-accion[disabled] {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* --- Resultado de la extraccion (exito / error) dentro del modal --- */
+.visor-zip-resultado {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    margin-bottom: 0.6rem;
+    border: 0.0625rem solid var(--border-2);
+    border-radius: 0.45rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+.visor-zip-resultado[hidden] { display: none; }
+.visor-zip-ok {
+    border-color: rgba(var(--accent-rgb), 0.45);
+    background: rgba(var(--accent-rgb), 0.1);
+    color: var(--accent);
+}
+.visor-zip-error {
+    border-color: rgba(var(--red-rgb, 232, 17, 35), 0.45);
+    background: rgba(var(--red-rgb, 232, 17, 35), 0.1);
+    color: var(--red, #e81123);
+}
+.visor-zip-recargar {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.6rem;
+    border: 0.0625rem solid currentColor;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.visor-zip-recargar:hover { background: rgba(var(--accent-rgb), 0.2); }
+
+/* --- Tabla de entradas --- */
+.visor-zip-tabla td.visor-zip-nombre { white-space: nowrap; }
+.visor-zip-tabla tbody tr { cursor: pointer; }
+.visor-zip-tabla tbody tr:hover { background: rgba(var(--accent-rgb), 0.08); }
+.visor-zip-tipo { white-space: nowrap; font-size: 0.78rem; }
+.visor-zip-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+.visor-zip-sort:hover,
+.visor-zip-sort:focus-visible { color: var(--accent); }
+.visor-zip-sort.activa { color: var(--accent) !important; }
+.visor-zip-sort-icono { font-size: 0.7rem; opacity: 0.6; }
+.visor-zip-sort.activa .visor-zip-sort-icono { opacity: 1; }
+.visor-zip-nombre .fas { color: var(--accent); margin-right: 0.4rem; font-size: 0.75rem; }
+.visor-zip-ruta { color: var(--muted); font-size: 0.72rem; margin-right: 0.15rem; }
+.visor-zip-archivo { font-weight: 600; }
+.visor-zip-dir .visor-zip-archivo { color: var(--muted); font-style: italic; font-weight: 500; }
+.visor-zip-dir .visor-zip-nombre .fas { color: var(--muted); }
+.visor-zip-tabla th:nth-child(1) { width: 2.6rem; }
+
+/* --- Archivos internos protegidos con contraseña (marcados con * ) --- */
+.visor-zip-cifrado {
+    color: var(--accent);
+    font-weight: 700;
+    margin-left: 0.25rem;
+    cursor: help;
+}
+.visor-meta-cifrado { color: var(--accent); }
+
+/* --- Dialogo de contraseña del ZIP (mismo aspecto que .visor-ventana) --- */
+.visor-caption[data-tipo='zip'] .visor-caption-icono { color: var(--accent); }
+.visor-password-txt {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+    color: var(--txt);
+    font-size: 0.9rem;
+}
+.visor-password-txt i { color: var(--amber, #f59e0b); }
+.visor-password-campo { position: relative; display: flex; align-items: center; }
+.visor-password-icono {
+    position: absolute;
+    left: 0.85rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+.visor-zip-password-input {
+    width: 100%;
+    padding: 0.6rem 2.6rem 0.6rem 2.4rem;
+    border: 0.0625rem solid var(--border-2);
+    border-radius: 0.5rem;
+    background: var(--panel);
+    color: var(--txt);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.visor-zip-password-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.125rem rgba(var(--accent-rgb), 0.25);
+}
+.visor-zip-password-input::placeholder { color: var(--faint); opacity: 1; }
+.visor-password-ojo {
+    position: absolute;
+    right: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    border: none;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+.visor-password-ojo:hover,
+.visor-password-ojo:focus-visible {
+    color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.15);
+}
+.visor-password-error {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.6rem 0 0;
+    color: #f87171;
+    font-size: 0.8rem;
+}
+.visor-password-error[hidden] { display: none; }
+.visor-boton.visor-password-cancelar {
+    border-color: var(--border-2);
+    background: transparent;
+    color: var(--muted);
+}
+.visor-boton.visor-password-cancelar:hover {
+    background: rgba(127, 127, 127, 0.16);
+    color: var(--txt);
+}
+
+/* Carpeta: la fila entera es un boton para entrar en ella */
+.visor-zip-entrar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.12rem 0.4rem;
+    margin-left: -0.4rem;
+    border: none;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.visor-zip-entrar:hover,
+.visor-zip-entrar:focus-visible {
+    background: rgba(var(--accent-rgb), 0.16);
+    color: var(--accent);
+}
+.visor-zip-entrar:hover .visor-zip-archivo,
+.visor-zip-entrar:focus-visible .visor-zip-archivo { color: var(--accent); }
+.visor-zip-chevron {
+    font-size: 0.6rem;
+    opacity: 0.5;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.visor-zip-entrar:hover .visor-zip-chevron { opacity: 1; transform: translateX(0.125rem); }
+
+/* Acciones de cada archivo: ojo / descargar / extraer */
+.visor-zip-celda-acciones { white-space: nowrap; }
+.visor-zip-celda-acciones > * + * { margin-left: 0.28rem; }
+.visor-zip-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.55rem;
+    padding: 0;
+    border: 0.0625rem solid rgba(var(--accent-rgb), 0.55);
+    border-radius: 0.35rem;
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+    font-size: 0.75rem;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+.visor-zip-btn:hover,
+.visor-zip-btn:focus-visible {
+    background: rgba(var(--accent-rgb), 0.34);
+    transform: translateY(-1px);
+}
+.visor-zip-btn:active { transform: translateY(0); }
+.visor-zip-btn:disabled { opacity: 0.6; cursor: wait; transform: none; }
+.visor-zip-btn.visor-zip-ver { border-style: dashed; }
+.visor-zip-btn.visor-zip-extraer-uno { border-color: rgba(var(--accent-rgb), 0.4); }
+.visor-zip-sin-accion { color: var(--muted); opacity: 0.5; }
 /* ===== Encabezados ordenables (Archivo / Tamaño / Modificado) =====
    Heredan el formato del th (mayusculas, espaciado) con font/text-transform: inherit.
    Color por variable de tema; el icono indica la direccion del orden. */
@@ -529,7 +1437,7 @@ body.redimensionando-columnas .guia-columna { display: block; }
 .carpeta-filtros { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .carpeta-filtros .form-select,
 .carpeta-filtros .form-control {
-    background: var(--panel) !important;
+    background-color: var(--panel) !important;
     border: 0.0625rem solid var(--border-2) !important;
     color: var(--txt) !important;
     border-radius: 0.5rem !important;
@@ -543,3 +1451,273 @@ body.redimensionando-columnas .guia-columna { display: block; }
 }
 .carpeta-filtros .form-control::placeholder { color: var(--faint) !important; opacity: 1 !important; }
 .carpeta-filtros option { background: var(--panel) !important; color: var(--txt) !important; }
+/* ===== Navegacion por subcarpetas (miga de pan) ===== */
+.carpeta-miga {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.7rem 0.9rem 0;
+}
+.carpeta-miga-nivel {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 15rem;
+    padding: 0.2rem 0.5rem;
+    border: 0.0625rem solid transparent;
+    border-radius: 0.4rem;
+    color: var(--txt);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.carpeta-miga-nivel span {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.carpeta-miga-nivel i { color: var(--accent); }
+.carpeta-miga-nivel:hover,
+.carpeta-miga-nivel:focus-visible {
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+}
+.carpeta-miga-nivel.activo {
+    background: rgba(var(--accent-rgb), 0.2);
+    border-color: rgba(var(--accent-rgb), 0.4);
+    color: var(--accent);
+}
+.carpeta-miga-sep { color: var(--muted); font-size: 0.6rem; }
+
+/* ===== Filas de subcarpeta ===== */
+.tabla-carpetas a.carpeta-archivo {
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+.tabla-carpetas .carpeta-icono-carpeta { color: var(--accent) !important; }
+.tabla-carpetas a.carpeta-archivo .carpeta-nombre { text-decoration: none; }
+.tabla-carpetas a.carpeta-archivo:hover .carpeta-nombre,
+.tabla-carpetas a.carpeta-archivo:focus .carpeta-nombre {
+    text-decoration: underline;
+    color: var(--accent) !important;
+}
+.tabla-carpetas a.carpeta-archivo:focus-visible {
+    outline: 0.125rem solid var(--accent);
+    outline-offset: 0.125rem;
+    border-radius: 0.25rem;
+}
+.tabla-carpetas .carpeta-ir-carpeta {
+    margin-left: auto;
+    font-size: 0.6rem;
+    color: var(--muted) !important;
+    opacity: 0.5;
+    transition: transform 0.15s ease, opacity 0.15s ease, color 0.15s ease;
+}
+.tabla-carpetas a.carpeta-archivo:hover .carpeta-ir-carpeta,
+.tabla-carpetas a.carpeta-archivo:focus .carpeta-ir-carpeta {
+    opacity: 1;
+    color: var(--accent) !important;
+    transform: translateX(0.125rem);
+}
+.tabla-carpetas .carpeta-sin-datos { color: var(--muted) !important; }
+.tabla-carpetas tr.fila-carpeta { background: rgba(var(--accent-rgb), 0.04); }
+.tabla-carpetas tr.fila-carpeta:hover { background: rgba(var(--accent-rgb), 0.1); }
+/* ===== Botones de navegacion: raiz / atras / subir ===== */
+.carpeta-nav-btns {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.45rem;
+    padding-right: 0.55rem;
+    border-right: 0.0625rem solid var(--border-2);
+}
+.carpeta-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    padding: 0;
+    border: 0.0625rem solid var(--border-2);
+    border-radius: 0.4rem;
+    background: var(--panel-2);
+    color: var(--txt);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.15s ease, transform 0.15s ease;
+}
+.carpeta-nav-btn:hover:not(:disabled),
+.carpeta-nav-btn:focus-visible:not(:disabled) {
+    background: rgba(var(--accent-rgb), 0.18);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    color: var(--accent);
+    transform: translateY(-1px);
+}
+.carpeta-nav-btn:active:not(:disabled) { transform: translateY(0); }
+.carpeta-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Separador | entre la navegacion (raiz/atras/subir) y las demas acciones */
+.carpeta-nav-sep {
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1;
+    margin: 0 0.25rem;
+    opacity: 0.7;
+    user-select: none;
+}
+/* ===== Paginacion del listado (dropdown arriba, info y botones al pie) ===== */
+.carpeta-pag-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    white-space: nowrap;
+}
+.carpeta-pag-select i { color: var(--muted); font-size: 0.75rem; }
+.carpeta-pag-select select {
+    width: auto;
+    font-size: 0.78rem;
+    padding: 0.3rem 1.9rem 0.3rem 0.6rem;
+    border-radius: 0.4rem;
+}
+.carpeta-paginador {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.6rem 0.85rem;
+    border-top: 0.0625rem solid var(--border-2);
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+.carpeta-pag-info { line-height: 1.4; }
+.carpeta-pag-info::first-line { color: var(--txt); }
+.carpeta-pag-botones {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.carpeta-pag-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.85rem;
+    height: 1.85rem;
+    padding: 0;
+    border: 0.0625rem solid var(--border-2);
+    border-radius: 0.4rem;
+    background: var(--panel-2);
+    color: var(--txt);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.15s ease, transform 0.15s ease;
+}
+.carpeta-pag-btn:hover:not(:disabled),
+.carpeta-pag-btn:focus-visible:not(:disabled) {
+    background: rgba(var(--accent-rgb), 0.18);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    color: var(--accent);
+    transform: translateY(-1px);
+}
+.carpeta-pag-btn:active:not(:disabled) { transform: translateY(0); }
+.carpeta-pag-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.carpeta-pag-num {
+    padding: 0 0.5rem;
+    color: var(--txt);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+/* ============ Barra de progreso de "Extraer todo" (ZIP/RAR) ============ */
+.visor-progreso { padding: 0.6rem 0.35rem 0.35rem; }
+.visor-progreso-barra {
+    height: 20px;
+    border-radius: 10px;
+    background: rgba(var(--muted-rgb, 148, 163, 184), 0.18);
+    border: 1px solid var(--border, #d5dbe6);
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+.visor-progreso-relleno {
+    height: 100%;
+    width: 0;
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.85), var(--accent));
+    transition: width 0.25s ease;
+}
+.visor-progreso-datos {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.55rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+.visor-progreso-pct {
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+}
+.visor-progreso-detalle { text-align: right; word-break: break-word; }
+/* Cinta superior con el archivo que se esta extrayendo en este momento */
+.visor-progreso-actual {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 26px;
+    padding: 0 0.6rem;
+    margin-bottom: 0.55rem;
+    border-radius: 8px;
+    background: rgba(var(--muted-rgb, 148, 163, 184), 0.14);
+    border: 1px solid var(--border, #d5dbe6);
+    font-size: 0.78rem;
+    color: var(--muted);
+    overflow: hidden;
+}
+.visor-progreso-actual-icono { flex: 0 0 auto; opacity: 0.75; }
+.visor-progreso-actual-txt {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.visor-progreso-actual-nombre {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.95;
+}
+/* Fila "Archivo N de M (P %)" del contador de ficheros */
+.visor-progreso-archivo {
+    margin: 0 0.35rem 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+/* Separador entre el archivo actual y el progreso total */
+.visor-progreso-separador {
+    height: 0;
+    margin: 0 0.1rem 0.55rem;
+    border: 0;
+    border-top: 1px dashed var(--border, #d5dbe6);
+}
+/* Rotulo "Progreso Total:" sobre la barra general */
+.visor-progreso-total {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--muted);
+}

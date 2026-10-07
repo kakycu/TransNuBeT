@@ -53,6 +53,10 @@ if (!defined('LOG_ACCIONES')) {
         'resetear_password_usuario'   => 'Reset de contraseña de un usuario',
         'descartar_solicitud_reset'   => 'Descartar solicitud de reset pendiente',
         'restablecer_password_pendiente' => 'Restablecer contraseña pendiente',
+        // --- Cierres de períodos de nómina ---
+        'cerrar_periodo_nomina'       => 'Cierre de mes o año de nómina',
+        'reabrir_periodo_nomina'      => 'Reapertura de cierre de nómina con motivo',
+        'guardar_periodo_nominas'     => 'Ajuste manual del periodo en curso de nóminas',
         // --- Trabajadores ---
         'crear_trabajador'            => 'Crear trabajador',
         'editar_trabajador'           => 'Editar trabajador',

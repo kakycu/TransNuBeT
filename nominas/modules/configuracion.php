@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // modules/configuracion.php - Configuraciones del Sistema
 require_once '../config/database.php';
 require_once __DIR__ . '/../includes/logger.php';
@@ -186,14 +186,66 @@ $mensaje = $_GET['msg'] ?? '';
 $tipo_mensaje = $_GET['tipo'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['guardar_periodo_nominas'])) {
+        // Permite corregir el mes en curso a mano. El cierre de mes lo avanza solo,
+        // pero si se importo una salva vieja o se wanta corregir el punto de partida,
+        // se ajusta desde aqui. No se permite fijarlo en un periodo ya cerrado:
+        // ese caso se resuelve reabriendo el cierre, no moviendo el puntero.
+        $crudo = trim((string)($_POST['periodo_nominas_en_curso'] ?? ''));
+        try {
+            // Mover el puntero del periodo es una escritura de configuracion:
+            // ademas del 'ver' que abre la pagina, exige 'editar'.
+            if (!permiso_puede('configuracion', 'editar')) {
+                throw new RuntimeException('Su rol no tiene permiso para ajustar el periodo en curso de nóminas.');
+            }
+            if (!preg_match('/^(\d{4})-(\d{2})$/', $crudo, $m)) {
+                throw new RuntimeException('El periodo debe tener el formato AAAA-MM (por ejemplo 2026-08).');
+            }
+            $anioP = (int)$m[1];
+            $mesP  = (int)$m[2];
+            if ($mesP < 1 || $mesP > 12) {
+                throw new RuntimeException('El mes debe estar entre 01 y 12.');
+            }
+            $anioCierre = (int)(periodoNominasEnCurso($pdo)['anio'] ?? 0);
+            if ($anioP < $anioCierre) {
+                throw new RuntimeException('No se puede fijar un periodo anterior al que ya se ha cerrado. Reabra el cierre correspondiente.');
+            }
+            $estado = estado_operacion_periodo_nominas($pdo, $crudo);
+            if (empty($estado['operable'])) {
+                throw new RuntimeException('El periodo ' . $crudo . ' ya está cerrado. Reabra el cierre antes de fijarlo como periodo en curso.');
+            }
+
+            // Los periodos se abren en cadena: no se puede saltar a un periodo
+            // cuyo anterior siga abierto, ni entrar en un anio sin cerrar el
+            // anterior.
+            $previo = periodoPrevioCerrado($pdo, $anioP, $mesP);
+            if (empty($previo['permitido'])) {
+                throw new RuntimeException($previo['mensaje']);
+            }
+
+            $anterior = periodoNominasEnCurso($pdo)['fecha'];
+            $nuevo = sprintf('%04d-%02d-01', $anioP, $mesP);
+            actualizarPeriodoNominasEnCurso($pdo, $nuevo, $_SESSION['usuario'] ?? 'configuracion');
+            logAction('guardar_periodo_nominas', 'configuracion', 'Periodo de nominas en curso ajustado a ' . $crudo,
+                ['periodo_anterior' => $anterior, 'periodo_nuevo' => $nuevo],
+                null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            $mensaje = "Periodo en curso fijado en " . etiquetaMesNominas($mesP) . " " . $anioP;
+            $tipo_mensaje = "success";
+        } catch (Throwable $e) {
+            $mensaje = $e->getMessage();
+            $tipo_mensaje = "error";
+        }
+    }
+
     if (isset($_POST['guardar_config_general'])) {
         $params = [
             'horas_mensuales', 'dias_mensuales', 'horas_jornada_diaria',
             'tasa_contribucion_especial', 'nombre_empresa', 'direccion_empresa',
             'reeup_empresa', 'nit_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_nominas',
-            'salario_minimo', 'intendente', 'recargo_nocturno', 'especialista_gestionRRHH',
+            'salario_minimo', 'intendente', 'especialista_gestionRRHH',
             'tarifa_nocturnidad_temprana', 'tarifa_nocturnidad_tardia',
-            'recargo_extra_diurna', 'recargo_extra_nocturna', 'recargo_doble_turno'
+            'recargo_trabajo_extraordinario', 'cess_tasa_exceso', 'cess_limite_progresivo',
+            'tope_he_anual'
         ];
         
         try {
@@ -738,6 +790,7 @@ $modo_mantenimiento_activo = modo_mantenimiento_activo($pdo);
     <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
     <link href="../css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
     <link href="../css/sweetalert2.min.css" rel="stylesheet">
+    <link href="CSS/periodo-curso.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/cropper.css">
     
     <style>
@@ -2171,8 +2224,14 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
 
     <!-- Mensajes de alerta -->
     <?php if ($mensaje): ?>
-    <div class="alert alert-<?php echo $tipo_mensaje; ?> alert-dismissible fade show mb-4 fade-in-up" role="alert" id="configAlertMsg">
-        <i class="fas fa-<?php echo $tipo_mensaje == 'success' ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
+    <?php
+    // Bootstrap no tiene "alert-error": la variante de error es "alert-danger".
+    // Sin esta equivalencia el div salia sin estilo rojo y el JavaScript lo
+    // tomaba por un guardado correcto.
+    $variante_alerta = ($tipo_mensaje === 'error') ? 'danger' : $tipo_mensaje;
+    ?>
+    <div class="alert alert-<?php echo $variante_alerta; ?> alert-dismissible fade show mb-4 fade-in-up" role="alert" id="configAlertMsg">
+        <i class="fas fa-<?php echo $variante_alerta === 'success' ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
         <?php echo $mensaje; ?>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" title="Cerrar notificación" data-tooltip="Cerrar notificación" data-tooltip-theme="danger"></button>
     </div>
@@ -2196,10 +2255,34 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
             document.getElementById('alertBackupRecomendacion').style.display = 'none';
         }
     </script>
-    
+
+    <!-- Puntero real de la BD, debajo de los avisos. No es lo mismo que el periodo
+         que se esta viendo en pantalla (puede ser otro): es el mes abierto mas
+         antiguo, el que decide que periodos se pueden generar. -->
+    <?php $periodoCurso = periodoNominasEnCurso($pdo); ?>
+    <div class="periodo-curso-chip mb-3 fade-in-up" title="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas" data-tooltip="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas" data-tooltip-theme="info">
+        <i class="fas fa-calendar-days"></i>
+        <span class="periodo-curso-label">Per&iacute;odo en curso:</span>
+        <span class="periodo-curso-valor"><?php echo htmlspecialchars(etiquetaMesNominas($periodoCurso['mes']) . ' / ' . (int)$periodoCurso['anio']); ?></span>
+    </div>
+
 <!-- Sección de Base de Datos -->
+<?php
+// El card de Cierres de Nóminas comparte fila con el de Base de Datos, así que
+// sus datos se calculan aquí y no donde estaba el bloque de configuración SMTP.
+$cfg_cierres = periodoNominasEnCurso($pdo);
+$cfg_periodo_texto = etiquetaMesNominas($cfg_cierres['mes']) . ' ' . $cfg_cierres['anio'];
+$cfg_total_cierres = (int)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomina WHERE estado = 'cerrado'")->fetchColumn();
+
+// Estado del año en curso: cuántos de sus doce meses van cerrados y si el año
+// completo ya fue consolidado. Los badges del título muestran esto de un vistazo.
+$cfg_meses_cerrados_anio = (int)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomina
+                                             WHERE tipo = 1 AND estado = 'cerrado' AND periodo_anio = " . (int)$cfg_cierres['anio'])->fetchColumn();
+$cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomina
+                                       WHERE tipo = 2 AND estado = 'cerrado' AND periodo_anio = " . (int)$cfg_cierres['anio'])->fetchColumn();
+?>
 <div class="row g-4 mb-4">
-    <div class="col-12 fade-in-up" style="animation-delay: 0.02s;">
+    <div class="col-lg-6 fade-in-up" style="animation-delay: 0.02s;">
         <div class="glass-card">
             <div class="p-3 border-bottom border-white-10">
                 <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseDB" aria-expanded="false" aria-controls="collapseDB">
@@ -2212,7 +2295,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
             <div id="collapseDB" class="collapse">
             <div class="p-4">
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <div class="p-3 rounded" style="background: rgba(var(--color-success-rgb), 0.1); border: 0.0625rem solid rgba(var(--color-success-rgb), 0.2);">
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                                 <div>
@@ -2231,7 +2314,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <div class="p-3 rounded" style="background: rgba(245, 158, 11, 0.1); border: 0.0625rem solid rgba(245, 158, 11, 0.2);">
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                                 <div>
@@ -2250,6 +2333,82 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
             </div>
         </div>
     </div>
+        <div class="col-lg-6 fade-in-up" style="animation-delay: 0.1s;">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseCierres" aria-expanded="false" aria-controls="collapseCierres">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-calendar-check me-2" style="color: #34d399;"></i> Cierres de N&oacute;minas
+                        <span class="badge ms-2" style="background: var(--color-success); font-size:0.65rem;"
+                              title="Meses cerrados en <?php echo $cfg_cierres['anio']; ?> de 12"><?php echo $cfg_meses_cerrados_anio; ?>/12 MESES <?php echo $cfg_cierres['anio']; ?></span>
+                        <span class="badge ms-1" style="background: #a78bfa; font-size:0.65rem;"
+                              title="<?php echo $cfg_anio_cerrado ? 'Año ' . $cfg_cierres['anio'] . ' cerrado' : 'Año ' . $cfg_cierres['anio'] . ' abierto'; ?>">
+                            <?php echo $cfg_cierres['anio']; ?> <?php echo $cfg_anio_cerrado ? 'CERRADO' : 'ABIERTO'; ?>
+                        </span>
+                    </h6>
+                </div>
+                <div id="collapseCierres" class="collapse">
+                <div class="p-4">
+                    <form method="POST" id="cierresForm">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Periodo en curso</label>
+                                <input type="text" class="form-control fw-bold" id="periodoEnCursoTexto"
+                                    value="<?php echo htmlspecialchars($cfg_periodo_texto); ?>" readonly
+                                    style="background-color: var(--panel-2); color: var(--accent) !important;">
+                                <small class="text-secondary">Es el mes abierto m&aacute;s antiguo. El cierre lo avanza solo.</small>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Fijar periodo en curso</label>
+                                <?php
+                                $anioPickerMin = 2020;
+                                $anioPickerMax = 3000;
+                                $anioPicker = (int)$cfg_cierres['anio'];
+                                $mesPicker  = (int)$cfg_cierres['mes'];
+                                ?>
+								<div class="d-flex gap-2">
+									<select class="form-select fw-bold" name="periodo_mes_sel" id="periodoMesSel"
+											title="Mes del periodo en curso" data-tooltip="Mes del periodo en curso" data-tooltip-theme="info"
+											style="flex: 1 1 auto;">
+										<?php for ($mSel = 1; $mSel <= 12; $mSel++): ?>
+										<option value="<?php echo sprintf('%02d', $mSel); ?>" <?php echo $mSel === $mesPicker ? 'selected' : ''; ?>>
+											<?php echo etiquetaMesNominas($mSel); ?>
+										</option>
+										<?php endfor; ?>
+									</select>
+
+									<select class="form-select fw-bold" name="periodo_anio_sel" id="periodoAnioSel"
+											title="A&ntilde;o del periodo en curso" data-tooltip="A&ntilde;o del periodo en curso" data-tooltip-theme="info"
+											style="width: 12ch; min-width: 12ch; max-width: 12ch; flex: 0 0 auto; padding-left: .4rem; padding-right: 1.2rem; font-variant-numeric: tabular-nums;">
+										<?php for ($aSel = $anioPickerMin; $aSel <= $anioPickerMax; $aSel++): ?>
+										<option value="<?php echo $aSel; ?>" <?php echo $aSel === $anioPicker ? 'selected' : ''; ?>>
+											<?php echo $aSel; ?>
+										</option>
+										<?php endfor; ?>
+									</select>
+								</div>
+								<input type="hidden" name="periodo_nominas_en_curso" id="periodoNominasEnCurso"
+                                       value="<?php echo htmlspecialchars($anioPicker . '-' . sprintf('%02d', $mesPicker)); ?>">
+                                <small class="text-secondary">Correcci&oacute;n manual. No admite periodos cerrados.</small>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
+                            <button type="submit" name="guardar_periodo_nominas" class="btn-win btn-win-success"
+                                    style="min-width: 210px; justify-content: center;"
+                                    title="Fijar el periodo en curso" data-tooltip="Ajusta el mes abierto mas antiguo" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Periodo en Curso
+                            </button>
+                            <a href="cierres.php" class="btn-win btn-win-primary"
+                               style="min-width: 210px; justify-content: center; text-decoration: none;"
+                               title="Ir al m&oacute;dulo de cierres" data-tooltip="Meses y anos: cerrar, reabrir e historial" data-tooltip-theme="primary">
+                                <i class="fas fa-calendar-check me-1"></i> Abrir m&oacute;dulo de Cierres
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
 </div>
 	
     <div class="row g-4">
@@ -2258,7 +2417,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
                     <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseConfigGeneral" aria-expanded="false" aria-controls="collapseConfigGeneral">
-                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-sliders-h me-2" style="color: #60a5fa;"></i> Configuración General
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-sliders-h me-2" style="color: #60a5fa;"></i> Parámetros Generales de Cálculos
                     </h6>
                 </div>
                 <div id="collapseConfigGeneral" class="collapse">
@@ -2294,47 +2453,72 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                 <input type="number" step="0.01" class="form-control" name="tasa_contribucion_especial" value="<?php echo htmlspecialchars($config['tasa_contribucion_especial'] ?? '5'); ?>" title="Tasa de contribución especial al estado" data-tooltip="Tasa de contribución especial al estado" data-tooltip-theme="info">
                                 <small class="text-secondary">Porcentaje aplicado al salario devengado</small>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Recargo Nocturno (multiplicador)</label>
-                                <input type="number" step="0.01" class="form-control" name="recargo_nocturno" value="<?php echo htmlspecialchars($config['recargo_nocturno'] ?? '1.25'); ?>" title="Multiplicador de recargo nocturno (1.25 = 25% extra)" data-tooltip="Multiplicador de recargo nocturno (1.25 = 25% extra)" data-tooltip-theme="info">
-                                <small class="text-secondary">Multiplicador del salario base (1.25 = 25% extra)</small>
+                        </div>
+                        <hr class="my-3">
+                        <h6 class="mb-3"><i class="fas fa-scale-balanced me-1"></i> Trabajo extraordinario y nocturnidad</h6>
+                        <p class="text-secondary small mb-3">
+                            <i class="fas fa-circle-info me-1"></i>
+                            Las horas extras y el doble turno se remuneran con un incremento del
+                            <strong>25 %</strong> sobre el salario por hora (Ley 189/2026 «Código de Trabajo»,
+                            arts. 227 y 230). Los turnos nocturnos se remuneran con una
+                            <strong>tarifa fija en pesos por hora</strong>, no con un porcentaje del salario
+                            (Resolución 15/2026 MTSS, QUINTO.2).
+                        </p>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Trabajo extraordinario (multiplicador)</label>
+                                <input type="number" step="0.01" class="form-control" name="recargo_trabajo_extraordinario" value="<?php echo htmlspecialchars($config['recargo_trabajo_extraordinario'] ?? '1.25'); ?>" title="Multiplicador común de las horas extras y del doble turno (Ley 189/2026, art. 230: 1.25 = 25 % de incremento)" data-tooltip="Multiplicador común de las horas extras y del doble turno (Ley 189/2026, art. 230: 1.25 = 25 % de incremento)" data-tooltip-theme="info">
+                                <small class="text-secondary">1.25 = 25 % de incremento. Aplica a horas extras y doble turno.</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Nocturno 19:00-23:00 ($/h)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_temprana" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_temprana'] ?? '0.60'); ?>" title="Tarifa fija por hora del turno de 19:00 a 23:00 (Res. 15/2026 MTSS, QUINTO.2: 0.60 pesos por hora)" data-tooltip="Tarifa fija por hora del turno de 19:00 a 23:00 (Res. 15/2026 MTSS, QUINTO.2: 0.60 pesos por hora)" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Tarifa fija, no porcentual. Valor legal: 0.60.</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Nocturno 23:00-07:00 ($/h)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_tardia" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_tardia'] ?? '1.15'); ?>" title="Tarifa fija por hora del turno de 23:00 a 07:00 (Res. 15/2026 MTSS, QUINTO.2: 1.15 pesos por hora)" data-tooltip="Tarifa fija por hora del turno de 23:00 a 07:00 (Res. 15/2026 MTSS, QUINTO.2: 1.15 pesos por hora)" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Tarifa fija, no porcentual. Valor legal: 1.15.</small>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nocturnidad Temprana Nt 7-23h ($/h)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_temprana" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_temprana'] ?? '0.60'); ?>" title="Tarifa fija por hora de nocturnidad temprana (7pm-11pm)" data-tooltip="Tarifa fija por hora de nocturnidad temprana" data-tooltip-theme="info">
-                                </div>
-                                <small class="text-secondary">Res. 15/2026 MTSS</small>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nocturnidad Tardía Nt 23-7h ($/h)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_tardia" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_tardia'] ?? '1.15'); ?>" title="Tarifa fija por hora de nocturnidad tardía (11pm-7am)" data-tooltip="Tarifa fija por hora de nocturnidad tardía" data-tooltip-theme="info">
-                                </div>
-                                <small class="text-secondary">Res. 15/2026 MTSS</small>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Tope de horas extraordinarias al año (h)</label>
+                                <input type="number" step="1" min="1" class="form-control" name="tope_he_anual" value="<?php echo htmlspecialchars($config['tope_he_anual'] ?? '160'); ?>" title="Tope anual de horas extraordinarias por trabajador (Ley 189/2026, art. 229.2: 160 h al año)" data-tooltip="Tope anual de horas extraordinarias por trabajador (Ley 189/2026, art. 229.2: 160 h al año)" data-tooltip-theme="info">
+                                <small class="text-secondary">Las horas de doble turno también se acumulan a este tope. El umbral "cerca del tope" se calcula como tope − 10 h.</small>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Recargo Hora Extra Diurna (multiplicador)</label>
-                                <input type="number" step="0.01" class="form-control" name="recargo_extra_diurna" value="<?php echo htmlspecialchars($config['recargo_extra_diurna'] ?? '1.50'); ?>" title="Multiplicador de hora extra diurna (1.5 = 150%)" data-tooltip="Multiplicador de hora extra diurna (1.5 = 150%)" data-tooltip-theme="info">
-                                <small class="text-secondary">1.5 = 150% del salario hora</small>
+                                <label class="form-label">CESS tasa base (%)</label>
+                                <input type="number" step="0.01" min="0" max="100" class="form-control" name="tasa_contribucion_especial" value="<?php echo htmlspecialchars($config['tasa_contribucion_especial'] ?? '5'); ?>" title="Tasa base de la CESS usada en modo ISIP (plano) y como base en la CESS progresiva (PDL SOLO CESS)" data-tooltip="Tasa base de la CESS usada en modo ISIP (plano) y como base en la CESS progresiva (PDL SOLO CESS)" data-tooltip-theme="info">
+                                <small class="text-secondary">La base de la CESS progresiva se toma de Tasa CESS (ver pestaña Tasas del Sistema).</small>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Recargo Hora Extra Nocturna (multiplicador)</label>
-                                <input type="number" step="0.01" class="form-control" name="recargo_extra_nocturna" value="<?php echo htmlspecialchars($config['recargo_extra_nocturna'] ?? '2.00'); ?>" title="Multiplicador de hora extra nocturna Nt 7-23h y Nt 23-7h (2.0 = 200%)" data-tooltip="Multiplicador de hora extra nocturna (2.0 = 200%)" data-tooltip-theme="info">
-                                <small class="text-secondary">2.0 = 200% del salario hora</small>
+                                <label class="form-label">CESS tasa exceso (%)</label>
+                                <input type="number" step="0.01" min="0" max="100" class="form-control" name="cess_tasa_exceso" value="<?php echo htmlspecialchars($config['cess_tasa_exceso'] ?? '10'); ?>" title="Tasa sobre el exceso para CESS progresiva (PDL SOLO CESS): base hasta límite, exceso a esta tasa" data-tooltip="Tasa sobre el exceso para CESS progresiva (PDL SOLO CESS): base hasta límite, exceso a esta tasa" data-tooltip-theme="info">
+                                <small class="text-secondary">Se suma sobre el excedente del límite progresivo.</small>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Recargo Doble Turno (multiplicador)</label>
-                                <input type="number" step="0.01" class="form-control" name="recargo_doble_turno" value="<?php echo htmlspecialchars($config['recargo_doble_turno'] ?? '2.00'); ?>" title="Multiplicador de doble turno (2.0 = 200%)" data-tooltip="Multiplicador de doble turno (2.0 = 200%)" data-tooltip-theme="info">
-                                <small class="text-secondary">2.0 = 200% del salario hora</small>
+                                <label class="form-label">CESS límite progresivo (CUP)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="cess_limite_progresivo" value="<?php echo htmlspecialchars($config['cess_limite_progresivo'] ?? '15000'); ?>" title="Límite para regla progresiva de CESS (PDL SOLO CESS): hasta este monto aplica tasa base, sobre exceso aplica tasa exceso" data-tooltip="Límite para regla progresiva de CESS (PDL SOLO CESS): hasta este monto aplica tasa base, sobre exceso aplica tasa exceso" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Monto hasta el cual se cobra la tasa base.</small>
                             </div>
                         </div>
+                        <p class="text-secondary small mb-0">
+                            <i class="fas fa-book me-1"></i>
+                            Ley 189/2026, art. 229: máximo 4 horas en dos días consecutivos, máximo 2 turnos dobles
+                            por semana y hasta <?php echo htmlspecialchars($config['tope_he_anual'] ?? '160'); ?> horas extraordinarias al año.
+                        </p>
                         <div class="d-flex justify-content-center mt-3">
                             <button type="submit" name="guardar_config_general" class="btn-win btn-win-primary" title="Guardar configuración general" data-tooltip="Guardar configuración general" data-tooltip-theme="success">
                                 <i class="fas fa-save me-1"></i> Guardar Configuración General
@@ -2367,7 +2551,10 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                                 <tr>
                                     <td><strong><?php echo ucfirst(str_replace('_', ' ', $tasa['nombre_tasa'])); ?></strong></td>
                                     <td><?php echo $tasa['valor']; ?>%</td>
-                                    <td><?php echo date('d/m/Y', strtotime($tasa['fecha_vigencia'])); ?></td>
+                                    <td><?php
+                                        $fechaVigencia = fechaComoDateTime($tasa['fecha_vigencia']);
+                                        echo $fechaVigencia ? $fechaVigencia->format('d/m/Y') : htmlspecialchars((string)$tasa['fecha_vigencia']);
+                                        ?></td>
                                     <td><?php echo $tasa['descripcion']; ?></td>
                                     <td><button type="button" class="btn-win btn-win-danger btn-win-sm" onclick="confirmarEliminarTasa(this, <?php echo $tasa['id']; ?>, '<?php echo addslashes($tasa['nombre_tasa']); ?>')" title="Eliminar tasa" data-tooltip="Eliminar tasa" data-tooltip-theme="danger"><i class="fas fa-trash"></i></button></td>
                                 </tr>
@@ -2388,7 +2575,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
                     <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseRangos" aria-expanded="false" aria-controls="collapseRangos">
-                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-chart-line me-2" style="color: var(--color-success);"></i> Rangos de Impuesto (Ingresos Personales)
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-chart-line me-2" style="color: var(--color-success);"></i> Rangos de ISIP (Impuesto Sobre los Ingresos Personales)
                     </h6>
                 </div>
                 <div id="collapseRangos" class="collapse">
@@ -2904,7 +3091,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
             <form method="POST" id="agregarTasaForm">
                 <div class="modal-body p-4">
                     <input type="hidden" name="agregar_tasa" value="1">
-                    <div class="mb-3"><label class="form-label">Nombre de la Tasa *</label><input type="text" class="form-control" name="nombre_tasa" required placeholder="Ej: contribucion_especial, recargo_nocturno"><small class="text-secondary">Identificador único de la tasa</small></div>
+                    <div class="mb-3"><label class="form-label">Nombre de la Tasa *</label><input type="text" class="form-control" name="nombre_tasa" required placeholder="Ej: contribucion_especial, tasa_riesgo"><small class="text-secondary">Identificador único de la tasa</small></div>
                     <div class="mb-3"><label class="form-label">Valor (%) *</label><input type="number" step="0.01" class="form-control" name="valor_tasa" required placeholder="Ej: 5.00"></div>
                     <div class="mb-3"><label class="form-label">Fecha de Vigencia *</label><input type="date" class="form-control" name="fecha_vigencia_tasa" required value="<?php echo date('Y-m-d'); ?>"></div>
                     <div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control" name="descripcion_tasa" rows="3" placeholder="Describa el propósito de esta tasa"></textarea></div>
@@ -3071,7 +3258,7 @@ html[data-theme="orgullo"] .lock-clock-readout { color:#7c3aed; background:rgba(
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Datos de la Entidad</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Personal Autorizado</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Información Bancaria</li>
-                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Rangos de Impuesto (Ingresos Personales)</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Rangos de Impuesto (ISIP)</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Configuración de Correo (SMTP)</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Google OAuth</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Seguridad del Sistema</li>
@@ -3155,19 +3342,101 @@ function updateClock() {
 }
 setInterval(updateClock, 1000); updateClock();
 
-// Mensaje de guardado como toast SweetAlert (tras PRG)
+// Mensaje de guardado tras el PRG. Los errores se muestran como SweetAlert
+// normal (modal, con boton "Entendido") porque deben leerse y no expirar solos;
+// el exito si se muestra como toast, que es un aviso fugaz.
+// Los dos desplegables del periodo en curso (mes y ano) se combinan en el campo
+// oculto que viaja en el POST. Con <select> el valor siempre es valido, asi que
+// la unica proteccion es no enviar si Somehow faltara alguno.
+(function () {
+    const mesSel = document.getElementById('periodoMesSel');
+    const anioSel = document.getElementById('periodoAnioSel');
+    const oculto = document.getElementById('periodoNominasEnCurso');
+    const form = document.getElementById('cierresForm');
+    if (!mesSel || !anioSel || !oculto) return;
+
+    const sincronizar = function () {
+        if (!mesSel.value || !anioSel.value) { return false; }
+        oculto.value = anioSel.value + '-' + String(parseInt(mesSel.value, 10)).padStart(2, '0');
+        return true;
+    };
+
+    // El oculto ya viene escrito por PHP con el periodo guardado, asi que no se
+    // sincroniza al cargar: si el ano guardado no esta entre las opciones (por
+    // ejemplo 2974), un select que por defecto marca la primera opcion no debe
+    // pisar el valor real. Solo se actualiza al cambiar algo a proposito.
+    mesSel.addEventListener('change', sincronizar);
+    anioSel.addEventListener('change', sincronizar);
+
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (sincronizar()) { return; }
+            e.preventDefault();
+            const mensaje = 'Selecciona el mes y el año del periodo en curso.';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Periodo incompleto',
+                    text: mensaje,
+                    confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido',
+                    background: '#1a1a2e',
+                    color: '#ffffff'
+                });
+            } else {
+                alert(mensaje);
+            }
+        });
+    }
+})();
+
 (function () {
     const alertMsg = document.getElementById('configAlertMsg');
     if (!alertMsg) return;
-    const esError = alertMsg.classList.contains('alert-danger') || alertMsg.classList.contains('alert-warning');
+    const esError = alertMsg.classList.contains('alert-danger')
+               || alertMsg.classList.contains('alert-error')
+               || alertMsg.classList.contains('alert-warning');
+    const texto = alertMsg.textContent.trim();
+
+    // Limpiar msg/tipo de la URL antes de nada, para que al recargar (o al
+    // guardar el tema) no se repita el aviso. Se hace en los dos caminos.
+    const limpiarUrl = function () {
+        try {
+            let url = new URL(window.location.href);
+            url.searchParams.delete('msg');
+            url.searchParams.delete('tipo');
+            history.replaceState(null, '', url.toString());
+        } catch (e) {}
+    };
+
+    if (esError) {
+        alertMsg.remove();
+        limpiarUrl();
+        Swal.fire({
+            icon: 'error',
+            title: 'No se pudo completar',
+            html: '<p style="text-align:left;margin:0">'
+                + texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                + '</p>',
+            background: 'var(--panel)',
+            color: 'var(--txt)',
+            confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
+            confirmButtonColor: '#ef4444',
+            customClass: { popup: 'swal-popup-config', confirmButton: 'btn btn-danger' },
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: true
+        });
+        return;
+    }
+
     setTimeout(function () {
         Swal.fire({
-            icon: esError ? 'error' : 'success',
-            title: esError ? 'Ocurrió un error' : 'Guardado exitoso',
-            text: alertMsg.textContent.trim(),
+            icon: 'success',
+            title: 'Guardado exitoso',
+            text: texto,
             background: 'var(--panel)', color: 'var(--txt)',
             confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido',
-            confirmButtonColor: esError ? '#ef4444' : '#10b981',
+            confirmButtonColor: '#10b981',
             timer: 3500,
             timerProgressBar: true,
             toast: true,
@@ -3177,19 +3446,14 @@ setInterval(updateClock, 1000); updateClock();
             showConfirmButton: false,
             didOpen: function () {
                 const bar = Swal.getTimerProgressBar();
-                if (bar) bar.style.background = esError ? '#ef4444' : '#10b981';
+                if (bar) bar.style.background = '#10b981';
             }
         });
         Swal.getTimerProgressBar && setTimeout(function () { alertMsg.remove(); }, 100);
     }, 80);
 
     // Limpiar msg/tipo de la URL para que al recargar (o al guardar tema) no se repita el toast
-    try {
-        let url = new URL(window.location.href);
-        url.searchParams.delete('msg');
-        url.searchParams.delete('tipo');
-        history.replaceState(null, '', url.toString());
-    } catch (e) {}
+    limpiarUrl();
 })();
 
 // Backup y Restore

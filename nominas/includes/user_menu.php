@@ -1586,6 +1586,46 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
     padding-right:2.2rem !important;
 }
 
+/* ===== MODALES / GLOBAL: flecha del select en temas oscuros =====
+   El chevron de Bootstrap (#6c757d) se pierde sobre los paneles oscuros, y
+   cualquier regla que pinte un select con "background" o "background-color"
+   borra su background-image (p. ej. carpetas.css). Aqui se repone con un
+   color por tema, para que el dropdown tenga siempre flecha visible. */
+[data-theme="dark"] .form-select,
+[data-theme="blue"] .form-select,
+[data-theme="verde"] .form-select,
+[data-theme="win11"] .form-select {
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 0.9rem !important;
+    padding-right: 2.4rem !important;
+}
+[data-theme="dark"] .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23d7dce2' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+[data-theme="blue"] .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2393c5fd' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+[data-theme="verde"] .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2334d399' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+[data-theme="win11"] .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23d4d4d4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+[data-theme="dark"] select.form-control,
+[data-theme="blue"] select.form-control,
+[data-theme="verde"] select.form-control,
+[data-theme="win11"] select.form-control {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23d7dce2' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 0.9rem !important;
+    padding-right: 2.2rem !important;
+}
+
 /* ===== submayor_vacaciones.php (componentes con color hardcodeado) ===== */
 [data-theme="light"] .stat-card-prof { background: #ffffff !important; border-color: rgba(0,0,0,0.12) !important; }
 [data-theme="light"] .stat-card-prof .stat-value { color: #1f2937 !important; }

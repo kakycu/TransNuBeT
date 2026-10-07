@@ -24,6 +24,17 @@ function domiciliacion_campos_dbf(): array {
     ];
 }
 
+function domiciliacion_ancho_campo(string $campo): int {
+    foreach (domiciliacion_campos_dbf() as $c) {
+        if ($c[0] === $campo) return (int)$c[2];
+    }
+    return 0;
+}
+
+function domiciliacion_texto_legible($valor): string {
+    return trim(preg_replace('/\s+/u', ' ', (string)$valor));
+}
+
 function domiciliacion_abreviar_nombres($nombres): string {
     $nombres = trim(preg_replace('/\s+/u', ' ', (string)$nombres));
     if ($nombres === '') return '';
@@ -36,6 +47,108 @@ function domiciliacion_abreviar_nombres($nombres): string {
     if ($segundo === '') return $primero;
 
     return $primero . ' ' . mb_strtoupper(mb_substr($segundo, 0, 1)) . '.';
+}
+
+function domiciliacion_variantes_nombre($nombres): array {
+    $nombres = domiciliacion_texto_legible($nombres);
+    if ($nombres === '') return ['nombre' => [], 'corto' => []];
+
+    $partes = [];
+    foreach (explode(' ', $nombres) as $parte) {
+        $p = ltrim($parte, "'`.");
+        if ($p !== '') $partes[] = $p;
+    }
+    if (empty($partes)) return ['nombre' => [], 'corto' => []];
+
+    $iniciales = '';
+    foreach ($partes as $p) {
+        $iniciales .= mb_strtoupper(mb_substr($p, 0, 1)) . '. ';
+    }
+
+    $limpiar = function(array $lista): array {
+        $out = [];
+        foreach ($lista as $v) {
+            $v = trim((string)$v);
+            if ($v !== '' && !in_array($v, $out, true)) $out[] = $v;
+        }
+        return $out;
+    };
+
+    return [
+        'nombre' => $limpiar([domiciliacion_abreviar_nombres($nombres), $partes[0]]),
+        'corto'  => $limpiar([trim($iniciales), mb_substr($partes[0], 0, 3)])
+    ];
+}
+
+function domiciliacion_nombre_ajustado($nombres, int $maximo = 0): string {
+    if ($maximo <= 0) $maximo = domiciliacion_ancho_campo('NOMBRE');
+
+    $variantes = domiciliacion_variantes_nombre($nombres);
+    $lista = array_merge($variantes['nombre'], $variantes['corto']);
+    if (empty($lista) || $maximo <= 0) return '';
+
+    foreach ($lista as $v) {
+        if (mb_strlen($v) <= $maximo) return $v;
+    }
+
+    return rtrim(mb_substr($lista[0], 0, $maximo), " .'");
+}
+
+function domiciliacion_abreviar_apellido($apellido): string {
+    $apellido = domiciliacion_texto_legible($apellido);
+    if ($apellido === '') return '';
+
+    $partes = [];
+    foreach (explode(' ', $apellido) as $parte) {
+        $p = ltrim($parte, "'`.");
+        if ($p !== '') $partes[] = $p;
+    }
+    if (empty($partes)) return '';
+
+    if (count($partes) === 1) return mb_strtoupper(mb_substr($partes[0], 0, 1)) . '.';
+
+    return mb_strtoupper(mb_substr($partes[0], 0, 1)) . '. ' . end($partes);
+}
+
+function domiciliacion_nomb_apell($nombres, $primerApellido, $segundoApellido): string {
+    $maximo = domiciliacion_ancho_campo('NOMB_APELL');
+
+    $ap1 = mb_substr(domiciliacion_texto_legible($primerApellido), 0, domiciliacion_ancho_campo('APELLIDO_1'));
+    $ap2 = mb_substr(domiciliacion_texto_legible($segundoApellido), 0, domiciliacion_ancho_campo('APELLIDO_2'));
+
+    $ap1c = domiciliacion_abreviar_apellido($ap1);
+    $ap2c = domiciliacion_abreviar_apellido($ap2);
+
+    $completos = [];
+    foreach ([[$ap1, $ap2], [$ap1, $ap2c]] as $par) {
+        $base = trim($par[0] . ' ' . $par[1]);
+        if ($base !== '' && !in_array($base, $completos, true)) $completos[] = $base;
+    }
+
+    $reducidos = [];
+    $base = trim($ap1c . ' ' . $ap2c);
+    if ($base !== '') $reducidos[] = $base;
+
+    $apellidos = array_merge($completos, $reducidos);
+    if (empty($apellidos)) return domiciliacion_nombre_ajustado($nombres, $maximo);
+
+    $variantes = domiciliacion_variantes_nombre($nombres);
+    $nombresLista = array_merge($variantes['nombre'], $variantes['corto']);
+
+    foreach ([$completos, $reducidos] as $grupoApellidos) {
+        foreach ($nombresLista as $nombre) {
+            foreach ($grupoApellidos as $base) {
+                if (mb_strlen($base) >= $maximo) continue;
+                if (mb_strlen($nombre) + 1 + mb_strlen($base) <= $maximo) return $nombre . ' ' . $base;
+            }
+        }
+    }
+
+    foreach ($apellidos as $base) {
+        if (mb_strlen($base) <= $maximo) return $base;
+    }
+
+    return mb_substr($apellidos[0], 0, $maximo);
 }
 
 function domiciliacion_validar_ci($ci): array {
@@ -73,16 +186,18 @@ function domiciliacion_validar_trabajador(array $t): array {
 }
 
 function domiciliacion_preparar_registro(array $t): array {
-    $nombres = trim((string)($t['nombres'] ?? ''));
-    $ap1     = trim((string)($t['primer_apellido'] ?? ''));
-    $ap2     = trim((string)($t['segundo_apellido'] ?? ''));
+    $anchoApellido = domiciliacion_ancho_campo('APELLIDO_1');
+
+    $nombres = domiciliacion_texto_legible($t['nombres'] ?? '');
+    $ap1     = mb_substr(domiciliacion_texto_legible($t['primer_apellido'] ?? ''), 0, $anchoApellido);
+    $ap2     = mb_substr(domiciliacion_texto_legible($t['segundo_apellido'] ?? ''), 0, $anchoApellido);
 
     $valores = [
         'NUM_IDEPER' => preg_replace('/\D/', '', (string)($t['ci'] ?? '')),
-        'NOMBRE'     => domiciliacion_abreviar_nombres($nombres),
+        'NOMBRE'     => domiciliacion_nombre_ajustado($nombres),
         'APELLIDO_1' => $ap1,
         'APELLIDO_2' => $ap2,
-        'NOMB_APELL' => trim($nombres . ' ' . $ap1 . ' ' . $ap2)
+        'NOMB_APELL' => domiciliacion_nomb_apell($nombres, $ap1, $ap2)
     ];
 
     $registro = [];
@@ -96,6 +211,14 @@ function domiciliacion_texto_dbf($valor): string {
     $valor = preg_replace('/[\x00-\x1F\x7F]/', '', (string)$valor);
     $valor = mb_convert_encoding($valor, 'Windows-1252', 'UTF-8');
     return $valor;
+}
+
+function domiciliacion_texto_ajustado($valor, int $maximo): string {
+    $valor = (string)$valor;
+    while ($valor !== '' && strlen(domiciliacion_texto_dbf($valor)) > $maximo) {
+        $valor = mb_substr($valor, 0, mb_strlen($valor, 'UTF-8') - 1, 'UTF-8');
+    }
+    return domiciliacion_texto_dbf($valor);
 }
 
 function domiciliacion_generar_dbf(string $archivoSalida, array $registros) {
@@ -133,8 +256,8 @@ function domiciliacion_generar_dbf(string $archivoSalida, array $registros) {
     foreach ($registros as $registro) {
         $linea = pack('C', 0x20);
         foreach ($fields as $campo) {
-            $valor = domiciliacion_texto_dbf($registro[$campo[0]] ?? '');
-            $linea .= str_pad(substr($valor, 0, $campo[2]), $campo[2], ' ');
+            $valor = domiciliacion_texto_ajustado($registro[$campo[0]] ?? '', $campo[2]);
+            $linea .= str_pad($valor, $campo[2], ' ');
         }
         fwrite($fp, $linea);
     }

@@ -56,8 +56,65 @@ if ($archivo === '' || $archivo === '.' || $archivo === '..') {
     exit();
 }
 
-$rutaArchivo = $rutaCarpeta . DIRECTORY_SEPARATOR . $archivo;
+// Subcarpeta relativa dentro de la carpeta del sistema (extracciones de ZIP).
+$rutaRelativa = carpetas_ruta_relativa((string)($_POST['ruta'] ?? ''));
+if ($rutaRelativa === null) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'mensaje' => 'Ruta de subcarpeta no valida.']);
+    exit();
+}
+
+$rutaBase = carpetas_ruta_resolver($rutaCarpeta, $rutaRelativa);
+if ($rutaBase === false) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'mensaje' => 'La subcarpeta no existe.']);
+    exit();
+}
+
+$tipo      = (string)($_POST['tipo'] ?? 'archivo');
+$esCarpeta = ($tipo === 'carpeta');
+
+$rutaArchivo = $rutaBase . DIRECTORY_SEPARATOR . $archivo;
 $rutaReal    = realpath($rutaArchivo);
+
+// ==========================================
+// Carpeta: se borra con todo su contenido (nunca la raiz, nunca fuera de ella)
+// ==========================================
+if ($esCarpeta) {
+    if ($rutaReal === false || !is_dir($rutaReal)) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'mensaje' => 'La carpeta no existe en esa ubicacion.']);
+        exit();
+    }
+
+    $error = carpetas_eliminar_arbol($rutaReal, $rutaBase);
+    if ($error !== null) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'mensaje' => $error]);
+        exit();
+    }
+
+    clearstatcache();
+
+    logAction('dashboard', 'eliminar_archivo',
+        'Eliminacion de carpeta desde el explorador de carpetas',
+        [
+            'carpeta'  => $carpetaSolicitada,
+            'subruta'  => $rutaRelativa,
+            'archivo'  => $archivo,
+            'ruta'     => str_replace('\\', '/', $rutaReal),
+        ],
+        null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+
+    echo json_encode([
+        'success' => true,
+        'mensaje' => 'Carpeta eliminada correctamente.',
+        'carpeta' => $carpetaSolicitada,
+        'nombre'  => $archivo,
+        'tipo'    => 'carpeta',
+    ]);
+    exit();
+}
 
 // El archivo debe existir, ser un archivo regular y estar dentro de la carpeta permitida.
 if ($rutaReal === false || !is_file($rutaReal)) {
@@ -66,7 +123,7 @@ if ($rutaReal === false || !is_file($rutaReal)) {
     exit();
 }
 
-if (strpos($rutaReal, $rutaCarpeta . DIRECTORY_SEPARATOR) !== 0) {
+if (strpos($rutaReal, rtrim($rutaBase, "/\\") . DIRECTORY_SEPARATOR) !== 0) {
     http_response_code(400);
     echo json_encode(['success' => false, 'mensaje' => 'Ruta de archivo no permitida.']);
     exit();
@@ -87,6 +144,7 @@ logAction('dashboard', 'eliminar_archivo',
     'Eliminacion de archivo desde el explorador de carpetas',
     [
         'carpeta'  => $carpetaSolicitada,
+        'subruta'  => $rutaRelativa,
         'archivo'  => $archivo,
         'tamano'   => $tamano,
         'ruta'     => str_replace('\\', '/', $rutaReal),
@@ -98,4 +156,5 @@ echo json_encode([
     'mensaje' => 'Archivo eliminado correctamente.',
     'carpeta' => $carpetaSolicitada,
     'nombre'  => $archivo,
+    'tipo'    => 'archivo',
 ]);

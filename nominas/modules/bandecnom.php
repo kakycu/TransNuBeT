@@ -4489,7 +4489,7 @@ function verificarNominaContabilizada() {
                 icon: 'warning',
                 title: '<i class="fas fa-exclamation-triangle me-2"></i> Nómina no contabilizada',
                 html: `<p>La nómina de tipo <strong>${tipoNomina}</strong> para el período <strong>${nombreMes}/${desdeParts[0]}</strong> no está contabilizada.</p>
-                       <p>Para exportar al banco, la nómina debe estar en estado <strong style="color: 4;">"contabilizado"</strong>.</p>
+                       <p>Para exportar al banco, la nómina debe estar en estado <strong style="color:Yellow;">"CONTABILIZADO"</strong>.</p>
                        <hr style="border-top: 0.0625rem solid rgba(148, 163, 184, 0.3); opacity: 1;">
                        <p>Diríjase a <strong>Nóminas → ${tipoNomina}</strong> y contabilice la nómina.</p>`,
                 confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido',

@@ -18,13 +18,15 @@ Ejemplo práctico: Si ganas 20,000 CUP al mes:
 -----------------------------------------------------------------------------------------
 Tipo de Hora				Fórmula	Ejemplo 						(base $100/hora)
 Hora Normal *				salario_hora × horas_normales	100×1=100
-Hora Extra Diurna *			salario_hora × recargo_extra_diurna × horas		100×1.5×1=150 (configurable, default 1.5 = 150%)
-Hora Nocturna (Nt 7-23h) *		salario_hora × recargo_extra_nocturna × horas_nocturnas	100×2.0×1=200 (configurable, default 2.0 = 200%)(7pm-11pm)
-Hora Nocturna (Nt 23-7h) *		salario_hora × recargo_extra_nocturna × horas_nocturnas	100×2.0×1=200 (configurable, default 2.0 = 200%)(11pm-7am)
-Doble Turno *				salario_hora × recargo_doble_turno × horas_doble_turno	100×2.0×1=200 (configurable, default 2.0 = 200%)
+Hora Extra *			salario_hora × 1.25 × horas		100×1.25×1=125 (Ley 189/2026, art. 230: +25%)
+Turno Nocturno 19:00-23:00 *		0.60 pesos fijos por hora		144 h = 86.40 (Res. 15/2026, QUINTO.2)
+Turno Nocturno 23:00-07:00 *		1.15 pesos fijos por hora		144 h = 165.60 (Res. 15/2026, QUINTO.2)
+Doble Turno *				salario_hora × 1.25 × horas_doble_turno	100×1.25×1=125 (Ley 189/2026, art. 227 y 230)
 Día Feriado					salario_diario × 2 × días_feriados		800×2×1=1,600
 Importe Nocturno (cálculo automático)
-* Multiplicadores configurables en Configuración > Configuración General (recargo_extra_diurna, recargo_extra_nocturna, recargo_doble_turno)
+* Tarifas configurables en Configuración > Configuración General (recargo_trabajo_extraordinario,
+  tarifa_nocturnidad_temprana, tarifa_nocturnidad_tardia).
+  Ley 189/2026 "Código de Trabajo", arts. 227, 229 y 230; Resolución 15/2026 MTSS, QUINTO.2.
 */
 
 // Iniciar sesión
@@ -61,53 +63,18 @@ $hay_clasificadores_vacios = !empty($clasificadores_vacios);
 $nombres_clasificadores_vacios = array_map(function ($c) { return $c['nombre']; }, $clasificadores_vacios);
 
 
-// Obtener el multiplicador de recargo nocturno genérico (por defecto 1.25 si no existe)
-try {
-    $stmt_recargo = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'recargo_nocturno'");
-    $stmt_recargo->execute();
-    $recargo_nocturno = floatval($stmt_recargo->fetchColumn()) ?: 1.25;
-} catch (PDOException $e) {
-    $recargo_nocturno = 1.25;
-}
+// Tarifas del trabajo extraordinario y de los turnos nocturnos.
+// Res. 15/2026 MTSS (QUINTO.2) y Ley 189/2026 "Codigo de Trabajo" (art. 227 y 230).
+$tarifas_extra = cargarTarifasTrabajoExtraordinario($pdo);
+$recargo_trabajo_extraordinario = $tarifas_extra['recargo_trabajo_extraordinario'];
+$tarifa_nocturnidad_temprana     = $tarifas_extra['tarifa_nocturnidad_temprana'];
+$tarifa_nocturnidad_tardia       = $tarifas_extra['tarifa_nocturnidad_tardia'];
 
-// Recargos de horas extraordinarias (PDL/MIPYME): HE diurnas 150%, HE nocturnas 200%, doble turno 200%
-try {
-    $stmt_re1 = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'recargo_extra_diurna'");
-    $stmt_re1->execute();
-    $recargo_extra_diurna = floatval($stmt_re1->fetchColumn()) ?: 1.50;
-} catch (PDOException $e) {
-    $recargo_extra_diurna = 1.50;
-}
-try {
-    $stmt_re2 = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'recargo_extra_nocturna'");
-    $stmt_re2->execute();
-    $recargo_extra_nocturna = floatval($stmt_re2->fetchColumn()) ?: 2.00;
-} catch (PDOException $e) {
-    $recargo_extra_nocturna = 2.00;
-}
-try {
-    $stmt_re3 = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'recargo_doble_turno'");
-    $stmt_re3->execute();
-    $recargo_doble_turno = floatval($stmt_re3->fetchColumn()) ?: 2.00;
-} catch (PDOException $e) {
-    $recargo_doble_turno = 2.00;
-}
-
-// Tarifas fijas de nocturnidad sector presupuestado (Resolución 15/2026 MTSS)
-try {
-    $stmt_t1 = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'tarifa_nocturnidad_temprana'");
-    $stmt_t1->execute();
-    $tarifa_nocturnidad_temprana = floatval($stmt_t1->fetchColumn()) ?: 0.60;
-} catch (PDOException $e) {
-    $tarifa_nocturnidad_temprana = 0.60;
-}
-try {
-    $stmt_t2 = $pdo->prepare("SELECT valor FROM configuracion_general WHERE parametro = 'tarifa_nocturnidad_tardia'");
-    $stmt_t2->execute();
-    $tarifa_nocturnidad_tardia = floatval($stmt_t2->fetchColumn()) ?: 1.15;
-} catch (PDOException $e) {
-    $tarifa_nocturnidad_tardia = 1.15;
-}
+// Tasa de la CESS aplicada en el modo "total_rangos" (ISIP). Va al JS para que
+// la previsualizacion use el mismo porcentaje que guarda el servidor en lugar
+// de un valor escrito a mano en el cliente.
+$tasa_cess_especial = cargarTasaCessEspecial($pdo);
+$params_cess_progresiva = cargarParamsCessProgresiva($pdo);
 
 try {
     // Obtener factor 0.0909 de la tabla de vacaciones
@@ -134,12 +101,22 @@ function roundExcel($number, $precision = 2) {
 
 // Función global PHP para CESS Progresivo
 function calcularCessProgresivoPHP($salario) {
-    $limite = 15000;
-    if ($salario <= $limite) {
-        return roundExcel($salario * 0.05, 2);
-    } else {
-        return roundExcel((15000 * 0.05) + (($salario - 15000) * 0.10), 2);
+    static $params = null;
+    global $pdo;
+    if ($params === null) {
+        if (isset($pdo)) {
+            $params = cargarParamsCessProgresiva($pdo);
+        } else {
+            $params = ['base' => 5.0, 'exceso' => 10.0, 'limite' => 15000.0];
+        }
     }
+    $base = $params['base'] / 100.0;
+    $exceso = $params['exceso'] / 100.0;
+    $limite = $params['limite'];
+    if ($salario <= $limite) {
+        return roundExcel($salario * $base, 2);
+    }
+    return roundExcel(($limite * $base) + (($salario - $limite) * $exceso), 2);
 }
 
 // ============================================
@@ -177,6 +154,181 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_meses_nominas' && isset($_
     }
     
     echo json_encode(['success' => true, 'meses' => $meses]);
+    exit;
+}
+
+// Tope de horas extraordinarias anuales (configuracion_general; Ley 189/2026, art. 229.2).
+// El umbral "cerca del tope" se deriva como tope − 10 h.
+$topeHeAnualCfg = max(1, (int)($configs['tope_he_anual'] ?? 160));
+$topeHeCercaCfg = max(0, $topeHeAnualCfg - 10);
+// Endpoint AJAX para obtener el total de horas extraordinarias anuales de un trabajador
+if (isset($_GET['action']) && $_GET['action'] === 'get_he_anuales' && isset($_GET['ajax'])) {
+    header('Content-Type: application/json');
+    $trabajador_id = intval($_GET['trabajador_id'] ?? 0);
+    $anio = intval($_GET['anio'] ?? date('Y'));
+    $nomina_id = intval($_GET['nomina_id'] ?? 0);
+    $total = 0.0;
+    if ($trabajador_id > 0 && $anio > 0) {
+        // nomina_id: fila que se está editando; se excluye del acumulado anual
+        // para evitar que el aviso del tope de 160 h cuente dos veces sus horas.
+        $total = horasTrabajoExtraordinarioTotales($pdo, $trabajador_id, $anio, $nomina_id);
+    }
+    echo json_encode([
+        'success'       => true,
+        'trabajador_id' => $trabajador_id,
+        'anio'          => $anio,
+        'nomina_id'     => $nomina_id,
+        'total_he'      => round($total, 2)
+    ]);
+    exit;
+}
+// ============================================
+// AJAX: HE ANUALES POR TRABAJADOR (modal de horas extraordinarias)
+// Devuelve los años/meses con nóminas extraordinarias en la BD y, para el
+// período elegido, cada trabajador con sus horas acumuladas (get_he_anuales).
+// ============================================
+if (isset($_GET['action']) && $_GET['action'] === 'get_he_anuales_lista' && isset($_GET['ajax'])) {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $anio = intval($_GET['anio'] ?? 0);
+    $mes  = intval($_GET['mes'] ?? 0);
+    $tope = $topeHeAnualCfg;
+    $topeCerca = $topeHeCercaCfg;
+
+    try {
+        $anios = $pdo->query(
+            "SELECT DISTINCT YEAR(periodo_desde) FROM nominas WHERE tipo_nomina = 'extraordinaria' ORDER BY 1 DESC"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        if (empty($anios)) {
+            $anios = $pdo->query(
+                "SELECT DISTINCT YEAR(periodo_desde) FROM nominas ORDER BY 1 DESC"
+            )->fetchAll(PDO::FETCH_COLUMN);
+        }
+        $anios = array_map('intval', $anios);
+        if (!in_array($anio, $anios, true)) {
+            $anio = !empty($anios) ? $anios[0] : (int)date('Y');
+        }
+
+        $stmtMes = $pdo->prepare(
+            "SELECT DISTINCT MONTH(periodo_desde) FROM nominas
+             WHERE tipo_nomina = 'extraordinaria' AND YEAR(periodo_desde) = ?
+             ORDER BY 1"
+        );
+        $stmtMes->execute([$anio]);
+        $mesesDisponibles = array_map('intval', $stmtMes->fetchAll(PDO::FETCH_COLUMN));
+        if ($mes > 0 && !in_array($mes, $mesesDisponibles, true)) {
+            $mes = 0;
+        }
+
+        // Un único recorrido: horas del mes concreto y horas del año completo
+        $diasLaborables = getDiasMensuales($pdo);
+        $sql = "SELECT t.id, t.codigo, t.ci, t.nombre_completo,
+                       t.cargo_id, t.area_id,
+                       MAX(e.salario_mensual) AS salario_mensual,
+                       MAX(e.salario_hora_ordinaria) AS salario_hora,
+                       COALESCE(SUM(n.horas_laboradas), 0) AS he_anio,
+                       COALESCE(SUM(n.horas_doble_turno), 0) AS dt_anio,
+                       COALESCE(SUM(CASE WHEN MONTH(n.periodo_desde) = ?
+                                         THEN COALESCE(n.horas_laboradas, 0) ELSE 0 END), 0) AS he_mes,
+                       COALESCE(SUM(CASE WHEN MONTH(n.periodo_desde) = ?
+                                         THEN COALESCE(n.horas_doble_turno, 0) ELSE 0 END), 0) AS dt_mes,
+                       COUNT(DISTINCT CASE WHEN COALESCE(n.horas_laboradas, 0) + COALESCE(n.horas_doble_turno, 0) > 0
+                                           THEN n.periodo_desde END) AS meses_con_he,
+                       MAX(n.periodo_desde) AS ultima_nomina
+                FROM nominas n
+                JOIN trabajadores t ON n.trabajador_id = t.id
+                LEFT JOIN escalas_salariales e ON t.escala_salarial_id = e.id
+                WHERE n.tipo_nomina = 'extraordinaria'
+                  AND YEAR(n.periodo_desde) = ?
+                GROUP BY t.id, t.codigo, t.ci, t.nombre_completo, t.cargo_id, t.area_id
+                ORDER BY t.nombre_completo";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$mes, $mes, $anio]);
+        $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $trabajadores = [];
+        foreach ($filas as $f) {
+            $heAnio = round((float)$f['he_anio'], 2);
+            $dtAnio = round((float)$f['dt_anio'], 2);
+            $heMes  = round((float)$f['he_mes'], 2);
+            $dtMes  = round((float)$f['dt_mes'], 2);
+            $totalAnio = round($heAnio + $dtAnio, 2);
+            $totalMes  = round($heMes + $dtMes, 2);
+
+            // Solo trabajadores con horas > 0 en el ámbito seleccionado
+            if ((($mes > 0) ? $totalMes : $totalAnio) <= 0) {
+                continue;
+            }
+
+            if ($totalAnio > $tope) {
+                $estado = 'superado';
+                $estado_txt = 'Tope superado';
+            } elseif (abs($totalAnio - $tope) < 0.01) {
+                $estado = 'tope';
+                $estado_txt = 'Al tope';
+            } elseif ($totalAnio >= $topeCerca) {
+                $estado = 'cerca';
+                $estado_txt = 'Cerca del tope';
+            } else {
+                $estado = 'regla';
+                $estado_txt = 'En regla';
+            }
+
+            $trabajadores[] = [
+                'trabajador_id'  => (int)$f['id'],
+                'codigo'         => (string)($f['codigo'] ?? ''),
+                'ci'             => (string)($f['ci'] ?? ''),
+                'nombre'         => (string)($f['nombre_completo'] ?? ''),
+                'cargo'          => (string)((int)($f['cargo_id'] ?? 0)),
+                'area'           => (string)((int)($f['area_id'] ?? 0)),
+                // Lo que gana el trabajador en un día de acuerdo con su salario
+                // mensual (mismo divisor de días usados por el resto del módulo).
+                'salario_mensual' => round((float)($f['salario_mensual'] ?? 0), 2),
+                'salario_diario'  => $diasLaborables > 0
+                    ? round((float)($f['salario_mensual'] ?? 0) / $diasLaborables, 2)
+                    : 0.0,
+                'salario_hora'    => round((float)($f['salario_hora'] ?? 0), 2),
+                'he_mes'         => $heMes,
+                'dt_mes'         => $dtMes,
+                'total_mes'      => $totalMes,
+                'he_anio'        => $heAnio,
+                'dt_anio'        => $dtAnio,
+                'total_anio'     => $totalAnio,
+                'pct_tope'       => $tope > 0 ? round($totalAnio / $tope * 100, 2) : 0.0,
+                'estado'         => $estado,
+                'estado_txt'     => $estado_txt,
+                'meses_con_he'   => (int)$f['meses_con_he'],
+                'ultima_nomina'  => $f['ultima_nomina'] ? date('d/m/Y', strtotime($f['ultima_nomina'])) : ''
+            ];
+        }
+
+        $resumen = [
+            'trabajadores'  => count($trabajadores),
+            'horas_mes'     => round(array_sum(array_column($trabajadores, 'total_mes')), 2),
+            'horas_anio'    => round(array_sum(array_column($trabajadores, 'total_anio')), 2),
+            'he_anio'       => round(array_sum(array_column($trabajadores, 'he_anio')), 2),
+            'dt_anio'       => round(array_sum(array_column($trabajadores, 'dt_anio')), 2),
+            'superan_tope'  => count(array_filter($trabajadores, function ($t) { return $t['estado'] === 'superado'; })),
+            'al_tope'       => count(array_filter($trabajadores, function ($t) { return $t['estado'] === 'tope'; })),
+            'cerca_tope'    => count(array_filter($trabajadores, function ($t) { return $t['estado'] === 'cerca'; })),
+            'tope'          => $tope
+        ];
+
+        echo json_encode([
+            'success'       => true,
+            'anio'          => $anio,
+            'mes'           => $mes,
+            'anios'         => $anios,
+            'meses'         => array_map(function ($m) {
+                return ['valor' => $m, 'nombre' => ucfirst(nombreMesEspanol($m))];
+            }, $mesesDisponibles),
+            'registros'     => count($trabajadores),
+            'trabajadores'  => $trabajadores,
+            'resumen'       => $resumen
+        ], JSON_UNESCAPED_UNICODE);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'mensaje' => 'No se pudo consultar las horas extraordinarias.'], JSON_UNESCAPED_UNICODE);
+    }
     exit;
 }
 // Endpoint AJAX para obtener los números de nómina dinámicos
@@ -435,6 +587,14 @@ if (isset($_POST['actualizar_nomina'])) {
     }
     $id = intval($_POST['id']);
     $tipo = $_POST['tipo_nomina'] ?? '';
+
+    // 0. El periodo de la fila que se va a tocar no puede estar cerrado.
+    //    Se resuelve con el id y no con el periodo de la pantalla: si no, un
+    //    POST a mano podria esquivar el bloqueo escribiendo sobre un mes cerrado.
+    $periodo_fila = periodo_desde_nomina_id($pdo, $id);
+    if ($periodo_fila !== null) {
+        exigir_periodo_operable($pdo, $periodo_fila);
+    }
     
     // 1. OBTENER CONFIGURACIÓN DESDE LA BASE DE DATOS
     // Obtenemos días mensuales (24) y jornada diaria (8)
@@ -463,9 +623,8 @@ if (isset($_POST['actualizar_nomina'])) {
     $tipo_descuento = $nomina_data['tipo_descuento'] ?? 'total_rangos';
     $rangos_impuesto = $pdo->query("SELECT * FROM configuracion_rangos_impuesto ORDER BY desde")->fetchAll();
     
-    $stmt_tasa = $pdo->prepare("SELECT valor FROM configuracion_tasas WHERE nombre_tasa = 'contribucion_especial' ORDER BY fecha_vigencia DESC LIMIT 1");
-    $stmt_tasa->execute();
-    $tasa_cess_general = floatval($stmt_tasa->fetchColumn()) ?: 5;
+    $tasa_cess_general = cargarTasaCessEspecial($pdo);
+    $params_cess_progresiva = cargarParamsCessProgresiva($pdo);
 
     // Función interna para impuestos
     if (!function_exists('calcularImpuestoAjax')) {
@@ -489,19 +648,22 @@ if (isset($_POST['actualizar_nomina'])) {
     }
 
     if ($tipo == 'automatica' || $tipo == 'extraordinaria') {
-        $horas = floatval($_POST['horas_laboradas'] ?? 0);
+        // Ninguna magnitud de horas puede ser negativa: un valor negativo en la
+        // captura reduciria el devengado y hasta podria bajarlo por debajo de
+        // cero. Se recorta a cero en la entrada, sin tocar filas ya grabadas.
+        $horas = max(0, floatval($_POST['horas_laboradas'] ?? 0));
         $descuentos_manuales = floatval($_POST['descuentos'] ?? 0);
         
         if ($tipo == 'automatica') {
-            $dias_feriados = floatval($_POST['dias_feriados'] ?? 0);
+            $dias_feriados = max(0, floatval($_POST['dias_feriados'] ?? 0));
             $otros_pagos = floatval($_POST['otros_salarios'] ?? 0);
             $horas_nocturnas = 0;
         } else {
             $dias_feriados = 0;
             $otros_pagos = 0;
-            $horas_nocturnas_tempranas = floatval($_POST['nocturnidad_temprana'] ?? $_POST['horas_nocturnas_tempranas'] ?? 0);
-            $horas_nocturnas_tardias = floatval($_POST['nocturnidad_tardia'] ?? $_POST['horas_nocturnas_tardias'] ?? 0);
-            $horas_doble_turno = floatval($_POST['doble_turno'] ?? $_POST['horas_doble_turno'] ?? 0);
+            $horas_nocturnas_tempranas = max(0, floatval($_POST['nocturnidad_temprana'] ?? $_POST['horas_nocturnas_tempranas'] ?? 0));
+            $horas_nocturnas_tardias = max(0, floatval($_POST['nocturnidad_tardia'] ?? $_POST['horas_nocturnas_tardias'] ?? 0));
+            $horas_doble_turno = max(0, floatval($_POST['doble_turno'] ?? $_POST['horas_doble_turno'] ?? 0));
             $horas_nocturnas = $horas_nocturnas_tempranas + $horas_nocturnas_tardias;
         }
         
@@ -518,17 +680,23 @@ if (isset($_POST['actualizar_nomina'])) {
         $no_acumular_vacaciones = intval($worker_salario['no_acumular_vacaciones'] ?? 0);
         
         if ($tipo == 'extraordinaria') {
-            $importe_he_diurnas = roundExcel($salario_hora * $recargo_extra_diurna * $horas, 2);
-            $importe_noct_temprana = roundExcel($salario_hora * $recargo_extra_nocturna * $horas_nocturnas_tempranas, 2);
-            $importe_noct_tardia = roundExcel($salario_hora * $recargo_extra_nocturna * $horas_nocturnas_tardias, 2);
-            $importe_doble_turno = roundExcel($salario_hora * $recargo_doble_turno * $horas_doble_turno, 2);
-            $importe_nocturnas = $importe_noct_temprana + $importe_noct_tardia;
-            $total_devengado = roundExcel($importe_he_diurnas + $importe_nocturnas + $importe_doble_turno, 2);
+            $calc_extra = calcularImporteTrabajoExtraordinario($salario_hora, [
+                'horas_he'                  => $horas,
+                'horas_nocturnas_tempranas' => $horas_nocturnas_tempranas,
+                'horas_nocturnas_tardias'   => $horas_nocturnas_tardias,
+                'horas_doble_turno'         => $horas_doble_turno,
+            ], $tarifas_extra);
+
+            $importe_he_diurnas    = $calc_extra['importe_he_diurnas'];
+            $importe_noct_temprana = $calc_extra['importe_noct_temprana'];
+            $importe_noct_tardia   = $calc_extra['importe_noct_tardia'];
+            $importe_doble_turno   = $calc_extra['importe_doble_turno'];
+            $importe_nocturnas     = $calc_extra['importe_nocturnas'];
+            $total_devengado       = $calc_extra['total_devengado'];
             $importe_vacaciones_adicional = 0;
             $importe_feriados = 0;
         } else {
             $salario_laboral = roundExcel($salario_hora * $horas, 2);
-            $valor_hora_nocturna = $salario_hora * $recargo_nocturno;
             $importe_nocturnas = 0;
             $salario_diario = $salario_mensual / $dias_mensuales_db;
             $importe_feriados = roundExcel($salario_diario * $dias_feriados * 2, 2);
@@ -759,13 +927,97 @@ if (file_exists($ruta_logo)) {
     $logo_base64 = 'data:image/' . $tipo_logo . ';base64,' . base64_encode(file_get_contents($ruta_logo));
 }
 
-$periodo = $_GET['periodo'] ?? date('Y-m');
+// El periodo por defecto es el que esta en curso (no el mes del calendario):
+// si el mes en curso ya se cerro, el modulo debe abrir ahi y no en un mes viejo.
+// Un 'periodo' manipulado se normaliza o se descarta.
+$periodo = normalizar_periodo_nominas($pdo, $_GET['periodo'] ?? '');
 $anio = substr($periodo, 0, 4);
 $mes = substr($periodo, 5, 2);
 $periodo_desde = "$anio-$mes-01";
-$periodo_hasta = date('Y-m-t', strtotime($periodo_desde));
+$periodo_hasta = ultimoDiaDePeriodo($periodo_desde);
 $tipo_nomina_activa = $_GET['tipo'] ?? 'automatica';
 $filtro_cuenta = $_GET['filtro_cuenta'] ?? '';
+
+// ============================================
+// BLOQUEO DE OPERACIONES EN PERIODOS CERRADOS
+// ============================================
+// Cualquier accion que modifique nominas queda bloqueada si el mes esta
+// cerrado o si su ano esta cerrado. La comprobacion se centraliza aqui en vez
+// de repetirse en cada handler, para que no quede ninguna accion sin cubrir.
+// 'actualizar_nomina' no entra aqui porque se atiende antes de este punto:
+// lleva su propio guard, ya que opera sobre el id concreto de una fila.
+$ACCIONES_MUTANTES_NOMINA = [
+    'corregir_cuadre', 'corregir_pendientes', 'corregir_cierres',
+    'eliminar_nomina_completa', 'eliminar_borrador_por_ids', 'eliminar_nomina_individual',
+    'regenerar_nomina', 'generar_nomina_automatica', 'generar_nomina_extraordinaria',
+    'generar_nomina_bono', 'generar_nomina_ajuste', 'agregar_vacaciones',
+    'agregar_bono_existente', 'contabilizar_nomina', 'revertir_nomina',
+    'agregar_extraordinaria_existente', 'agregar_trabajadores_auto',
+];
+// La accion puede venir como clave propia (formularios que la nombran asi) o en
+// el campo 'action', tanto por POST como por GET. Los dos caminos se miran para
+// que ningun handler mutante se escape del guard.
+$accion_peticion = isset($_POST['action']) ? (string)$_POST['action']
+              : (isset($_GET['accion']) ? (string)$_GET['accion'] : '');
+foreach ($ACCIONES_MUTANTES_NOMINA as $accion_mutante) {
+    $peticion = isset($_POST[$accion_mutante]) || $accion_peticion === $accion_mutante;
+    if ($peticion) {
+        bloquear_periodo_nominas($pdo, periodo_nominas_de_la_peticion($pdo, $periodo), $is_ajax);
+        break;
+    }
+}
+
+// Ademas del bloqueo del propio periodo, la GENERACION respeta la cadena de
+// anios: si el anio anterior al pedido tiene nominas y su cierre anual no esta
+// registrado, no se crea nada nuevo (tampoco un enero abierto a mano). Solo
+// afecta a las acciones que CREAN nominas; editar o eliminar lo ya existente
+// no depende del anio previo.
+$ACCIONES_GENERACION_NOMINA = [
+    'generar_nomina_automatica', 'generar_nomina_extraordinaria',
+    'generar_nomina_bono', 'generar_nomina_ajuste',
+    'confirmar_extraordinaria', 'confirmar_bono', 'confirmar_ajuste',
+    'agregar_vacaciones', 'agregar_bono_existente',
+    'agregar_extraordinaria_existente', 'agregar_trabajadores_auto',
+];
+foreach ($ACCIONES_GENERACION_NOMINA as $accion_generar) {
+    $peticion_generar = isset($_POST[$accion_generar]) || $accion_peticion === $accion_generar;
+    if ($peticion_generar) {
+        $periodo_generar = periodo_nominas_de_la_peticion($pdo, $periodo);
+        bloquear_anio_previo_nominas(
+            $pdo,
+            (int)substr((string)$periodo_generar, 0, 4),
+            $periodo_generar,
+            $is_ajax
+        );
+        break;
+    }
+}
+
+// Estado del anio previo respecto del ANIO EN PANTALLA. El guard de arriba solo
+// reacciona cuando un POST intenta generar; esto se calcula siempre para que el
+// frontend pueda avisar y cortar ANTES el clic (Consultar / Generar / modales),
+// sin dejar al usuario viajar al servidor.
+$previo_anio_nominas = anioPrecedenteOperableNominas($pdo, (int)$anio);
+
+// Aviso de periodo cerrado que deja el guard cuando redirige a la pagina, o el
+// que corresponde al periodo en pantalla. Se calcula aqui, antes del <body>,
+// porque el body y el JavaScript necesitan leer esta variable.
+$aviso_periodo_cerrado = '';
+if (isset($_GET['periodo_bloqueado']) || isset($_GET['periodo_cerrado'])) {
+    $estado_aviso = estado_operacion_periodo_nominas($pdo, $periodo);
+    $aviso_periodo_cerrado = $estado_aviso['mensaje'];
+}
+$e_periodo = estado_operacion_periodo_nominas($pdo, $periodo);
+$periodo_bloqueado = $aviso_periodo_cerrado !== ''
+    ? $aviso_periodo_cerrado
+    : (empty($e_periodo['operable']) ? $e_periodo['mensaje'] : '');
+// Motivo real del bloqueo: distingue "periodo cerrado" de "periodo que aun no ha
+// llegado", para que el frontend pueda avisar con el texto y el icono correctos.
+$motivo_periodo_bloqueado = $periodo_bloqueado === ''
+    ? ''
+    : (empty($e_periodo['operable'])
+        ? (string)($e_periodo['motivo'] ?? 'periodo_cerrado')
+        : (string)($_GET['motivo_bloqueo'] ?? 'periodo_cerrado'));
 
 // Capturar el número de nómina seleccionado (si viene en la URL)
 $filtro_numero_nomina = $_GET['numero_nomina'] ?? '';
@@ -851,20 +1103,18 @@ function calcularTotalImpuesto($salario, $rangos) {
 // ============================================
 function verificarCuadreValores($pdo, $filtro = []) {
     try {
-        $cfg = [];
-        $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('dias_mensuales','horas_jornada_diaria','recargo_nocturno')");
-        while ($r = $stmt->fetch()) { $cfg[$r['parametro']] = $r['valor']; }
-        $dias_mensuales = floatval($cfg['dias_mensuales'] ?? 0) ?: 24;
-        $jornada = floatval($cfg['horas_jornada_diaria'] ?? 0) ?: 8;
-        $recargo = floatval($cfg['recargo_nocturno'] ?? 0) ?: 1.25;
+        $dias_mensuales = floatval($pdo->query("SELECT valor FROM configuracion_general WHERE parametro = 'dias_mensuales'")->fetchColumn()) ?: 24;
+        $jornada = floatval($pdo->query("SELECT valor FROM configuracion_general WHERE parametro = 'horas_jornada_diaria'")->fetchColumn()) ?: 8;
+        $tarifas_extra = cargarTarifasTrabajoExtraordinario($pdo);
     } catch (Exception $e) {
-        $dias_mensuales = 24; $jornada = 8; $recargo = 1.25;
+        $dias_mensuales = 24; $jornada = 8;
+        $tarifas_extra = cargarTarifasTrabajoExtraordinario($pdo);
     }
     try {
         $factor = floatval($pdo->query("SELECT factor_calculo FROM configuracion_vacaciones WHERE activo = 1 LIMIT 1")->fetchColumn()) ?: 0.0909;
     } catch (Exception $e) { $factor = 0.0909; }
     try {
-        $tasa = floatval($pdo->query("SELECT valor FROM configuracion_tasas WHERE nombre_tasa = 'contribucion_especial' ORDER BY fecha_vigencia DESC LIMIT 1")->fetchColumn()) ?: 5;
+        $tasa = cargarTasaCessEspecial($pdo);
     } catch (Exception $e) { $tasa = 5; }
     try {
         $rangos = $pdo->query("SELECT * FROM configuracion_rangos_impuesto ORDER BY desde")->fetchAll(PDO::FETCH_ASSOC);
@@ -1084,6 +1334,74 @@ if (isset($_GET['action']) && $_GET['action'] === 'chequear_cuadre_pendiente' &&
     exit;
 }
 
+// AJAX (solo lectura): estado del año previo de un año pedido por el frontend.
+// Permite avisar y cortar antes de generar cuando el año anterior al
+// seleccionado todavía no está cerrado, sin esperar al rebote del guard.
+if (isset($_GET['action']) && $_GET['action'] === 'verificar_anio_previo' && isset($_GET['ajax'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $anio_vap = (int)($_GET['anio'] ?? 0);
+    if ($anio_vap < 2000 || $anio_vap > ((int)date('Y') + 20)) {
+        echo json_encode(['permitido' => false, 'motivo' => 'anio_invalido', 'mensaje' => ''], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    echo json_encode(anioPrecedenteOperableNominas($pdo, $anio_vap), JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// AJAX (solo lectura): si un periodo concreto admite cambios. Lo consulta el
+// candado del frontend cuando el ano/mes de los selectores NO es el que trae la
+// pagina, para avisar antes de generar. Repone el mismo veredicto que usan los
+// guards del servidor: cerrado, aun no llegado, o el anterior sin cerrar.
+if (isset($_GET['action']) && $_GET['action'] === 'verificar_periodo' && isset($_GET['ajax'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $per_vp = trim((string)($_GET['periodo'] ?? ''));
+
+    if ($per_vp === '' || !preg_match('/^(\d{4})-(\d{2})(-\d{2})?$/', $per_vp)) {
+        echo json_encode([
+            'operable' => false,
+            'motivo'   => 'periodo_invalido',
+            'mensaje'  => 'El período indicado no es válido.',
+            'periodo'  => '',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $estado_vp = estado_operacion_periodo_nominas($pdo, $per_vp);
+    $operable_vp = !empty($estado_vp['operable']);
+
+    // El año previo solo aparece cuando el periodo en sí ya es operable: si el
+    // mes está cerrado o no ha llegado, ese es el motivo que hay que mostrar.
+    if ($operable_vp) {
+        $previo_vp = anioPrecedenteOperableNominas($pdo, (int)substr($estado_vp['periodo'], 0, 4));
+        if (empty($previo_vp['permitido'])) {
+            $operable_vp = false;
+            $estado_vp['motivo']  = 'anio_previo_sin_cerrar';
+            $estado_vp['mensaje'] = $previo_vp['mensaje'];
+        }
+    }
+
+    // Meses del mismo año anteriores al elegido que siguen SIN cerrar. No
+    // impiden generar (el desorden intra-año se recupera cerrando en orden),
+    // pero el frontend los avisa por nombre para que nadie los pase por alto.
+    $meses_previos_vp = [];
+    if ($operable_vp && !empty($estado_vp['periodo'])) {
+        $meses_previos_vp = mesesNominasSinCerrarAntesDe(
+            $pdo,
+            (int)substr((string)$estado_vp['periodo'], 0, 4),
+            (int)substr((string)$estado_vp['periodo'], 5, 2)
+        );
+    }
+
+    echo json_encode([
+        'operable'              => $operable_vp,
+        'motivo'                => $estado_vp['motivo'] ?? '',
+        'mensaje'               => $estado_vp['mensaje'] ?? '',
+        'periodo'               => $estado_vp['periodo'] ?? '',
+        'meses_previos_pendientes' => $meses_previos_vp,
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // AJAX: Verificar si ya existe una nómina automática en el período (botón Generar Nómina Automática)
 if (isset($_GET['action']) && $_GET['action'] === 'verificar_nomina_automatica' && isset($_GET['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -1156,15 +1474,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'corregir_cuadre' && isset($_G
 }
 
 // AJAX: Corregir valores de los borradores PENDIENTES de contabilizar con descuadres
-if (isset($_GET['action']) && $_GET['action'] === 'corregir_pendientes' && isset($_GET['ajax'])) {
+/* Es una mutacion (reescribe importes), asi que va por POST y no por GET: dejar
+ * una escritura en la URL la expone en el historial del navegador, en los logs
+ * del servidor y en las referencias cruzadas. El guard central de periodo ya
+ * acepta ambas formas. */
+if (isset($_POST['action']) && $_POST['action'] === 'corregir_pendientes' && isset($_POST['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
     if (!$puede_editar_nomina) {
         echo json_encode(['success' => false, 'message' => 'No tiene permisos para corregir los valores.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
-    $pd = $_GET['pd'] ?? '';
-    $ph = $_GET['ph'] ?? '';
-    $tp = $_GET['tipo'] ?? '';
+    $pd = $_POST['pd'] ?? '';
+    $ph = $_POST['ph'] ?? '';
+    $tp = $_POST['tipo'] ?? '';
     if ($pd === '' || $ph === '' || $tp === '') {
         echo json_encode(['success' => false, 'message' => 'Faltan parámetros del período/tipo.'], JSON_UNESCAPED_UNICODE);
         exit;
@@ -1502,18 +1824,6 @@ if (isset($_POST['generar_nomina_automatica'])) {
         exit;
     }
     
-    function calcularCESSProgresivo($salario) {
-        $limite = 15000;
-        if ($salario <= $limite) {
-            return roundExcel($salario * 0.05, 2);
-        } else {
-            $primeraParte = roundExcel($limite * 0.05, 2);
-            $exceso = $salario - $limite;
-            $segundaParte = roundExcel($exceso * 0.10, 2);
-            return roundExcel($primeraParte + $segundaParte, 2);
-        }
-    }
-    
     foreach ($trabajadores as $trabajador) {
         $salario_hora = $trabajador['salario_hora_ordinaria'];
         $salario_mensual = $trabajador['salario_mensual'];
@@ -1540,7 +1850,7 @@ if (isset($_POST['generar_nomina_automatica'])) {
         $total_devengado = $salario_laboral + $importe_vacaciones_adicional + $pago_adicional_total;
         
         if ($tipo_descuento == 'solo_cess') {
-            $contribucion = calcularCESSProgresivo($total_devengado);
+            $contribucion = calcularCessProgresivoPHP($total_devengado);
             $impuesto = 0;
             $neto = roundExcel($total_devengado - $contribucion, 2);
             
@@ -1610,10 +1920,12 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
 
     foreach ($trabajadores_ids as $index => $trabajador_id) {
         $trabajador_id = intval($trabajador_id);
-        $horas_normales = floatval($horas_por_trabajador[$index] ?? 0);
-        $noct_temprana = floatval($noct_temprana_por_trabajador[$index] ?? 0);
-        $noct_tardia = floatval($noct_tardia_por_trabajador[$index] ?? 0);
-        $doble_turno = floatval($doble_turno_por_trabajador[$index] ?? 0);
+        // Ninguna magnitud de horas admite valores negativos: se recorta a cero
+        // al entrar, antes de tocar importes o filas existentes.
+        $horas_normales = max(0, floatval($horas_por_trabajador[$index] ?? 0));
+        $noct_temprana = max(0, floatval($noct_temprana_por_trabajador[$index] ?? 0));
+        $noct_tardia = max(0, floatval($noct_tardia_por_trabajador[$index] ?? 0));
+        $doble_turno = max(0, floatval($doble_turno_por_trabajador[$index] ?? 0));
 
         if ($horas_normales <= 0 && $noct_temprana <= 0 && $noct_tardia <= 0 && $doble_turno <= 0) {
             continue;
@@ -1629,18 +1941,28 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
 
         $salario_hora = floatval($salario['salario_hora_ordinaria']);
 
-        // Cálculo de importes — Sector Presupuestado
-$importe_he_diurnas = roundExcel($salario_hora * $recargo_extra_diurna * $horas_normales, 2);
-            $importe_noct_temprana = roundExcel($salario_hora * $recargo_extra_nocturna * $noct_temprana, 2);
-            $importe_noct_tardia = roundExcel($salario_hora * $recargo_extra_nocturna * $noct_tardia, 2);
-            $importe_doble_turno = roundExcel($salario_hora * $recargo_doble_turno * $doble_turno, 2);
+        // Cálculo de importes. Res. 15/2026 MTSS (QUINTO.2) y Ley 189/2026 (art. 227 y 230).
+        $calc_extra = calcularImporteTrabajoExtraordinario($salario_hora, [
+            'horas_he'                  => $horas_normales,
+            'horas_nocturnas_tempranas' => $noct_temprana,
+            'horas_nocturnas_tardias'   => $noct_tardia,
+            'horas_doble_turno'         => $doble_turno,
+        ], $tarifas_extra);
 
-        $total_devengado_nuevo = roundExcel($importe_he_diurnas + $importe_noct_temprana + $importe_noct_tardia + $importe_doble_turno, 2);
+        $importe_he_diurnas    = $calc_extra['importe_he_diurnas'];
+        $importe_noct_temprana = $calc_extra['importe_noct_temprana'];
+        $importe_noct_tardia   = $calc_extra['importe_noct_tardia'];
+        $importe_doble_turno   = $calc_extra['importe_doble_turno'];
+
+        $total_devengado_nuevo = $calc_extra['total_devengado'];
 
         $total_horas_noct = $noct_temprana + $noct_tardia;
-        $total_importe_noct = $importe_noct_temprana + $importe_noct_tardia;
-        $total_horas_con_extra = $horas_normales + $doble_turno;
-        $total_importe_con_extra = $importe_he_diurnas + $importe_doble_turno;
+        $total_importe_noct = $calc_extra['importe_nocturnas'];
+        // horas_laboradas guarda solo las horas extras; el doble turno va en
+        // horas_doble_turno, igual que en el guardado AJAX y en la ruta 3, para
+        // que el total de horas de la fila no cuente esas horas dos veces.
+        $total_horas_con_extra = $horas_normales;
+        $total_importe_con_extra = $calc_extra['importe_salario_laboral'];
 
         $stmt_check = $pdo->prepare("SELECT id, horas_laboradas, horas_nocturnas, importe_horas_nocturnas,
                                             horas_nocturnas_tempranas, importe_nocturnas_tempranas,
@@ -1720,7 +2042,7 @@ $importe_he_diurnas = roundExcel($salario_hora * $recargo_extra_diurna * $horas_
                 $contribucion, $impuesto, $neto,
                 roundExcel($contribucion + $impuesto, 2),
                 $tipo, 'borrador',
-                "HE:{$horas_normales}h Nt7-23:{$noct_temprana}h Nt23-7:{$noct_tardia}h DT:{$doble_turno}h",
+                "HE:{$horas_normales}h Nt19-23:{$noct_temprana}h Nt23-7:{$noct_tardia}h DT:{$doble_turno}h",
                 $tipo_descuento_extra
             ]);
         }
@@ -2012,6 +2334,7 @@ if (isset($_POST['generar_nomina_ajuste']) && isset($_POST['confirmar_ajuste']))
 }
 // AGREGAR VACACIONES
 if (isset($_POST['agregar_vacaciones'])) {
+    if (!$puede_crear_nomina) { header('Location: nominas.php?periodo=' . urlencode($periodo) . '&error=sin_permiso_crear'); exit; }
     $trabajadores_ids = $_POST['trabajador_id'] ?? [];
     $dias_por_trabajador = $_POST['dias_vacaciones'] ?? [];
     $tipo = 'vacaciones';
@@ -2619,6 +2942,7 @@ if (isset($_POST['contabilizar_nomina'])) {
 // (acumulación/disfrute de vacaciones, submayor y montos_distrib de bonos)
 // ============================================
 if (isset($_POST['revertir_nomina'])) {
+    if (!$puede_editar_nomina) { header('Location: nominas.php?periodo=' . urlencode($periodo) . '&error=sin_permiso_editar'); exit; }
     $tipo_revertir = $_POST['tipo_nomina'] ?? $tipo_nomina_activa;
     $numero_revertir = trim($_POST['numero_nomina'] ?? '');
 
@@ -2761,10 +3085,12 @@ if (isset($_POST['revertir_nomina'])) {
 
 if (isset($_POST['agregar_extraordinaria_existente'])) {
     $trabajador_id = intval($_POST['trabajador_id_extra']);
-    $horas_extra = floatval($_POST['horas_extra']);
-    $noct_temprana = floatval($_POST['nocturnidad_temprana'] ?? 0);
-    $noct_tardia = floatval($_POST['nocturnidad_tardia'] ?? 0);
-    $doble_turno = floatval($_POST['doble_turno'] ?? 0);
+    // Ninguna magnitud de horas admite valores negativos: se recorta a cero al
+    // entrar, antes de calcular o acumular sobre una fila existente.
+    $horas_extra = max(0, floatval($_POST['horas_extra']));
+    $noct_temprana = max(0, floatval($_POST['nocturnidad_temprana'] ?? 0));
+    $noct_tardia = max(0, floatval($_POST['nocturnidad_tardia'] ?? 0));
+    $doble_turno = max(0, floatval($_POST['doble_turno'] ?? 0));
     $concepto = trim($_POST['concepto_extra'] ?? '');
     $tipo = 'extraordinaria';
     $tasa_contribucion = getTasaContribucion($pdo);
@@ -2784,11 +3110,19 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
     $stmt->execute([$trabajador_id]);
     $salario_hora = floatval($stmt->fetchColumn());
 
-    $importe_he_diurnas = roundExcel($salario_hora * $recargo_extra_diurna * $horas_extra, 2);
-    $importe_noct_temprana = roundExcel($salario_hora * $recargo_extra_nocturna * $noct_temprana, 2);
-    $importe_noct_tardia = roundExcel($salario_hora * $recargo_extra_nocturna * $noct_tardia, 2);
-    $importe_doble_turno = roundExcel($salario_hora * $recargo_doble_turno * $doble_turno, 2);
-    $total_devengado_nuevo = roundExcel($importe_he_diurnas + $importe_noct_temprana + $importe_noct_tardia + $importe_doble_turno, 2);
+    // Res. 15/2026 MTSS (QUINTO.2) y Ley 189/2026 (art. 227 y 230).
+    $calc_extra = calcularImporteTrabajoExtraordinario($salario_hora, [
+        'horas_he'                  => $horas_extra,
+        'horas_nocturnas_tempranas' => $noct_temprana,
+        'horas_nocturnas_tardias'   => $noct_tardia,
+        'horas_doble_turno'         => $doble_turno,
+    ], $tarifas_extra);
+
+    $importe_he_diurnas    = $calc_extra['importe_he_diurnas'];
+    $importe_noct_temprana = $calc_extra['importe_noct_temprana'];
+    $importe_noct_tardia   = $calc_extra['importe_noct_tardia'];
+    $importe_doble_turno   = $calc_extra['importe_doble_turno'];
+    $total_devengado_nuevo = $calc_extra['total_devengado'];
 
     $stmt_check = $pdo->prepare("SELECT id, total_salario_devengado FROM nominas
                                  WHERE trabajador_id = ? AND periodo_desde = ? AND periodo_hasta = ?
@@ -2797,27 +3131,31 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
     $existente = $stmt_check->fetch(PDO::FETCH_ASSOC);
 
     if ($existente) {
-        $total_horas_noct = $noct_temprana + $noct_tardia;
-        $total_importe_noct = $importe_noct_temprana + $importe_noct_tardia;
-        $total_importe_con_extra = $importe_he_diurnas + $importe_doble_turno;
-        $total_horas_con_extra = $horas_extra + $doble_turno;
+$total_horas_noct = $noct_temprana + $noct_tardia;
+    $total_importe_noct = $calc_extra['importe_nocturnas'];
+    $total_importe_con_extra = $calc_extra['importe_salario_laboral'];
+    // horas_laboradas guarda solo las horas extras. El doble turno se guarda en
+    // horas_doble_turno, igual que hacen el guardado AJAX y la ruta 3: sumarlo
+    // tambien aqui contaria esas horas dos veces, porque las columnas de horas
+    // de la fila (y los totales de los reportes) ya lo incorporan una vez.
+    $total_horas_con_extra = $horas_extra;
 
-        $pdo->prepare("UPDATE nominas SET
-            horas_laboradas = horas_laboradas + ?,
-            horas_nocturnas = horas_nocturnas + ?,
-            importe_horas_nocturnas = importe_horas_nocturnas + ?,
-            horas_nocturnas_tempranas = horas_nocturnas_tempranas + ?,
-            importe_nocturnas_tempranas = importe_nocturnas_tempranas + ?,
-            horas_nocturnas_tardias = horas_nocturnas_tardias + ?,
-            importe_nocturnas_tardias = importe_nocturnas_tardias + ?,
-            horas_doble_turno = horas_doble_turno + ?,
-            importe_doble_turno = importe_doble_turno + ?,
-            importe_salario_laboral = importe_salario_laboral + ?,
-            total_salario_devengado = total_salario_devengado + ?,
-            descripcion = CONCAT(descripcion, ', ', ?)
-            WHERE id = ?")
-        ->execute([
-            $total_horas_con_extra, $total_horas_noct, $total_importe_noct,
+    $pdo->prepare("UPDATE nominas SET
+    horas_laboradas = horas_laboradas + ?,
+    horas_nocturnas = horas_nocturnas + ?,
+    importe_horas_nocturnas = importe_horas_nocturnas + ?,
+    horas_nocturnas_tempranas = horas_nocturnas_tempranas + ?,
+    importe_nocturnas_tempranas = importe_nocturnas_tempranas + ?,
+    horas_nocturnas_tardias = horas_nocturnas_tardias + ?,
+    importe_nocturnas_tardias = importe_nocturnas_tardias + ?,
+    horas_doble_turno = horas_doble_turno + ?,
+    importe_doble_turno = importe_doble_turno + ?,
+    importe_salario_laboral = importe_salario_laboral + ?,
+    total_salario_devengado = total_salario_devengado + ?,
+    descripcion = CONCAT(descripcion, ', ', ?)
+    WHERE id = ?")
+    ->execute([
+    $total_horas_con_extra, $total_horas_noct, $total_importe_noct,
             $noct_temprana, $importe_noct_temprana,
             $noct_tardia, $importe_noct_tardia,
             $doble_turno, $importe_doble_turno,
@@ -2872,7 +3210,7 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
             $contribucion, $impuesto, $neto,
             roundExcel($contribucion + $impuesto, 2),
             $tipo, 'borrador',
-            "HE:{$horas_extra}h Nt7-23:{$noct_temprana}h Nt23-7:{$noct_tardia}h DT:{$doble_turno}h",
+            "HE:{$horas_extra}h Nt19-23:{$noct_temprana}h Nt23-7:{$noct_tardia}h DT:{$doble_turno}h",
             $tipo_descuento
         ]);
         logAction('agregar_extraordinaria_trabajador', 'nominas', 'Adición de horas extraordinarias a trabajador (nómina nueva)', ['trabajador_id' => (int)$trabajador_id, 'horas_extra' => $horas_extra, 'total_devengado' => $total_devengado_nuevo], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
@@ -2886,6 +3224,7 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
 // ============================================
 if (isset($_POST['agregar_trabajadores_auto']) && isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
     header('Content-Type: application/json');
+    if (!$puede_crear_nomina) { echo json_encode(['success' => false, 'message' => 'No tiene permisos para agregar trabajadores.']); exit; }
     
     $trabajadores_ids = $_POST['trabajadores'] ?? [];
     $periodo_desde = $_POST['periodo_desde'];
@@ -3289,6 +3628,7 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
     <link rel="stylesheet" type="text/css" href="../css/bootstrap5.3.0/buttons.dataTables.min.css">  
 	
 	<link href="CSS/nominas.css" rel="stylesheet">
+<link href="CSS/periodo-curso.css" rel="stylesheet">
 <!-- ============================================ -->
 <!-- CSS RESPONSIVE COMPLETO (PC / TABLET / MÓVIL) -->
 <!-- Solo afecta a cada breakpoint; NO sobrescribe PC -->
@@ -3579,7 +3919,10 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
 </style>
 
 </head>
-<body class="<?php echo trim((!$puede_editar_nomina ? 'solo-lectura' : '') . (!$puede_eliminar_nomina ? ' solo-eliminar' : '')); ?>">
+<body class="<?php echo trim((!$puede_editar_nomina ? 'solo-lectura' : '') . (!$puede_eliminar_nomina ? ' solo-eliminar' : '')); ?>"
+      data-periodo="<?php echo htmlspecialchars($periodo); ?>"
+      data-periodo-cerrado="<?php echo $periodo_bloqueado !== '' ? '1' : '0'; ?>"
+      <?php if ($periodo_bloqueado !== ''): ?>data-motivo-cierre="<?php echo htmlspecialchars($periodo_bloqueado); ?>"<?php endif; ?>>
 
 <div class="win11-bg"></div>
 
@@ -3638,6 +3981,7 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
                 <li><a class="dropdown-item" href="#" id="menuHistorialMontos"><i class="fas fa-history text-warning me-2"></i> Historial de Montos <small class="d-block text-muted">Historial Montos Redistribuidos</small></a></li>
                 <li><a class="dropdown-item" href="#" id="menuResumenSalarial"><i class="fas fa-user-tie text-success me-2"></i> RESUMEN SALARIAL <small class="d-block text-muted">Resumen por trabajador o por cuenta bancaria</small></a></li>
                 <li><a class="dropdown-item" href="#" id="menuSinNomina"><i class="fas fa-user-slash text-danger me-2"></i> Trabajadores Sin Nómina <small class="d-block text-muted">Alta en el período sin nómina en ese mes</small></a></li>
+                <li><a class="dropdown-item" href="#" id="menuHeAnuales"><i class="fas fa-hourglass-half me-2" style="color: #a78bfa;"></i> Horas Extraordinarias Anuales <small class="d-block text-muted">HE acumuladas por trabajador · tope <?php echo (int)$topeHeAnualCfg; ?> h</small></a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><h6 class="dropdown-header text-light px-3 py-1">Personalizar Vista</h6></li>
                 <li><a class="dropdown-item" href="#" id="menuColumnas"><i class="fas fa-columns me-2" style="color: #60a5fa;"></i> Mostrar/Ocultar Columnas</a></li>
@@ -3675,6 +4019,18 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
                         <?php endif; ?>
                     </h5>
                     <p class="mb-0" style="font-size:0.75rem; color: rgba(255,255,255,0.5);">Revalida la composición del devengado, la aritmética, los impuestos (CESS / ISIP) y los totales de los cierres registrados.</p>
+                    <?php
+                    /* Puntero real de la BD, que no es lo mismo que el periodo que se
+                     * esta viendo en pantalla (puede ser otro). Es el mes abierto mas
+                     * antiguo y por lo tanto el que decide que periodos se pueden
+                     * generar; por eso conviene tenerlo siempre a la vista. */
+                    $periodoCurso = periodoNominasEnCurso($pdo);
+                    ?>
+                    <div class="periodo-curso-chip" title="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas" data-tooltip="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas" data-tooltip-theme="info">
+                        <i class="fas fa-calendar-days"></i>
+                        <span class="periodo-curso-label">Per&iacute;odo en curso:</span>
+                        <span class="periodo-curso-valor"><?php echo htmlspecialchars(etiquetaMesNominas($periodoCurso['mes']) . ' / ' . (int)$periodoCurso['anio']); ?></span>
+                    </div>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-4 flex-wrap">
@@ -4971,6 +5327,274 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
     <?php unset($_SESSION['error_vacaciones']); ?>
     <?php endif; ?>
 
+    <!-- Aviso de periodo no operable: el guard redirige aqui cuando se intenta
+         modificar un mes o ano cerrado, o un periodo que aun no ha llegado.
+         Se muestra siempre que el periodo en pantalla no sea operable, no
+         solo tras la redireccion. El icono distingue los dos motivos. -->
+    <?php if ($periodo_bloqueado !== ''): ?>
+    <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white mb-4 fade-in-up"
+         id="avisoPeriodoCerrado">
+        <i class="fas <?php echo $motivo_periodo_bloqueado === 'periodo_futuro' ? 'fa-calendar-xmark' : 'fa-lock'; ?> me-2"></i><?php echo htmlspecialchars($periodo_bloqueado); ?>
+        <button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+    <?php endif; ?>
+
+    <!-- Aviso de cadena de anios: no se puede trabajar sobre un anio si el
+         anterior tiene nominas y su cierre anual no esta registrado. Se muestra
+         siempre que el anio en pantalla no sea operable por esa causa; la
+         rama 'error=anio_previo_abierto' de mas abajo cubre el caso de la URL
+         traida por el guard, para no duplicar el mismo texto. -->
+    <?php if (empty($previo_anio_nominas['permitido']) && ($_GET['error'] ?? '') !== 'anio_previo_abierto'): ?>
+    <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white mb-4 fade-in-up"
+         id="avisoAnioPrevio">
+        <i class="fas fa-lock me-2"></i><span class="texto-anio-previo"><?php echo htmlspecialchars(mensaje_anio_previo_nominas((int)$anio, (int)($previo_anio_nominas['anio_pendiente'] ?? 0))); ?></span>
+        <button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+    <?php endif; ?>
+
+    <!-- Alertas Generales -->
+    <div id="alertasGenerales"></div>
+    <?php if (isset($_GET['msg']) || isset($_GET['error']) || isset($_GET['duplicados'])): ?>
+    <div class="mb-4 fade-in-up">
+        <?php if (isset($_GET['msg'])): ?>
+            <?php if ($_GET['msg'] == 'generated'): ?>
+            <div class="alert alert-success bg-success bg-opacity-25 border-success text-white"><i class="fas fa-check-circle me-2"></i> Nómina generada correctamente.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['msg'] == 'extraordinaria_added'): ?>
+            <div class="alert alert-success bg-success bg-opacity-25 border-success text-white"><i class="fas fa-check-circle me-2"></i> Se agregaron <?php echo intval($_GET['count']); ?> trabajadores a la extraordinaria.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['msg'] == 'vacaciones_added'): ?>
+            <div class="alert alert-success bg-success bg-opacity-25 border-success text-white"><i class="fas fa-check-circle me-2"></i> Se agregaron <?php echo intval($_GET['count']); ?> trabajadores a vacaciones.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['msg'] == 'bono_added'): ?>
+            <div class="alert alert-success bg-success bg-opacity-25 border-success text-white"><i class="fas fa-check-circle me-2"></i> Se agregaron <?php echo intval($_GET['count']); ?> bonos.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['msg'] == 'contabilized'): ?>
+            <div class="alert alert-info bg-info bg-opacity-25 border-info text-white"><i class="fas fa-lock me-2"></i> Nómina contabilizada. Ya no se puede modificar.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['msg'] == 'reverted'): ?>
+            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white"><i class="fas fa-undo-alt me-2"></i> Nómina <?php echo htmlspecialchars($_GET['code'] ?? ''); ?> revertida a estado Borrador. Ya puede modificarse.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['msg'] == 'deleted'): ?>
+            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white"><i class="fas fa-trash me-2"></i> Nómina eliminada correctamente.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+		 <?php elseif ($_GET['msg'] == 'ajuste_procesado'): ?>
+				<div class="alert alert-success bg-success bg-opacity-25 border-success text-white">
+					<i class="fas fa-check-circle me-2"></i> 
+					Ajuste procesado: <?php echo intval($_GET['nuevos'] ?? 0); ?> nuevos, 
+					<?php echo intval($_GET['actualizados'] ?? 0); ?> acumulados 
+					(total <?php echo intval($_GET['count'] ?? 0); ?> registros afectados).
+					<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+				</div>
+		 <?php elseif ($_GET['msg'] == 'liquidacion_procesada'): ?>
+				<div class="alert alert-success bg-success bg-opacity-25 border-success text-white">
+					<i class="fas fa-check-circle me-2"></i> 
+					Liquidación de fracciones procesada: <?php echo intval($_GET['nuevos'] ?? 0); ?> nuevos, 
+					<?php echo intval($_GET['actualizados'] ?? 0); ?> acumulados 
+					(total <?php echo intval($_GET['count'] ?? 0); ?> registros afectados).
+					<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+				</div>
+            <?php endif; ?>
+        <?php endif; ?>
+        
+        <?php if (isset($_GET['error'])): ?>
+            <?php if ($_GET['error'] == 'ya_existentes'): ?>
+            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white"><i class="fas fa-exclamation-triangle me-2"></i> Algunos ya tienen nómina de vacaciones.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'no_validos'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No se pudieron agregar trabajadores. Verifique días.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'no_bonos'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No se pudo generar bono. Verifique montos.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'already_closed'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> La nómina ya está contabilizada.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'anio_previo_abierto'): ?>
+            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white">
+                <i class="fas fa-lock me-2"></i>
+                <?php echo htmlspecialchars(mensaje_anio_previo_nominas(
+                    (int)($_GET['anio'] ?? $anio),
+                    (int)($_GET['anio_pendiente'] ?? 0)
+                )); ?>
+                <button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+            <?php elseif ($_GET['error'] == 'revert_no_numero'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No se especificó el número de nómina a revertir.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'revert_no_cierre'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No se encontró el cierre de esa nómina. Verifique el número.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'revert_no_nomina'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No hay filas contabilizadas con ese número para revertir.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'already_exists'): ?>
+            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white"><i class="fas fa-exclamation-triangle me-2"></i> Ya existe una nómina para este período. Use "Regenerar".<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'no_trabajadores'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> Seleccione al menos un trabajador con horas válidas.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'worker_in_automatica'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> El trabajador ya tiene nómina automática.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'todos_duplicados'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> Todos los seleccionados ya tienen nómina automática.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'cuadre_pendiente'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white">
+                <i class="fas fa-ban me-2"></i>
+                <strong>Revisión de cuadre previa:</strong> la nómina <strong>NO fue contabilizada</strong>. Hay
+                <strong><?php echo intval($_GET['filas'] ?? 0); ?></strong> fila(s) en borrador con descuadres
+                (devengado, CESS/ISIP, deducciones o neto).
+                <button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                <div class="mt-2 d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-warning btn-sm" id="btnCorregirPendientes"
+                        data-pd="<?php echo htmlspecialchars($_GET['pd'] ?? ''); ?>"
+                        data-ph="<?php echo htmlspecialchars($_GET['ph'] ?? ''); ?>"
+                        data-tipo="<?php echo htmlspecialchars($_GET['tipo'] ?? ''); ?>"
+                        style="border-radius:0.5rem;">
+                        <i class="fas fa-calculator me-1"></i> Recalcular y corregir
+                    </button>
+                    <div id="cuadreDropServidor"></div>
+                    <small class="d-block w-100 mt-1" style="opacity:0.8;">Recalcula desde los valores base y guarda devengado, CESS, ISIP, deducciones y neto correctos en los borradores con descuadre.</small>
+                </div>
+            </div>
+            <?php if (!empty($_SESSION['cuadre_pendiente_errores'])): ?>
+            <script>
+            window.cuadrePendienteAlertaData = <?php echo json_encode([
+                'periodo' => substr($_GET['pd'] ?? '', 0, 7),
+                'tipo' => $_GET['tipo'] ?? '',
+                'filas' => intval($_GET['filas'] ?? 0),
+                'filas_con_error' => intval($_GET['filas'] ?? 0),
+                'errores_total' => count($_SESSION['cuadre_pendiente_errores']),
+                'errores' => array_slice($_SESSION['cuadre_pendiente_errores'], 0, 200),
+            ], JSON_UNESCAPED_UNICODE); ?>;
+            </script>
+            <?php endif; ?>
+            <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var cuadreDropSrv = document.getElementById('cuadreDropServidor');
+                if (cuadreDropSrv) {
+                    window.cuadreDropData['cuadre_servidor'] = { rep: window.cuadrePendienteAlertaData || { errores: [] }, titulo: 'N\u00d3MINAS EN BORRADOR' };
+                    cuadreDropSrv.innerHTML = window.cuadreBotonesHtml('cuadre_servidor');
+                }
+                var b = document.getElementById('btnCorregirPendientes');
+                if (!b) return;
+                b.addEventListener('click', function () {
+                    var pd = b.getAttribute('data-pd'), ph = b.getAttribute('data-ph'), tp = b.getAttribute('data-tipo');
+                    if (!pd || !ph || !tp) { return; }
+                    Swal.fire({
+                        title: '<i class="fas fa-calculator me-2" style="color:#f59e0b;"></i>¿Recalcular pendientes?',
+                        html: 'Se recalcularán y guardarán los valores correctos en <strong>los borradores de este período/tipo</strong> que presenten descuadres.<br><br>Esta acción sobrescribe los valores actuales y es irreversible.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#475569',
+                        confirmButtonText: '<i class="fas fa-check me-1"></i>Sí, recalcular',
+                        cancelButtonText: '<i class="fas fa-times me-1"></i>Cancelar',
+                        background: '#1a1a2e',
+                        color: '#ffffff'
+                    }).then(function (res) {
+                        if (!res.isConfirmed) return;
+                        Swal.fire({
+                            title: '<i class="fas fa-spinner fa-spin me-2"></i>Recalculando...',
+                            allowOutsideClick: false,
+                            didOpen: function () { Swal.showLoading(); },
+                            background: '#1a1a2e',
+                            color: '#ffffff'
+                        });
+                        fetch('nominas.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                            body: 'action=corregir_pendientes&ajax=1&pd=' + encodeURIComponent(pd)
+                                + '&ph=' + encodeURIComponent(ph) + '&tipo=' + encodeURIComponent(tp),
+                            cache: 'no-store'
+                        })
+                            .then(function (r) { return r.json(); })
+                            .then(function (data) {
+                                if (data && data.success) {
+                                    Swal.fire({
+                                        title: '<i class="fas fa-check-circle me-2" style="color:3;"></i>Recálculo completado',
+                                        html: 'Se corrigieron <strong>' + data.filas_corregidas + '</strong> borrador(es).<br>Descuadres pendientes restantes: <strong>' + data.errores_total + '</strong>.',
+                                        icon: 'success',
+                                        background: '#1a1a2e',
+                                        color: '#ffffff',
+                                        confirmButtonText: '<i class="fas fa-check me-1"></i>Aceptar'
+                                    }).then(function () {
+                                        if (data.errores_total === 0) {
+                                            var alerta = b.closest('.alert');
+                                            if (alerta) alerta.style.display = 'none';
+                                            var detalle = document.getElementById('cuadreDetalleAlert');
+                                            if (detalle) detalle.style.display = 'none';
+                                            var periodo = (pd || '').substring(0, 7);
+                                            location.href = location.pathname + '?periodo=' + encodeURIComponent(periodo) + '&tipo=' + encodeURIComponent(tp);
+            } else {
+                                            location.reload();
+                                        }
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        title: '<i class="fas fa-exclamation-circle me-2"></i>Error',
+                                        text: (data && data.message) ? data.message : 'No se pudo recalcular.',
+                                        icon: 'error',
+                                        background: '#1a1a2e',
+                                        color: '#ffffff',
+                                        confirmButtonText: '<i class="fas fa-check me-1"></i>Aceptar'
+                                    });
+                                }
+                            })
+                            .catch(function () {
+                                Swal.fire({
+                                    title: '<i class="fas fa-wifi me-2"></i>Error',
+                                    text: 'No se pudo conectar para recalcular.',
+                                    icon: 'error',
+                                    background: '#1a1a2e',
+                                    color: '#ffffff',
+                                    confirmButtonText: '<i class="fas fa-check me-1"></i>Aceptar'
+                                });
+                            });
+                    });
+                });
+            });
+            </script>
+            <?php if (!empty($_SESSION['cuadre_pendiente_errores'])): 
+                $pendientes_lista = $_SESSION['cuadre_pendiente_errores'];
+                unset($_SESSION['cuadre_pendiente_errores']);
+            ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white" id="cuadreDetalleAlert" style="max-height:20rem; overflow-x:auto; overflow-y:auto;">
+                <strong><i class="fas fa-list me-1"></i> Detalle de los descuadres pendientes:</strong>
+                <table class="table table-sm table-dark align-middle mt-2 mb-0" style="font-size:0.75rem;">
+                    <thead>
+                        <tr>
+                            <th>Trabajador</th>
+                            <th>Tipo</th>
+                            <th>Verificación</th>
+                            <th class="text-end">Almacenado</th>
+                            <th class="text-end">Recalculado</th>
+                            <th class="text-end">Diferencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach (array_slice($pendientes_lista, 0, 100) as $e): ?>
+                        <tr>
+                            <td><a class="cuadre-link" href="empleados.php?editar=<?php echo (int)$e['trabajador_id']; ?>" title="Abrir ficha del empleado" data-tooltip="Abrir ficha del empleado" data-tooltip-theme="info"><?php echo htmlspecialchars($e['trabajador']); ?></a></td>
+                            <td><?php echo htmlspecialchars($e['tipo']); ?></td>
+                            <td><?php echo htmlspecialchars($e['detalle']); ?></td>
+                            <td class="text-end cuadre-val-almacenado"><?php echo htmlspecialchars($e['encontrado']); ?></td>
+                            <td class="text-end cuadre-val-recalculado"><?php echo htmlspecialchars($e['esperado']); ?></td>
+                            <td class="text-end cuadre-val-diferencia"><?php echo htmlspecialchars($e['diferencia']); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php if (count($pendientes_lista) > 100): ?>
+                    <div class="mt-2" style="color:#fbbf24;">Mostrando los primeros 100 de <?php echo count($pendientes_lista); ?> descuadres.</div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+            <?php endif; ?>
+        <?php endif; ?>
+        
+        <?php if (isset($_GET['duplicados'])): 
+            $duplicados_ids = explode(',', $_GET['duplicados']);
+            $nombres_duplicados = [];
+            foreach ($duplicados_ids as $did) {
+                $stmt_nombre = $pdo->prepare("SELECT nombre_completo FROM trabajadores WHERE id = ?");
+                $stmt_nombre->execute([$did]);
+                $nombres_duplicados[] = $stmt_nombre->fetchColumn();
+            }
+        ?>
+        <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Omitidos (ya tienen nómina automática): <strong><?php echo htmlspecialchars(implode(', ', $nombres_duplicados)); ?></strong>
+            <button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <!-- Estado si no hay nómina -->
     <?php if (!$existe_nomina): ?>
         <div class="glass-card text-center p-5 fade-in-up" style="animation-delay: 0.2s;">
@@ -5119,234 +5743,6 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
     </div>
 </div>
 
-    <!-- Alertas Generales -->
-    <div id="alertasGenerales"></div>
-    <?php if (isset($_GET['msg']) || isset($_GET['error']) || isset($_GET['duplicados'])): ?>
-    <div class="mb-4 fade-in-up">
-        <?php if (isset($_GET['msg'])): ?>
-            <?php if ($_GET['msg'] == 'generated'): ?>
-            <div class="alert alert-success bg-success bg-opacity-25 border-success text-white"><i class="fas fa-check-circle me-2"></i> Nómina generada correctamente.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['msg'] == 'extraordinaria_added'): ?>
-            <div class="alert alert-success bg-success bg-opacity-25 border-success text-white"><i class="fas fa-check-circle me-2"></i> Se agregaron <?php echo intval($_GET['count']); ?> trabajadores a la extraordinaria.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['msg'] == 'vacaciones_added'): ?>
-            <div class="alert alert-success bg-success bg-opacity-25 border-success text-white"><i class="fas fa-check-circle me-2"></i> Se agregaron <?php echo intval($_GET['count']); ?> trabajadores a vacaciones.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['msg'] == 'bono_added'): ?>
-            <div class="alert alert-success bg-success bg-opacity-25 border-success text-white"><i class="fas fa-check-circle me-2"></i> Se agregaron <?php echo intval($_GET['count']); ?> bonos.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['msg'] == 'contabilized'): ?>
-            <div class="alert alert-info bg-info bg-opacity-25 border-info text-white"><i class="fas fa-lock me-2"></i> Nómina contabilizada. Ya no se puede modificar.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['msg'] == 'reverted'): ?>
-            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white"><i class="fas fa-undo-alt me-2"></i> Nómina <?php echo htmlspecialchars($_GET['code'] ?? ''); ?> revertida a estado Borrador. Ya puede modificarse.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['msg'] == 'deleted'): ?>
-            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white"><i class="fas fa-trash me-2"></i> Nómina eliminada correctamente.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-		 <?php elseif ($_GET['msg'] == 'ajuste_procesado'): ?>
-				<div class="alert alert-success bg-success bg-opacity-25 border-success text-white">
-					<i class="fas fa-check-circle me-2"></i> 
-					Ajuste procesado: <?php echo intval($_GET['nuevos'] ?? 0); ?> nuevos, 
-					<?php echo intval($_GET['actualizados'] ?? 0); ?> acumulados 
-					(total <?php echo intval($_GET['count'] ?? 0); ?> registros afectados).
-					<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-				</div>
-		 <?php elseif ($_GET['msg'] == 'liquidacion_procesada'): ?>
-				<div class="alert alert-success bg-success bg-opacity-25 border-success text-white">
-					<i class="fas fa-check-circle me-2"></i> 
-					Liquidación de fracciones procesada: <?php echo intval($_GET['nuevos'] ?? 0); ?> nuevos, 
-					<?php echo intval($_GET['actualizados'] ?? 0); ?> acumulados 
-					(total <?php echo intval($_GET['count'] ?? 0); ?> registros afectados).
-					<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-				</div>
-            <?php endif; ?>
-        <?php endif; ?>
-        
-        <?php if (isset($_GET['error'])): ?>
-            <?php if ($_GET['error'] == 'ya_existentes'): ?>
-            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white"><i class="fas fa-exclamation-triangle me-2"></i> Algunos ya tienen nómina de vacaciones.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'no_validos'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No se pudieron agregar trabajadores. Verifique días.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'no_bonos'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No se pudo generar bono. Verifique montos.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'already_closed'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> La nómina ya está contabilizada.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'revert_no_numero'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No se especificó el número de nómina a revertir.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'revert_no_cierre'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No se encontró el cierre de esa nómina. Verifique el número.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'revert_no_nomina'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> No hay filas contabilizadas con ese número para revertir.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'already_exists'): ?>
-            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white"><i class="fas fa-exclamation-triangle me-2"></i> Ya existe una nómina para este período. Use "Regenerar".<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'no_trabajadores'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> Seleccione al menos un trabajador con horas válidas.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'worker_in_automatica'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> El trabajador ya tiene nómina automática.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'todos_duplicados'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> Todos los seleccionados ya tienen nómina automática.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
-            <?php elseif ($_GET['error'] == 'cuadre_pendiente'): ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white">
-                <i class="fas fa-ban me-2"></i>
-                <strong>Revisión de cuadre previa:</strong> la nómina <strong>NO fue contabilizada</strong>. Hay
-                <strong><?php echo intval($_GET['filas'] ?? 0); ?></strong> fila(s) en borrador con descuadres
-                (devengado, CESS/ISIP, deducciones o neto).
-                <button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                <div class="mt-2 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-warning btn-sm" id="btnCorregirPendientes"
-                        data-pd="<?php echo htmlspecialchars($_GET['pd'] ?? ''); ?>"
-                        data-ph="<?php echo htmlspecialchars($_GET['ph'] ?? ''); ?>"
-                        data-tipo="<?php echo htmlspecialchars($_GET['tipo'] ?? ''); ?>"
-                        style="border-radius:0.5rem;">
-                        <i class="fas fa-calculator me-1"></i> Recalcular y corregir
-                    </button>
-                    <div id="cuadreDropServidor"></div>
-                    <small class="d-block w-100 mt-1" style="opacity:0.8;">Recalcula desde los valores base y guarda devengado, CESS, ISIP, deducciones y neto correctos en los borradores con descuadre.</small>
-                </div>
-            </div>
-            <?php if (!empty($_SESSION['cuadre_pendiente_errores'])): ?>
-            <script>
-            window.cuadrePendienteAlertaData = <?php echo json_encode([
-                'periodo' => substr($_GET['pd'] ?? '', 0, 7),
-                'tipo' => $_GET['tipo'] ?? '',
-                'filas' => intval($_GET['filas'] ?? 0),
-                'filas_con_error' => intval($_GET['filas'] ?? 0),
-                'errores_total' => count($_SESSION['cuadre_pendiente_errores']),
-                'errores' => array_slice($_SESSION['cuadre_pendiente_errores'], 0, 200),
-            ], JSON_UNESCAPED_UNICODE); ?>;
-            </script>
-            <?php endif; ?>
-            <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var cuadreDropSrv = document.getElementById('cuadreDropServidor');
-                if (cuadreDropSrv) {
-                    window.cuadreDropData['cuadre_servidor'] = { rep: window.cuadrePendienteAlertaData || { errores: [] }, titulo: 'N\u00d3MINAS EN BORRADOR' };
-                    cuadreDropSrv.innerHTML = window.cuadreBotonesHtml('cuadre_servidor');
-                }
-                var b = document.getElementById('btnCorregirPendientes');
-                if (!b) return;
-                b.addEventListener('click', function () {
-                    var pd = b.getAttribute('data-pd'), ph = b.getAttribute('data-ph'), tp = b.getAttribute('data-tipo');
-                    if (!pd || !ph || !tp) { return; }
-                    Swal.fire({
-                        title: '<i class="fas fa-calculator me-2" style="color:#f59e0b;"></i>¿Recalcular pendientes?',
-                        html: 'Se recalcularán y guardarán los valores correctos en <strong>los borradores de este período/tipo</strong> que presenten descuadres.<br><br>Esta acción sobrescribe los valores actuales y es irreversible.',
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonColor: '#f59e0b',
-                        cancelButtonColor: '#475569',
-                        confirmButtonText: '<i class="fas fa-check me-1"></i>Sí, recalcular',
-                        cancelButtonText: '<i class="fas fa-times me-1"></i>Cancelar',
-                        background: '#1a1a2e',
-                        color: '#ffffff'
-                    }).then(function (res) {
-                        if (!res.isConfirmed) return;
-                        Swal.fire({
-                            title: '<i class="fas fa-spinner fa-spin me-2"></i>Recalculando...',
-                            allowOutsideClick: false,
-                            didOpen: function () { Swal.showLoading(); },
-                            background: '#1a1a2e',
-                            color: '#ffffff'
-                        });
-                        fetch('nominas.php?action=corregir_pendientes&ajax=1&pd=' + encodeURIComponent(pd) + '&ph=' + encodeURIComponent(ph) + '&tipo=' + encodeURIComponent(tp), { cache: 'no-store' })
-                            .then(function (r) { return r.json(); })
-                            .then(function (data) {
-                                if (data && data.success) {
-                                    Swal.fire({
-                                        title: '<i class="fas fa-check-circle me-2" style="color:3;"></i>Recálculo completado',
-                                        html: 'Se corrigieron <strong>' + data.filas_corregidas + '</strong> borrador(es).<br>Descuadres pendientes restantes: <strong>' + data.errores_total + '</strong>.',
-                                        icon: 'success',
-                                        background: '#1a1a2e',
-                                        color: '#ffffff',
-                                        confirmButtonText: '<i class="fas fa-check me-1"></i>Aceptar'
-                                    }).then(function () {
-                                        if (data.errores_total === 0) {
-                                            var alerta = b.closest('.alert');
-                                            if (alerta) alerta.style.display = 'none';
-                                            var detalle = document.getElementById('cuadreDetalleAlert');
-                                            if (detalle) detalle.style.display = 'none';
-                                            var periodo = (pd || '').substring(0, 7);
-                                            location.href = location.pathname + '?periodo=' + encodeURIComponent(periodo) + '&tipo=' + encodeURIComponent(tp);
-            } else {
-                                            location.reload();
-                                        }
-                                    });
-                                } else {
-                                    Swal.fire({
-                                        title: '<i class="fas fa-exclamation-circle me-2"></i>Error',
-                                        text: (data && data.message) ? data.message : 'No se pudo recalcular.',
-                                        icon: 'error',
-                                        background: '#1a1a2e',
-                                        color: '#ffffff',
-                                        confirmButtonText: '<i class="fas fa-check me-1"></i>Aceptar'
-                                    });
-                                }
-                            })
-                            .catch(function () {
-                                Swal.fire({
-                                    title: '<i class="fas fa-wifi me-2"></i>Error',
-                                    text: 'No se pudo conectar para recalcular.',
-                                    icon: 'error',
-                                    background: '#1a1a2e',
-                                    color: '#ffffff',
-                                    confirmButtonText: '<i class="fas fa-check me-1"></i>Aceptar'
-                                });
-                            });
-                    });
-                });
-            });
-            </script>
-            <?php if (!empty($_SESSION['cuadre_pendiente_errores'])): 
-                $pendientes_lista = $_SESSION['cuadre_pendiente_errores'];
-                unset($_SESSION['cuadre_pendiente_errores']);
-            ?>
-            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white" id="cuadreDetalleAlert" style="max-height:20rem; overflow-x:auto; overflow-y:auto;">
-                <strong><i class="fas fa-list me-1"></i> Detalle de los descuadres pendientes:</strong>
-                <table class="table table-sm table-dark align-middle mt-2 mb-0" style="font-size:0.75rem;">
-                    <thead>
-                        <tr>
-                            <th>Trabajador</th>
-                            <th>Tipo</th>
-                            <th>Verificación</th>
-                            <th class="text-end">Almacenado</th>
-                            <th class="text-end">Recalculado</th>
-                            <th class="text-end">Diferencia</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach (array_slice($pendientes_lista, 0, 100) as $e): ?>
-                        <tr>
-                            <td><a class="cuadre-link" href="empleados.php?editar=<?php echo (int)$e['trabajador_id']; ?>" title="Abrir ficha del empleado" data-tooltip="Abrir ficha del empleado" data-tooltip-theme="info"><?php echo htmlspecialchars($e['trabajador']); ?></a></td>
-                            <td><?php echo htmlspecialchars($e['tipo']); ?></td>
-                            <td><?php echo htmlspecialchars($e['detalle']); ?></td>
-                            <td class="text-end cuadre-val-almacenado"><?php echo htmlspecialchars($e['encontrado']); ?></td>
-                            <td class="text-end cuadre-val-recalculado"><?php echo htmlspecialchars($e['esperado']); ?></td>
-                            <td class="text-end cuadre-val-diferencia"><?php echo htmlspecialchars($e['diferencia']); ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <?php if (count($pendientes_lista) > 100): ?>
-                    <div class="mt-2" style="color:#fbbf24;">Mostrando los primeros 100 de <?php echo count($pendientes_lista); ?> descuadres.</div>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-            <?php endif; ?>
-        <?php endif; ?>
-        
-        <?php if (isset($_GET['duplicados'])): 
-            $duplicados_ids = explode(',', $_GET['duplicados']);
-            $nombres_duplicados = [];
-            foreach ($duplicados_ids as $did) {
-                $stmt_nombre = $pdo->prepare("SELECT nombre_completo FROM trabajadores WHERE id = ?");
-                $stmt_nombre->execute([$did]);
-                $nombres_duplicados[] = $stmt_nombre->fetchColumn();
-            }
-        ?>
-        <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            Omitidos (ya tienen nómina automática): <strong><?php echo htmlspecialchars(implode(', ', $nombres_duplicados)); ?></strong>
-            <button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-        </div>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
-
         <!-- TABLA PRINCIPAL DE NÓMINA -->
         <div class="glass-card fade-in-up" style="animation-delay: 0.4s;">
 		<!-- Título de la Tarjeta del DataTable (Card Title) -->
@@ -5451,8 +5847,8 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
             <th class="col-horas" rowspan="2"><?php echo $tipo_nomina_activa == 'extraordinaria' ? 'HE<br>Diurnas' : 'Horas<br>Trab'; ?></th>
             
             <?php if ($tipo_nomina_activa == 'extraordinaria'): ?>
-                <th class="col-noct-t" rowspan="2">Nt<br>7-23h</th>
-                <th class="col-noct-t-imp" rowspan="2">$/Nt<br>7-23h</th>
+                <th class="col-noct-t" rowspan="2">Nt<br>19-23h</th>
+                <th class="col-noct-t-imp" rowspan="2">$/Nt<br>19-23h</th>
                 <th class="col-noct-d" rowspan="2">Nt<br>23-7h</th>
                 <th class="col-noct-d-imp" rowspan="2">$/Nt<br>23-7h</th>
                 <th class="col-dt" rowspan="2">Doble<br>Turno</th>
@@ -6636,6 +7032,127 @@ if ($existe_nomina) {
     </div>
 </div>
 
+<!-- MODAL HORAS EXTRAORDINARIAS ANUALES -->
+<style>
+    #modalHeAnuales .modal-body { font-size: 0.78rem; }
+    #tablaHeAnuales { font-size: 0.75rem; white-space: nowrap; }
+    #tablaHeAnuales th,
+    #tablaHeAnuales td { padding: 0.18rem 0.32rem; vertical-align: middle; }
+    #tablaHeAnuales th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
+</style>
+<div class="modal fade" id="modalHeAnuales" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content modal-content-modern">
+            <div class="modal-header" style="background: linear-gradient(135deg, #4338ca, #7c3aed); border-bottom: none;">
+                <h5 class="modal-title text-white" id="heAnualesModalTitle"><i class="fas fa-hourglass-half me-2"></i> Horas Extraordinarias Anuales</h5>
+                <button type="button" class="btn-close-custom" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="row g-3 align-items-end mb-3">
+                    <div class="col-md-auto" style="width:5.5rem;">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #a78bfa;"><i class="fas fa-calendar-alt me-1"></i> Año</label>
+                        <select id="heAnualesAnio" class="form-select form-select-sm" title="Seleccionar año" data-tooltip="Seleccionar año" data-tooltip-theme="secondary">
+                            <?php
+                            $stmt_he = $pdo->query("SELECT DISTINCT YEAR(periodo_desde) as anio FROM nominas ORDER BY anio DESC");
+                            $anios_he = $stmt_he->fetchAll(PDO::FETCH_COLUMN);
+                            if (empty($anios_he)) $anios_he = [(int)date('Y')];
+                            foreach ($anios_he as $yy): ?>
+                            <option value="<?php echo (int)$yy; ?>" <?php echo (int)$yy == (int)$anio ? 'selected' : ''; ?>><?php echo (int)$yy; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-auto" style="width:9rem;">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #a78bfa;"><i class="fas fa-calendar-day me-1"></i> Mes</label>
+                        <select id="heAnualesMes" class="form-select form-select-sm" title="Seleccionar mes" data-tooltip="Seleccionar mes" data-tooltip-theme="secondary">
+                            <option value="0">Cargando meses...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-auto" style="width:12rem;">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #a78bfa;"><i class="fas fa-filter me-1"></i> Mostrar</label>
+                        <select id="heAnualesEstado" class="form-select form-select-sm" title="Filtrar por situación del tope" data-tooltip="Filtrar por situación del tope" data-tooltip-theme="secondary">
+                            <option value="todos">Todos con horas</option>
+                            <option value="superado">Superan <?php echo (int)$topeHeAnualCfg; ?> h</option>
+                            <option value="tope">Al tope exacto (<?php echo (int)$topeHeAnualCfg; ?> h)</option>
+                            <option value="cerca">Cerca del tope (<?php echo (int)$topeHeCercaCfg; ?>–<?php echo (int)$topeHeAnualCfg; ?> h)</option>
+                            <option value="regla">En regla (menos de <?php echo (int)$topeHeCercaCfg; ?> h)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #a78bfa;"><i class="fas fa-user me-1"></i> Nombre del Trabajador</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text" style="background: rgba(167,139,250,0.15); border: 0.0625rem solid rgba(167,139,250,0.3); color: #a78bfa;">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" id="heAnualesBuscar" class="form-control" placeholder="Buscar por nombre, código, CI o cargo..." autocomplete="off" style="background: rgba(20,20,30,0.9); border: 0.0625rem solid rgba(167,139,250,0.3); color: white;">
+                            <button class="btn btn-sm" type="button" id="heAnualesLimpiar" data-tooltip="Limpiar búsqueda" data-tooltip-theme="danger" style="background: rgba(239,68,68,0.2); border: 0.0625rem solid rgba(239,68,68,0.3); color: #fca5a5;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="button" class="btn-win btn-win-sm" id="btnBuscarHeAnuales" title="Actualizar horas extraordinarias" data-tooltip="Actualizar horas extraordinarias" data-tooltip-theme="primary"><i class="fas fa-rotate-right me-1"></i> Actualizar</button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <span id="heAnualesResumenWrap" title="Resumen de horas extraordinarias" data-tooltip="Resumen de horas extraordinarias" data-tooltip-theme="secondary" style="display:block; width:100%; color:#c4b5fd; font-size:0.75rem; line-height:1.35; text-align:left; background:rgba(124,58,237,0.08); border:0.0625rem solid rgba(124,58,237,0.25); border-radius:0.5rem; padding:0.375rem 0.625rem;">
+                        <span class="d-block fw-semibold" id="heAnualesResumen"><i class="fas fa-hourglass-half me-1"></i>Sin datos</span>
+                    </span>
+                    <span class="d-block mt-2" style="font-size:0.7rem; color: rgba(255,255,255,0.55);">
+                        <i class="fas fa-circle-info me-1"></i> Trabajadores con horas &gt; 0 en el período seleccionado · tope de referencia <?php echo (int)$topeHeAnualCfg; ?> h extraordinarias al año (art. 229.2).
+                    </span>
+                </div>
+                <div class="table-responsive" style="max-height:26.25rem; overflow-y: auto;">
+                    <table class="table table-sm table-dark table-hover border-secondary align-middle" id="tablaHeAnuales" style="font-size:0.78rem;">
+                        <thead>
+                            <tr>
+                                <th>No.</th>
+                                <th>Expediente</th>
+                                <th>CI</th>
+                                <th>Nombre y Apellidos</th>
+                                <th class="text-center" title="Código (id) del cargo en la tabla cargos_plantilla">Cargo</th>
+                                <th class="text-center" title="Código (id) del área en la tabla areas">Área</th>
+                                <th class="text-end" title="Salario mensual de la escala salarial asignada">Salario<br>Escala</th>
+                                <th class="text-end" title="Lo que gana el trabajador en un día según su salario mensual">SAL/DÍA</th>
+                                <th class="text-end" title="Valor de la hora ordinaria según su salario">SAL/HORA</th>
+                                <th class="text-center">HE MES</th>
+                                <th class="text-center">H.E. AÑO</th>
+                                <th class="text-center">D.T. AÑO</th>
+                                <th class="text-center">TOTAL AÑO</th>
+                                <th class="text-center">% TOPE</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="15" class="text-center text-muted"><i class="fas fa-spinner fa-pulse me-1"></i> Cargando...</td></tr>
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: rgba(124,58,237,0.14); font-weight:600;">
+<td class="text-center">TOTAL GENERAL</td>
+                            <td colspan="8" class="text-center" id="heTotResumen" title="Resumen de estadísticas del listado">—</td>
+                            <td class="text-center" id="heTotMes">—</td>
+                                <td class="text-center" id="heTotHe">0</td>
+                                <td class="text-center" id="heTotDt">0</td>
+                                <td class="text-center" id="heTotAnio">0</td>
+                                <td class="text-center" id="heTotPct" title="Promedio de aprovechamiento del tope entre los trabajadores listados">0%</td>
+                                <td id="heTotEstado" title="Superados / Al tope / Cerca del tope">—</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:0.0625rem solid rgba(255,255,255,0.1);">
+                <button type="button" class="btn-win btn-win-sm" id="btnHeAnualesPrint" title="Imprimir horas extraordinarias anuales" data-tooltip="Imprimir horas extraordinarias" data-tooltip-theme="info"><i class="fas fa-print text-warning me-1"></i> Imprimir</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnHeAnualesPDF" title="Exportar como PDF" data-tooltip="Exportar como PDF" data-tooltip-theme="info"><i class="fas fa-file-pdf text-danger me-1"></i> PDF</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnHeAnualesWord" title="Exportar como Word" data-tooltip="Exportar como Word" data-tooltip-theme="info"><i class="fas fa-file-word text-primary me-1"></i> WORD</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnHeAnualesExcel" title="Exportar como Excel" data-tooltip="Exportar como Excel" data-tooltip-theme="info"><i class="fas fa-file-excel text-success me-1"></i> EXCEL</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnHeAnualesCSV" title="Exportar como CSV" data-tooltip="Exportar como CSV" data-tooltip-theme="info"><i class="fas fa-file-csv text-info me-1"></i> CSV</button>
+                <button type="button" class="btn-win btn-win-sm" id="btnHeAnualesTXT" title="Exportar como TXT" data-tooltip="Exportar como TXT" data-tooltip-theme="info"><i class="fas fa-file-alt text-secondary me-1"></i> TXT</button>
+                <button type="button" class="btn-win btn-win-sm" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"><i class="fas fa-times me-1"></i> Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- SCRIPTS -->
 <!-- 1. Librerías Base (jQuery y Bootstrap) -->
 <script src="../js/jquery-3.6.0.min.js"></script>
@@ -7088,8 +7605,8 @@ function generarTirillasPago(trabajadores) {
                         <tr>
                             <th class="centrado">HE/D</th>
                             <th class="centrado">$HE/D</th>
-                            <th class="centrado">Nt 7-23h</th>
-                            <th class="centrado">$/Nt 7-23h</th>
+                            <th class="centrado">Nt 19-23h</th>
+                            <th class="centrado">$/Nt 19-23h</th>
                             <th class="centrado">Nt 23-7h</th>
                             <th class="centrado">$/Nt 23-7h</th>
                             <th class="centrado">D/T</th>

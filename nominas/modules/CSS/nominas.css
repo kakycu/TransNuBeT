@@ -1433,3 +1433,21 @@ td.dtfc-fixed-left:nth-child(2) {
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
     transform: translateY(-1px);
 }
+/* ============================================
+   PERIODO CERRADO: candado visual
+   ============================================ */
+/* Marca los controles que MODIFICAN la nomina cuando el periodo esta cerrado.
+   Deliberadamente NO lleva pointer-events:none ni se oculta nada: el click debe
+   seguir llegando al candado de JavaScript para que avise de por que no se puede
+   actuar. Solo baja la opacidad y cambia el cursor. Los controles de consulta e
+   impresion no reciben esta clase, porque en un periodo cerrado se debe poder
+   ver e imprimir la nomina. */
+.periodo-cerrado-bloqueado {
+    opacity: 0.45;
+    cursor: not-allowed !important;
+    filter: grayscale(0.35);
+}
+
+.periodo-cerrado-bloqueado:hover {
+    opacity: 0.45;
+}
