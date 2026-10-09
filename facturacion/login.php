@@ -623,7 +623,7 @@ var tituloBienvenida = saludo + ' de nuevo!';
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SISFACT PDL Visiones - Iniciar Sesión</title>
-  <link rel="icon" type="image/x-icon" href="assets/logov.png">
+  <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
   <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css" />
   <script src="js/sweetalert211.js"></script>
   <link rel="stylesheet" href="css/Animate4.1.1/animate.min.css">
@@ -753,7 +753,7 @@ var tituloBienvenida = saludo + ' de nuevo!';
 <div class="login-card animate__animated animate__fadeInDown" role="dialog" aria-labelledby="loginTitle">
     <a class="btn-close" href="index.php" aria-label="Cerrar"><i class="fa-solid fa-door-closed"></i> Cerrar</a>
     <div class="login-title" id="loginTitle">
-        <img src="assets/logov.png" alt="Logo PDL Visiones">
+        <img src="assets/LogoV.png" alt="Logo PDL Visiones">
         <h2>SISFACT PDL Visiones</h2>
         <p>Sistema de Facturación & Servicios de Impresión</p>
 		<h4>TECLEE SUS CREDENCIALES DE ACCESO</h4>

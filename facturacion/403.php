@@ -12,7 +12,7 @@ $BASE_URL = '/' . $CarpetaSistema . '/';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
-	<link rel="icon" type="image/x-icon" href="<?php echo $BASE_URL; ?>assets/logov.png">
+	<link rel="icon" type="image/x-icon" href="<?php echo $BASE_URL; ?>assets/LogoV.png">
     <style>
         :root {
             --mica-background: rgba(32, 32, 32, 0.85);
@@ -316,7 +316,7 @@ $BASE_URL = '/' . $CarpetaSistema . '/';
 .footer-logo-icon {
     width: 32px;
     height: 32px;
-    background-image: url("<?php echo $BASE_URL; ?>assets/logov.png");
+    background-image: url("<?php echo $BASE_URL; ?>assets/LogoV.png");
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;

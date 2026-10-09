@@ -200,7 +200,7 @@ $finanzas = Database::getProgresoFinanciero();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Capturador de Facturas - PDL Visiones</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- Bootstrap 5 -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -2580,7 +2580,7 @@ input[list] {
             <i class="fas fa-bars"></i>
         </button>
         <div class="win-navbar-brand">
-            <img src="assets/logov.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+            <img src="assets/LogoV.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
             <span style="color: var(--win-text-primary);">CAPTURADOR DE FACTURAS - SISFACT PDL Visiones</span>
         </div>
         <div class="win-nav-search d-none d-md-block">
@@ -6047,7 +6047,7 @@ contenido += '.table-print td { padding: 8px; border: 1px solid #000; }';
     
     // Header con logo
     contenido += '<div class="portada-header">';
-    contenido += '<img src="assets/logov.png" alt="Logo" onerror="this.style.display=\'none\'">';
+    contenido += '<img src="assets/LogoV.png" alt="Logo" onerror="this.style.display=\'none\'">';
     contenido += '<div>';
     contenido += '<h1>PDL Visiones</h1>';
     contenido += '<h3>Capturador de Facturas - SISFACT</h3>';
@@ -6247,7 +6247,7 @@ function exportarPDF() {
     
     // Logo en el header
     const logoImg = new Image();
-    logoImg.src = 'assets/logov.png';
+    logoImg.src = 'assets/LogoV.png';
     
     logoImg.onload = function() {
         doc.addImage(logoImg, 'PNG', 15, 10, 20, 20);

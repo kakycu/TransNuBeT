@@ -30,7 +30,7 @@ if (!$cierre_id) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>SISFACT PDL VISIONES - Error</title>
-        <link rel="icon" type="image/x-icon" href="assets/logov.png">
+        <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
         <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
         <!-- SweetAlert2 con tema oscuro -->
 		<link rel="stylesheet" href="css/sweetalert2.min.css">
@@ -187,7 +187,7 @@ if (!$cierre) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>SISFACT PDL VISIONES - Cierre no encontrado</title>
-        <link rel="icon" type="image/x-icon" href="assets/logov.png">
+        <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
         <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
         <!-- SweetAlert2 con tema oscuro -->
         <script src="js/sweetalert211.js"></script>
@@ -549,7 +549,7 @@ $fecha_generacion = date('d/m/Y h:i:s A');
 $usuario_actual = $_SESSION['usuario_nombre'] ?? 'Usuario';
 
 // Logo para exportaciones
-$logo_path = 'assets/logov.png';
+$logo_path = 'assets/LogoV.png';
 $logo_base64 = '';
 if (file_exists($logo_path)) {
     $logo_data = file_get_contents($logo_path);
@@ -708,7 +708,7 @@ if (!$hay_diferencias) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reporte de Cierre #<?php echo $cierre_id; ?> - SISFACT</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- Bootstrap 5 -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -1534,7 +1534,7 @@ if (!$hay_diferencias) {
                 <table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 20px;">
                     <tr>
                         <td style="width: 100px; vertical-align: top;">
-                            <img src="assets/logov.png" width="80" alt="Logo" style="display: block;">
+                            <img src="assets/LogoV.png" width="80" alt="Logo" style="display: block;">
                         </td>
                         <td style="vertical-align: top; padding-left: 15px;">
                             <h1 style="margin: 0; font-size: 24px; font-weight: bold;">PDL VISIONES</h1>

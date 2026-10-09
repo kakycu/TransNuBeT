@@ -602,7 +602,7 @@ $stmt = $db->query($sql_total);
 $estadisticas['total'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
 // Logo base64 para exportaciones
-$logo_path = 'assets/logov.png';
+$logo_path = 'assets/LogoV.png';
 $logo_base64 = '';
 if (file_exists($logo_path)) {
     $logo_data = file_get_contents($logo_path);
@@ -632,7 +632,7 @@ if (file_exists($logo_path)) {
             echo 'Servicios - SISFACT PDL Visiones';
         }
     ?></title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- Bootstrap 5 -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -1819,7 +1819,7 @@ if (file_exists($logo_path)) {
         
         <!-- Brand -->
         <div class="win-navbar-brand">
-            <img src="assets/logov.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+            <img src="assets/LogoV.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
             <span style="color: var(--win-text-primary);">SERVICIOS - SISFACT PDL Visiones</span>
         </div>
         

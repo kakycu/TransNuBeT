@@ -31,7 +31,7 @@ $puede_gestionar_empleados = $puede_crear_empleados || $puede_editar_empleados |
 $is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest';
 
 // Ruta de tu logo
-$ruta_logo = '../../images/logocorto.png';
+$ruta_logo = '../../images/LogoCorto.png';
 $logo_base64 = '';
 
 // Verificamos si el archivo existe para no romper el código

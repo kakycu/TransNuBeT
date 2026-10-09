@@ -59,7 +59,7 @@ $mes_actual_nombre = $meses_completos[$mes_actual];
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>SISFACT PDL VISIONES - Acceso Denegado</title>
-            <link rel="icon" type="image/x-icon" href="assets/logov.png">
+            <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
             <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
             <!-- SweetAlert2 con tema oscuro -->
             <script src="js/sweetalert211.js"></script>
@@ -276,7 +276,7 @@ echo '<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISFACT - Mes Cerrado</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     <script src="js/sweetalert211.js"></script>
     <style>
         body {
@@ -651,7 +651,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cierre Mensual - SISFACT</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- Bootstrap 5 -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">

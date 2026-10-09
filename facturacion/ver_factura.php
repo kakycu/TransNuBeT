@@ -71,7 +71,7 @@ if (!empty($config_db['logo'])) {
 
 // Fallback: si no hay logo en BD, usar archivo local
 if (empty($logo_base64)) {
-    $logo_path = 'assets/logov.png';
+    $logo_path = 'assets/LogoV.png';
     if (file_exists($logo_path)) {
         $image_info = @getimagesize($logo_path);
         if ($image_info !== false) {
@@ -458,7 +458,7 @@ ob_end_flush();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISFACT PDL Visiones - <?php echo $es_oferta_temporal ? 'Oferta' : 'Factura'; ?> <?php echo $factura['no_fact']; ?></title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
     <!-- SweetAlert2 -->
@@ -2409,7 +2409,7 @@ if (!$es_oferta_temporal && $id && isset($ultima_factura) && $ultima_factura) {
 }
 ?>
 <div class="sidebar-header">
-    <img src="assets/logov.png" alt="Logo" width="42" height="42" style="vertical-align: middle; margin-right: 10px; border-radius: 5px;">
+    <img src="assets/LogoV.png" alt="Logo" width="42" height="42" style="vertical-align: middle; margin-right: 10px; border-radius: 5px;">
     <div style="flex: 1; overflow: hidden;">
         <div style="font-size: 11px; color: #bdc3c7; text-transform: uppercase; letter-spacing: 0.5px;"><?php echo $es_oferta_temporal ? 'Oferta' : 'Factura'; ?> No.</div>
         <div style="font-size: 15px; font-weight: 600; color: #fbbf24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;" title="<?php echo htmlspecialchars($factura['no_fact']); ?>">

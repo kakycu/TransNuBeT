@@ -1238,7 +1238,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
     <div class="modern-header">
         <div class="logo-area">
             <div class="logo-icon">
-                <img src="images/logotn.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
+                <img src="images/LogoTN.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
                      style="width: 100%; height: 100%; object-fit: contain;"
                      onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon\'></i>';">
             </div>
@@ -1297,7 +1297,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
 
     <div class="welcome-banner animate__animated animate__fadeInUp">
         <div style="display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
-            <img src="images/logotn.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
+            <img src="images/LogoTN.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
                  style="height: 135px; width: auto; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));"
                  onerror="this.onerror=null; this.style.display='none';">
             <div>

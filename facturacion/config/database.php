@@ -360,20 +360,20 @@ document.addEventListener("mouseover", function(e) {
                             $mime_type = $imageInfo['mime'];
                             $logo = 'data:' . $mime_type . ';base64,' . $logoBase64;
                         } else {
-                            $logo = 'assets/logov.png';
+                            $logo = 'assets/LogoV.png';
                         }
                     } else {
-                        $logo = 'assets/logov.png';
+                        $logo = 'assets/LogoV.png';
                     }
                 } else {
-                    $logo = 'assets/logov.png';
+                    $logo = 'assets/LogoV.png';
                 }
             } else {
-                $logo = 'assets/logov.png';
+                $logo = 'assets/LogoV.png';
             }
         } catch (Exception $e) {
             $empresa = 'Sistema PDL Visiones';
-            $logo = 'assets/logov.png';
+            $logo = 'assets/LogoV.png';
         }
 
         if (ob_get_length()) ob_clean();
@@ -385,7 +385,7 @@ document.addEventListener("mouseover", function(e) {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Modo Mantenimiento - SISFACT PDL VISIONES</title>
-            <link rel="icon" type="image/x-icon" href="assets/logov.png">
+            <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
             <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
             <style>
@@ -742,7 +742,7 @@ $sql_real = "SELECT SUM(total_general) as total, COUNT(*) as cantidad
             <title>Error de Conexión - SISFACT PDL</title>
             <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
-            <link rel="icon" type="image/x-icon" href="assets/logov.png">
+            <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
             <style>
                 body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; }
                 .error-container { background: white; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); width: 90%; max-width: 600px; overflow: hidden; animation: slideIn 0.5s ease-out; }
@@ -764,7 +764,7 @@ $sql_real = "SELECT SUM(total_general) as total, COUNT(*) as cantidad
             <div class="error-container">
                 <div class="error-header">
                     <div class="error-content">
-                        <img src="assets/logov.png" alt="Logo PDL Visiones">
+                        <img src="assets/LogoV.png" alt="Logo PDL Visiones">
                         <i class="fas fa-database"></i>
                         <h2><?php echo htmlspecialchars($_SESSION['database_error']['type']); ?></h2>
                     </div>

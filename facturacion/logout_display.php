@@ -64,7 +64,7 @@ session_destroy();
 <head>
   <meta charset="UTF-8" />
   <title>Despedida SISFACT PDL VISIONES</title>
-  <link rel="icon" type="image/x-icon" href="assets/logov.png">
+  <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
   <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/sweetalert2.min.css">
@@ -115,7 +115,7 @@ session_destroy();
       left: 0;
       width: 100%;
       height: 100%;
-      background-image: url('assets/logov.png');
+      background-image: url('assets/LogoV.png');
       background-repeat: repeat;
       background-size: 180px 180px;
       background-position: 0 0;
@@ -684,7 +684,7 @@ session_destroy();
   <div class="particles" id="particles-container"></div>
 
   <header>
-    <img src="assets/logov.png" alt="Logo PDL Visiones" WIDTH="50" height="50">SISFACT - Sistema de Facturación PDL Visiones
+    <img src="assets/LogoV.png" alt="Logo PDL Visiones" WIDTH="50" height="50">SISFACT - Sistema de Facturación PDL Visiones
   </header>
 
   <main role="dialog" aria-modal="true" aria-labelledby="logoutModalLabel">

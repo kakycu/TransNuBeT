@@ -121,7 +121,7 @@ if (isset($_SESSION['usuario_id']) && !empty($_SESSION['usuario_id'])) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sistema en Mantenimiento - SISFACT PDL Visiones</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     <script src="js/font-awesome6.4.0/js/all.min.js"></script>
     <style>
         * {
@@ -590,7 +590,7 @@ if (isset($_SESSION['usuario_id']) && !empty($_SESSION['usuario_id'])) {
 <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SESIÓN ABIERTA - SISFACT PDL Visiones - Plataforma de Facturación e Impresión</title>
-  <link rel="icon" type="image/x-icon" href="assets/logov.png">
+  <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     <script src="js/font-awesome6.4.0/js/all.min.js"></script>
     <style>
         * {
@@ -631,7 +631,7 @@ if (isset($_SESSION['usuario_id']) && !empty($_SESSION['usuario_id'])) {
             width: 300%;
             height: 300%;
             opacity: 0.05;
-            background-image: url('assets/logov.png');
+            background-image: url('assets/LogoV.png');
             background-repeat: repeat;
             background-size: 180px 180px;
             animation: moveDiagonal1 45s linear infinite;
@@ -645,7 +645,7 @@ if (isset($_SESSION['usuario_id']) && !empty($_SESSION['usuario_id'])) {
             width: 350%;
             height: 350%;
             opacity: 0.04;
-            background-image: url('assets/logov.png');
+            background-image: url('assets/LogoV.png');
             background-repeat: repeat;
             background-size: 140px 140px;
             animation: moveDiagonal2 60s linear infinite;
@@ -659,7 +659,7 @@ if (isset($_SESSION['usuario_id']) && !empty($_SESSION['usuario_id'])) {
             width: 400%;
             height: 200%;
             opacity: 0.03;
-            background-image: url('assets/logov.png');
+            background-image: url('assets/LogoV.png');
             background-repeat: repeat;
             background-size: 100px 100px;
             animation: moveHorizontal 50s linear infinite;
@@ -673,7 +673,7 @@ if (isset($_SESSION['usuario_id']) && !empty($_SESSION['usuario_id'])) {
             width: 200%;
             height: 400%;
             opacity: 0.03;
-            background-image: url('assets/logov.png');
+            background-image: url('assets/LogoV.png');
             background-repeat: repeat;
             background-size: 120px 120px;
             animation: moveVertical 55s linear infinite;
@@ -761,7 +761,7 @@ if (isset($_SESSION['usuario_id']) && !empty($_SESSION['usuario_id'])) {
             height: 400%;
             z-index: -1;
             opacity: 0.08;
-            background-image: url('assets/logov.png');
+            background-image: url('assets/LogoV.png');
             background-repeat: repeat;
             background-size: 150px 150px;
             animation: move8Directions 120s linear infinite;
@@ -806,7 +806,7 @@ if (isset($_SESSION['usuario_id']) && !empty($_SESSION['usuario_id'])) {
             height: 500%;
             z-index: -1;
             opacity: 0.07;
-            background-image: url('assets/logov.png');
+            background-image: url('assets/LogoV.png');
             background-repeat: repeat;
             background-size: 130px 130px;
             animation: fluidMovement 180s linear infinite;
@@ -1138,7 +1138,7 @@ $whatsapp_numero_formateado = $configWhatsApp['whatsapp_activo'] && $configWhats
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SISFACT PDL Visiones - Plataforma de Facturación e Impresión</title>
-  <link rel="icon" type="image/x-icon" href="assets/logov.png">
+  <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
   <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet" />
   <link href="css/Animate4.1.1/animate.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="css/index.css">
@@ -1272,7 +1272,7 @@ body.maintenance-modal-open #maintenanceModal * {
 </header>
   <nav class="navbar navbar-expand-lg navbar-dark fixed-top px-0" style="background: linear-gradient(to right, #00a86b 0%, #006a4e 100%);">
     <a class="navbar-brand d-flex align-items-center" href="#hero" aria-label="PDL Visiones, sistema de facturación">
-      <img src="assets/logov.png" alt="Logo PDL Visiones" width="36" height="36" style="margin-right: 8px;">
+      <img src="assets/LogoV.png" alt="Logo PDL Visiones" width="36" height="36" style="margin-right: 8px;">
 	  <span onclick="openSystemModal()" style="cursor: pointer; color: #007bff; text-decoration: underline;" title="Sobre el Sistema...">
 		SISFACT PDL Visiones
 	  </span>
@@ -1711,7 +1711,7 @@ body.maintenance-modal-open #maintenanceModal * {
 
     <!-- Columna 1: Marca -->
     <div class="footer-col">
-      <h4><img src="assets/logov.png" alt="Logo PDL Visiones" width="36" height="36" style="margin-right: 8px;">SISFACT PDL Visiones</h4>
+      <h4><img src="assets/LogoV.png" alt="Logo PDL Visiones" width="36" height="36" style="margin-right: 8px;">SISFACT PDL Visiones</h4>
       <p>
         Plataforma de facturación e impresión inteligente.<br>
         © <?= date('Y') ?> Todos los derechos reservados.<br>
@@ -2064,7 +2064,7 @@ body.maintenance-modal-open #maintenanceModal * {
     <div class="win11-modal-header">
       <div class="modal-title-wrapper">
         <div class="modal-icon">
-          <img src="assets/logov.png" alt="Logo PDL Visiones" width="36" height="36">
+          <img src="assets/LogoV.png" alt="Logo PDL Visiones" width="36" height="36">
         </div>
         <h3 class="modal-title"><span class="">SISFACT PDL Visiones</span></h3>
       </div>

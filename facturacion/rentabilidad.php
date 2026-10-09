@@ -1116,7 +1116,7 @@ foreach ($stats_servicios as $serv_id => $stat) {
     }
 }
 
-$logo_path = 'assets/logov.png';
+$logo_path = 'assets/LogoV.png';
 $logo_base64 = file_exists($logo_path) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logo_path)) : '';
 ?>
 <html lang="es" data-theme="<?= $tema_windows; ?>" data-accent="<?= $color_accent; ?>">
@@ -1124,7 +1124,7 @@ $logo_base64 = file_exists($logo_path) ? 'data:image/png;base64,' . base64_encod
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analisis Rentabilidad y Costos - SISFACT PDL VISIONES</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/Animate4.1.1/animate.min.css">
@@ -1286,7 +1286,7 @@ $logo_base64 = file_exists($logo_path) ? 'data:image/png;base64,' . base64_encod
         </button>
         
         <div class="win-navbar-brand">
-            <img src="assets/logov.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+            <img src="assets/LogoV.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
             <span style="color: var(--win-text-primary);">SISFACT PDL Visiones</span>
         </div>
         

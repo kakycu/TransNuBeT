@@ -829,7 +829,7 @@ body.swal2-shown {
 <!-- Header - MODIFICADO con botón de recargar -->
 <header class="modal-header-tools">
     <div class="logo-section">
-        <img src="assets/logov.png" 
+        <img src="assets/LogoV.png" 
              alt="Logo" 
              class="logo-img" 
              id="mainLogo"
@@ -2644,12 +2644,12 @@ function updateBackupProgress(percent, customMessage = null) {
     // Manejo de logo alternativo
     function tryAlternateLogo(img) {
         const altPaths = [
-            'assets/logov.png',
-            './assets/logov.png',
-            '../assets/logov.png',
-            '../../assets/logov.png',
-            'logov.png',
-            './logov.png'
+            'assets/LogoV.png',
+            './assets/LogoV.png',
+            '../assets/LogoV.png',
+            '../../assets/LogoV.png',
+            'LogoV.png',
+            './LogoV.png'
         ];
         
         if (!img.dataset.tryIndex) {

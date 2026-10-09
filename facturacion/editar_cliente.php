@@ -597,7 +597,7 @@ $finanzas = Database::getProgresoFinanciero();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar Cliente - SISFACT PDL Visiones</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- CSS Dependencies -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -998,7 +998,7 @@ $finanzas = Database::getProgresoFinanciero();
         
         <!-- Brand -->
         <div class="win-navbar-brand">
-            <img src="assets/logov.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+            <img src="assets/LogoV.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
             <span style="color: var(--win-text-primary);">EDITAR CLIENTE - SISFACT PDL Visiones</span>
         </div>
         

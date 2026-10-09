@@ -47,7 +47,7 @@ try {
 } catch (PDOException $e) {}
 
 // Ruta del logo - UNIFICADA
-$ruta_logo = '../../images/logotn.png';
+$ruta_logo = '../../images/LogoTN.png';
 $logo_base64 = '';
 if (file_exists($ruta_logo)) {
     $tipo = pathinfo($ruta_logo, PATHINFO_EXTENSION);
@@ -4230,7 +4230,7 @@ $(document).ready(function () {
                     doc.styles.tableHeader = { fontSize: 8, bold: true, color: '#000000', fillColor: '#e8e8e8', alignment: 'center' };
                     doc.styles.tableBody = { fontSize: 7, color: '#000000' };
                     doc.defaultStyle = { fontSize: 7, color: '#000000' };
-                    var logoImg = '<?php echo base64_encode(file_get_contents('../../images/logotn.png')); ?>';
+                    var logoImg = '<?php echo base64_encode(file_get_contents('../../images/LogoTN.png')); ?>';
                     doc.content.splice(0, 0, {
                         columns: [
                             { width: '*', text: '' },

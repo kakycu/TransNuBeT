@@ -512,7 +512,7 @@ function obtenerProgresoMensual($db, $mes, $anio) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plan de Ingresos - PDL Visiones</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- Bootstrap 5 -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -1485,7 +1485,7 @@ function obtenerProgresoMensual($db, $mes, $anio) {
         
         <!-- Brand -->
         <div class="win-navbar-brand">
-            <img src="assets/logov.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+            <img src="assets/LogoV.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
             <span style="color: var(--win-text-primary);">PLANES - SISFACT PDL Visiones</span>
         </div>
         
@@ -3295,7 +3295,7 @@ document.addEventListener('keydown', function(e) {
 <div id="print-section" style="display: none;">
     <div class="print-header">
         <div class="print-logo">
-            <img src="assets/logov.png" alt="PDL Visiones Logo">
+            <img src="assets/LogoV.png" alt="PDL Visiones Logo">
             <div>
                 <div class="print-title">PDL Visiones</div>
                 <div class="print-subtitle">Plan de Ingresos - Año <?php echo $anio_filtro; ?></div>

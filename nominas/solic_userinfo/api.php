@@ -93,7 +93,7 @@ try {
         $anios = $pdo->query("SELECT DISTINCT YEAR(periodo_desde) AS anio FROM nominas ORDER BY anio DESC")->fetchAll(PDO::FETCH_COLUMN);
 
         // Logo de la empresa para impresiones/exportaciones
-        $ruta_logo = __DIR__ . '/../../images/logotn.png';
+        $ruta_logo = __DIR__ . '/../../images/LogoTN.png';
         $logo_base64 = '';
         if (file_exists($ruta_logo)) {
             $type = pathinfo($ruta_logo, PATHINFO_EXTENSION);

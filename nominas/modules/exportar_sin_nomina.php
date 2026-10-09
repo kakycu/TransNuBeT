@@ -41,7 +41,7 @@ try {
 
 $user_nombre_completo = $_SESSION['usuario_nombre'] ?? $_SESSION['user_nombre'] ?? 'Usuario';
 
-$ruta_logo = __DIR__ . '/../../images/logocorto.png';
+$ruta_logo = __DIR__ . '/../../images/LogoCorto.png';
 $logo_base64 = '';
 if (file_exists($ruta_logo)) {
     $tipo_logo = pathinfo($ruta_logo, PATHINFO_EXTENSION);

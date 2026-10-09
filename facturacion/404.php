@@ -12,7 +12,7 @@ $BASE_URL = '/' . $CarpetaSistema . '/';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="icon" type="image/x-icon" href="<?php echo $BASE_URL; ?>assets/logov.png">
+	<link rel="icon" type="image/x-icon" href="<?php echo $BASE_URL; ?>assets/LogoV.png">
     <title><?php echo $page_title; ?></title>
     <style>
         :root {
@@ -279,7 +279,7 @@ $BASE_URL = '/' . $CarpetaSistema . '/';
 .footer-logo-icon {
     width: 32px;
     height: 32px;
-    background-image: url("<?php echo $BASE_URL; ?>assets/logov.png");
+    background-image: url("<?php echo $BASE_URL; ?>assets/LogoV.png");
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;

@@ -30,7 +30,7 @@ $tipo = isset($_GET['t']) ? $_GET['t'] : 'ficha';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MODELO DE FICHA DE COSTO - SISFACT PDL VISIONES</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
     <style>
@@ -539,7 +539,7 @@ $tipo = isset($_GET['t']) ? $_GET['t'] : 'ficha';
 <!-- Sidebar -->
 <div class="sidebar collapsed" id="sidebar">
     <div class="sidebar-header">
-        <img src="assets/logov.png" alt="Logo" width="42" height="42" style="vertical-align: middle; margin-right: 10px; border-radius: 5px;">
+        <img src="assets/LogoV.png" alt="Logo" width="42" height="42" style="vertical-align: middle; margin-right: 10px; border-radius: 5px;">
         <div style="flex: 1; overflow: hidden;">
             <div style="font-size: 11px; color: #bdc3c7; text-transform: uppercase; letter-spacing: 0.5px;">MODELO</div>
             <div style="font-size: 15px; font-weight: 600; color: #fbbf24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">FICHA DE COSTO</div>

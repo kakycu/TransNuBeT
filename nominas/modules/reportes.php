@@ -40,7 +40,7 @@ try {
 } catch (PDOException $e) {}
 
 // Ruta del logo
-$ruta_logo = '../../images/logotn.png';
+$ruta_logo = '../../images/LogoTN.png';
 $logo_base64 = '';
 if (file_exists($ruta_logo)) {
     $tipo = pathinfo($ruta_logo, PATHINFO_EXTENSION);

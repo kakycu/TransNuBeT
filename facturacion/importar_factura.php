@@ -48,7 +48,7 @@ if (!in_array($rol_id, $roles_permitidos)) {
     <head>
         <meta charset="UTF-8">
         <title>SISFACT PDL VISIONES - Acceso Denegado</title>
-        <link rel="icon" type="image/x-icon" href="assets/logov.png">
+        <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
         <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
         <script src="js/sweetalert211.js"></script>
         <style>
@@ -150,7 +150,7 @@ if ($mes_cierre_num == 12) {
         <head>
             <meta charset="UTF-8">
             <title>SISFACT PDL VISIONES - Periodo Cerrado</title>
-            <link rel="icon" type="image/x-icon" href="assets/logov.png">
+            <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
             <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
             <script src="js/sweetalert211.js"></script>
             <style>
@@ -1125,7 +1125,7 @@ $tema_actual = $temas_windows[$tema_windows] ?? $temas_windows['dark'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Importar Facturas - SISFACT PDL Visiones</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- Bootstrap 5 -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -2262,7 +2262,7 @@ $tema_actual = $temas_windows[$tema_windows] ?? $temas_windows['dark'];
 <!-- Navbar Fijo para Importar Facturas -->
 <div class="import-navbar">
     <div class="import-navbar-brand">
-        <img src="assets/logov.png" alt="Logo">
+        <img src="assets/LogoV.png" alt="Logo">
         <span>SISFACT PDL Visiones <h5 class="text-warning">Importador de Facturas</h5></span>
     </div>
     

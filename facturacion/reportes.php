@@ -2101,7 +2101,7 @@ case 'historico_cierres':
 }
 
 
-$logo_path = 'assets/logov.png';
+$logo_path = 'assets/LogoV.png';
 $logo_base64 = '';
 if (file_exists($logo_path)) {
     $logo_data = file_get_contents($logo_path);
@@ -2165,7 +2165,7 @@ $fechaGeneracion = "Hoy es: " .
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reportes - SISFACT PDL Visiones</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- Bootstrap 5 -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -2967,7 +2967,7 @@ $fechaGeneracion = "Hoy es: " .
         </button>
         
         <div class="win-navbar-brand">
-            <img src="assets/logov.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
+            <img src="assets/LogoV.png" alt="Logo" width="48" height="48" style="vertical-align: middle; margin-right: 8px;">
             <span style="color: var(--win-text-primary);">INTELIGENCIA DE EMPRESA - SISFACT PDL Visiones</span>
         </div>
         
@@ -3978,7 +3978,7 @@ $fechaGeneracion = "Hoy es: " .
                 <table style="width: 100%; border-bottom: 2px solid #000; margin-bottom: 20px;">
                     <tr>
                         <td style="width: 100px; vertical-align: top;">
-                            <img src="assets/logov.png" width="80" alt="Logo" style="display: block;">
+                            <img src="assets/LogoV.png" width="80" alt="Logo" style="display: block;">
                         </td>
                         <td style="vertical-align: top; padding-left: 15px;">
                             <h1 style="margin: 0; font-size: 24px; font-weight: bold;">PDL VISIONES</h1>

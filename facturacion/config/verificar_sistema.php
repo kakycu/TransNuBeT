@@ -93,7 +93,7 @@ function mostrarErrorTablasFaltantes($tablasFaltantes) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="icon" type="image/x-icon" href="assets/logov.png">
+        <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
         <title>Error - SISFACT PDL Visiones</title>
         <script src="js/sweetalert211.js"></script>
         <script src="js/jquery.min.js"></script>

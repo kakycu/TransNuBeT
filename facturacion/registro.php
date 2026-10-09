@@ -418,7 +418,7 @@ if ($whatsapp_numero_formateado && strlen($whatsapp_numero_formateado) === 8 && 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro - SISFACT PDL Visiones</title>
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     
     <!-- Bootstrap 5 -->
     <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -1456,7 +1456,7 @@ small.text-muted {
                 <div class="registro-header">
                     <div class="header-top">
                         <div class="logo-section">
-                            <img src="assets/logov.png" alt="Logo PDL Visiones" class="registro-logo">
+                            <img src="assets/LogoV.png" alt="Logo PDL Visiones" class="registro-logo">
                             <div class="titles-container">
                                 <h1 class="main-title">Registro de Usuario</h1>
                                 <div class="sub-title">Registro para Nuevos Usuarios en el Sistema de Facturación - SISFACT PDL Visiones</div>

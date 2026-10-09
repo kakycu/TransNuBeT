@@ -195,7 +195,7 @@ function mostrarAdvertenciaUso($servicio, $servicio_id, $total_facturas) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Advertencia - Servicio en Uso - PDL Visiones</title>
-        <link rel="icon" type="image/x-icon" href="assets/logov.png">
+        <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
         
         <!-- Bootstrap 5 -->
         <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">
@@ -708,7 +708,7 @@ function mostrarConfirmacion($servicio, $servicio_id, $total_facturas = 0, $forz
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Confirmar Eliminación - PDL Visiones</title>
-        <link rel="icon" type="image/x-icon" href="assets/logov.png">
+        <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
         
         <!-- Bootstrap 5 -->
         <link href="css/bootstrap5.3.0/bootstrap.min.css" rel="stylesheet">

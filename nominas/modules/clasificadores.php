@@ -673,7 +673,7 @@ $user_ci = $_SESSION['usuario_ci'] ?? $_SESSION['user_ci'] ?? '';
 $user_email = $_SESSION['usuario_email'] ?? $_SESSION['user_email'] ?? '';
 
 // Obtener logo en base64
-$ruta_logo = '../../images/logotn.png';
+$ruta_logo = '../../images/LogoTN.png';
 $logo_base64 = '';
 if (file_exists($ruta_logo)) {
     $tipo = pathinfo($ruta_logo, PATHINFO_EXTENSION);

@@ -11,7 +11,7 @@ $soporte_email = "soporte@pdlvisiones.com";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
 
-    <link rel="icon" type="image/x-icon" href="assets/logov.png">
+    <link rel="icon" type="image/x-icon" href="assets/LogoV.png">
     <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
         <!-- SweetAlert2 con tema oscuro -->
 		<link rel="stylesheet" href="css/sweetalert2.min.css">
@@ -307,7 +307,7 @@ $soporte_email = "soporte@pdlvisiones.com";
 
     <header class="header">
         <div class="brand">
-            <img src="assets/logov.png" alt="SISFAC Logo" class="brand-logo-img">
+            <img src="assets/LogoV.png" alt="SISFAC Logo" class="brand-logo-img">
             <div class="brand-text">
                 <h1>Soporte Técnico PDL VISIONES</h1>
             </div>
