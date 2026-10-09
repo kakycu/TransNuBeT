@@ -50,6 +50,66 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'valores_convenio') {
 }
 
 // ============================================
+// AJAX: DIAGNÓSTICO DE LA BASE DE DATOS (SOLO LECTURA)
+// ============================================
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'diagnostico_bd') {
+    header('Content-Type: application/json');
+    @set_time_limit(180);
+    require_once __DIR__ . '/../includes/mantenimiento_bd.php';
+    $diagResultado = bd_diagnosticar($pdo);
+    logAction(
+        'diagnosticar_base_datos',
+        'configuracion',
+        'Diagnóstico de la base de datos (solo lectura)',
+        $diagResultado['resumen'] ?? [],
+        null,
+        !empty($diagResultado['success']) ? 'success' : 'failed',
+        $diagResultado['error'] ?: null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
+    echo json_encode($diagResultado);
+    exit;
+}
+
+// ============================================
+// AJAX: REPARACIÓN DE LA BASE DE DATOS (FASE 2)
+// ============================================
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'reparar_bd') {
+    header('Content-Type: application/json');
+    if (strtoupper($_SERVER['REQUEST_METHOD']) !== 'POST') {
+        echo json_encode(['success' => false, 'error' => 'Método no permitido']);
+        exit;
+    }
+    @set_time_limit(300);
+    require_once __DIR__ . '/../includes/mantenimiento_bd.php';
+    $opReparar = [
+        'reparar_check'       => !empty($_POST['reparar_check']),
+        'optimizar'           => !empty($_POST['optimizar']),
+        'analyze'             => !empty($_POST['analyze']),
+        'indices_fk'          => !empty($_POST['indices_fk']),
+        'unificar_collations' => !empty($_POST['unificar_collations']),
+        'borrar_huerfanos'    => !empty($_POST['borrar_huerfanos']),
+    ];
+    if (!in_array(true, $opReparar, true)) {
+        echo json_encode(['success' => false, 'error' => 'Marque al menos una acción']);
+        exit;
+    }
+    $repResultado = bd_reparar($pdo, $opReparar);
+    logAction(
+        'reparar_base_datos',
+        'configuracion',
+        'Reparación de la base de datos',
+        array_merge($opReparar, $repResultado['resumen'] ?? []),
+        null,
+        (empty($repResultado['success']) || (($repResultado['resumen']['fallidas'] ?? 0) > 0)) ? 'failed' : 'success',
+        $repResultado['error'] ?: null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
+    echo json_encode($repResultado);
+    exit;
+}
+
+// ============================================
 // AJAX: PROBAR CONFIGURACIÓN SMTP
 // ============================================
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'probar_mail') {
@@ -1398,6 +1458,17 @@ $modo_mantenimiento_activo = modo_mantenimiento_activo($pdo);
     }
 }
 
+/* ---------- DIAGNÓSTICO DE LA BASE DE DATOS ---------- */
+#diagnosticoBdResultados code {
+    color: var(--txt);
+    background: rgba(var(--accent-rgb), 0.12);
+    border: 0.0625rem solid rgba(var(--accent-rgb), 0.25);
+    padding: 0.05rem 0.3rem;
+    border-radius: 0.3rem;
+    font-size: 0.85em;
+    word-break: break-all;
+}
+
 /* ---------- MÓVIL (≤ 768px) ---------- */
 @media (max-width: 768px) {
     /* ---------- BODY: prevenir scroll horizontal ---------- */
@@ -2382,10 +2453,68 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-12">
+                        <div class="p-3 rounded" style="background: rgba(59, 130, 246, 0.1); border: 0.0625rem solid rgba(59, 130, 246, 0.2);">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                <div>
+                                    <i class="fas fa-stethoscope fa-2x mb-2" style="color: #60a5fa;"></i>
+                                    <h6 class="mb-1">Diagn&oacute;stico de la Base de Datos</h6>
+                                    <small class="text-white-50">Solo lectura: CHECK TABLE, &iacute;ndices de claves for&aacute;neas, colaciones y filas hu&eacute;rfanas</small>
+                                </div>
+                                <button class="btn-win btn-win-primary" id="btnDiagnosticarBd" title="Diagnosticar la base de datos" data-tooltip="Analiza todas las tablas sin modificar nada" data-tooltip-theme="info">
+                                    <i class="fas fa-magnifying-glass-chart me-2"></i> Diagnosticar
+                                </button>
+                            </div>
+                            <div id="diagnosticoBdResultados" class="mt-3" style="display: none;"></div>
+                            <div class="mt-3 pt-3 border-top border-white-10">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                    <div>
+                                        <h6 class="mb-1"><i class="fas fa-wrench me-1" style="color: #f59e0b;"></i> Reparar Base de Datos</h6>
+                                        <small class="text-white-50">Mantenimiento que s&iacute; modifica la BD. Se recomienda backup previo.</small>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <button class="btn-win btn-win-success" id="btnSalvarBdMantenimiento" title="Salvar la base de datos" data-tooltip="Crea una copia de seguridad (backup) de la BD" data-tooltip-theme="info">
+                                            <i class="fas fa-download me-2"></i> Salvar BD
+                                        </button>
+                                        <button class="btn-win btn-win-warning" id="btnRepararBd" title="Ejecutar las reparaciones marcadas" data-tooltip="Ejecuta las acciones marcadas (modifica la BD)" data-tooltip-theme="warning">
+                                            <i class="fas fa-wrench me-2"></i> Reparar
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap gap-3 mt-2 small">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="repCheckErrores" checked>
+                                        <label class="form-check-label" for="repCheckErrores" data-tooltip="CHECK TABLE de todas las tablas y reparaci&oacute;n de las que den error" data-tooltip-theme="info">Reparar errores (CHECK)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="repOptimizar" checked>
+                                        <label class="form-check-label" for="repOptimizar" data-tooltip="OPTIMIZE TABLE solo en tablas con 5% o m&aacute;s de espacio libre desperdiciado" data-tooltip-theme="info">Optimizar fragmentadas</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="repAnalizar" checked>
+                                        <label class="form-check-label" for="repAnalizar" data-tooltip="ANALYZE TABLE refresca las estad&iacute;sticas del optimizador de consultas" data-tooltip-theme="info">Actualizar estad&iacute;sticas</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="repIndicesFk" checked>
+                                        <label class="form-check-label" for="repIndicesFk" data-tooltip="Crea con ADD INDEX los &iacute;ndices que falten en claves for&aacute;neas" data-tooltip-theme="info">&Iacute;ndices de claves for&aacute;neas</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="repUnificarCollations" checked>
+                                        <label class="form-check-label" for="repUnificarCollations" data-tooltip="Convierte cada columna de texto con una colaci&oacute;n distinta a la mayoritaria (utf8mb4)" data-tooltip-theme="info">Unificar colaciones</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="repBorrarHuerfanos">
+                                        <label class="form-check-label" for="repBorrarHuerfanos" data-tooltip="Elimina las filas hijas cuyo padre ya no existe (se muestran los detalles)" data-tooltip-theme="warning">Eliminar filas hu&eacute;rfanas</label>
+                                    </div>
+                                </div>
+                                <div id="reparacionBdResultados" class="mt-3" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            </div>
         </div>
+    </div>
     </div>
         <div class="col-lg-6 fade-in-up" style="animation-delay: 0.1s;">
             <div class="glass-card">
@@ -4784,6 +4913,8 @@ document.getElementById('rangosForm')?.addEventListener('submit', function(e) {
 
 document.getElementById('btnBackupManualCard')?.addEventListener('click', (e) => { e.preventDefault(); realizarBackupManual(); });
 document.getElementById('btnRestoreBackupCard')?.addEventListener('click', (e) => { e.preventDefault(); restaurarBackup(); });
+
+<?php require __DIR__ . '/../includes/mantenimiento_ui_js.php'; ?>
 
 // ============================================
 // CONFIGURACIÓN SMTP

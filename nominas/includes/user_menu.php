@@ -4342,6 +4342,7 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 </script>
 
 <script>
+<?php require __DIR__ . '/mantenimiento_ui_js.php'; ?>
 // Matriz de permisos por rol (generada en PHP)
 var PERMISOS_MATRIZ = <?php echo $matriz_permisos_json ?: '{}'; ?>;
 var ROL_ACTUAL = <?php echo json_encode($user_rol_codigo ?: ''); ?>;
@@ -4934,6 +4935,14 @@ function mostrarModalSalvaRestaura() {
             --sr-accent:var(--amber);
             --sr-icon-bg:rgba(var(--amber-soft-rgb),.14);
         }
+        .sr-flat-row--diag{
+            --sr-accent:#a78bfa;
+            --sr-icon-bg:rgba(167,139,250,.14);
+            animation-delay:.15s;
+        }
+        @media (prefers-reduced-motion: reduce){
+            .sr-flat-row--diag{animation-delay:0s}
+        }
 
         /* Deshabilitado */
         .sr-flat-row--disabled{
@@ -5088,6 +5097,16 @@ function mostrarModalSalvaRestaura() {
                 '</button>';
     }
 
+    // Fila 4: Diagnóstico / Reparación
+    html += '<button type="button" class="sr-flat-row sr-flat-row--diag" onclick="accionDiagnosticoReparar()" data-tooltip="Diagnóstico / Reparación" data-tooltip-theme="info">' +
+              '<span class="sr-flat-icon"><i class="fas fa-stethoscope"></i></span>' +
+              '<span class="sr-flat-txt">' +
+                '<span class="sr-flat-row-title">Diagnóstico / Reparación</span>' +
+                '<span class="sr-flat-row-desc">Revisar la integridad de la BD y reparar lo necesario</span>' +
+              '</span>' +
+              '<i class="fas fa-chevron-right sr-flat-chev"></i>' +
+            '</button>';
+
     // Footer
     html +=   '<div class="sr-flat-footer">';
     html +=     '<div class="sr-flat-footer-info">' +
@@ -5098,6 +5117,9 @@ function mostrarModalSalvaRestaura() {
                   '<i class="fas fa-cog"></i> Config' +
                 '</div>';
     html +=     '<div class="sr-flat-btns">';
+    html +=       '<button type="button" class="sr-flat-btn" onclick="accionDiagnosticoReparar()">' +
+                    '<i class="fas fa-wrench"></i> Reparar BD' +
+                  '</button>';
     html +=       '<button type="button" class="sr-flat-btn" onclick="Swal.close();">' +
                     '<i class="fas fa-ban"></i> Cancelar' +
                   '</button>';
