@@ -118,6 +118,65 @@ function asegurarRecargosExtra($pdo) {
     } catch (PDOException $e) {}
 }
 
+/**
+ * Asegura la funcionalidad de tarifas pactadas por Convenio Colectivo de Trabajo
+ * (Empleador - Colectivo de Trabajadores) para la nómina extraordinaria:
+ *   - columna `usar_convenio` en `nominas` (1 = las filas del lote se calcularon
+ *     con los valores pactados; 0 = con la Ley 189/2026),
+ *   - 4 parámetros en `configuracion_general` con los valores fijos (CUP/h)
+ *     pactados por el convenio: horas extras, doble turno, nocturnidad temprana
+ *     y nocturnidad tardía.
+ *
+ * Las nóminas ya contabilizadas conservan sus importes; el flag solo se usa al
+ * recalcular/guardar e identificar la tarifa empleada en reportes y exportaciones.
+ */
+function asegurarConvenioExtra($pdo) {
+    try {
+        $colexists = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+                                  WHERE TABLE_SCHEMA = DATABASE()
+                                    AND TABLE_NAME = 'nominas'
+                                    AND COLUMN_NAME = 'usar_convenio'")->fetchColumn();
+        if ((int)$colexists < 1) {
+            $pdo->exec("ALTER TABLE nominas
+                        ADD COLUMN usar_convenio TINYINT(1) NOT NULL DEFAULT 0 AFTER importe_doble_turno");
+        }
+    } catch (PDOException $e) {}
+
+    $params = [
+        'convenio_valor_he' => [
+            'valor'      => '10.25',
+            'tipo_dato'  => 'decimal',
+            'descripcion'=> 'Valor pactado por Convenio Colectivo de Trabajo para las horas extras ($/h)',
+        ],
+        'convenio_valor_doble_turno' => [
+            'valor'      => '20.05',
+            'tipo_dato'  => 'decimal',
+            'descripcion'=> 'Valor pactado por Convenio Colectivo de Trabajo para el doble turno ($/h)',
+        ],
+        'convenio_valor_nocturnidad_temprana' => [
+            'valor'      => '8.00',
+            'tipo_dato'  => 'decimal',
+            'descripcion'=> 'Valor pactado por Convenio Colectivo de Trabajo para el turno 19:00-23:00 ($/h)',
+        ],
+        'convenio_valor_nocturnidad_tardia' => [
+            'valor'      => '14.75',
+            'tipo_dato'  => 'decimal',
+            'descripcion'=> 'Valor pactado por Convenio Colectivo de Trabajo para el turno 23:00-07:00 ($/h)',
+        ],
+    ];
+
+    try {
+        $check = $pdo->prepare("SELECT parametro FROM configuracion_general WHERE parametro = ?");
+        $ins   = $pdo->prepare("INSERT INTO configuracion_general (parametro, valor, tipo_dato, descripcion) VALUES (?, ?, ?, ?)");
+        foreach ($params as $parametro => $cfg) {
+            $check->execute([$parametro]);
+            if (!$check->fetch()) {
+                $ins->execute([$parametro, $cfg['valor'], $cfg['tipo_dato'], $cfg['descripcion']]);
+            }
+        }
+    } catch (PDOException $e) {}
+}
+
 function asegurarParamsMail($pdo) {
     $params = [
         'mail_activo'     => 'texto',

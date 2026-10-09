@@ -438,7 +438,11 @@ INSERT INTO `configuracion_general` (`id`, `parametro`, `valor`, `tipo_dato`, `d
 (43, 'periodo_nominas_en_curso', DATE_FORMAT(CURDATE(), '%Y-%m-01'), 'fecha', 'Mes de nomina en curso que se puede cerrar (YYYY-MM-01). Lo fija el cierre del mes', NULL, NULL),
 (45, 'cess_tasa_exceso', '10.00', 'decimal', 'Tasa de CESS sobre el exceso (porcentaje) para la regla progresiva PDL: 5% hasta 15000, exceso al 10%.', NULL, NULL),
 (46, 'cess_limite_progresivo', '15000.00', 'decimal', 'Límite de la regla progresiva de la CESS (CUP): aplica tasa base hasta este monto.', NULL, NULL),
-(47, 'tope_he_anual', '160', 'entero', 'Tope de horas extraordinarias anuales por trabajador (Ley 189/2026, art. 229.2)', NULL, NULL);
+(47, 'tope_he_anual', '160', 'entero', 'Tope de horas extraordinarias anuales por trabajador (Ley 189/2026, art. 229.2)', NULL, NULL),
+(48, 'convenio_valor_he', '10.25', 'decimal', 'Valor pactado por Convenio Colectivo de Trabajo para las horas extras ($/h)', NULL, NULL),
+(49, 'convenio_valor_doble_turno', '20.05', 'decimal', 'Valor pactado por Convenio Colectivo de Trabajo para el doble turno ($/h)', NULL, NULL),
+(50, 'convenio_valor_nocturnidad_temprana', '8.00', 'decimal', 'Valor pactado por Convenio Colectivo de Trabajo para el turno 19:00-23:00 ($/h)', NULL, NULL),
+(51, 'convenio_valor_nocturnidad_tardia', '14.75', 'decimal', 'Valor pactado por Convenio Colectivo de Trabajo para el turno 23:00-07:00 ($/h)', NULL, NULL);
 
 
 -- --------------------------------------------------------
@@ -731,7 +735,8 @@ CREATE TABLE `nominas` (
   `horas_nocturnas_tardias` decimal(10,2) NOT NULL DEFAULT '0.00',
   `importe_nocturnas_tardias` decimal(12,2) NOT NULL DEFAULT '0.00',
   `horas_doble_turno` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `importe_doble_turno` decimal(12,2) NOT NULL DEFAULT '0.00'
+  `importe_doble_turno` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `usar_convenio` tinyint(1) NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -1154,7 +1159,7 @@ ALTER TABLE `clasif_usuarios`
 -- AUTO_INCREMENT de la tabla `configuracion_general`
 --
 ALTER TABLE `configuracion_general`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT de la tabla `configuracion_rangos_impuesto`

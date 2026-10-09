@@ -170,8 +170,8 @@ c+=H+'.nav-item.active:hover .nav-badge{background:rgba(255,255,255,0.25)!import
 c+=H+'.nav-item.active:hover .nav-group-chevron{color:#fff!important;}';
 c+=H+'.sidebar-logo h3{background:linear-gradient(135deg,var(--accent),var(--accent-light));-webkit-background-clip:text;background-clip:text;color:transparent!important;}';
 c+=H+'.sidebar-toggle:hover{background:rgba(var(--accent-rgb),0.15)!important;color:var(--accent)!important;}';
-c+=H+'.nav-group:hover .nav-group-chevron{color:var(--accent)!important;}';
-c+=H+'.nav-group.open .nav-item:not(.active) .nav-group-chevron{color:var(--accent)!important;}';
+c+=H+'.nav-group:hover > .nav-item .nav-group-chevron{color:var(--accent)!important;}';
+c+=H+'.nav-group.open > .nav-item:not(.active) .nav-group-chevron{color:var(--accent)!important;}';
 c+=H+'.sidebar-profile:hover{background:var(--accent-bg2)!important;border-color:var(--accent-bg)!important;}';
 c+=H+'.profile-avatar-link:hover .profile-avatar{border-color:var(--accent)!important;box-shadow:0 0 0 0.1875rem var(--accent-bg)!important;}';
 /* Page title */
@@ -856,6 +856,20 @@ c+='html[data-theme="dark"] .text-muted,'
    Bootstrap, que queda ilegible sobre el fondo oscuro de .win11-bg. */
 c+='html[data-theme="dark"] body{background:var(--bg)!important;color:#e8edf6!important;}'
   +'html[data-theme="dark"] .win11-bg{background:linear-gradient(135deg,#0b1018 0%,#131a28 50%,#0d1220 100%)!important;}';
+
+/* ===== BOTONES-ENLACE (a.btn-*) =====
+   Las reglas de enlace de cada tema (a{color:var(--accent)!important}) ganan por
+   especificidad a .btn-success{color:white} de style.css y dejaban el texto verde
+   sobre fondo verde (p.ej. "Descargar Backup"). Se fuerza texto blanco en los
+   botones-contexto con fondo solido, en todos los temas. */
+c+='html[data-theme] a.btn-primary,html[data-theme] a.btn-primary:hover,'
+  +'html[data-theme] a.btn-success,html[data-theme] a.btn-success:hover,'
+  +'html[data-theme] a.btn-danger,html[data-theme] a.btn-danger:hover,'
+  +'html[data-theme] a.btn-warning,html[data-theme] a.btn-warning:hover,'
+  +'html[data-theme] a.btn-info,html[data-theme] a.btn-info:hover,'
+  +'html[data-theme] .btn-success,html[data-theme] .btn-success:hover'
+  +'{color:#fff!important;}';
+
 
 var st=document.createElement('style');
 st.id='theme-config-all';

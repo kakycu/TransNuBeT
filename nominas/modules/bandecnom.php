@@ -80,7 +80,7 @@ $user_ci = $_SESSION['user_ci'] ?? '';
 $user_email = $_SESSION['user_email'] ?? '';
 
 // Obtener logo con URL absoluta
-$ruta_logo = '../../images/logotn.png';
+$ruta_logo = '../../images/LogoTN.png';
 $logo_base64 = '';
 $logo_url_absoluta = '';
 
@@ -92,7 +92,7 @@ if (file_exists($ruta_logo)) {
     // Obtener URL absoluta de la imagen
     $protocolo = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'];
-    $ruta_web = '/images/logotn.png'; // Ruta desde la raíz del sitio web
+    $ruta_web = '/images/LogoTN.png'; // Ruta desde la raíz del sitio web
     $logo_url_absoluta = $protocolo . $host . $ruta_web;
 }
 ?>
@@ -2264,6 +2264,17 @@ var especialistaGestion = '<?php echo addslashes($config_empresa['especialista_g
 var especialistaNominas = '<?php echo addslashes($config_empresa['especialista_nominas'] ?? ''); ?>';
 var periodoTexto = '';
 var tipoNominaTexto = '';
+// Aclaracion de la tarifa empleada en nomina extraordinaria (Ley 189/2026 vs
+// Convenio Colectivo). Viene del servidor en data-tarifa del periodo elegido y
+// se coloca justo despues del titulo de las previews/exportaciones. La DBF no
+// la lleva: nunca se escribe en la celda de observaciones.
+function aclaracionTarifaPeriodo() {
+    var sel = document.getElementById('periodoSelect');
+    if (!sel || sel.selectedIndex < 0) return '';
+    var opt = sel.options[sel.selectedIndex];
+    if (!opt) return '';
+    return opt.getAttribute('data-tarifa') || '';
+}
 var PRINT_TOOLBAR_HTML = '<style>#auto-hide-toolbar{transition:transform 0.3s ease}#auto-hide-toolbar.hidden{transform:translateY(-100%)}</style><div id="auto-hide-toolbar" class="no-print" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:0.625rem 1.25rem;display:flex;justify-content:center;align-items:center;gap:0.875rem;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;border-bottom:0.1875rem solid #1e40af;transition:transform 0.3s ease;">'
     + '<span style="color:#e0e7ff;font-weight:bold;font-size:0.8125rem;letter-spacing:0.0312rem;">🖨️ VISTA PREVIA DE IMPRESIÓN</span>'
     + '<button onclick="window.print()" style="padding:0.5625rem 1.375rem;background:#22c55e;color:#fff;border:none;border-radius:0.375rem;font-size:0.8125rem;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;box-shadow:0 0.125rem 0.375rem rgba(0,0,0,0.2);transition:all 0.2s;" onmouseover="this.style.background=\'#16a34a\';this.style.transform=\'translateY(-0.0625rem)\';" onmouseout="this.style.background=\'#22c55e\';this.style.transform=\'translateY(0)\';">'
@@ -2665,6 +2676,7 @@ async function imprimirPreview() {
                         <h1>${escapeHtml(empresa)}</h1>
                         <h2>Acreditación BANDEC - Trabajadores CON Tarjeta</h2>
                         <p>${escapeHtml(tipoNominaTexto)} · Período: ${escapeHtml(periodoTexto)} · Formato: ${escapeHtml(formato)}</p>
+                        ${aclaracionTarifaPeriodo() ? '<p style="margin:0.25rem 0 0 0; font-size:9pt; font-weight:bold;">' + escapeHtml(aclaracionTarifaPeriodo()) + '</p>' : ''}
                     </div>
                     <div class="header-right">
                         <strong>Especialista:</strong> ${escapeHtml(especialista)}<br>
@@ -2745,6 +2757,7 @@ async function imprimirPreview() {
                         <h1>${escapeHtml(empresa)}</h1>
                         <h2>Control de Nómina - Trabajadores SIN Tarjeta</h2>
                         <p>${escapeHtml(tipoNominaTexto)} · Período: ${escapeHtml(periodoTexto)} · Pago por Caja</p>
+                        ${aclaracionTarifaPeriodo() ? '<p style="margin:0.25rem 0 0 0; font-size:9pt; font-weight:bold;">' + escapeHtml(aclaracionTarifaPeriodo()) + '</p>' : ''}
                     </div>
                     <div class="header-right">
                         <strong>Especialista:</strong> ${escapeHtml(especialista)}<br>
@@ -2792,6 +2805,7 @@ async function imprimirPreview() {
                     <h1>${escapeHtml(empresa)}</h1>
                     <h2>RESUMEN CONSOLIDADO DE CIERRE NOMINAL</h2>
                     <p>${escapeHtml(tipoNominaTexto)} · Período: ${escapeHtml(periodoTexto)}</p>
+                        ${aclaracionTarifaPeriodo() ? '<p style="margin:0.25rem 0 0 0; font-size:9pt; font-weight:bold;">' + escapeHtml(aclaracionTarifaPeriodo()) + '</p>' : ''}
                 </div>
                 <div class="header-right">
                     <strong>Especialista:</strong> ${escapeHtml(especialista)}<br>
@@ -2803,6 +2817,7 @@ async function imprimirPreview() {
             <!-- Identificadores de la Nómina -->
             <div style="font-size:10pt; line-height:1.6; margin-bottom:1.5625rem; border-bottom: 0.0625rem solid #ddd; padding-bottom:0.9375rem;">
                 <div>Tipo de Nómina: <strong style="text-transform: capitalize;">${tipoNominaTexto}</strong></div>
+                        ${aclaracionTarifaPeriodo() ? '<div style="font-weight:bold;">' + escapeHtml(aclaracionTarifaPeriodo()) + '</div>' : ''}
                 <div>Período de Pago: <strong><u>${periodoTexto}</u></strong></div>
             </div>
 
@@ -3100,6 +3115,7 @@ function exportarExcelLocal(datosConTarjeta, datosSinTarjeta) {
                     <h1>${escapeHtml(nombreEmpresa)}</h1>
                     <h2>Exportación BANDEC - Ambas Secciones</h2>
                     <p>${escapeHtml(tipoNominaTexto)} · Período: ${escapeHtml(periodoTexto)} · Formato: ${escapeHtml(formato)}</p>
+                        ${aclaracionTarifaPeriodo() ? '<p style="margin:0.25rem 0 0 0; font-size:9pt; font-weight:bold;">' + escapeHtml(aclaracionTarifaPeriodo()) + '</p>' : ''}
                 </div>
                 <div class="header-right">
                     <strong>Especialista:</strong> ${escapeHtml(especialistaGestion)}<br>
@@ -3291,6 +3307,7 @@ function exportarWordLocal(datosConTarjeta, datosSinTarjeta) {
                     <h1>${escapeHtml(nombreEmpresa)}</h1>
                     <h2>Exportación BANDEC - Ambas Secciones</h2>
                     <p>${escapeHtml(tipoNominaTextoWord)} · Período: ${escapeHtml(periodoTextoWord)} · Formato: ${escapeHtml(formato)}</p>
+                        ${aclaracionTarifaPeriodo() ? '<p style="margin:0.25rem 0 0 0; font-size:8pt; font-weight:bold;">' + escapeHtml(aclaracionTarifaPeriodo()) + '</p>' : ''}
                 </div>
                 <div class="header-right">
                     <strong>Especialista:</strong> ${escapeHtml(especialistaGestion)}<br>
@@ -3477,6 +3494,7 @@ function exportarPDFLocal(datosConTarjeta, datosSinTarjeta) {
             { text: nombreEmpresa, fontSize: 14, bold: true, color: '#004B87', alignment: 'center' },
             { text: 'Exportación BANDEC - Ambas Secciones', fontSize: 10, bold: true, alignment: 'center', margin: [0, 2, 0, 0] },
             { text: `${tipoNominaTextoPDF} · Período: ${periodoTextoPDF} · Formato: ${formato}`, fontSize: 8, color: '#555', alignment: 'center', margin: [0, 2, 0, 0] },
+            ...(aclaracionTarifaPeriodo() ? [{ text: aclaracionTarifaPeriodo(), fontSize: 8, bold: true, alignment: 'center', margin: [0, 0, 0, 2] }] : []),
             { 
                 columns: [
                     { text: `Especialista: ${especialistaGestion}`, fontSize: 7.5, alignment: 'left' },
@@ -3648,6 +3666,7 @@ function exportarCSVLocal(datosConTarjeta, datosSinTarjeta) {
     csv += `"${nombreEmpresa}"\r\n`;
     csv += `"Exportación BANDEC - Ambas Secciones"\r\n`;
     csv += `"${tipoNominaTexto} · Período: ${periodoTexto}"\r\n`;
+    if (aclaracionTarifaPeriodo()) { csv += "\"" + aclaracionTarifaPeriodo() + "\"\r\n"; }
     csv += `"Especialista: ${especialistaGestion} | Jefe de Proyecto: ${jefeProyecto}"\r\n`;
     csv += `"Fecha generación: ${fechaActualStr}"\r\n`;
     csv += `\r\n`;
@@ -3721,6 +3740,7 @@ function exportarTXTLocal(datosConTarjeta, datosSinTarjeta) {
     txt += `Exportación BANDEC - Ambas Secciones\r\n`;
     txt += `${lineaSeparadora}\r\n`;
     txt += `${tipoNominaTexto} · Período: ${periodoTexto}\r\n`;
+    if (aclaracionTarifaPeriodo()) { txt += aclaracionTarifaPeriodo() + "\r\n"; }
     txt += `Especialista: ${especialistaGestion} | Jefe de Proyecto: ${jefeProyecto}\r\n`;
     txt += `Fecha generación: ${fechaActualStr}\r\n`;
     txt += `${lineaSeparadora}\r\n\r\n`;
@@ -3942,6 +3962,7 @@ function llenarSelectPeriodos(periodos, seleccionarPeriodo = false) {
             hasta: periodo.periodo_hasta
         });
         option.textContent = periodo.label;
+        option.setAttribute('data-tarifa', periodo.tarifa_extra || '');
         option.setAttribute('data-desde', periodo.periodo_desde);
         option.setAttribute('data-hasta', periodo.periodo_hasta);
         periodoSelect.appendChild(option);

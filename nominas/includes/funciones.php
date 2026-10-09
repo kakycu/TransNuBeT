@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // includes/functions.php
 
 
@@ -36,7 +36,7 @@ function fechaComoDateTime($fecha) {
 
 
 /**
- * Último día del mes al que pertenece una fecha "YYYY-MM-DD" o "YYYY-MM".
+ * último día del mes al que pertenece una fecha "YYYY-MM-DD" o "YYYY-MM".
  * Reemplaza date('Y-m-t', strtotime($x)) por el motivo del límite de 32 bits.
  *
  * @param string $fecha
@@ -93,7 +93,7 @@ function calcularImpuestoPersonal($pdo, $ingreso_imponible) {
 }
 
 /**
- * Calcula la contribución especial a la seguridad social
+ * Calcula la cosntribución especial a la seguridad social
  * 
  * @param PDO $pdo
  * @param float $salario_devengado
@@ -142,8 +142,8 @@ function getConfiguracion($pdo, $parametro) {
 
 /**
  * Calcula las vacaciones generadas según la Ley 116
- * Fórmula: Días de vacaciones = Días trabajados ÷ 11
- * Valor a pagar = Salarios devengados ÷ 11
+ * Fórmula: días de vacaciones = días trabajados ?? 11
+ * Valor a pagar = Salarios devengados ?? 11
  * 
  * @param float $dias_trabajados
  * @param float $salarios_devengados
@@ -339,7 +339,7 @@ function getTrabajadorCompleto($pdo, $id) {
 }
 
 /**
- * Obtiene todas las nóminas de un trabajador
+ * Obtiene todas las nómias de un trabajador
  * 
  * @param PDO $pdo
  * @param int $trabajador_id
@@ -358,7 +358,7 @@ function getNominasPorTrabajador($pdo, $trabajador_id) {
 }
 
 /**
- * Registra un cierre de nómina
+ * Registra un cierre de nómia
  * 
  * @param PDO $pdo
  * @param array $datos
@@ -394,7 +394,7 @@ function registrarCierreNomina($pdo, $datos) {
 }
 
 /**
- * Obtiene el último cierre de nómina para un período
+ * Obtiene el último cierre de nómia para un período
  * 
  * @param PDO $pdo
  * @param string $periodo_desde
@@ -430,7 +430,7 @@ function generarCodigoTrabajador($ci) {
  * Genera un código de confirmación tipo captcha con letras (mayúsculas y
  * minúsculas) y números.
  *
- * @param int $longitud Número de caracteres (por defecto 8)
+ * @param int $longitud número de caracteres (por defecto 8)
  * @return string
  */
 if (!function_exists('generarCaptchaAlfanumerico')) {
@@ -454,7 +454,7 @@ function generarCaptchaAlfanumerico($longitud = 8) {
  * decisión: al recargar o abrir otra página vuelve a mostrarse).
  *
  * Uso: se invoca automáticamente desde includes/footer.php; también puede
- * llamarse desde cualquier módulo (donde $pdo ya esté disponible):
+ * llamarse desde cualquier módulo (donde $pdo ya está disponible):
  *     avisarClasificadoresVacios($pdo);                                       // verifica todas
  *     avisarClasificadoresVacios($pdo, ['areas', 'centros_costo']);          // solo algunas
  *
@@ -464,14 +464,14 @@ function generarCaptchaAlfanumerico($longitud = 8) {
  */
 if (!function_exists('getClasificadoresVacios')) {
 function getClasificadoresVacios($pdo, $tablas = []) {
-    // Determina la URL base del directorio "modules" según desde dónde se invoque:
+    // Determina la URL base del directorio "modules" según desde donde se invoque:
     // dashboard.php está en /nominas/ y los módulos en /nominas/modules/.
     $script_dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
     $base_modules = (basename($script_dir) === 'modules') ? $script_dir : $script_dir . '/modules';
 
     $config = [
         'trabajadores'             => ['nombre' => 'Trabajadores',             'icono' => 'fa-users',                'url' => $base_modules . '/empleados.php?nuevo=1'],
-        'areas'                    => ['nombre' => 'Áreas',                    'icono' => 'fa-building',             'url' => $base_modules . '/clasificadores.php?tabla=areas&nuevo=1'],
+        'areas'                    => ['nombre' => 'áreas',                    'icono' => 'fa-building',             'url' => $base_modules . '/clasificadores.php?tabla=areas&nuevo=1'],
         'centros_costo'            => ['nombre' => 'Centros de Costo',         'icono' => 'fa-chart-pie',            'url' => $base_modules . '/clasificadores.php?tabla=centros_costo&nuevo=1'],
         'categorias_ocupacionales' => ['nombre' => 'Categorías Ocupacionales', 'icono' => 'fa-user-tag',             'url' => $base_modules . '/clasificadores.php?tabla=categorias_ocupacionales&nuevo=1'],
         'escalas_salariales'       => ['nombre' => 'Escalas Salariales',       'icono' => 'fa-dollar-sign',          'url' => $base_modules . '/clasificadores.php?tabla=escalas_salariales&nuevo=1'],
@@ -509,7 +509,7 @@ function getClasificadoresVacios($pdo, $tablas = []) {
  * position:fixed.
  *
  * Uso: se invoca automáticamente desde includes/footer.php; también puede
- * llamarse desde cualquier módulo (donde $pdo ya esté disponible):
+ * llamarse desde cualquier módulo (donde $pdo ya está disponible):
  *     avisarClasificadoresVacios($pdo);                                       // verifica todas
  *     avisarClasificadoresVacios($pdo, ['areas', 'centros_costo']);          // solo algunas
  *
@@ -623,7 +623,7 @@ if (!function_exists('verificarCuadreCierres')) {
 /**
  * Verifica el cuadre de los cierres registrados en cierres_nomina:
  * compara los totales almacenados en cada cierre contra la suma real de las
- * filas contabilizadas de esa nómina (periodo + tipo + numero) y valida la
+ * filas contabilizadas de esa nómia (periodo + tipo + numero) y valida la
  * aritmética interna del cierre (neto = devengado - deducciones).
  *
  * @param PDO $pdo
@@ -654,7 +654,7 @@ function verificarCuadreCierres($pdo, $filtro = []) {
     $stmt->execute($params);
     $cierres = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Suma real por nómina contabilizada (para comparar con los totales del cierre)
+    // Suma real por nómia contabilizada (para comparar con los totales del cierre)
     $stmt_sum = $pdo->prepare("SELECT periodo_desde, periodo_hasta, tipo_nomina, numero_nomina,
                                       COUNT(*) as total_trabajadores,
                                       SUM(total_salario_devengado) as total_devengado,
@@ -690,7 +690,7 @@ function verificarCuadreCierres($pdo, $filtro = []) {
             ['total_devengado', 'Devengado', $total_dev, floatval($c['total_devengado'] ?? 0), 0.02],
             ['total_deducciones', 'Deducciones', $total_ded, floatval($c['total_deducciones'] ?? 0), 0.02],
             ['total_neto', 'Neto', $total_neto, floatval($c['total_neto'] ?? 0), 0.02],
-            ['total_contribucion', 'Contribución CESS', $total_cont, floatval($c['total_contribucion'] ?? 0), 0.02],
+            ['total_contribucion', 'cosntribución CESS', $total_cont, floatval($c['total_contribucion'] ?? 0), 0.02],
             ['total_vacaciones_pagadas', 'Vacaciones pagadas', $total_vac, floatval($c['total_vacaciones_pagadas'] ?? 0), 0.02],
             ['neto_aritmetica', 'Aritmética (neto = dev - ded)', floatval($c['total_devengado'] ?? 0) - floatval($c['total_deducciones'] ?? 0), floatval($c['total_neto'] ?? 0), 0.02],
         ];
@@ -836,7 +836,7 @@ if (!function_exists('periodoNominasCerrado')) {
     $GLOBALS['nominas_cierres_indisponibles'] = false;
 
     /**
-     * ¿El periodo (YYYY-MM-DD primer dia) tiene un cierre vigente?
+     * - El periodo (YYYY-MM-DD primer dia) tiene un cierre vigente?
      * Cuenta como cerrado tanto el cierre mensual como el anual de su ano.
      *
      * Ante un error de base de datos se responde true, no false. Este guard
@@ -906,7 +906,7 @@ if (!function_exists('normalizar_periodo_nominas')) {
 
 if (!function_exists('periodoNominasFuturo')) {
     /**
-     * ¿El periodo pedido esta POR DELANTE del periodo en curso?
+     * - El periodo pedido esta POR DELANTE del periodo en curso?
      *
      * El periodo en curso es el mes abierto mas antiguo, asi que cualquier mes
      * posterior todavia no ha llegado: no se puede generar ni modificar su
@@ -945,7 +945,7 @@ if (!function_exists('mensaje_periodo_futuro_nominas')) {
 
         return etiquetaMesNominas($mes) . ' ' . $anio . ' todavía no ha llegado. '
              . 'El período en curso es ' . etiquetaMesNominas($en_curso['mes']) . ' ' . $en_curso['anio']
-             . ', así que no se puede generar ni modificar la nómina de un período futuro.';
+             . ', así que no se puede generar ni modificar la nómia de un período futuro.';
     }
 }
 
@@ -1274,7 +1274,7 @@ if (!function_exists('mesesConNominaTipo')) {
 
 if (!function_exists('periodoSinNominas')) {
     /**
-     * ¿El mes indicado no tiene nominas contabilizadas? Esos meses no bloquean
+     * - El mes indicado no tiene nominas contabilizadas? Esos meses no bloquean
      * la progresion: se pueden dejar sin cerrar porque no aportan nada.
      */
     function periodoSinNominas($pdo, $anio, $mes) {
@@ -1286,7 +1286,7 @@ if (!function_exists('periodoSinNominas')) {
 
 if (!function_exists('anioConNominas')) {
     /**
-     * ¿El anio indicado tiene alguna nomina?
+     * - El anio indicado tiene alguna nomina?
      *
      * Cuenta cualquier fila, no solo las contabilizadas: un anio con borradores
      * tiene nominas y por lo tanto necesita un cierre, asi que no puede tratarse
@@ -1382,7 +1382,7 @@ if (!function_exists('anioPrecedenteOperableNominas')) {
 
         // La cadena es completa, no solo de un año a otro: si 2026 sigue sin
         // cierre anual, NO se puede abrir ni 2027 ni 2028 ni 2029. Por eso se
-        // recorre hacia atrás el último año con nóminas sin cerrar en vez de
+        // recorre hacia atrás el último año con nómias sin cerrar en vez de
         // mirar solo $anio - 1. El bloqueo se reporta siempre sobre el año MÁS
         // RECIENTE pendiente, que es el primero que hay que cerrar para
         // desbloquear la cadena.
@@ -1403,9 +1403,9 @@ if (!function_exists('anioPrecedenteOperableNominas')) {
 
 if (!function_exists('ultimoAnioNominasSinCierreAnual')) {
     /**
-     * Último año, igual o anterior a $anioLimite, que tenga nóminas y cuyo
-     * cierre ANUAL no esté registrado como 'cerrado'. Si un año anterior tiene
-     * cierre anual pero uno más antiguo sigue abierto, se sigue hacia atrás:
+     * último año, igual o anterior a $anioLimite, que tenga nómias y cuyo
+     * cierre ANUAL no está registrado como 'cerrado'. Si un año anterior tiene
+     * cierre anual pero uno MÁS antiguo sigue abierto, se sigue hacia atrás:
      * los cierres son una cadena y no se salta un hueco.
      *
      * Devuelve 0 si no hay ninguno pendiente.
@@ -1443,7 +1443,7 @@ if (!function_exists('mensaje_anio_previo_nominas')) {
      *
      * $anioPendiente es el año concreto que sigue sin cerrar. Si coincide con
      * el año anterior se habla de "el año anterior" (redacción pedida); si está
-     * más atrás se nombra, porque "el anterior" sería engañoso cuando el hueco
+     * MÁS atrás se nombra, porque "el anterior" sería engañoso cuando el hueco
      * es de varios años.
      */
     function mensaje_anio_previo_nominas($anio, $anioPendiente = 0) {
@@ -1453,7 +1453,7 @@ if (!function_exists('mensaje_anio_previo_nominas')) {
             ? 'el año anterior'
             : 'el año ' . $anioPendiente;
 
-        return 'No se puede generar nómina de ' . $anio . ': ' . $quien
+        return 'No se puede generar nómia de ' . $anio . ': ' . $quien
              . ' todavía no está cerrado. Cierre ese año en el módulo Cierres antes de trabajar con '
              . $anio . '.';
     }
@@ -1801,15 +1801,15 @@ if (!function_exists('listarCierresNominas')) {
 
 if (!function_exists('aniosConNominas')) {
     /**
-     * Años que tienen nóminas en la tabla, sin importar el estado en que
-     * estén (borrador, contabilizada, revertida...).
+     * años que tienen nómias en la tabla, sin importar el estado en que
+     * están (borrador, contabilizada, revertida...).
      *
-     * El combo de Cierres lo necesita porque un año puede tener nóminas y no
+     * El combo de Cierres lo necesita porque un año puede tener nómias y no
      * tener ni un solo cierre registrado: ese año se puede cerrar, así que
      * tiene que aparecer. Si el combo solo mirara cierres, el año quedaría
      * fuera y no habría forma de cerrarlo desde la interfaz.
      *
-     * @return int[] Años descendentes, sin repetir.
+     * @return int[] años descendentes, sin repetir.
      */
     function aniosConNominas($pdo) {
         try {
@@ -1828,7 +1828,7 @@ if (!function_exists('aniosConNominas')) {
 
 if (!function_exists('resumenCierresAnioNominas')) {
     /**
-     * Resumen ligero del año de nóminas en curso, para los badges de la interfaz
+     * Resumen ligero del año de nómias en curso, para los badges de la interfaz
      * (sidebar, configuracion). No calcula totales ni cuadres: solo cuenta cierres
      * vigentes en una sola consulta, así que es barato en cada carga de página.
      *
@@ -2348,6 +2348,44 @@ function cargarTarifasTrabajoExtraordinario($pdo) {
 }
 }
 
+if (!function_exists('cargarTarifasConvenio')) {
+/**
+ * Carga las tarifas pactadas por Convenio Colectivo de Trabajo desde
+ * configuracion_general. Son valores fijos en pesos por hora ($/h) que, cuando
+ * una nómia extraordinaria se genera con la opcion "Convenio Colectivo
+ * Empleador - Empleado", sustituyen al recargo de la Ley 189/2026 y a las
+ * tarifas fijas de la Res. 15/2026 MTSS.
+ */
+function cargarTarifasConvenio($pdo) {
+    $defaults = [
+        'convenio_valor_he'                   => 10.25,
+        'convenio_valor_doble_turno'          => 20.05,
+        'convenio_valor_nocturnidad_temprana' => 8.00,
+        'convenio_valor_nocturnidad_tardia'   => 14.75,
+    ];
+
+    $tarifas = $defaults;
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT parametro, valor FROM configuracion_general
+             WHERE parametro IN ('convenio_valor_he',
+                                 'convenio_valor_doble_turno',
+                                 'convenio_valor_nocturnidad_temprana',
+                                 'convenio_valor_nocturnidad_tardia')"
+        );
+        $stmt->execute();
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+            if (isset($fila['valor']) && is_numeric($fila['valor']) && $fila['valor'] !== '') {
+                $tarifas[$fila['parametro']] = (float)$fila['valor'];
+            }
+        }
+    } catch (PDOException $e) {
+    }
+
+    return $tarifas;
+}
+}
+
 if (!function_exists('cargarTasaCessEspecial')) {
 /**
  * Tasa de la Contribucion a la Seguridad Social usada cuando la nomina se
@@ -2362,7 +2400,7 @@ if (!function_exists('cargarTasaCessEspecial')) {
  */
 function cargarTasaCessEspecial($pdo) {
     // Delega en getTasaContribucion() (config/database.php), que ya filtra por
-    // fecha de vigencia: una sola implementación para leer la tasa canónica de
+    // fecha de vigencia: una sola implementaci??n para leer la tasa canónica de
     // configuracion_tasas.nombre_tasa = 'contribucion_especial'.
     try {
         $valor = getTasaContribucion($pdo);
@@ -2431,14 +2469,20 @@ if (!function_exists('calcularImporteTrabajoExtraordinario')) {
  *  - Res. 15/2026 MTSS, QUINTO.2: los turnos nocturnos no se remuneran como
  *    porcentaje del salario sino con una tarifa fija en pesos por hora
  *    (0.60 entre 19:00 y 23:00, 1.15 entre 23:00 y 07:00).
+ *  - Convenio Colectivo de Trabajo (Empleador - Empleado): si $usar_convenio es
+ *    true se usan los valores pactados de $tarifas_convenio (pesos por hora
+ *    fijos para horas extras, doble turno y las dos nocturnidades), sin recargo
+ *    sobre el salario del trabajador.
  *
  * @param float $salario_hora  Salario por hora ordinario del trabajador.
  * @param array $cantidades    horas_he, horas_nocturnas_tempranas,
  *                             horas_nocturnas_tardias, horas_doble_turno.
  * @param array $tarifas       Resultado de cargarTarifasTrabajoExtraordinario().
+ * @param bool  $usar_convenio True para aplicar las tarifas pactadas por convenio.
+ * @param array $tarifas_convenio Resultado de cargarTarifasConvenio() (solo se usa si $usar_convenio).
  * @return array
  */
-function calcularImporteTrabajoExtraordinario($salario_hora, array $cantidades, array $tarifas) {
+function calcularImporteTrabajoExtraordinario($salario_hora, array $cantidades, array $tarifas, $usar_convenio = false, array $tarifas_convenio = []) {
     $salario_hora = (float)$salario_hora;
 
     $horas_he    = max(0, (float)($cantidades['horas_he'] ?? 0));
@@ -2446,14 +2490,28 @@ function calcularImporteTrabajoExtraordinario($salario_hora, array $cantidades, 
     $horas_nt_d  = max(0, (float)($cantidades['horas_nocturnas_tardias'] ?? 0));
     $horas_dt    = max(0, (float)($cantidades['horas_doble_turno'] ?? 0));
 
-    $recargo = (float)($tarifas['recargo_trabajo_extraordinario'] ?? 1.25);
-    $tar_t   = (float)($tarifas['tarifa_nocturnidad_temprana'] ?? 0.60);
-    $tar_d   = (float)($tarifas['tarifa_nocturnidad_tardia'] ?? 1.15);
+    if ($usar_convenio) {
+        // Valores pactados por Convenio Colectivo de Trabajo: tarifas fijas en
+        // pesos por hora, sin recargo porcentual sobre el salario del trabajador.
+        $tar_cu_he = (float)($tarifas_convenio['convenio_valor_he'] ?? 10.25);
+        $tar_cu_dt = (float)($tarifas_convenio['convenio_valor_doble_turno'] ?? 20.05);
+        $tar_cu_t  = (float)($tarifas_convenio['convenio_valor_nocturnidad_temprana'] ?? 8.00);
+        $tar_cu_d  = (float)($tarifas_convenio['convenio_valor_nocturnidad_tardia'] ?? 14.75);
 
-    $importe_he_diurnas    = redondearImporte($salario_hora * $recargo * $horas_he);
-    $importe_noct_temprana = redondearImporte($horas_nt_t * $tar_t);
-    $importe_noct_tardia   = redondearImporte($horas_nt_d * $tar_d);
-    $importe_doble_turno   = redondearImporte($salario_hora * $recargo * $horas_dt);
+        $importe_he_diurnas    = redondearImporte($horas_he * $tar_cu_he);
+        $importe_noct_temprana = redondearImporte($horas_nt_t * $tar_cu_t);
+        $importe_noct_tardia   = redondearImporte($horas_nt_d * $tar_cu_d);
+        $importe_doble_turno   = redondearImporte($horas_dt * $tar_cu_dt);
+    } else {
+        $recargo = (float)($tarifas['recargo_trabajo_extraordinario'] ?? 1.25);
+        $tar_t   = (float)($tarifas['tarifa_nocturnidad_temprana'] ?? 0.60);
+        $tar_d   = (float)($tarifas['tarifa_nocturnidad_tardia'] ?? 1.15);
+
+        $importe_he_diurnas    = redondearImporte($salario_hora * $recargo * $horas_he);
+        $importe_noct_temprana = redondearImporte($horas_nt_t * $tar_t);
+        $importe_noct_tardia   = redondearImporte($horas_nt_d * $tar_d);
+        $importe_doble_turno   = redondearImporte($salario_hora * $recargo * $horas_dt);
+    }
 
     $importe_nocturnas = redondearImporte($importe_noct_temprana + $importe_noct_tardia);
 
@@ -2481,7 +2539,7 @@ if (!function_exists('horasTrabajoExtraordinarioTotales')) {
  * extras, doble turno y habilitación de días de descanso semanal.
  *
  * Ley 189/2026 "Codigo de Trabajo", art. 229.2: la persona trabajadora no está
- * obligada a laborar más de 160 horas extraordinarias al año. El dato es
+ * obligada a laborar MÁS de 160 horas extraordinarias al año. El dato es
  * informativo porque el módulo trabaja con totales mensuales y no puede saber
  * cómo se reparten entre días, de modo que el control diario y semanal queda en
  * manos de la entidad.
@@ -2509,3 +2567,9 @@ function horasTrabajoExtraordinarioTotales($pdo, $trabajador_id, $anio, $excluir
 }
 }
 ?>
+
+
+
+
+
+

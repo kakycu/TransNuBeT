@@ -274,22 +274,15 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
         </div>
 
         <?php
-        $puedeVer    = permiso_puede('dashboard', 'ver');
-        $puedeAbrir  = carpetas_sistema_puede('abrir');
-        $puedeVaciar = carpetas_sistema_puede('vaciar');
+        $puedeVer     = permiso_puede('dashboard', 'ver');
+        $puedeAbrir   = carpetas_sistema_puede('abrir');
+        $puedeVaciar  = carpetas_sistema_puede('vaciar');
+        $puedeEliminar = carpetas_sistema_puede('eliminar');
+        $puedeCrear   = ($rolActual === 'Admin');
         $hayContenido = $carpetaLista && ($totalArchivos > 0 || $totalCarpetas > 0);
         $rutaPadre    = $rutaRelativa === '' ? '' : (dirname($rutaRelativa) === '.' ? '' : str_replace('\\', '/', dirname($rutaRelativa)));
         ?>
         <div class="carpeta-toolbar-acciones">
-            <?php if ($puedeVer): ?>
-            <button type="button" class="btn btn-win btn-win-outline btn-actualizar-carpeta" id="btnActualizarCarpeta"
-                    data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
-                    title="Actualizar el listado de la carpeta"
-                    data-tooltip="Actualizar el listado de la carpeta" data-tooltip-theme="primary">
-                <i class="fas fa-rotate-right me-2"></i>Actualizar
-            </button>
-            <?php endif; ?>
-
             <button type="button" class="btn btn-win btn-win-primary btn-abrir-carpeta<?php echo $puedeAbrir ? '' : ' btn-deshabilitado'; ?>" id="btnAbrirCarpeta"
                     data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
                     data-ruta="<?php echo htmlspecialchars($rutaRelativa); ?>"
@@ -305,6 +298,17 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
                     ?>">
                 <i class="fas <?php echo $puedeAbrir ? 'fa-folder-open' : 'fa-lock'; ?> me-2"></i>Abrir en Explorador
             </button>
+
+            <?php if ($puedeEliminar): ?>
+            <button type="button" class="btn btn-win btn-eliminar-seleccion" id="btnEliminarSeleccion"
+                    data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
+                    data-ruta="<?php echo htmlspecialchars($rutaRelativa); ?>"
+                    hidden
+                    title="Eliminar los archivos marcados con el checkbox de la izquierda"
+                    data-tooltip="Eliminar los archivos seleccionados" data-tooltip-theme="danger">
+                <i class="fas fa-trash-alt me-2"></i>Eliminar seleccionados (<span id="selCantidad">0</span>)
+            </button>
+            <?php endif; ?>
 
             <?php if ($puedeVaciar): ?>
             <button type="button" class="btn btn-win btn-vaciar-carpeta" id="btnVaciarCarpeta"
@@ -407,6 +411,24 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
                         title="Subir una carpeta" aria-label="Subir una carpeta">
                     <i class="fas fa-arrow-up" aria-hidden="true"></i>
                 </button>
+                <?php if ($puedeCrear): ?>
+                <button type="button" class="carpeta-nav-btn" id="btnCrearCarpeta"
+                        data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
+                        data-ruta="<?php echo htmlspecialchars($rutaRelativa); ?>"
+                        <?php echo $carpetaLista ? '' : 'disabled'; ?>
+                        title="Crear una carpeta nueva aqu&iacute;" aria-label="Crear una carpeta">
+                    <i class="fas fa-folder-plus" aria-hidden="true"></i>
+                </button>
+                <?php endif; ?>
+                <?php if ($puedeVer): ?>
+                <button type="button" class="carpeta-nav-btn btn-actualizar-carpeta" id="btnActualizarCarpeta"
+                        data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
+                        title="Actualizar el listado de la carpeta"
+                        aria-label="Actualizar el listado de la carpeta"
+                        data-tooltip="Actualizar el listado de la carpeta" data-tooltip-theme="primary">
+                    <i class="fas fa-arrows-rotate" aria-hidden="true"></i>
+                </button>
+                <?php endif; ?>
                 <span class="carpeta-nav-sep" aria-hidden="true">|</span>
                 <button type="button" class="carpeta-nav-btn carpeta-restablecer-anchos"
                         id="btnRestablecerAnchos"
@@ -469,6 +491,7 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 tabla-carpetas" id="tablaCarpetas">
                 <colgroup>
+                    <?php if ($puedeEliminar): ?><col class="col-seleccion"><?php endif; ?>
                     <col data-col="0">
                     <col data-col="1">
                     <col data-col="2">
@@ -477,6 +500,13 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
                 </colgroup>
                 <thead>
                     <tr>
+                        <?php if ($puedeEliminar): ?>
+                        <th class="celda-seleccion">
+                            <input type="checkbox" id="chkSelTodo" class="carpeta-check"
+                                   aria-label="Seleccionar todos los elementos visibles"
+                                   title="Seleccionar todos los elementos visibles (archivos y carpetas)">
+                        </th>
+                        <?php endif; ?>
                         <th data-col="0"><button type="button" class="th-sort" data-orden="nombre"><span>Archivo</span><i class="fas fa-sort th-sort-icono"></i></button><span class="th-grip" title="Arrastrar para ajustar el ancho; doble clic para ajustar al contenido"></span></th>
                         <th data-col="1" class="text-end"><button type="button" class="th-sort" data-orden="tipo"><span>Tipo</span><i class="fas fa-sort th-sort-icono"></i></button><span class="th-grip" title="Arrastrar para ajustar el ancho; doble clic para ajustar al contenido"></span></th>
                         <th data-col="2" class="text-end"><button type="button" class="th-sort" data-orden="bytes"><span>Tama&ntilde;o</span><i class="fas fa-sort th-sort-icono"></i></button><span class="th-grip" title="Arrastrar para ajustar el ancho; doble clic para ajustar al contenido"></span></th>
@@ -490,8 +520,18 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
                         data-es-carpeta="1"
                         data-extension="carpeta"
                         data-nombre="<?php echo htmlspecialchars($c['nombre']); ?>"
+                        data-ruta="<?php echo htmlspecialchars($rutaRelativa); ?>"
                         data-bytes="0"
                         data-fecha="<?php echo (int)$c['fecha']; ?>">
+                        <?php if ($puedeEliminar): ?>
+                        <td class="celda-seleccion">
+                            <input type="checkbox" class="carpeta-check chk-archivo"
+                                   data-nombre="<?php echo htmlspecialchars($c['nombre']); ?>"
+                                   data-tipo="carpeta"
+                                   aria-label="Seleccionar la carpeta <?php echo htmlspecialchars($c['nombre']); ?>"
+                                   title="Marcar la carpeta <?php echo htmlspecialchars($c['nombre']); ?> para eliminarla">
+                        </td>
+                        <?php endif; ?>
                         <td class="celda-archivo" title="<?php echo htmlspecialchars($c['nombre']); ?>">
                             <a class="carpeta-archivo carpeta-entrar-carpeta"
                                href="<?php echo htmlspecialchars(carpeta_url_navegacion($solicitada, $c['ruta'])); ?>"
@@ -507,7 +547,7 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
                         <td class="text-end"><?php echo date('d/m/Y h:i:s a', $c['fecha']); ?></td>
                         <td class="text-end">
                             <span class="carpeta-acciones">
-                                <?php if (carpetas_sistema_puede('eliminar')): ?>
+                                <?php if ($puedeEliminar): ?>
                                 <button type="button" class="btn btn-sm btn-outline-danger carpeta-accion-icono btn-eliminar-archivo"
                                         data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
                                         data-ruta="<?php echo htmlspecialchars($rutaRelativa); ?>"
@@ -552,6 +592,15 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
                         data-ruta="<?php echo htmlspecialchars($rutaRelativa); ?>"
                         data-bytes="<?php echo (int)$a['bytes']; ?>"
                         data-fecha="<?php echo (int)$a['fecha']; ?>">
+                        <?php if ($puedeEliminar): ?>
+                        <td class="celda-seleccion">
+                            <input type="checkbox" class="carpeta-check chk-archivo"
+                                   data-nombre="<?php echo htmlspecialchars($a['nombre']); ?>"
+                                   data-tipo="archivo"
+                                   aria-label="Seleccionar <?php echo htmlspecialchars($a['nombre']); ?>"
+                                   title="Marcar <?php echo htmlspecialchars($a['nombre']); ?> para eliminarlo">
+                        </td>
+                        <?php endif; ?>
                         <?php $previsualizable = in_array($a['extension'], ['txt', 'sql', 'dbf', 'xml', 'csv', 'log', 'json', 'md', 'ps1', 'cmd', 'zip', 'rar'], true); ?>
                         <td class="celda-archivo" title="<?php echo htmlspecialchars($a['nombre']); ?>">
                             <?php if ($previsualizable): ?>
@@ -590,7 +639,7 @@ $usuarioActual = $_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? 'Usu
                                     <i class="fas fa-download"></i>
                                 </a>
                                 <?php endif; ?>
-                                <?php if (carpetas_sistema_puede('eliminar')): ?>
+                                <?php if ($puedeEliminar): ?>
                                 <button type="button" class="btn btn-sm btn-outline-danger carpeta-accion-icono btn-eliminar-archivo"
                                         data-carpeta="<?php echo htmlspecialchars($solicitada); ?>"
                                         data-ruta="<?php echo htmlspecialchars($rutaRelativa); ?>"

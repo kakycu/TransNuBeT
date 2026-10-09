@@ -19,6 +19,7 @@ require_once '../config/database.php';
 require_once '../includes/funciones.php';
 require_once '../includes/permisos.php';
 require_once __DIR__ . '/../includes/logger.php';
+require_once __DIR__ . '/../includes/visor_anidar.php';
 require_once __DIR__ . '/../includes/rarlib/autoload.php';
 require_once __DIR__ . '/../includes/rarlib/unrar.php';
 
@@ -316,8 +317,19 @@ if ($archivo === '' || $archivo === '.' || $archivo === '..') {
     extraer_json(400, ['success' => false, 'mensaje' => 'Nombre de archivo no valido.']);
 }
 
-if (strtolower(pathinfo($archivo, PATHINFO_EXTENSION)) !== 'rar') {
-    extraer_json(400, ['success' => false, 'mensaje' => 'Solo se pueden leer archivos .rar.']);
+// El archivo raiz debe ser un .rar. Con cadena anidada (entradas[]) ademas se
+// admite un .zip raiz: el recorrido abre cada nivel con la libreria que le
+// toque (ZIP o RAR) en includes/visor_anidar.php.
+$parseAnidado  = visor_anidar_parsear($fuente);
+$extensionRaiz = strtolower(pathinfo($archivo, PATHINFO_EXTENSION));
+
+if (count($parseAnidado['entradas']) === 0) {
+    if ($extensionRaiz !== 'rar') {
+        extraer_json(400, ['success' => false, 'mensaje' => 'Solo se pueden leer archivos .rar.']);
+    }
+} elseif (!in_array($extensionRaiz, ['zip', 'rar'], true)) {
+    extraer_json(400, ['success' => false,
+        'mensaje' => 'La ruta de anidamiento debe empezar en un archivo comprimido.']);
 }
 
 // Subcarpeta relativa donde esta el RAR (p. ej. tras haber extraido otro).
@@ -393,6 +405,47 @@ function rar_indice_o_error($rutaArchivo, $password)
 if ($accion === '' || $accion === 'ver_entrada') {
     if (!carpetas_sistema_puede('descargar')) {
         extraer_json(403, ['success' => false, 'mensaje' => 'Su rol no permite descargar archivos.']);
+    }
+
+    // Cadena anidada: se recorre hasta el destino (una entrada concreta o el
+    // propio contenedor de la cadena) y se envia el temporal resultante. Solo
+    // el nivel raiz sin cadena sigue el camino legado de mas abajo.
+    if (count($parseAnidado['entradas']) > 0) {
+        $preparado = visor_anidar_recorrer($rutaArchivo, $extensionRaiz,
+            (int)@filesize($rutaArchivo), $archivo, $parseAnidado, 'archivo');
+
+        $temporalDescarga = $preparado['ruta'];
+        $pesoDescarga     = (int)$preparado['bytes'];
+        if ($pesoDescarga > RAR_EXTRACCION_MAX_DESCARGA) {
+            extraer_json(413, [
+                'success' => false,
+                'mensaje' => 'La entrada pesa ' . (int)($pesoDescarga / 1048576) .
+                    ' MB y el limite por descarga es ' . (int)(RAR_EXTRACCION_MAX_DESCARGA / 1048576) . ' MB.',
+            ]);
+        }
+
+        @set_time_limit(600);
+        $nombreDescarga = basename($preparado['nombre']);
+
+        logAction('dashboard', 'extraer_rar',
+            'Descarga de una entrada anidada desde el explorador de carpetas',
+            [
+                'carpeta' => $carpetaSolicitada,
+                'archivo' => $archivo,
+                'entrada' => $nombreDescarga,
+                'cadena'  => count($parseAnidado['entradas']),
+                'bytes'   => $pesoDescarga,
+            ],
+            null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . str_replace('"', '', $nombreDescarga) . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, max-age=0, no-store, no-cache, must-revalidate');
+        header('Content-Length: ' . $pesoDescarga);
+
+        readfile($temporalDescarga);
+        exit();
     }
 
     $indice = (int)($fuente['entrada'] ?? -1);
@@ -525,9 +578,98 @@ if ($claveDestino === '') {
     list($claveDestinoFinal, $rutaDestino) = $destinoResuelto;
 }
 
+// Cadena anidada: extraer UNO copia el temporal de la entrada directamente al
+// destino; "extraer todo" deja apuntando $rutaArchivo al contenedor final (en
+// su temporal) y el flujo normal de mas abajo lo descomprime. Sin cadena no se
+// toca nada: manda el camino legado del RAR raiz.
+$passwordAnidado = null;
+if (count($parseAnidado['entradas']) > 0) {
+    $preparado = visor_anidar_recorrer($rutaArchivo, $extensionRaiz,
+        (int)@filesize($rutaArchivo), $archivo, $parseAnidado, 'archivo');
+    $passwordAnidado = $preparado['password'];
+
+    if ($accion === 'extraer_uno') {
+        $nombreSeguro = carpetas_nombre_seguro(basename($preparado['nombre']));
+        if ($nombreSeguro === null) {
+            extraer_json(400, ['success' => false, 'mensaje' => 'Entrada no extraible.']);
+        }
+
+        $destinoArchivo = $rutaDestino . DIRECTORY_SEPARATOR .
+            str_replace('/', DIRECTORY_SEPARATOR, $nombreSeguro);
+        $padreDestino = dirname($destinoArchivo);
+        if (!extraer_crear_dir($padreDestino)) {
+            extraer_json(500, ['success' => false,
+                'mensaje' => 'No se pudo preparar la carpeta destino.']);
+        }
+
+        $baseDestino   = realpath($padreDestino);
+        $prefijoDestino = rtrim($rutaDestino, "/\\") . DIRECTORY_SEPARATOR;
+        if ($baseDestino === false ||
+            stripos(rtrim($baseDestino, "/\\") . DIRECTORY_SEPARATOR, $prefijoDestino) !== 0) {
+            extraer_json(400, ['success' => false,
+                'mensaje' => 'La ruta de destino se sale de la carpeta permitida.']);
+        }
+
+        $destinoFinal = extraer_destino_libre($destinoArchivo);
+        if (@copy($preparado['ruta'], $destinoFinal) === false) {
+            extraer_json(500, ['success' => false,
+                'mensaje' => 'No se pudo escribir la entrada en el destino.']);
+        }
+
+        $pesoCopia = (int)@filesize($destinoFinal);
+        $mtimeCopia = (int)@filemtime($preparado['ruta']);
+        if ($mtimeCopia > 0) {
+            @touch($destinoFinal, $mtimeCopia);
+        }
+
+        $definicionDestino = carpetas_sistema_definicion();
+        logAction('dashboard', 'extraer_rar',
+            'Extraccion de una entrada anidada en el explorador de carpetas',
+            [
+                'carpeta' => $carpetaSolicitada,
+                'archivo' => $archivo,
+                'entrada' => $nombreSeguro,
+                'cadena'  => count($parseAnidado['entradas']),
+                'destino' => $claveDestinoFinal,
+                'bytes'   => $pesoCopia,
+            ],
+            null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+
+        extraer_json(200, [
+            'success'       => true,
+            'mensaje'       => 'Extraccion completada.',
+            'carpeta'       => $carpetaSolicitada,
+            'destino'       => $claveDestinoFinal,
+            'destinoTitulo' => $tituloDestino ??
+                ($definicionDestino[$claveDestinoFinal]['titulo'] ?? $claveDestinoFinal),
+            'subcarpeta'    => '',
+            'rutaDestino'   => '',
+            'archivo'       => $archivo,
+            'archivos'      => 1,
+            'carpetas'      => 0,
+            'bytes'         => $pesoCopia,
+            'omitidos'      => 0,
+            'detalles'      => [],
+        ]);
+        exit();
+    }
+
+    // "Extraer todo" sobre un contenedor anidado: este endpoint abre RAR.
+    if ($preparado['extension'] !== 'rar') {
+        extraer_json(400, ['success' => false,
+            'mensaje' => 'Ese contenedor anidado es un ZIP: abra su nivel y extraiga desde alli.']);
+    }
+    $rutaArchivo   = $preparado['ruta'];
+    $archivo       = basename($preparado['nombre']);
+    $extensionRaiz = 'rar';
+}
+
 // Contraseña (si el usuario ya la introdujo): ademas hace falta para poder
-// listar un RAR con las cabeceras cifradas (-hp).
-$password = (string)($fuente['password'] ?? '');
+// listar un RAR con las cabeceras cifradas (-hp). En cadena anidada manda la
+// clave del contenedor final que devolvio el recorrido.
+$password = ($passwordAnidado !== null)
+    ? $passwordAnidado
+    : (string)($fuente['password'] ?? '');
 
 $entradas = rar_indice_o_error($rutaArchivo, $password);
 

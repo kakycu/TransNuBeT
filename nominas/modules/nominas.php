@@ -46,6 +46,9 @@ if (!isset($_SESSION['usuario_id']) && !isset($_SESSION['logged_in'])) {
 require_once '../config/database.php';
 require_once __DIR__ . '/../includes/logger.php';
 require_once '../includes/funciones.php';
+require_once '../config/migraciones.php';
+
+asegurarConvenioExtra($pdo);
 
 // Control de acceso por rol
 if (!permiso_puede('nominas', 'ver')) {
@@ -69,6 +72,13 @@ $tarifas_extra = cargarTarifasTrabajoExtraordinario($pdo);
 $recargo_trabajo_extraordinario = $tarifas_extra['recargo_trabajo_extraordinario'];
 $tarifa_nocturnidad_temprana     = $tarifas_extra['tarifa_nocturnidad_temprana'];
 $tarifa_nocturnidad_tardia       = $tarifas_extra['tarifa_nocturnidad_tardia'];
+
+// Tarifas pactadas por Convenio Colectivo de Trabajo (Empleador - Empleado).
+$tarifas_convenio = cargarTarifasConvenio($pdo);
+$convenio_valor_he                  = $tarifas_convenio['convenio_valor_he'];
+$convenio_valor_doble_turno         = $tarifas_convenio['convenio_valor_doble_turno'];
+$convenio_valor_nocturnidad_temprana = $tarifas_convenio['convenio_valor_nocturnidad_temprana'];
+$convenio_valor_nocturnidad_tardia  = $tarifas_convenio['convenio_valor_nocturnidad_tardia'];
 
 // Tasa de la CESS aplicada en el modo "total_rangos" (ISIP). Va al JS para que
 // la previsualizacion use el mismo porcentaje que guarda el servidor en lugar
@@ -665,6 +675,16 @@ if (isset($_POST['actualizar_nomina'])) {
             $horas_nocturnas_tardias = max(0, floatval($_POST['nocturnidad_tardia'] ?? $_POST['horas_nocturnas_tardias'] ?? 0));
             $horas_doble_turno = max(0, floatval($_POST['doble_turno'] ?? $_POST['horas_doble_turno'] ?? 0));
             $horas_nocturnas = $horas_nocturnas_tempranas + $horas_nocturnas_tardias;
+            // La tarifa (Ley vs Convenio) se recibe del formulario de edición;
+            // si no viene, se conserva la que ya tenía la fila en la BD para no
+            // recalcular el lote con la tarifa equivocada.
+            if (array_key_exists('usar_convenio', $_POST)) {
+                $usar_convenio_fila = intval($_POST['usar_convenio']) === 1 ? 1 : 0;
+            } else {
+                $chk_conv = $pdo->prepare("SELECT usar_convenio FROM nominas WHERE id = ?");
+                $chk_conv->execute([$id]);
+                $usar_convenio_fila = intval($chk_conv->fetchColumn()) === 1 ? 1 : 0;
+            }
         }
         
         $stmt_s = $pdo->prepare("SELECT e.salario_hora_ordinaria, e.salario_mensual, t.no_acumular_vacaciones
@@ -685,7 +705,7 @@ if (isset($_POST['actualizar_nomina'])) {
                 'horas_nocturnas_tempranas' => $horas_nocturnas_tempranas,
                 'horas_nocturnas_tardias'   => $horas_nocturnas_tardias,
                 'horas_doble_turno'         => $horas_doble_turno,
-            ], $tarifas_extra);
+            ], $tarifas_extra, $usar_convenio_fila === 1, $tarifas_convenio);
 
             $importe_he_diurnas    = $calc_extra['importe_he_diurnas'];
             $importe_noct_temprana = $calc_extra['importe_noct_temprana'];
@@ -727,7 +747,7 @@ if (isset($_POST['actualizar_nomina'])) {
                 horas_doble_turno=?, importe_doble_turno=?,
                 importe_salario_laboral=?, total_salario_devengado=?,
                 descuentos=?, contribucion_especial=?, ingresos_personales=?,
-                importe_neto=?, total_deducciones=?
+                importe_neto=?, total_deducciones=?, usar_convenio=?
                 WHERE id=?");
             $result->execute([
                 $horas, $horas_nocturnas, $importe_nocturnas,
@@ -738,6 +758,7 @@ if (isset($_POST['actualizar_nomina'])) {
                 $total_devengado,
                 $descuentos_manuales, $contribucion, $impuesto,
                 $neto_final, roundExcel($contribucion + $impuesto + $descuentos_manuales, 2),
+                $usar_convenio_fila,
                 $id
             ]);
         } else {
@@ -920,7 +941,7 @@ try {
 $nit_empresa = $config_empresa['nit_empresa'] ?? 'S/R';
 
 // Logo de la empresa para los reportes de impresión
-$ruta_logo = '../../images/logocorto.png';
+$ruta_logo = '../../images/LogoCorto.png';
 $logo_base64 = '';
 if (file_exists($ruta_logo)) {
     $tipo_logo = pathinfo($ruta_logo, PATHINFO_EXTENSION);
@@ -1914,6 +1935,7 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
     $doble_turno_por_trabajador = $_POST['doble_turno_trabajadas'] ?? [];
     $tasa_contribucion = getTasaContribucion($pdo);
     $tipo = 'extraordinaria';
+    $usar_convenio_extra = isset($_POST['usar_convenio']) && intval($_POST['usar_convenio']) === 1 ? 1 : 0;
     $tipo_descuento_extra = $_POST['tipo_descuento_extra'] ?? 'total_rangos';
 
     $agregados = 0;
@@ -1947,7 +1969,7 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
             'horas_nocturnas_tempranas' => $noct_temprana,
             'horas_nocturnas_tardias'   => $noct_tardia,
             'horas_doble_turno'         => $doble_turno,
-        ], $tarifas_extra);
+        ], $tarifas_extra, $usar_convenio_extra === 1, $tarifas_convenio);
 
         $importe_he_diurnas    = $calc_extra['importe_he_diurnas'];
         $importe_noct_temprana = $calc_extra['importe_noct_temprana'];
@@ -2009,7 +2031,7 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
                 WHERE id=?")
             ->execute([$ht, $hnt, $hint, $hntt, $intt, $hntard, $intard, $hdt, $idt,
                        $sl, $tdt, $contribucion, $impuesto, $neto,
-                       roundExcel($contribucion + $impuesto, 2), $tipo_descuento_extra,
+                       roundExcel($contribucion + $impuesto, 2), $tipo_descuento_extra, $usar_convenio_extra,
                        $horas_normales, $noct_temprana, $noct_tardia, $doble_turno,
                        $existente['id']]);
         } else {
@@ -2028,10 +2050,10 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
                 horas_nocturnas_tempranas, importe_nocturnas_tempranas,
                 horas_nocturnas_tardias, importe_nocturnas_tardias,
                 horas_doble_turno, importe_doble_turno,
-                importe_salario_laboral, total_salario_devengado,
+importe_salario_laboral, total_salario_devengado,
                 contribucion_especial, ingresos_personales, importe_neto,
-                total_deducciones, tipo_nomina, estado, descripcion, tipo_descuento
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+                total_deducciones, tipo_nomina, estado, descripcion, tipo_descuento, usar_convenio
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
             ->execute([
                 $trabajador_id, $periodo_desde, $periodo_hasta,
                 $horas_normales, $total_horas_noct, $total_importe_noct,
@@ -2042,8 +2064,8 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
                 $contribucion, $impuesto, $neto,
                 roundExcel($contribucion + $impuesto, 2),
                 $tipo, 'borrador',
-                "HE:{$horas_normales}h Nt19-23:{$noct_temprana}h Nt23-7:{$noct_tardia}h DT:{$doble_turno}h",
-                $tipo_descuento_extra
+                'Horas Extras. HE:' . $horas_normales . ', Nt: ' . $noct_temprana . '/' . $noct_tardia . ', DT: ' . $doble_turno,
+                $tipo_descuento_extra, $usar_convenio_extra
             ]);
         }
         $agregados++;
@@ -3111,12 +3133,12 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
     $salario_hora = floatval($stmt->fetchColumn());
 
     // Res. 15/2026 MTSS (QUINTO.2) y Ley 189/2026 (art. 227 y 230).
-    $calc_extra = calcularImporteTrabajoExtraordinario($salario_hora, [
-        'horas_he'                  => $horas_extra,
-        'horas_nocturnas_tempranas' => $noct_temprana,
-        'horas_nocturnas_tardias'   => $noct_tardia,
-        'horas_doble_turno'         => $doble_turno,
-    ], $tarifas_extra);
+$calc_extra = calcularImporteTrabajoExtraordinario($salario_hora, [
+            'horas_he'                  => $horas_extra,
+            'horas_nocturnas_tempranas' => $noct_temprana,
+            'horas_nocturnas_tardias'   => $noct_tardia,
+            'horas_doble_turno'         => $doble_turno,
+        ], $tarifas_extra, $usar_convenio_extra === 1, $tarifas_convenio);
 
     $importe_he_diurnas    = $calc_extra['importe_he_diurnas'];
     $importe_noct_temprana = $calc_extra['importe_noct_temprana'];
@@ -3590,7 +3612,7 @@ if ($tipo_nomina_activa === 'ajuste' && $existe_nomina) {
 $nombre_mes = nombreMesEspanol($mes);
 
 // Obtener logo para exportaciones
-$ruta_logo = '../../images/logotn.png';
+$ruta_logo = '../../images/LogoTN.png';
 $logoBase64 = '';
 if (file_exists($ruta_logo)) {
     $type = pathinfo($ruta_logo, PATHINFO_EXTENSION);
@@ -5745,6 +5767,28 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
 
         <!-- TABLA PRINCIPAL DE NÓMINA -->
         <div class="glass-card fade-in-up" style="animation-delay: 0.4s;">
+		<?php
+		// Aclaración de la tarifa usada en la nómina extraordinaria del lote visible.
+		$badge_tarifa_extra = '';
+		if ($tipo_nomina_activa == 'extraordinaria') {
+			$filas_ley = 0; $filas_convenio = 0;
+			foreach ($nominas as $nf) {
+				if (intval($nf['usar_convenio'] ?? 0) === 1) { $filas_convenio++; } else { $filas_ley++; }
+			}
+			if ($filas_convenio > 0 && $filas_ley === 0) {
+				$badge_tarifa_extra = '<i class="fas fa-handshake me-1"></i>Tarifa empleada: <strong style="color: inherit !important;">Convenio Colectivo Empleador - Empleado</strong>'
+					. ' ($' . number_format((float)$convenio_valor_he, 2) . '/h HE · $' . number_format((float)$convenio_valor_doble_turno, 2) . '/h DT'
+					. ' · $' . number_format((float)$convenio_valor_nocturnidad_temprana, 2) . '/h NtT · $' . number_format((float)$convenio_valor_nocturnidad_tardia, 2) . '/h NtD)';
+				$estilo_tarifa = 'background: rgba(16,185,129,0.12); border: 0.0625rem solid rgba(16,185,129,0.35); color: #6ee7b7 !important;';
+			} elseif ($filas_ley > 0 && $filas_convenio === 0) {
+				$badge_tarifa_extra = '<i class="fas fa-landmark me-1"></i>Tarifa empleada: <strong style="color: inherit !important;">Ley 189/2026 «Código de Trabajo»</strong> (arts. 227 y 230)';
+				$estilo_tarifa = 'background: rgba(245,158,11,0.12); border: 0.0625rem solid rgba(245,158,11,0.35); color: #fcd34d !important;';
+			} elseif ($filas_ley > 0 && $filas_convenio > 0) {
+				$badge_tarifa_extra = '<i class="fas fa-scale-balanced me-1"></i>Tarifa empleada: <strong style="color: inherit !important;">Mixta</strong> (Ley 189/2026 + Convenio Colectivo)';
+				$estilo_tarifa = 'background: rgba(148,163,184,0.12); border: 0.0625rem solid rgba(148,163,184,0.35); color: #cbd5e1 !important;';
+			}
+		}
+		?>
 		<!-- Título de la Tarjeta del DataTable (Card Title) -->
 		<div class="card-header-custom mb-3 pb-2" style="border-bottom: 0.0625rem solid rgba(255,255,255,0.1);">
 			<div class="d-flex justify-content-between align-items-center">
@@ -5756,6 +5800,11 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
 					Período: <span class="text-success"><?php echo htmlspecialchars($nombre_mes . ' ' . $anio); ?></span>
 				</h5>
 			</div>
+			<?php if ($badge_tarifa_extra !== ''): ?>
+			<div class="mt-2 mb-0 py-1 px-2" style="border-radius: 0.5rem; font-size:0.8rem; <?php echo $estilo_tarifa; ?>">
+				<?php echo $badge_tarifa_extra; ?>
+			</div>
+			<?php endif; ?>
 			<div class="alert alert-info mt-2 mb-0" id="alertaObservacionesCierre" style="<?php echo ($contabilizada && !empty($observaciones_cierre)) ? '' : 'display:none;'; ?> background: rgba(59, 130, 246, 0.12); border: 0.0625rem solid rgba(59, 130, 246, 0.25); font-size:0.85rem; color: #93c5fd; padding:0.5rem 0.75rem; border-radius: 0.5rem;">
 				<i class="fas fa-comment-alt me-2" style="color: #60a5fa;"></i>
 				<strong>Observaciones de Cierre:</strong> <span id="textoObservacionesCierre"><?php echo htmlspecialchars($observaciones_cierre); ?></span>
@@ -6041,6 +6090,7 @@ data-escala-descripcion="<?php
     data-importe-vacaciones-mes="<?php echo $n['importe_vacaciones_acumulado_mes'] ?? 0; ?>"
     data-tiene-cuenta="<?php echo $tiene_cuenta ? 'si' : 'no'; ?>"
     data-tipo-descuento="<?php echo htmlspecialchars($tipo_descuento_n); ?>"
+    data-usar-convenio="<?php echo (int)($n['usar_convenio'] ?? 0); ?>"
     data-no-acumular-vacaciones="<?php echo intval($n['no_acumular_vacaciones'] ?? 0); ?>"
     data-numero-nomina="<?php echo htmlspecialchars(!empty($n['numero_nomina']) ? $n['numero_nomina'] : 'Borrador'); ?>"
     data-cargo="<?php echo htmlspecialchars($n['cargo'] ?? 'S/D'); ?>"
@@ -6536,6 +6586,63 @@ if ($existe_nomina) {
     </div>
 </div>
 
+<!-- Modal Seleccionar Tarifas (Ley 189/2026 vs Convenio Colectivo) -->
+<div class="modal fade" id="modalSeleccionTarifasExtra" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-modern">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--color-success), #0ea5e9); border-bottom: none;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-scale-balanced fa-2x me-3" style="color: #ffffff;"></i>
+                    <div>
+                        <h5 class="modal-title" style="color: white; font-weight: 600;">Seleccionar Tarifas</h5>
+                        <p class="small mb-0" style="color: rgba(255,255,255,0.8);">Elija la tarifa aplicable a la nómina extraordinaria</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-custom" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="card-option-descuento" id="opcionTarifaLey" style="cursor: pointer; padding:1.25rem; border-radius: 1rem; background: var(--panel-2); border: 0.125rem solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-landmark fa-2x" style="color: #f59e0b;"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-1" style="color: #ffffff;">Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)</h5>
+                                    <p class="mb-0 small" style="color: rgba(255,255,255,0.6);">Horas extras +25%, doble turno +100%, nocturnidad 19:00-23:00 a 0,60 $/h y nocturnidad 23:00-07:00 a 1,15 $/h</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="card-option-descuento" id="opcionTarifaConvenio" style="cursor: pointer; padding:1.25rem; border-radius: 1rem; background: var(--panel-2); border: 0.125rem solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-handshake fa-2x" style="color: var(--color-success);"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-1" style="color: #ffffff;">Convenio Colectivo de Trabajo (Empleador - Empleado)</h5>
+                                    <p class="mb-0 small" style="color: rgba(255,255,255,0.6);">Tarifas fijas pactadas: horas extras $<?php echo number_format((float)$convenio_valor_he, 2, '.', ''); ?>/h, doble turno $<?php echo number_format((float)$convenio_valor_doble_turno, 2, '.', ''); ?>/h, nocturnidad temprana $<?php echo number_format((float)$convenio_valor_nocturnidad_temprana, 2, '.', ''); ?>/h y nocturnidad tardía $<?php echo number_format((float)$convenio_valor_nocturnidad_tardia, 2, '.', ''); ?>/h</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 0.0625rem solid rgba(255,255,255,0.1); padding:1rem 1.5rem;">
+                <button type="button" class="btn-win" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn-win-primary" id="btnConfirmarTarifasExtra" title="Siguiente paso" data-tooltip="Siguiente paso" data-tooltip-theme="primary" disabled>
+                    <i class="fas fa-arrow-right me-2"></i>Siguiente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Extraordinaria -->
 <div class="modal fade" id="modalExtraordinaria" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-xl">
@@ -6546,7 +6653,9 @@ if ($existe_nomina) {
             </div>
             <form method="POST" id="formExtraordinaria">
                 <input type="hidden" name="tipo_descuento_extra" id="tipoDescuentoExtra" value="total_rangos">
+                <input type="hidden" name="usar_convenio" id="usarConvenioExtra" value="0">
                 <div class="modal-body">
+                    <div id="labelTarifaExtra" class="alert py-2 px-3 mb-3 small text-warning" style="border: 0.0625rem solid rgba(255,255,255,0.15); background: var(--panel-2);"></div>
                     <div class="row">
                         <div class="col-md-5">
                             <div class="row g-2 mb-3">

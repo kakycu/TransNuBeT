@@ -747,11 +747,11 @@ body:has(.win-sidebar.collapsed) .main-container {
     color: var(--win-sidebar-text-dim);
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s ease;
 }
-.nav-group:hover .nav-group-chevron {
+.nav-group:hover > .nav-item .nav-group-chevron {
     color: var(--accent);
     transform: scale(1.2);
 }
-.nav-group.open .nav-group-chevron {
+.nav-group.open > .nav-item .nav-group-chevron {
     transform: rotate(180deg) scale(1.1);
     color: var(--accent);
 }
@@ -777,6 +777,10 @@ body:has(.win-sidebar.collapsed) .main-container {
 }
 .nav-submenu .nav-item.active {
     border-left: 0.1875rem solid var(--accent) !important;
+}
+/* Submenu anidado (p. ej. Explorador Archivos dentro de Dashboard) */
+.nav-submenu .nav-submenu {
+    padding-left: 0.5rem;
 }
 .win-sidebar.collapsed .nav-group .nav-group-chevron {
     display: none;
@@ -1216,33 +1220,42 @@ html.focus-mode .fluid-container {
     <nav class="sidebar-nav">
         <span class="nav-category">General</span>
         <?php if (permiso_puede('dashboard', 'ver')): ?>
-        <div class="nav-group <?php echo ($current_file == 'dashboard.php' || $current_file == 'carpetas.php') ? 'open' : ''; ?>" id="dashboardNavGroup">
+        <div class="nav-group <?php echo ($current_file == 'carpetas.php') ? 'open' : ''; ?>" id="dashboardNavGroup">
             <a href="<?php echo $base_prefix; ?>dashboard.php" class="nav-item <?php echo ($current_file == 'dashboard.php') ? 'active' : ''; ?>" data-tooltip="Dashboard" data-tooltip-theme="primary">
                 <i class="fas fa-chart-line"></i>
                 <span class="sidebar-text">Dashboard</span>
                 <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="dashboardChevron"></i>
             </a>
             <div class="nav-submenu" id="dashboardSubmenu">
-                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=exportaciones" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'exportaciones') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta donde el sistema guarda los archivos exportados" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
-                    <i class="fas fa-file-export"></i>
-                    <span class="sidebar-text">Carpeta Exportaciones</span>
-                </a>
-                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=descargas" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'descargas') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de Descargas del equipo" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
-                    <i class="fas fa-download"></i>
-                    <span class="sidebar-text">Carpeta Descargas</span>
-                </a>
-                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=salvas" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'salvas') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de Salvas del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
-                    <i class="fas fa-box-archive"></i>
-                    <span class="sidebar-text">Carpeta de Salvas</span>
-                </a>
-                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=temp" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'temp') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de archivos temporales del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
-                    <i class="fas fa-hourglass-half"></i>
-                    <span class="sidebar-text">Carpeta Temporales</span>
-                </a>
-                <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=logs" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'logs') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de registros (logs) del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
-                    <i class="fas fa-clipboard-list"></i>
-                    <span class="sidebar-text">Carpeta de Logs</span>
-                </a>
+                <div class="nav-group <?php echo ($current_file == 'carpetas.php') ? 'open' : ''; ?>" id="exploradorNavGroup">
+                    <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=exportaciones" class="nav-item" data-tooltip="Explorador de Archivos del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                        <i class="fas fa-folder-tree"></i>
+                        <span class="sidebar-text">Explorador Archivos</span>
+                        <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only"></i>
+                    </a>
+                    <div class="nav-submenu" id="exploradorSubmenu">
+                        <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=exportaciones" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'exportaciones') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta donde el sistema guarda los archivos exportados" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                            <i class="fas fa-file-export"></i>
+                            <span class="sidebar-text">Exportaciones</span>
+                        </a>
+                        <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=descargas" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'descargas') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de Descargas del equipo" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                            <i class="fas fa-download"></i>
+                            <span class="sidebar-text">Descargas</span>
+                        </a>
+                        <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=salvas" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'salvas') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de Salvas del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                            <i class="fas fa-box-archive"></i>
+                            <span class="sidebar-text">Salvas</span>
+                        </a>
+                        <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=temp" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'temp') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de archivos temporales del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span class="sidebar-text">Temporales</span>
+                        </a>
+                        <a href="<?php echo $base_prefix; ?>modules/carpetas.php?carpeta=logs" class="nav-item <?php echo ($current_file == 'carpetas.php' && isset($_GET['carpeta']) && $_GET['carpeta'] === 'logs') ? 'active' : ''; ?>" data-tooltip="Ver la carpeta de registros (logs) del sistema" data-tooltip-theme="primary" data-rol-carpetas="1,3,5">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span class="sidebar-text">Logs</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -1384,7 +1397,7 @@ html.focus-mode .fluid-container {
         <?php if (permiso_puede('clasificadores', 'ver')): ?>
         <span class="nav-category">Clasificadores</span>
         <a href="<?php echo $base_prefix; ?>modules/clasificadores.php" class="nav-item <?php echo ($current_file == 'clasificadores.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Clasificadores" data-tooltip-theme="primary">
-            <i class="fas fa-folder-tree"></i>
+            <i class="fas fa-tags"></i>
             <span class="sidebar-text">Clasificadores</span>
             <span class="nav-badge sidebar-text"><?php echo $stats_sidebar['clasificadores']; ?></span>
         </a>
@@ -1552,9 +1565,11 @@ html.focus-mode .fluid-container {
 
     function initSubmenu() {
         // Comportamiento tipo acordeón: al abrir un grupo principal
-        // se cierran todos los demás grupos del menú
+        // se cierran todos los demás grupos del menú. Solo cuentan los
+        // grupos de primer nivel: un subgrupo anidado (p. ej. Explorador
+        // Archivos dentro de Dashboard) se abre y cierra sin tocar a su padre.
         const nav = document.getElementById('winSidebar') ? document.querySelector('#winSidebar .sidebar-nav') : null;
-        const grupos = () => document.querySelectorAll('#winSidebar .sidebar-nav .nav-group');
+        const grupos = () => document.querySelectorAll('#winSidebar .sidebar-nav > .nav-group');
 
         function cerrarOtrosGrupos(grupoActual) {
             grupos().forEach(function(grupo) {
@@ -1564,9 +1579,15 @@ html.focus-mode .fluid-container {
             });
         }
 
+        function esSubgrupo(grupo) {
+            return grupo && grupo.parentElement && grupo.parentElement.classList.contains('nav-submenu');
+        }
+
         function abrirGrupo(grupo) {
             if (!grupo) return;
-            cerrarOtrosGrupos(grupo);
+            if (!esSubgrupo(grupo)) {
+                cerrarOtrosGrupos(grupo);
+            }
             grupo.classList.add('open');
         }
 
@@ -1656,7 +1677,7 @@ html.focus-mode .fluid-container {
         }
 
         // Al cargar la pagina solo puede quedar abierto un grupo principal
-        cerrarOtrosGrupos(document.querySelector('#winSidebar .sidebar-nav .nav-group.open'));
+        cerrarOtrosGrupos(document.querySelector('#winSidebar .sidebar-nav > .nav-group.open'));
 
         // Carpetas del sistema (Administrador, Visualizador, Contador/Editor, Supervisor y Programador)
         const ROLES_CARPETAS = <?php echo json_encode($sidebar_rol_permitido ? ['Admin', 'Visor', 'Editor', 'Super', 'Soft'] : []); ?>;

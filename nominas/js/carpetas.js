@@ -302,10 +302,19 @@
         document.body.appendChild(guia);
 
         /* ---- Anchos por defecto (proporcionales, como el Explorador) ----
-           La ultima columna (Accion) es fija: solo iconos, no se redimensiona. */
+           La ultima columna (Accion) es fija: solo iconos, no se redimensiona.
+           Con seleccion multiple el listado tiene 6 columnas: la primera
+           (checkbox, solo para roles que pueden eliminar) es estrecha y no
+           tiene empuñe. Sin esa columna se mantienen los 5 anchos de siempre
+           (los anchos guardados en localStorage solo sirven si la cantidad de
+           columnas coincide: cargar() lo comprueba). */
         var ULTIMA = cols.length - 1;
         var ANCHO_ACCION = 72; // px de referencia para la columna de acciones
-        var POR_DEFECTO = [45, 10, 13, 18, 14]; // Archivo, Tipo, Tama\u00f1o, Modificado, Acci\u00f3n
+        var COL_CHK = cols.length === 6;
+        var COL_COMPENSA = COL_CHK ? 1 : 0; // donde va la diferencia de redondeo
+        var POR_DEFECTO = COL_CHK
+            ? [4, 41, 10, 13, 18, 14]  // Seleccion, Archivo, Tipo, Tama\u00f1o, Modificado, Acci\u00f3n
+            : [45, 10, 13, 18, 14];    // Archivo, Tipo, Tama\u00f1o, Modificado, Acci\u00f3n
         var anchos = POR_DEFECTO.slice();
         anchos.length = cols.length;
 
@@ -381,7 +390,7 @@
             for (i = 0; i < cols.length; i++) total += anchos[i];
             var diferencia = Math.round((100 - total) * 100) / 100;
             if (diferencia !== 0) {
-                anchos[0] = Math.round((anchos[0] + diferencia) * 100) / 100;
+                anchos[COL_COMPENSA] = Math.round((anchos[COL_COMPENSA] + diferencia) * 100) / 100;
             }
         }
 
@@ -389,8 +398,9 @@
            Archivo: suficiente para el icono + unas letras.
            Tipo: la extension mas larga (sin contar la carpeta).
            Tama\u00f1o: la cifra mas corta con su unidad.
-           Modificado: la fecha completa, que es lo mas ancho. */
-        var MIN_PX = [120, 60, 80, 150];
+           Modificado: la fecha completa, que es lo mas ancho.
+           Seleccion (si existe): el checkbox centrado. */
+        var MIN_PX = COL_CHK ? [36, 120, 60, 80, 150] : [120, 60, 80, 150];
 
         /* ---- Reparte el ancho entre las columnas ----
            La columna objetivo toma el ancho pedido; el resto se reparte
@@ -770,14 +780,21 @@ Swal.fire({
         credentials: 'same-origin'
     })
         .then(function (r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
+            /* Parsea el JSON aunque la respuesta sea 4xx/5xx: el servidor
+               responde JSON con el motivo y hay que mostrarlo, no enmascararlo
+               como error de comunicacion. */
+            return r.text().then(function (txt) {
+                var datos = null;
+                try { datos = JSON.parse(txt); } catch (e) { datos = null; }
+                if (!datos) { throw new Error('HTTP ' + r.status); }
+                return datos;
+            });
         })
         .then(function (data) {
             if (!data || !data.success) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'No se pudo eliminar',
+                    title: esCarpeta ? 'No se pudo eliminar la carpeta' : 'No se pudo eliminar el archivo',
                     text: (data && data.mensaje) ? data.mensaje : 'Error desconocido.',
                     confirmButtonText: '<i class="fas fa-times me-2"></i>Cerrar'
                 });
@@ -790,17 +807,304 @@ Swal.fire({
                 confirmButtonText: '<i class="fas fa-check me-2"></i>Aceptar'
             }).then(function () { window.location.reload(); });
         })
-        .catch(function () {
+        .catch(function (err) {
+            var esHttp = err && typeof err.message === 'string' && err.message.indexOf('HTTP ') === 0;
             Swal.fire({
                 icon: 'error',
-                title: 'Error de comunicación',
-                text: 'No se pudo contactar el servidor.',
+                title: esHttp ? 'Error del servidor' : 'Error de comunicaci\u00f3n',
+                text: esHttp
+                    ? 'El servidor respondi\u00f3 ' + err.message.slice(5) + ' y no devolvi\u00f3 JSON.'
+                    : 'No se pudo contactar el servidor.',
                 confirmButtonText: '<i class="fas fa-times me-2"></i>Cerrar'
             });
         });
 });
         });
     });
+
+    /* ==========================================
+       SELECCION MULTIPLE Y ELIMINACION EN LOTE
+       La columna de checkbox solo existe si el rol puede eliminar
+       (carpetas.php la renderiza condicionada a carpetas_sistema_puede('eliminar')).
+       El header marca/desmarca los archivos VISIBLES (pagina + filtro actual);
+       el contador y el boton tienen en cuenta TODOS los marcados, aunque
+       este en otra pagina. Al terminar se recarga el listado.
+       ========================================== */
+    var chkSelTodo = document.getElementById('chkSelTodo');
+    var btnEliminarSel = document.getElementById('btnEliminarSeleccion');
+    var selCantidad = document.getElementById('selCantidad');
+    var tbodySel = document.getElementById('tbodyCarpetas');
+
+    if (chkSelTodo && btnEliminarSel && tbodySel) {
+        function selArchivos() {
+            return Array.prototype.slice.call(tbodySel.querySelectorAll('.chk-archivo'));
+        }
+        function selVisibles() {
+            return selArchivos().filter(function (chk) {
+                var fila = chk.closest('tr');
+                return fila && fila.style.display !== 'none';
+            });
+        }
+
+        function refrescarSeleccion() {
+            var todos = selArchivos();
+            var visibles = selVisibles();
+            var marcados = todos.filter(function (chk) { return chk.checked; });
+            var marcadosVisibles = visibles.filter(function (chk) { return chk.checked; });
+
+            chkSelTodo.checked = visibles.length > 0 && marcadosVisibles.length === visibles.length;
+            chkSelTodo.indeterminate = marcadosVisibles.length > 0 && marcadosVisibles.length < visibles.length;
+
+            todos.forEach(function (chk) {
+                var fila = chk.closest('tr');
+                if (fila) { fila.classList.toggle('seleccionada', chk.checked); }
+            });
+
+            if (selCantidad) { selCantidad.textContent = String(marcados.length); }
+            btnEliminarSel.hidden = marcados.length === 0;
+        }
+
+        tbodySel.addEventListener('change', function (e) {
+            if (e.target && e.target.classList && e.target.classList.contains('chk-archivo')) {
+                refrescarSeleccion();
+            }
+        });
+
+        chkSelTodo.addEventListener('change', function () {
+            var estado = this.checked;
+            selVisibles().forEach(function (chk) { chk.checked = estado; });
+            refrescarSeleccion();
+        });
+
+        btnEliminarSel.addEventListener('click', function () {
+            var marcados = selArchivos().filter(function (chk) { return chk.checked; });
+            if (!marcados.length) return;
+
+            var nombres = marcados.map(function (chk) { return chk.dataset.nombre; });
+            var nCarpetas = marcados.filter(function (chk) { return chk.dataset.tipo === 'carpeta'; }).length;
+            var nArchivos = nombres.length - nCarpetas;
+            var carpeta = document.body.getAttribute('data-carpeta') || '';
+            var filaRef = marcados[0].closest('tr');
+            var ruta = filaRef ? (filaRef.dataset.ruta || '') : '';
+
+            var items = marcados.slice(0, 10).map(function (chk) {
+                var esCar = chk.dataset.tipo === 'carpeta';
+                return '<li><i class="fas ' + (esCar ? 'fa-folder' : 'fa-file-lines') +
+                    ' me-1"></i>' + escapar(chk.dataset.nombre) +
+                    (esCar ? ' <small class="text-warning">(carpeta)</small>' : '') + '</li>';
+            }).join('');
+            var resto = nombres.length > 10
+                ? '<br><small>&hellip;y ' + (nombres.length - 10) + ' m&aacute;s</small>'
+                : '';
+
+            var partes = [];
+            if (nArchivos) { partes.push(nArchivos + ' archivo' + (nArchivos === 1 ? '' : 's')); }
+            if (nCarpetas) { partes.push(nCarpetas + ' carpeta' + (nCarpetas === 1 ? '' : 's')); }
+            var resumen = partes.join(' y ');
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Eliminar ' + resumen,
+                html: 'Se eliminar&aacute;n de la carpeta <b>' + escapar(carpeta) + '</b>:' +
+                      '<ul style="max-height:12rem;overflow:auto;text-align:left;padding-left:1.25rem;margin:.5rem 0">' +
+                      items + '</ul>' + resto +
+                      (nCarpetas
+                          ? '<br><small class="text-warning"><i class="fas fa-folder me-1"></i>Las carpetas se eliminan con <b>todo su contenido</b>.</small>'
+                          : '') +
+                      '<br><small class="text-danger">Esta acci&oacute;n no se puede deshacer.</small>',
+                showCancelButton: true,
+                showCloseButton: true,
+                confirmButtonText: '<i class="fas fa-trash-alt me-2"></i>S&iacute;, eliminar (' + nombres.length + ')',
+                cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
+                reverseButtons: true,
+                focusCancel: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                customClass: { confirmButton: 'swal2-confirm btn-confirmar-eliminar' },
+                didOpen: prepararCierreSwal
+            }).then(function (r) {
+                if (!r.isConfirmed) return;
+
+                var cuerpo = new FormData();
+                cuerpo.append('carpeta', carpeta);
+                if (ruta) { cuerpo.append('ruta', ruta); }
+                nombres.forEach(function (n) { cuerpo.append('archivos[]', n); });
+
+                Swal.fire({
+                    title: 'Eliminando ' + resumen + '&hellip;',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: function () { Swal.showLoading(); }
+                });
+
+                fetch('eliminar_archivo.php', {
+                    method: 'POST',
+                    body: cuerpo,
+                    credentials: 'same-origin'
+                })
+                    .then(function (resp) {
+                        /* Mismo criterio que el borrado individual: parsear el
+                           JSON aunque la respuesta no sea 2xx para mostrar el
+                           motivo real del servidor. */
+                        return resp.text().then(function (txt) {
+                            var datos = null;
+                            try { datos = JSON.parse(txt); } catch (e) { datos = null; }
+                            if (!datos) { throw new Error('HTTP ' + resp.status); }
+                            return datos;
+                        });
+                    })
+                    .then(function (data) {
+                        if (!data) { throw new Error('Respuesta vacia'); }
+
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Eliminaci&oacute;n completada',
+                                text: data.mensaje || '',
+                                confirmButtonText: '<i class="fas fa-check me-2"></i>Aceptar'
+                            }).then(function () { window.location.reload(); });
+                            return;
+                        }
+
+                        if (data.eliminados && data.eliminados.length) {
+                            /* Parcial: algunos se borraron y otros no */
+                            var fallidos = (data.fallidos || []).map(function (f) {
+                                return '<li><b>' + escapar(f.archivo) + '</b> — ' + escapar(f.mensaje) + '</li>';
+                            }).join('');
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Eliminaci&oacute;n parcial',
+                                html: escapar(data.mensaje || '') +
+                                      (fallidos ? '<ul style="max-height:10rem;overflow:auto;text-align:left;padding-left:1.25rem;margin:.5rem 0">' + fallidos + '</ul>' : ''),
+                                confirmButtonText: '<i class="fas fa-rotate me-2"></i>Actualizar listado'
+                            }).then(function () { window.location.reload(); });
+                            return;
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'No se pudo eliminar',
+                            text: (data && data.mensaje) ? data.mensaje : 'Error desconocido.',
+                            confirmButtonText: '<i class="fas fa-times me-2"></i>Cerrar'
+                        });
+                    })
+                    .catch(function (err) {
+                        var esHttp = err && typeof err.message === 'string' && err.message.indexOf('HTTP ') === 0;
+                        Swal.fire({
+                            icon: 'error',
+                            title: esHttp ? 'Error del servidor' : 'Error de comunicaci&oacute;n',
+                            text: esHttp
+                                ? 'El servidor respondi&oacute; ' + err.message.slice(5) + ' y no devolvi&oacute; JSON.'
+                                : 'No se pudo contactar el servidor.',
+                            confirmButtonText: '<i class="fas fa-times me-2"></i>Cerrar'
+                        });
+                    });
+            });
+        });
+
+        refrescarSeleccion();
+    }
+
+    /* ==========================================
+       CREAR CARPETA (solo rol Administrador)
+       Boton de la barra de navegacion (fa-folder-plus, junto a Subir).
+       ========================================== */
+    var btnCrearCarpeta = document.getElementById('btnCrearCarpeta');
+
+    if (btnCrearCarpeta) {
+        btnCrearCarpeta.addEventListener('click', function () {
+            var btn = this;
+            if (btn.disabled) { return; }
+
+            Swal.fire({
+                title: 'Crear carpeta',
+                html: '<small>Se crear&aacute; en <b>' +
+                      escapar(document.body.getAttribute('data-carpeta') || '') +
+                      (btn.dataset.ruta ? ' &rsaquo; ' + escapar(btn.dataset.ruta) : '') +
+                      '</b></small>',
+                input: 'text',
+                inputPlaceholder: 'Nombre de la carpeta',
+                inputAttributes: { autocapitalize: 'off', spellcheck: 'false', maxlength: '150' },
+                showCancelButton: true,
+                showCloseButton: true,
+                confirmButtonText: '<i class="fas fa-folder-plus me-2"></i>Crear',
+                cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
+                reverseButtons: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                didOpen: prepararCierreSwal,
+                inputValidator: function (valor) {
+                    valor = String(valor || '').trim();
+                    if (!valor) { return 'Indique el nombre de la carpeta.'; }
+                    if (/[\\\/:*?"<>|]/.test(valor)) {
+                        return 'Caracteres no permitidos: \\ / : * ? " < > |';
+                    }
+                    if (valor === '.' || valor === '..') { return 'Nombre no valido.'; }
+                    if (/\.$/.test(valor) || / $/.test(valor)) {
+                        return 'El nombre no puede terminar en punto ni en espacio.';
+                    }
+                    return undefined;
+                }
+            }).then(function (r) {
+                if (!r.isConfirmed) return;
+                var nombre = String(r.value || '').trim();
+
+                var cuerpo = new FormData();
+                cuerpo.append('carpeta', btn.dataset.carpeta || document.body.getAttribute('data-carpeta') || '');
+                cuerpo.append('ruta', btn.dataset.ruta || '');
+                cuerpo.append('nombre', nombre);
+
+                Swal.fire({
+                    title: 'Creando carpeta&hellip;',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: function () { Swal.showLoading(); }
+                });
+
+                fetch('crear_carpeta.php', {
+                    method: 'POST',
+                    body: cuerpo,
+                    credentials: 'same-origin'
+                })
+                    .then(function (resp) {
+                        return resp.text().then(function (txt) {
+                            var datos = null;
+                            try { datos = JSON.parse(txt); } catch (e) { datos = null; }
+                            if (!datos) { throw new Error('HTTP ' + resp.status); }
+                            return datos;
+                        });
+                    })
+                    .then(function (datos) {
+                        if (!datos || !datos.success) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'No se pudo crear la carpeta',
+                                text: (datos && datos.mensaje) ? datos.mensaje : 'Error desconocido.',
+                                confirmButtonText: '<i class="fas fa-times me-2"></i>Cerrar'
+                            });
+                            return;
+                        }
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Carpeta creada',
+                            text: datos.mensaje || nombre,
+                            confirmButtonText: '<i class="fas fa-check me-2"></i>Aceptar'
+                        }).then(function () { window.location.reload(); });
+                    })
+                    .catch(function (err) {
+                        var esHttp = err && typeof err.message === 'string' && err.message.indexOf('HTTP ') === 0;
+                        Swal.fire({
+                            icon: 'error',
+                            title: esHttp ? 'Error del servidor' : 'Error de comunicaci\u00f3n',
+                            text: esHttp
+                                ? 'El servidor respondi\u00f3 ' + err.message.slice(5) + ' y no devolvi\u00f3 JSON.'
+                                : 'No se pudo contactar el servidor.',
+                            confirmButtonText: '<i class="fas fa-times me-2"></i>Cerrar'
+                        });
+                    });
+            });
+        });
+    }
 
     /* ==========================================
        VACIAR CARPETA (roles 1 Admin, 4 Super y 5 Soft)
@@ -1316,11 +1620,43 @@ Swal.fire({
     function zipBarraRuta() {
         var ruta = zipRuta();
         var partes = ruta === '' ? [] : ruta.split('/');
-        var raiz = basenameDe(zipEstado.datos.nombre) || zipTipoTxt();
+        var cadena = (zipEstado && zipEstado.cadena) || [];
+        var html = '';
 
-        var html = '<button type="button" class="visor-zip-nivel' + (ruta === '' ? ' activo' : '') +
+        /* Raiz total: el archivo comprimido original. Si hay anidamiento,
+           la barra lista la cadena de contenedores abiertos (raiz / nivel1
+           / ...) y debajo, ya dentro del ultimo, las carpetas internas. */
+        if (cadena.length) {
+            var raiz = basenameDe(zipEstado.archivoRaiz || zipEstado.datos.nombre) || zipTipoTxt();
+            html += '<button type="button" class="visor-zip-nivel visor-zip-nivel-cadena' +
+                (ruta === '' && cadena.length === 0 ? ' activo' : '') +
+                '" data-nivel="0" title="Ra\u00edz del archivo comprimido">' +
+                '<i class="fas fa-box-archive"></i>' + escapar(raiz) + '</button>';
+
+            cadena.forEach(function (seg, i) {
+                html += '<span class="visor-zip-sep">/</span>' +
+                    '<button type="button" class="visor-zip-nivel visor-zip-nivel-cadena' +
+                    (i === cadena.length - 1 && ruta === '' ? ' activo' : '') +
+                    '" data-nivel="' + (i + 1) + '" ' +
+                    'title="Ir a ' + escapar(seg.nombre) + '">' + escapar(seg.nombre) + '</button>';
+            });
+
+            var acumuladaCadena = '';
+            partes.forEach(function (parte, i) {
+                acumuladaCadena = acumuladaCadena === '' ? parte : acumuladaCadena + '/' + parte;
+                html += '<span class="visor-zip-sep">/</span>' +
+                    '<button type="button" class="visor-zip-nivel' +
+                    (i === partes.length - 1 ? ' activo' : '') +
+                    '" data-ruta="' + escapar(acumuladaCadena) + '" ' +
+                    'title="Ir a ' + escapar(acumuladaCadena) + '">' + escapar(parte) + '</button>';
+            });
+
+            return html;
+        }
+
+        html = '<button type="button" class="visor-zip-nivel' + (ruta === '' ? ' activo' : '') +
             '" data-ruta="" title="Raiz del archivo comprimido">' +
-            '<i class="fas fa-box-archive"></i>' + escapar(raiz) + '</button>';
+            '<i class="fas fa-box-archive"></i>' + escapar(basenameDe(zipEstado.datos.nombre) || zipTipoTxt()) + '</button>';
 
         var acumulada = '';
         partes.forEach(function (parte, i) {
@@ -1357,6 +1693,7 @@ Swal.fire({
 
         var data  = zipEstado.datos;
         var ruta  = zipRuta();
+        var anidado = !!(zipEstado.cadena && zipEstado.cadena.length);
         var lista = zipOrdenar(zipVisibles());
         var nDir  = 0;
         var nArch = 0;
@@ -1390,14 +1727,14 @@ Swal.fire({
         /* --- Barra de navegacion (raiz / niveles / atras) --- */
         var nav = '<div class="visor-zip-nav">' +
             '<button type="button" class="visor-zip-cmd visor-zip-home"' +
-            (ruta === '' ? ' disabled' : '') +
+            (ruta === '' && !anidado ? ' disabled' : '') +
             ' title="Ra\u00edz del archivo comprimido" aria-label="Ir a la ra\u00edz del ' + zipTipoTxt() + '">' +
             '<i class="fas fa-house" aria-hidden="true"></i>Ra\u00edz</button>' +
             '<button type="button" class="visor-zip-cmd visor-zip-atras"' +
-            (ruta === '' ? ' disabled' : '') +
+            (ruta === '' && !anidado ? ' disabled' : '') +
             ' title="Volver a la carpeta anterior"><i class="fas fa-arrow-left"></i>Atr\u00e1s</button>' +
             '<button type="button" class="visor-zip-cmd visor-zip-subir"' +
-            (ruta === '' ? ' disabled' : '') +
+            (ruta === '' && !anidado ? ' disabled' : '') +
             ' title="Subir un nivel"><i class="fas fa-arrow-up"></i>Subir</button>' +
             '<div class="visor-zip-ruta-nav">' + zipBarraRuta() + '</div>' +
             '<span class="visor-zip-ruta-txt" title="' + escapar(ruta) + '">' +
@@ -1427,7 +1764,15 @@ Swal.fire({
                 'title="Descomprimir todo el ' + zipTipoTxt() + ' en la carpeta elegida">' +
                 '<i class="fas fa-folder-open"></i>Extraer todo</button>';
         }
-        if (data.descarga && data.puedeDescargarTodo !== false) {
+        if (anidado) {
+            /* Contenedor anidado: la descarga viaja por POST con la cadena de
+               entradas (no hay URL directa al archivo). */
+            if (data.puedeDescargar) {
+                acciones += '<button type="button" class="visor-zip-accion visor-zip-bajar visor-zip-bajar-contenedor" ' +
+                    'title="Descargar el ' + zipTipoTxt() + ' de este nivel">' +
+                    '<i class="fas fa-download"></i>Descargar ' + zipTipoTxt() + '</button>';
+            }
+        } else if (data.descarga && data.puedeDescargarTodo !== false) {
             acciones += '<a class="visor-zip-accion visor-zip-bajar" download ' +
                 'href="' + escapar(data.descarga) + '" title="Descargar el ' + zipTipoTxt() + ' completo">' +
                 '<i class="fas fa-download"></i>Descargar ' + zipTipoTxt() + '</a>';
@@ -1508,6 +1853,19 @@ Swal.fire({
                             'title="Ver ' + escapar(entrada.nombre) + '" aria-label="Ver ' +
                             escapar(entrada.nombre) + '"><i class="fas fa-eye"></i></button>';
                     }
+
+                    /* Un .zip/.rar del indice se puede abrir DENTRO del visor
+                       (vista anidada), sin limite de profundidad. */
+                    var extAbrir = zipExtensionDe(entrada);
+                    var esComprimido = (extAbrir === 'zip' || extAbrir === 'rar');
+                    var puedeAbrir = esComprimido;
+                    if (puedeAbrir) {
+                        filas += '<button type="button" class="visor-zip-btn visor-zip-abrir" ' +
+                            attr('data-indice') + attr('data-nombre') +
+                            'title="Abrir ' + escapar(entrada.nombre) + ' dentro del visor" aria-label="Abrir ' +
+                            escapar(entrada.nombre) + '"><i class="fas fa-box-archive"></i></button>';
+                    }
+
                     if (data.puedeDescargar) {
                         filas += '<button type="button" class="visor-zip-btn visor-zip-bajar-uno" ' +
                             attr('data-carpeta') + attr('data-archivo') + attr('data-indice') +
@@ -1523,7 +1881,8 @@ Swal.fire({
                             ' a la carpeta elegida" aria-label="Extraer ' +
                             escapar(entrada.nombre) + '"><i class="fas fa-file-export"></i></button>';
                     }
-                    if (!data.puedeDescargar && !data.puedeExtraer && !entrada.previsualizable) {
+                    if (!entrada.previsualizable && !puedeAbrir &&
+                        !data.puedeDescargar && !data.puedeExtraer) {
                         filas += '<span class="visor-zip-sin-accion" title="Su rol no permite estas acciones">' +
                                 '<i class="fas fa-lock"></i></span>';
                     }
@@ -1551,7 +1910,15 @@ Swal.fire({
             }
         }
 
-        var htmlCuerpo = nav + barra + cuerpo;
+        var notaAnidado = '';
+        if (anidado) {
+            notaAnidado = '<div class="visor-nota"><i class="fas fa-layer-group me-1"></i>' +
+                'Vista anidada de <strong>' +
+                escapar(basenameDe(zipEstado.archivoRaiz || data.nombre)) +
+                '</strong>: descarga y extracci\u00f3n act\u00fan sobre este nivel.</div>';
+        }
+
+        var htmlCuerpo = nav + barra + notaAnidado + cuerpo;
         var popup = document.querySelector('.swal2-popup.visor-ventana');
         // Ojo: tras cerrar otra ventana, SweetAlert puede dejar el popup en el
         // DOM (oculto). getClientRects() sale vacio con display:none, asi que
@@ -1562,7 +1929,11 @@ Swal.fire({
 
         if (contenedor) {
             // Ya hay una ventana abierta: solo se repinta el interior (sin
-            // cerrar y reabrir, para que la navegacion sea inmediata).
+            // cerrar y reabrir, para que la navegacion sea inmediata). El
+            // titulo de la cabecera hay que refrescarlo a mano: al cambiar
+            // de nivel de la cadena (raiz <-> anidado) cambia el archivo.
+            var captionTitulo = popup.querySelector('.visor-caption-titulo');
+            if (captionTitulo) { captionTitulo.textContent = visorTitulo(data); }
             contenedor.innerHTML = visorMeta(data, extras) +
                 '<div class="visor-scroll">' + htmlCuerpo + '</div>';
         } else {
@@ -1575,17 +1946,173 @@ Swal.fire({
         }
     }
 
-    function visorZip(data) {
+    function visorZip(data, cadena) {
+        var previo = zipEstado;
         zipEstado = {
             datos: data,
             ruta: '',
             destino: zipDestinoDe(data),
             mostrandoContenido: false,
             saltando: false,
-            password: null,
-            orden: { campo: null, dir: 'asc' }
+            password: (previo && previo.password) || null,
+            orden: { campo: null, dir: 'asc' },
+            /* Cadena de anidamiento: indices desde el comprimido de la raiz
+               hasta el que se esta viendo. passwords[k] guarda la clave del
+               comprimido del nivel k y archivoRaiz el nombre del original. */
+            cadena: cadena || [],
+            passwords: (previo && previo.passwords) || [],
+            archivoRaiz: (previo && previo.archivoRaiz) || data.nombre || '',
+            cache: (previo && previo.cache) || {}
         };
+        zipEstado.cache[zipCadenaClave(zipEstado.cadena)] = data;
         pintarZip();
+    }
+
+    /* Clave de cache de un indice: los indices de la cadena unidos. */
+    function zipCadenaClave(cadena) {
+        return (cadena || []).map(function (seg) { return String(seg.indice); }).join(',');
+    }
+
+    /* Pide al servidor el indice del comprimido al final de la cadena
+       (cadena vacia = el archivo raiz). passwords[] lleva una clave por
+       nivel; password es el respaldo legado para la raiz. */
+    function zipPedirIndice(cadena) {
+        var cuerpo = new FormData();
+        cuerpo.append('carpeta', (zipEstado.datos.carpeta) || '');
+        cuerpo.append('archivo', zipEstado.archivoRaiz || zipEstado.datos.nombre || '');
+        cuerpo.append('ruta', (zipEstado.datos.ruta) || '');
+
+        if (cadena && cadena.length) {
+            cadena.forEach(function (seg) {
+                cuerpo.append('entradas[]', String(seg.indice));
+            });
+            var ps = zipEstado.passwords || [];
+            var total = Math.max(ps.length, cadena.length + 1);
+            for (var i = 0; i < total; i++) {
+                cuerpo.append('passwords[]', ps[i] || '');
+            }
+        }
+        if (zipEstado.password) { cuerpo.append('password', zipEstado.password); }
+
+        return fetch('ver_archivo.php', { method: 'POST', body: cuerpo, credentials: 'same-origin' })
+            .then(zipRespuesta);
+    }
+
+    /* Compone archivo (raiz) + entradas[] + passwords[] en un FormData a
+       partir de la cadena actual. Objetivo opcional {indice, nombre}: la
+       entrada final a previsualizar/descargar/extraer; null = el propio
+       contenedor del ultimo nivel (descarga o extraccion completa). */
+    function zipCuerpoCadena(cuerpo, cadena, objetivo) {
+        cuerpo.append('archivo', zipEstado.archivoRaiz || zipEstado.datos.nombre || '');
+        var completa = (cadena || []).slice();
+        if (objetivo) {
+            completa.push({ indice: objetivo.indice, nombre: objetivo.nombre || '' });
+        }
+        completa.forEach(function (seg) {
+            cuerpo.append('entradas[]', String(seg.indice));
+        });
+        var ps = zipEstado.passwords || [];
+        var total = Math.max(ps.length, completa.length + 1);
+        for (var i = 0; i < total; i++) {
+            cuerpo.append('passwords[]', ps[i] || '');
+        }
+    }
+
+    /* Ejecuta una operacion encadenada y, si el servidor pide clave para un
+       nivel (err.nivel), la pregunta y la guarda en passwords[nivel] antes
+       de reintentar. Maximo 3 intentos por operacion. */
+    function zipEjecutarCadena(preparar) {
+        var intentos = 0;
+
+        function paso() {
+            return preparar().catch(function (err) {
+                if (!err || !err.password || intentos >= 3) { throw err; }
+
+                intentos++;
+                var nivel = (typeof err.nivel === 'number')
+                    ? err.nivel
+                    : ((zipEstado && zipEstado.cadena) ? zipEstado.cadena.length : 0);
+                var motivo = err.passwordIncorrecta
+                    ? 'La contrase\u00f1a no es correcta.'
+                    : (err.message || 'Esta entrada est\u00e1 protegida con contrase\u00f1a.');
+
+                return zipPedirPassword(motivo).then(function (nueva) {
+                    if (nueva === null) {
+                        var cancelado = new Error('Operaci\u00f3n cancelada: no se introdujo la contrase\u00f1a.');
+                        cancelado.cancelada = true;
+                        throw cancelado;
+                    }
+                    if (zipEstado) {
+                        zipEstado.passwords = zipEstado.passwords || [];
+                        zipEstado.passwords[nivel] = nueva;
+                        if (nivel === 0) { zipEstado.password = nueva; }
+                    }
+                    return paso();
+                });
+            });
+        }
+
+        return paso();
+    }
+
+    /* Navega a un nivel de la cadena (0 = indice del archivo raiz). Si el
+       indice de ese nivel ya se visito, se repinta desde la cache. */
+    function zipNavegarCadena(nivel) {
+        if (!zipEstado) { return; }
+        var cadena = (zipEstado.cadena || []).slice(0, Math.max(0, nivel));
+        var clave = zipCadenaClave(cadena);
+        var cacheado = zipEstado.cache[clave];
+
+        if (cacheado) {
+            visorZip(cacheado, cadena);
+            return;
+        }
+
+        zipEjecutarCadena(function () {
+            return zipPedirIndice(cadena);
+        })
+            .then(function (data) {
+                data.bytesTexto = bytesLegibles(data.bytes);
+                visorZip(data, cadena);
+            })
+            .catch(function (err) {
+                if (err && err.cancelada) { zipCancelado(); return; }
+                zipFallo('No se pudo abrir el nivel', (err && err.message) || 'No se pudo leer el ' + zipTipoTxt() + '.');
+            });
+    }
+
+    /* Abre un .zip/.rar del indice actual como vista anidada: se anade su
+       indice a la cadena y se pide el indice del comprimido resultante. */
+    function zipAbrirAnidado(boton) {
+        if (boton.disabled || !zipEstado) { return; }
+        var restaurar = zipOcupar(boton);
+        var nuevaCadena = (zipEstado.cadena || []).concat([{
+            indice: parseInt(boton.dataset.indice, 10) || 0,
+            nombre: boton.dataset.nombre || ''
+        }]);
+        var clave = zipCadenaClave(nuevaCadena);
+
+        function mostrar(data) {
+            restaurar();
+            data.bytesTexto = bytesLegibles(data.bytes);
+            zipEstado.cache[clave] = data;
+            zipEstado.ruta = '';
+            visorZip(data, nuevaCadena);
+        }
+
+        var cacheado = zipEstado.cache[clave];
+        if (cacheado) { mostrar(cacheado); return; }
+
+        zipEjecutarCadena(function () {
+            return zipPedirIndice(nuevaCadena);
+        })
+            .then(mostrar)
+            .catch(function (err) {
+                restaurar();
+                if (err && err.cancelada) { zipCancelado(); return; }
+                zipFallo('No se pudo abrir el archivo',
+                    (err && err.message) || 'No se pudo leer el ' + zipTipoTxt() + '.');
+            });
     }
 
     /* Destino por defecto de una extraccion: MISMA CARPETA, la carpeta que
@@ -1711,6 +2238,7 @@ Swal.fire({
                 err.password = true;
             }
             if (json && json.passwordIncorrecta) { err.passwordIncorrecta = true; }
+            if (json && typeof json.nivel === 'number') { err.nivel = json.nivel; }
             throw err;
         }, function () {
             var err = new Error('HTTP ' + respuesta.status);
@@ -1727,6 +2255,7 @@ Swal.fire({
                 err.password = true;
             }
             if (json && json.passwordIncorrecta) { err.passwordIncorrecta = true; }
+            if (json && typeof json.nivel === 'number') { err.nivel = json.nivel; }
             throw err;
         }, function () {
             throw new Error('HTTP ' + r.status);
@@ -2149,15 +2678,25 @@ Swal.fire({
     function zipDescargarEntrada(boton) {
         if (boton.disabled) { return; }
         var restaurar = zipOcupar(boton);
+        var hayCadena = !!(zipEstado && zipEstado.cadena && zipEstado.cadena.length);
+        var ejecutar = hayCadena ? zipEjecutarCadena : zipEjecutarConPassword;
 
-        zipEjecutarConPassword(function (password) {
+        ejecutar(function (password) {
             var cuerpo = new FormData();
             cuerpo.append('accion', 'ver_entrada');
             cuerpo.append('carpeta', boton.dataset.carpeta || '');
             cuerpo.append('ruta', boton.dataset.ruta || (zipEstado && zipEstado.datos.ruta) || '');
-            cuerpo.append('archivo', boton.dataset.archivo || '');
-            cuerpo.append('entrada', boton.dataset.indice || '');
             cuerpo.append('token', (zipEstado && zipEstado.datos.csrf) || '');
+
+            if (hayCadena) {
+                zipCuerpoCadena(cuerpo, zipEstado.cadena, {
+                    indice: parseInt(boton.dataset.indice, 10) || 0,
+                    nombre: boton.dataset.nombre || ''
+                });
+            } else {
+                cuerpo.append('archivo', boton.dataset.archivo || '');
+                cuerpo.append('entrada', boton.dataset.indice || '');
+            }
             if (password) { cuerpo.append('password', password); }
 
             return fetch(zipUrlAccion(), { method: 'POST', body: cuerpo, credentials: 'same-origin' })
@@ -2178,20 +2717,63 @@ Swal.fire({
             });
     }
 
+    /* Descarga el contenedor del nivel anidado actual: la cadena entera sin
+       objetivo final (el servidor devuelve el temporal de ese contenedor). */
+    function zipDescargarContenedor(boton) {
+        if (!zipEstado || !zipEstado.cadena || !zipEstado.cadena.length) { return; }
+        var restaurar = zipOcupar(boton);
+
+        zipEjecutarCadena(function (password) {
+            var cuerpo = new FormData();
+            cuerpo.append('accion', 'ver_entrada');
+            cuerpo.append('carpeta', (zipEstado.datos.carpeta) || '');
+            cuerpo.append('ruta', (zipEstado.datos.ruta) || '');
+            cuerpo.append('token', (zipEstado.datos.csrf) || '');
+            zipCuerpoCadena(cuerpo, zipEstado.cadena, null);
+            if (password) { cuerpo.append('password', password); }
+
+            return fetch(zipUrlAccion(), { method: 'POST', body: cuerpo, credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) { return zipLeerError(r); }
+                    return r.blob();
+                });
+        })
+            .then(function (blob) {
+                zipDescargarBlob(blob, basenameDe(zipEstado.datos.nombre || 'descarga'));
+                restaurar();
+            })
+            .catch(function (err) {
+                restaurar();
+                if (err && err.cancelada) { zipCancelado(); return; }
+                zipFallo('No se pudo descargar el contenedor',
+                    (err && err.message) || 'No se pudo leer el archivo comprimido.');
+            });
+    }
+
     /* Extrae UNA entrada a la carpeta elegida. */
     function zipExtraerEntrada(boton) {
         if (boton.disabled) { return; }
         var restaurar = zipOcupar(boton);
+        var hayCadena = !!(zipEstado && zipEstado.cadena && zipEstado.cadena.length);
+        var ejecutar = hayCadena ? zipEjecutarCadena : zipEjecutarConPassword;
 
-        zipEjecutarConPassword(function (password) {
+        ejecutar(function (password) {
             var cuerpo = new FormData();
             cuerpo.append('accion', 'extraer_uno');
             cuerpo.append('carpeta', boton.dataset.carpeta || '');
-            cuerpo.append('archivo', boton.dataset.archivo || '');
-            cuerpo.append('entrada', boton.dataset.indice || '');
             cuerpo.append('ruta', boton.dataset.ruta || (zipEstado && zipEstado.datos.ruta) || '');
             cuerpo.append('destino', zipDestinoActual());
             cuerpo.append('token', (zipEstado && zipEstado.datos.csrf) || '');
+
+            if (hayCadena) {
+                zipCuerpoCadena(cuerpo, zipEstado.cadena, {
+                    indice: parseInt(boton.dataset.indice, 10) || 0,
+                    nombre: boton.dataset.nombre || ''
+                });
+            } else {
+                cuerpo.append('archivo', boton.dataset.archivo || '');
+                cuerpo.append('entrada', boton.dataset.indice || '');
+            }
             if (password) { cuerpo.append('password', password); }
 
             return fetch(zipUrlAccion(), { method: 'POST', body: cuerpo, credentials: 'same-origin' })
@@ -2216,21 +2798,29 @@ Swal.fire({
             });
     }
 
-    /* Extrae TODO el ZIP a la carpeta elegida. */
+    /* Extrae TODO el ZIP/RAR a la carpeta elegida (en anidados: el contenedor
+       del nivel actual, recorriendo la cadena hasta el). */
     function zipExtraerTodo(boton) {
         if (boton.disabled) { return; }
         var restaurar = zipOcupar(boton);
         zipRestablecerResultado();
+        var hayCadena = !!(zipEstado && zipEstado.cadena && zipEstado.cadena.length);
+        var ejecutar = hayCadena ? zipEjecutarCadena : zipEjecutarConPassword;
 
-        zipEjecutarConPassword(function (password) {
+        ejecutar(function (password) {
             var cuerpo = new FormData();
             cuerpo.append('accion', 'extraer_todo');
             cuerpo.append('carpeta', boton.dataset.carpeta || (zipEstado && zipEstado.datos.carpeta) || '');
-            cuerpo.append('archivo', boton.dataset.archivo || (zipEstado && zipEstado.datos.nombre) || '');
             cuerpo.append('ruta', boton.dataset.ruta || (zipEstado && zipEstado.datos.ruta) || '');
             cuerpo.append('destino', zipDestinoActual());
             cuerpo.append('token', (zipEstado && zipEstado.datos.csrf) || '');
             cuerpo.append('progreso', '1');
+
+            if (hayCadena) {
+                zipCuerpoCadena(cuerpo, zipEstado.cadena, null);
+            } else {
+                cuerpo.append('archivo', boton.dataset.archivo || (zipEstado && zipEstado.datos.nombre) || '');
+            }
             if (password) { cuerpo.append('password', password); }
 
             zipProgresoAbrir();
@@ -2286,13 +2876,25 @@ Swal.fire({
     function zipVerEntrada(boton) {
         if (boton.disabled) { return; }
         var restaurar = zipOcupar(boton);
+        var hayCadena = !!(zipEstado && zipEstado.cadena && zipEstado.cadena.length);
+        var ejecutar = hayCadena ? zipEjecutarCadena : zipEjecutarConPassword;
 
-        zipEjecutarConPassword(function (password) {
+        ejecutar(function (password) {
             var cuerpo = new FormData();
             cuerpo.append('carpeta', boton.dataset.carpeta);
-            cuerpo.append('archivo', boton.dataset.archivo);
-            cuerpo.append('entrada', boton.dataset.indice);
             cuerpo.append('ruta', boton.dataset.ruta || (zipEstado && zipEstado.datos.ruta) || '');
+
+            if (hayCadena) {
+                /* Vista anidada: la cadena completa hasta la entrada
+                   (entradas[]) con una clave por nivel (passwords[]). */
+                zipCuerpoCadena(cuerpo, zipEstado.cadena, {
+                    indice: parseInt(boton.dataset.indice, 10) || 0,
+                    nombre: boton.dataset.nombre || ''
+                });
+            } else {
+                cuerpo.append('archivo', boton.dataset.archivo);
+                cuerpo.append('entrada', boton.dataset.indice);
+            }
             if (password) { cuerpo.append('password', password); }
 
             return fetch('ver_archivo.php', { method: 'POST', body: cuerpo, credentials: 'same-origin' })
@@ -2335,6 +2937,23 @@ Swal.fire({
     });
 
     document.addEventListener('click', function (e) {
+        /* Segmento de la cadena anidada (raiz / dwn2.rar / ...): va antes
+           que el handler de carpetas porque estos botones llevan tambien
+           la clase .visor-zip-nivel. */
+        var nivelCadena = e.target && e.target.closest ? e.target.closest('.visor-zip-nivel-cadena') : null;
+        if (nivelCadena && zipEstado) {
+            var nivelElegido = parseInt(nivelCadena.dataset.nivel, 10);
+            if (!isNaN(nivelElegido)) {
+                if (nivelElegido === (zipEstado.cadena || []).length) {
+                    zipEstado.ruta = '';
+                    pintarZip();
+                } else {
+                    zipNavegarCadena(nivelElegido);
+                }
+            }
+            return;
+        }
+
         var nivel = e.target && e.target.closest ? e.target.closest('.visor-zip-nivel') : null;
         if (nivel && zipEstado) {
             zipEstado.ruta = nivel.dataset.ruta || '';
@@ -2344,6 +2963,10 @@ Swal.fire({
 
         var home = e.target && e.target.closest ? e.target.closest('.visor-zip-home') : null;
         if (home && zipEstado) {
+            if (zipEstado.cadena && zipEstado.cadena.length) {
+                zipNavegarCadena(0);
+                return;
+            }
             zipEstado.ruta = '';
             pintarZip();
             return;
@@ -2352,7 +2975,12 @@ Swal.fire({
         var atras = e.target && e.target.closest ? e.target.closest('.visor-zip-atras, .visor-zip-subir') : null;
         if (atras && zipEstado) {
             var ruta = zipRuta();
-            if (ruta === '') { return; }
+            if (ruta === '') {
+                if (zipEstado.cadena && zipEstado.cadena.length) {
+                    zipNavegarCadena(zipEstado.cadena.length - 1);
+                }
+                return;
+            }
             var trozos = ruta.split('/');
             trozos.pop();
             zipEstado.ruta = trozos.join('/');
@@ -2367,8 +2995,15 @@ Swal.fire({
             return;
         }
 
+        var abrir = e.target && e.target.closest ? e.target.closest('.visor-zip-abrir') : null;
+        if (abrir) { zipAbrirAnidado(abrir); return; }
+
         var ver = e.target && e.target.closest ? e.target.closest('.visor-zip-ver') : null;
         if (ver) { zipVerEntrada(ver); return; }
+
+        /* Descarga del contenedor del nivel anidado (barra de acciones). */
+        var contDescarga = e.target && e.target.closest ? e.target.closest('.visor-zip-bajar-contenedor') : null;
+        if (contDescarga) { zipDescargarContenedor(contDescarga); return; }
 
         var bajar = e.target && e.target.closest ? e.target.closest('.visor-zip-bajar-uno') : null;
         if (bajar) {
@@ -2415,6 +3050,8 @@ Swal.fire({
                 pintarZip();
                 return;
             }
+            var btnAbrirFila = filaZip.querySelector('.visor-zip-abrir');
+            if (btnAbrirFila) { zipAbrirAnidado(btnAbrirFila); return; }
             var btnVerFila = filaZip.querySelector('.visor-zip-ver');
             if (btnVerFila) { zipVerEntrada(btnVerFila); return; }
 
@@ -2445,7 +3082,11 @@ Swal.fire({
                 mostrandoContenido: false,
                 saltando: 0,
                 password: null,
-                orden: { campo: null, dir: 'asc' }
+                orden: { campo: null, dir: 'asc' },
+                cadena: [],
+                passwords: [],
+                archivoRaiz: btn.dataset.nombre,
+                cache: {}
             };
             var passwordUsada = null;
 
@@ -2495,7 +3136,11 @@ Swal.fire({
                         visorXml(data);
                     } else if (data.tipo === 'zip' || data.tipo === 'rar') {
                         visorZip(data);
-                        if (zipEstado) { zipEstado.password = passwordUsada; }
+                        if (zipEstado) {
+                            zipEstado.password = passwordUsada;
+                            zipEstado.passwords = passwordUsada ? [passwordUsada] : [];
+                            zipEstado.archivoRaiz = btn.dataset.nombre;
+                        }
                     } else {
                         zipEstado = null;
                         visorError('Tipo de archivo no soportado.');

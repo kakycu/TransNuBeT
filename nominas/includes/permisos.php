@@ -524,16 +524,32 @@ function carpetas_nombre_seguro($nombre)
  *
  * @return string|null null si todo se borro; el motivo del fallo en caso contrario.
  */
+/**
+ * Borra un fichero teniendo en cuenta Windows: los archivos con el atributo
+ * "Solo lectura" (muy comunes al descomprimir ZIP) hacen fallar unlink(),
+ * asi que antes se quita ese atributo con chmod().
+ *
+ * @param string $ruta Ruta absoluta del fichero.
+ * @return bool true si el fichero dejo de existir.
+ */
+function carpetas_borrar_fichero($ruta)
+{
+    @chmod($ruta, 0666);
+    return @unlink($ruta);
+}
+
 function carpetas_borrar_recursivo($ruta)
 {
     if (is_link($ruta)) {
-        return @unlink($ruta) ? null : 'no se pudo eliminar el enlace';
+        return carpetas_borrar_fichero($ruta)
+            ? null
+            : 'no se pudo eliminar el enlace "' . basename($ruta) . '"';
     }
 
     if (is_dir($ruta)) {
         $items = @scandir($ruta);
         if ($items === false) {
-            return 'no se pudo leer la carpeta';
+            return 'no se pudo leer la carpeta "' . basename($ruta) . '"';
         }
         foreach ($items as $item) {
             if ($item === '.' || $item === '..') {
@@ -544,11 +560,13 @@ function carpetas_borrar_recursivo($ruta)
                 return $error;
             }
         }
-        return @rmdir($ruta) ? null : 'no se pudo eliminar la carpeta';
+        return @rmdir($ruta) ? null : 'no se pudo eliminar la carpeta "' . basename($ruta) . '"';
     }
 
     if (is_file($ruta)) {
-        return @unlink($ruta) ? null : 'no se pudo eliminar el archivo';
+        return carpetas_borrar_fichero($ruta)
+            ? null
+            : 'no se pudo eliminar el archivo "' . basename($ruta) . '"';
     }
 
     return null;   // ya no existe

@@ -601,12 +601,15 @@ function getTrabajadoresActivos($pdo) {
                e.salario_hora_ordinaria, 
                a.nombre_area, 
                c.nombre as categoria_nombre,
+               cc.codigo as centro_costo_codigo,
+               cc.nombre as centro_costo_nombre,
                t.cuentabanc,
                COALESCE(SUM(CASE WHEN pa.tipo_calculo = 'monto_fijo' THEN pa.monto END), 0) as pago_adicional_fijo_total
         FROM trabajadores t
         JOIN escalas_salariales e ON t.escala_salarial_id = e.id
         LEFT JOIN areas a ON t.area_id = a.id
         LEFT JOIN categorias_ocupacionales c ON t.categoria_ocupacional_id = c.id
+        LEFT JOIN centros_costo cc ON t.centro_costo_id = cc.id
         LEFT JOIN trabajador_pago_adicional tpa ON t.id = tpa.trabajador_id
         LEFT JOIN pagos_adicionales pa ON tpa.pago_adicional_id = pa.id AND pa.activo = 1
         WHERE t.activo = 1 AND (t.fecha_baja IS NULL OR t.fecha_baja > CURDATE())

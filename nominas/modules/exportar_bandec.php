@@ -68,7 +68,9 @@ if (isset($_GET['accion']) && $_GET['accion'] === 'periodos') {
     $sql = "SELECT 
                 n.periodo_desde,
                 n.periodo_hasta,
-                MIN(n.numero_nomina) as numero_nomina
+                MIN(n.numero_nomina) as numero_nomina,
+                SUM(CASE WHEN n.usar_convenio = 1 THEN 1 ELSE 0 END) as filas_convenio,
+                COUNT(*) as total_filas
             FROM nominas n
             WHERE n.tipo_nomina = ?";
     
@@ -82,9 +84,44 @@ if (isset($_GET['accion']) && $_GET['accion'] === 'periodos') {
     $sql .= " GROUP BY n.periodo_desde, n.periodo_hasta
               ORDER BY n.periodo_desde DESC";
     
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $periodos = $stmt->fetchAll();
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $periodos = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        // Columna usar_convenio ausente (instalación vieja): se omite la aclaración.
+        $sql = "SELECT 
+                    n.periodo_desde,
+                    n.periodo_hasta,
+                    MIN(n.numero_nomina) as numero_nomina
+                FROM nominas n
+                WHERE n.tipo_nomina = ?"
+              . (($anio) ? " AND YEAR(n.periodo_desde) = ?" : "")
+              . " GROUP BY n.periodo_desde, n.periodo_hasta ORDER BY n.periodo_desde DESC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $periodos = $stmt->fetchAll();
+    }
+
+    // Aclaración de la tarifa usada en nóminas extraordinarias (se muestra
+    // tras el título de los reportes/exportaciones; la DBF no la lleva).
+    $tarifas_conv = ($tipoNomina === 'extraordinaria') ? cargarTarifasConvenio($pdo) : [];
+    $aclaracionTarifa = function ($p) use ($tipoNomina, $tarifas_conv) {
+        if ($tipoNomina !== 'extraordinaria' || !isset($p['filas_convenio'])) return '';
+        $conv = intval($p['filas_convenio']);
+        $tot  = intval($p['total_filas']);
+        if ($conv <= 0) {
+            return 'Tarifa empleada: Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)';
+        }
+        if ($conv >= $tot) {
+            return 'Tarifa empleada: Convenio Colectivo Empleador - Empleado ($'
+                . number_format((float)$tarifas_conv['convenio_valor_he'], 2) . '/h HE, $'
+                . number_format((float)$tarifas_conv['convenio_valor_doble_turno'], 2) . '/h DT, $'
+                . number_format((float)$tarifas_conv['convenio_valor_nocturnidad_temprana'], 2) . '/h NtT, $'
+                . number_format((float)$tarifas_conv['convenio_valor_nocturnidad_tardia'], 2) . '/h NtD)';
+        }
+        return 'Tarifa empleada: Mixta (Ley 189/2026 + Convenio Colectivo)';
+    };
     
     $periodosFormateados = [];
     
@@ -100,7 +137,8 @@ if (isset($_GET['accion']) && $_GET['accion'] === 'periodos') {
         $periodosFormateados[] = [
             'periodo_desde' => $p['periodo_desde'],
             'periodo_hasta' => $p['periodo_hasta'],
-            'label' => $label
+            'label' => $label,
+            'tarifa_extra' => $aclaracionTarifa($p)
         ];
     }
     

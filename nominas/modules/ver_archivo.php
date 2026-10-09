@@ -12,6 +12,7 @@ require_once '../config/database.php';
 require_once '../includes/funciones.php';
 require_once '../includes/permisos.php';
 require_once __DIR__ . '/../includes/logger.php';
+require_once __DIR__ . '/../includes/visor_anidar.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -28,7 +29,6 @@ define('VISOR_LIMITE_FILAS_CSV', 300);         // filas de .csv mostradas
 define('VISOR_LIMITE_LECTURA_CSV', 5000);      // filas de .csv leidas a memoria
 define('VISOR_LIMITE_ENTRADAS', 2000);         // entradas del .zip devueltas al navegador
 define('VISOR_LIMITE_RECORRIDO_ZIP', 5000);    // entradas recorridas para los contadores
-define('VISOR_LIMITE_ZIP_ENTRADA', 25 * 1024 * 1024); // 25 MB por entrada previsualizada
 
 // --- Sesion ---
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -101,272 +101,35 @@ if (strpos($rutaArchivo, rtrim($rutaBase, "/\\") . DIRECTORY_SEPARATOR) !== 0) {
 $bytes = (int)@filesize($rutaArchivo);
 
 // ==========================================
-// Una entrada DENTRO del ZIP: se descomprime en un temporal y se apunta a
-// el, de modo que las ramas de txt/sql/dbf/xml/csv trabajan igual que con
-// un archivo suelto. El temporal se borra al terminar la peticion.
+// Entradas DENTRO del ZIP/RAR (vista anidada): se descomprimen en temporales y
+// se apunta al resultado, de modo que las ramas de txt/sql/dbf/xml/csv trabajan
+// igual que con un archivo suelto. El parseo de entradas[]/passwords[] (o del
+// legado entrada+password) y el recorrido de la cadena viven en
+// includes/visor_anidar.php, compartido con extraer_zip.php y extraer_rar.php
+// para poder descargar y extraer entradas anidadas. Los temporales se borran
+// al terminar la peticion (register_shutdown de cada helper).
 // ==========================================
-$entradaZip = trim((string)($_POST['entrada'] ?? ''));
-$password   = (string)($_POST['password'] ?? '');
-$origenZip  = null;
+$parseAnidado = visor_anidar_parsear($_POST);
+$password     = $parseAnidado['password'];
 
-if ($entradaZip !== '' && $extension === 'zip') {
-    $indiceZip = (int)$entradaZip;
-    if ($indiceZip < 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'mensaje' => 'Entrada no indicada.']);
-        exit();
-    }
-    if (!class_exists('ZipArchive')) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'mensaje' => 'El servidor no tiene habilitada la extension ZIP.']);
-        exit();
-    }
+// En vista anidada $archivo/$rutaArchivo apuntan al temporal de la cadena:
+// no procede armar la URL de descarga directa del fichero raiz (se oculta).
+$hayEntradas = count($parseAnidado['entradas']) > 0;
 
-    $zip = new ZipArchive();
-    if ($zip->open($rutaArchivo) !== true) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'mensaje' => 'No se pudo abrir el ZIP.']);
-        exit();
-    }
+if ($hayEntradas) {
+    $preparado = visor_anidar_recorrer(
+        $rutaArchivo, $extension, $bytes, $archivo, $parseAnidado, 'visor');
 
-    if ($indiceZip >= $zip->numFiles) {
-        $zip->close();
-        http_response_code(404);
-        echo json_encode(['success' => false, 'mensaje' => 'Esa entrada no existe en el ZIP.']);
-        exit();
-    }
-
-    $nombreInterno = (string)$zip->getNameIndex($indiceZip);
-    $seguro        = carpetas_nombre_seguro($nombreInterno);
-    $esDir         = substr(str_replace('\\', '/', $nombreInterno), -1) === '/';
-
-    if ($seguro === null || $esDir) {
-        $zip->close();
-        http_response_code(400);
-        echo json_encode(['success' => false, 'mensaje' => 'Entrada no previsualizable.']);
-        exit();
-    }
-
-    $extensionInterna = strtolower(pathinfo($seguro, PATHINFO_EXTENSION));
-    if (!in_array($extensionInterna, ['txt', 'sql', 'dbf', 'xml', 'csv', 'log', 'json', 'md', 'ps1', 'cmd'], true)) {
-        $zip->close();
-        http_response_code(400);
-        echo json_encode(['success' => false,
-            'mensaje' => 'Ese tipo de archivo no se puede previsualizar dentro del ZIP.']);
-        exit();
-    }
-
-    $entradaStat = $zip->statIndex($indiceZip);
-    if ((int)($entradaStat['size'] ?? 0) > VISOR_LIMITE_ZIP_ENTRADA) {
-        $zip->close();
-        http_response_code(413);
-        echo json_encode(['success' => false,
-            'mensaje' => 'La entrada supera los ' . (int)(VISOR_LIMITE_ZIP_ENTRADA / 1048576) .
-                ' MB permitidos para previsualizar.']);
-        exit();
-    }
-
-    $flagsZip = carpetas_zip_flags($rutaArchivo);
-    $entradaCifrada = !empty($flagsZip['mapa'][$indiceZip]);
-
-    if ($entradaCifrada) {
-        if ($password === '') {
-            $zip->close();
-            http_response_code(401);
-            echo json_encode(['success' => false, 'requierePassword' => true,
-                'codigo'   => 'password_requerida',
-                'mensaje'  => 'Esta entrada esta protegida con contraseña.',
-                'entrada'  => $nombreInterno]);
-            exit();
-        }
-
-        carpetas_zip_aplicar_password($zip, $password);
-    }
-
-    $contenidoZip = $zip->getFromIndex($indiceZip);
-    $zip->close();
-
-    if ($contenidoZip === false) {
-        if ($entradaCifrada) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'passwordIncorrecta' => true,
-                'requierePassword' => true,
-                'codigo'  => 'password_incorrecta',
-                'mensaje' => 'Contraseña incorrecta.']);
-            exit();
-        }
-
-        http_response_code(500);
-        echo json_encode(['success' => false, 'mensaje' => 'No se pudo leer esa entrada.']);
-        exit();
-    }
-
-    $crcEsperado = carpetas_zip_crc_esperado($entradaStat);
-    if ($crcEsperado !== '' && hash('crc32b', $contenidoZip) !== $crcEsperado) {
-        http_response_code(500);
-        echo json_encode(['success' => false,
-            'mensaje' => 'El CRC-32 no coincide: la entrada esta corrupta.']);
-        exit();
-    }
-
-    $temporal = tempnam(sys_get_temp_dir(), 'visorzip');
-    if ($temporal === false || file_put_contents($temporal, $contenidoZip) === false) {
-        unset($contenidoZip);
-        http_response_code(500);
-        echo json_encode(['success' => false, 'mensaje' => 'No se pudo preparar la previsualizacion.']);
-        exit();
-    }
-    unset($contenidoZip);
-
-    register_shutdown_function(function () use ($temporal) {
-        @unlink($temporal);
-    });
-
-    $origenZip       = $archivo;
-    $rutaArchivo     = $temporal;
-    $bytes           = (int)($entradaStat['size'] ?? 0);
-    $extension       = $extensionInterna;
-    $archivo         = basename($seguro);
-}
-
-// Una entrada DENTRO del RAR: se extrae con UnRAR a un temporal y se apunta a
-// el, exactamente igual que la rama ZIP de arriba.
-if ($entradaZip !== '' && $extension === 'rar') {
-    require_once __DIR__ . '/../includes/rarlib/autoload.php';
-    require_once __DIR__ . '/../includes/rarlib/unrar.php';
-
-    $indiceRar = (int)$entradaZip;
-    if ($indiceRar < 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'mensaje' => 'Entrada no indicada.']);
-        exit();
-    }
-
-    $indiceRarDatos = rar_indice_completo($rutaArchivo, $password);
-    if ($indiceRarDatos['ok'] !== true) {
-        $motivoRar = $indiceRarDatos['motivo'] ?? 'error';
-        if ($motivoRar === 'password') {
-            if ($password === '') {
-                http_response_code(401);
-                echo json_encode(['success' => false, 'requierePassword' => true,
-                    'codigo'  => 'password_requerida',
-                    'mensaje' => 'Este RAR tiene las cabeceras cifradas: falta la contraseña.']);
-            } else {
-                http_response_code(403);
-                echo json_encode(['success' => false, 'passwordIncorrecta' => true,
-                    'requierePassword' => true,
-                    'codigo'  => 'password_incorrecta',
-                    'mensaje' => 'Contraseña incorrecta.']);
-            }
-            exit();
-        }
-        if ($motivoRar === 'no_encontrada') {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'mensaje' => 'Esa entrada no existe en el RAR.']);
-            exit();
-        }
-        http_response_code(500);
-        echo json_encode(['success' => false,
-            'mensaje' => 'No se pudo abrir el RAR (formato no reconocido o dañado).']);
-        exit();
-    }
-
-    $entradasRar = $indiceRarDatos['entradas'];
-
-    if ($indiceRar >= count($entradasRar)) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'mensaje' => 'Esa entrada no existe en el RAR.']);
-        exit();
-    }
-
-    $entradaR     = $entradasRar[$indiceRar];
-    $nombreInterno = $entradaR['nombre'];
-    $seguro        = carpetas_nombre_seguro($nombreInterno);
-    $esDir         = $entradaR['esDir'];
-
-    if ($seguro === null || $esDir) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'mensaje' => 'Entrada no previsualizable.']);
-        exit();
-    }
-
-    $extensionInterna = strtolower(pathinfo($seguro, PATHINFO_EXTENSION));
-    if (!in_array($extensionInterna, ['txt', 'sql', 'dbf', 'xml', 'csv', 'log', 'json', 'md', 'ps1', 'cmd'], true)) {
-        http_response_code(400);
-        echo json_encode(['success' => false,
-            'mensaje' => 'Ese tipo de archivo no se puede previsualizar dentro del RAR.']);
-        exit();
-    }
-
-    $pesoEntrada = (int)$entradaR['bytes'];
-    if ($pesoEntrada > VISOR_LIMITE_ZIP_ENTRADA) {
-        http_response_code(413);
-        echo json_encode(['success' => false,
-            'mensaje' => 'La entrada supera los ' . (int)(VISOR_LIMITE_ZIP_ENTRADA / 1048576) .
-                ' MB permitidos para previsualizar.']);
-        exit();
-    }
-
-    $entradaCifrada = $entradaR['cifrada'];
-
-    if ($entradaCifrada && $password === '') {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'requierePassword' => true,
-            'codigo'   => 'password_requerida',
-            'mensaje'  => 'Esta entrada esta protegida con contraseña.',
-            'entrada'  => $nombreInterno]);
-        exit();
-    }
-
-    $extraida = rar_extraer_entrada_temporal($rutaArchivo, $nombreInterno, $password);
-    if ($extraida['ok'] === false) {
-        if ($extraida['motivo'] === 'password') {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'passwordIncorrecta' => true,
-                'requierePassword' => true,
-                'codigo'   => 'password_incorrecta',
-                'mensaje'  => 'Contraseña incorrecta.']);
-            exit();
-        }
-
-        http_response_code(500);
-        echo json_encode(['success' => false, 'mensaje' => (string)($extraida['mensaje'] ?? 'No se pudo leer esa entrada.')]);
-        exit();
-    }
-
-    $contenidoRar = @file_get_contents($extraida['archivo']);
-    @unlink($extraida['archivo']);
-    @rmdir($extraida['temporal']);
-
-    if ($contenidoRar === false) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'mensaje' => 'No se pudo leer esa entrada.']);
-        exit();
-    }
-
-    $temporal = tempnam(sys_get_temp_dir(), 'visorzip');
-    if ($temporal === false || file_put_contents($temporal, $contenidoRar) === false) {
-        unset($contenidoRar);
-        http_response_code(500);
-        echo json_encode(['success' => false, 'mensaje' => 'No se pudo preparar la previsualizacion.']);
-        exit();
-    }
-    unset($contenidoRar);
-
-    register_shutdown_function(function () use ($temporal) {
-        @unlink($temporal);
-    });
-
-    $origenZip       = $archivo;
-    $rutaArchivo     = $temporal;
-    $bytes           = $pesoEntrada;
-    $extension       = $extensionInterna;
-    $archivo         = basename($seguro);
+    $rutaArchivo = $preparado['ruta'];
+    $extension   = $preparado['extension'];
+    $bytes       = $preparado['bytes'];
+    $archivo     = basename($preparado['nombre']);
+    $password    = $preparado['password'];
 }
 
 /**
  * Pasa un texto codificado por el equipo (UTF-8 con/sin BOM, UTF-16 o
- * Windows-1252, que es como escribe el proyecto) a UTF-8 para el modal.
+ * Windows-1252, que como escribe el proyecto) a UTF-8 para el modal.
  */
 function visor_a_utf8($texto)
 {
@@ -739,7 +502,7 @@ if ($extension === 'zip') {
     $definicion  = carpetas_sistema_definicion();
     $descargaDir = $definicion[$carpetaSolicitada]['descargaDir'] ?? null;
     $descargaZip = null;
-    if ($descargaDir !== null) {
+    if ($descargaDir !== null && !$hayEntradas) {
         $partes = $rutaRelativa === '' ? [] : explode('/', $rutaRelativa);
         $partes[] = $archivo;
         $descargaZip = $descargaDir . '/' . implode('/', array_map('rawurlencode', $partes));
@@ -796,12 +559,14 @@ if ($extension === 'rar') {
                 http_response_code(401);
                 echo json_encode(['success' => false, 'requierePassword' => true,
                     'codigo'  => 'password_requerida',
+                    'nivel'   => count($entradasRuta),
                     'mensaje' => 'Este RAR tiene las cabeceras cifradas: falta la contraseña.']);
             } else {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'passwordIncorrecta' => true,
                     'requierePassword' => true,
                     'codigo'  => 'password_incorrecta',
+                    'nivel'   => count($entradasRuta),
                     'mensaje' => 'Contraseña incorrecta.']);
             }
             exit();
@@ -884,7 +649,7 @@ if ($extension === 'rar') {
     $definicion  = carpetas_sistema_definicion();
     $descargaDir = $definicion[$carpetaSolicitada]['descargaDir'] ?? null;
     $descargaRar = null;
-    if ($descargaDir !== null) {
+    if ($descargaDir !== null && !$hayEntradas) {
         $partes = $rutaRelativa === '' ? [] : explode('/', $rutaRelativa);
         $partes[] = $archivo;
         $descargaRar = $descargaDir . '/' . implode('/', array_map('rawurlencode', $partes));

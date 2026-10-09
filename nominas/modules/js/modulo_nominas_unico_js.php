@@ -196,6 +196,53 @@ var nombreEmpresa = '<?php echo addslashes($config_empresa['nombre_empresa']); ?
 var tipoNominaTexto = '<?php echo $tipos_nomina[$tipo_nomina_activa]['nombre']; ?>';
 window.tipoNomina = '<?php echo $tipo_nomina_activa; ?>';
 var tipoNomina = window.tipoNomina; // Para compatibilidad en ambas llamadas
+
+// Aclaración de la tarifa empleada en la nómina extraordinaria. Se coloca
+// justo después del título en reportes, impresiones y exportaciones. La DBF
+// NO la lleva (no se toca la celda de observaciones).
+// Devuelve 1 si la nómina usa Convenio, 0 si usa la Ley y '' si no aplica.
+function convenioActivoAclaracion() {
+    if (tipoNomina !== 'extraordinaria') return '';
+    var conv = 0;
+    var $fila = $('#tablaNominas tbody tr:first');
+    if ($fila.length) {
+        var v = parseInt($fila.data('usar-convenio'), 10);
+        if (!isNaN(v)) conv = v;
+    }
+    return conv === 1 ? 1 : 0;
+}
+
+// Versión en texto plano: para TXT, DBF, PDF y cualquier salida escapada.
+function textoAclaracionTarifaExtra() {
+    var conv = convenioActivoAclaracion();
+    if (conv === '') return '';
+    if (conv === 1) {
+        return 'Tarifa empleada: Convenio Colectivo Empleador - Empleado ($'
+            + convenioValorHe.toFixed(2) + '/h HE, $' + convenioValorDobleTurno.toFixed(2) + '/h DT, $'
+            + convenioValorNocturnidadTemprana.toFixed(2) + '/h NtT, $' + convenioValorNocturnidadTardia.toFixed(2) + '/h NtD)';
+    }
+    return 'Tarifa empleada: Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)';
+}
+
+// Color de acento del tema, resuelto a hexadecimal para que también funcione
+// en ventanas de impresión abiertas con document.write (sin CSS del tema).
+function colorAcentoTexto() {
+    var v = '';
+    try { v = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(); } catch (e) { v = ''; }
+    return v || '#3b82f6';
+}
+
+// Versión HTML: la tarifa aplicada va en negrita y con el color de acento.
+function textoAclaracionTarifaExtraHTML() {
+    var conv = convenioActivoAclaracion();
+    if (conv === '') return '';
+    if (conv === 1) {
+        return 'Tarifa empleada: Convenio Colectivo Empleador - Empleado (<strong>$'
+            + convenioValorHe.toFixed(2) + '/h HE, $' + convenioValorDobleTurno.toFixed(2) + '/h DT, $'
+            + convenioValorNocturnidadTemprana.toFixed(2) + '/h NtT, $' + convenioValorNocturnidadTardia.toFixed(2) + '/h NtD)</strong>)';
+    }
+    return 'Tarifa empleada: <strong style="color:' + colorAcentoTexto() + ';">Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)</strong>';
+}
 var puedeCrearNomina = <?php echo $puede_crear_nomina ? 'true' : 'false'; ?>;
 window.trabajadores = <?php echo json_encode($trabajadores); ?>;
 // Todos los trabajadores (activos e inactivos) para el Listado Total Salario Devengado
@@ -896,6 +943,11 @@ var usuarioNombre = '<?php echo addslashes($user_nombre_completo); ?>';
 var recargoTrabajoExtraordinario = parseFloat('<?php echo $recargo_trabajo_extraordinario; ?>') || 1.25;
 var tarifaNocturnidadTemprana = parseFloat('<?php echo $tarifa_nocturnidad_temprana; ?>') || 0.60;
 var tarifaNocturnidadTardia = parseFloat('<?php echo $tarifa_nocturnidad_tardia; ?>') || 1.15;
+// Tarifas pactadas por Convenio Colectivo de Trabajo (Empleador - Empleado).
+var convenioValorHe                  = parseFloat('<?php echo isset($convenio_valor_he) ? $convenio_valor_he : 10.25; ?>') || 10.25;
+var convenioValorDobleTurno         = parseFloat('<?php echo isset($convenio_valor_doble_turno) ? $convenio_valor_doble_turno : 20.05; ?>') || 20.05;
+var convenioValorNocturnidadTemprana = parseFloat('<?php echo isset($convenio_valor_nocturnidad_temprana) ? $convenio_valor_nocturnidad_temprana : 8.00; ?>') || 8.00;
+var convenioValorNocturnidadTardia  = parseFloat('<?php echo isset($convenio_valor_nocturnidad_tardia) ? $convenio_valor_nocturnidad_tardia : 14.75; ?>') || 14.75;
 // Tasa de la CESS en el modo "total_rangos" (ISIP). Viene de
 // configuracion_tasas.contribucion_especial, igual que la usa PHP al guardar.
 // Si se cambia la tasa en configuracion, la previsualizacion se mueve con ella.
@@ -924,12 +976,19 @@ function redondearImporteJS(valor) {
  * servidor. Se llama con las mismas claves en los tres sitios que antes repetían
  * la fórmula a mano.
  */
-function calcularImporteTrabajoExtraordinarioJS(salarioHora, horasHE, noctT, noctD, dt) {
+function calcularImporteTrabajoExtraordinarioJS(salarioHora, horasHE, noctT, noctD, dt, usarConvenio) {
     var recargo = recargoTrabajoExtraordinario;
-    var importeHE = redondearImporteJS(salarioHora * recargo * horasHE);
-    var importeNtT = redondearImporteJS(noctT * tarifaNocturnidadTemprana);
-    var importeNtD = redondearImporteJS(noctD * tarifaNocturnidadTardia);
-    var importeDT = redondearImporteJS(salarioHora * recargo * dt);
+    if (usarConvenio) {
+        var importeHE = redondearImporteJS(horasHE * convenioValorHe);
+        var importeNtT = redondearImporteJS(noctT * convenioValorNocturnidadTemprana);
+        var importeNtD = redondearImporteJS(noctD * convenioValorNocturnidadTardia);
+        var importeDT = redondearImporteJS(dt * convenioValorDobleTurno);
+    } else {
+        var importeHE = redondearImporteJS(salarioHora * recargo * horasHE);
+        var importeNtT = redondearImporteJS(noctT * tarifaNocturnidadTemprana);
+        var importeNtD = redondearImporteJS(noctD * tarifaNocturnidadTardia);
+        var importeDT = redondearImporteJS(salarioHora * recargo * dt);
+    }
     return {
         importeHE: importeHE,
         importeNtT: importeNtT,
@@ -2618,7 +2677,8 @@ $('#btnSeleccionarTodosAuto').on('click', function() {
             salario_hora: t.salario_hora_ordinaria,
             area: t.nombre_area || 'Sin área',
             centro_costo: (t.centro_costo_codigo && t.centro_costo_nombre) ? 
-                t.centro_costo_codigo + ' - ' + t.centro_costo_nombre : 'Sin CC'
+                (t.centro_costo_codigo + ' - ' + t.centro_costo_nombre) : 
+                (t.centro_costo_nombre || 'Sin CC')
         });
     });
     
@@ -3477,7 +3537,7 @@ function generarHtmlCompletoConPaginacion(cuerpoHtml, alcance, filtroNombre, nom
     </tr>
     <tr style="height:13pt;">
         <td colspan="3">
-            <strong>Tipo Nómina:</strong> <span style="font-style: italic;font-weight: bold;font-size:0.75rem;">${escapeHtml(tipoNominaTexto)}</span>
+            <strong>Tipo Nómina:</strong> <span style="font-style: italic;font-weight: bold;font-size:0.75rem;">${escapeHtml(tipoNominaTexto)}</span>${textoAclaracionTarifaExtra() ? '<br><span style="font-size:0.7rem; font-weight:bold;">' + textoAclaracionTarifaExtraHTML() + '</span>' : ''}
         </td>
         <td colspan="${esBono ? 2 : 1}">
             <strong>Código:</strong> <span>${codigoMostrado}</span>
@@ -3607,7 +3667,7 @@ function generarHtmlCompleto(cuerpoHtml, duplicadaRows, duplicadaTotales, alcanc
             </tr>
             <tr style="height:13pt;">
                 <td colspan="3" style="width:304.55pt;">
-                    <strong>Tipo Nómina:</strong> <span style="font-style: italic;">${escapeHtml(tipoNominaTexto)}</span>
+                    <strong>Tipo Nómina:</strong> <span style="font-style: italic;">${escapeHtml(tipoNominaTexto)}</span>${textoAclaracionTarifaExtra() ? '<br><span style="font-size:0.7rem; font-weight:bold;">' + textoAclaracionTarifaExtraHTML() + '</span>' : ''}
                 </td>
                 <td style="width:142.8pt;">
                     <strong>Código:</strong> <span>${codigoMostrado}</span>
@@ -3902,7 +3962,7 @@ function renderAutoWorkerList(idsEnNomina) {
         
         trabajadoresDisponibles.forEach(function(t) {
             var isSelected = trabajadoresSeleccionadosAuto.some(function(s) { return s.id == t.id; });
-            var centroCostoNombre = 'Sin CC';
+            var centroCostoNombre = t.centro_costo_nombre || 'Sin CC';
             if (t.centro_costo_codigo && t.centro_costo_nombre) {
                 centroCostoNombre = t.centro_costo_codigo + ' - ' + t.centro_costo_nombre;
             } else if (t.centro_costo_nombre) {
@@ -3942,7 +4002,7 @@ function renderAutoWorkerList(idsEnNomina) {
         html += `<div class="mt-4 pt-3 border-top border-secondary"><strong class="text-muted"><i class="fas fa-check-circle me-1"></i> Trabajadores YA INCLUIDOS en nómina (${trabajadoresYaIncluidos.length}):</strong></div>`;
         
         trabajadoresYaIncluidos.forEach(function(t) {
-            var centroCostoNombre = 'Sin CC';
+            var centroCostoNombre = t.centro_costo_nombre || 'Sin CC';
             if (t.centro_costo_codigo && t.centro_costo_nombre) {
                 centroCostoNombre = t.centro_costo_codigo + ' - ' + t.centro_costo_nombre;
             } else if (t.centro_costo_nombre) {
@@ -5169,8 +5229,9 @@ function recalcularPreviewAuto() {
         var dt = parseFloat($('#editDT').val()) || 0;
         var descuentos = parseFloat($('#editDescuentos').val()) || 0;
         var tipoDescuento = $('#tablaNominas tbody tr[data-id="' + window.editCurrentRowId + '"]').data('tipo-descuento') || 'total_rangos';
+        var usarConv = parseInt($('#tablaNominas tbody tr[data-id="' + window.editCurrentRowId + '"]').data('usar-convenio'), 10) || 0;
         
-        var calcExtra = calcularImporteTrabajoExtraordinarioJS(salarioHora, horas, noctT, noctD, dt);
+        var calcExtra = calcularImporteTrabajoExtraordinarioJS(salarioHora, horas, noctT, noctD, dt, usarConv === 1);
         var importeHE = calcExtra.importeHE;
         var importeNtT = calcExtra.importeNtT;
         var importeNtD = calcExtra.importeNtD;
@@ -6157,8 +6218,11 @@ $('#btnConfirmarDescuentoGen').on('click', function() {
         window.tempSelectedDiscount = tipoDescuentoGenSeleccionado;
 
         if (targetTypeGen === 'extraordinaria') {
-            var modalObj = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalExtraordinaria'));
-            modalObj.show();
+            // En vez de abrir directamente la extraordinaria, primero pedimos
+            // la tarifa (Ley 189/2026 vs Convenio Colectivo).
+            var tarifasModalEl = document.getElementById('modalSeleccionTarifasExtra');
+            var tarifasModal = bootstrap.Modal.getOrCreateInstance(tarifasModalEl);
+            tarifasModal.show();
         } else if (targetTypeGen === 'vacaciones') {
             var modalObj = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVacaciones'));
             modalObj.show();
@@ -6180,6 +6244,46 @@ $('#modalAjuste').on('show.bs.modal', function() {
     $('#searchAjusteWorker').val('');
     $('#conceptoAjuste').val('');
 });
+
+    // =========================================================
+    // MODAL DE SELECCIÓN DE TARIFAS (Ley 189/2026 vs Convenio)
+    // =========================================================
+    var tarifaExtraSeleccionada = null; // 'ley' | 'convenio'
+
+    $('#modalSeleccionTarifasExtra').on('show.bs.modal', function() {
+        tarifaExtraSeleccionada = null;
+        $('#opcionTarifaLey').removeClass('selected');
+        $('#opcionTarifaConvenio').removeClass('selected');
+        $('#btnConfirmarTarifasExtra').prop('disabled', true);
+    });
+
+    $('#opcionTarifaLey').on('click', function() {
+        $('#opcionTarifaLey').addClass('selected');
+        $('#opcionTarifaConvenio').removeClass('selected');
+        tarifaExtraSeleccionada = 'ley';
+        $('#btnConfirmarTarifasExtra').prop('disabled', false);
+    });
+
+    $('#opcionTarifaConvenio').on('click', function() {
+        $('#opcionTarifaConvenio').addClass('selected');
+        $('#opcionTarifaLey').removeClass('selected');
+        tarifaExtraSeleccionada = 'convenio';
+        $('#btnConfirmarTarifasExtra').prop('disabled', false);
+    });
+
+    $('#btnConfirmarTarifasExtra').on('click', function() {
+        if (!tarifaExtraSeleccionada) return;
+
+        var tarifasModalEl = document.getElementById('modalSeleccionTarifasExtra');
+        var tarifasModal = bootstrap.Modal.getInstance(tarifasModalEl);
+        tarifasModal.hide();
+
+        $(tarifasModalEl).one('hidden.bs.modal', function() {
+            window.tempExtraTarifa = tarifaExtraSeleccionada;
+            var modalObj = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalExtraordinaria'));
+            modalObj.show();
+        });
+    });
 
 
 
@@ -6958,6 +7062,7 @@ customize: function(win) {
                                     REPORTE DE PROCESAMIENTO DE PAGO - <span style="color: red !important;">${tipoNominaTexto.toUpperCase()}</span>
                                 </h4>
                                 <p style="color:#004B87 !important; margin:0.125rem 0 0 0; font-size:8.5pt; font-weight:bold; font-family: Arial;">PERÍODO: ${periodoTexto.toUpperCase()}</p>
+                                ${textoAclaracionTarifaExtra() ? '<p style="color:#333 !important; margin:0.125rem 0 0 0; font-size:8pt; font-weight:bold; font-family: Arial;">' + textoAclaracionTarifaExtraHTML() + '</p>' : ''}
                             </div>
                         </div>
                         <div style="text-align:right; font-size:8pt; color:#444; line-height:1.4; font-family: Arial;">
@@ -6990,6 +7095,7 @@ customize: function(win) {
                                     REPORTE DE PROCESAMIENTO DE PAGO - <span style="color: red !important;">${tipoNominaTexto.toUpperCase()}</span>
                                 </h4>
                                 <p style="color:#004B87 !important; margin:0.125rem 0 0 0; font-size:8.5pt; font-weight:bold; font-family: Arial;">PERÍODO: ${periodoTexto.toUpperCase()}</p>
+                                ${textoAclaracionTarifaExtra() ? '<p style="color:#333 !important; margin:0.125rem 0 0 0; font-size:8pt; font-weight:bold; font-family: Arial;">' + textoAclaracionTarifaExtraHTML() + '</p>' : ''}
                             </div>
                         </div>
                         <div style="text-align:right; font-size:8pt; color:#444; line-height:1.4; font-family: Arial;">
@@ -7408,6 +7514,9 @@ function generarContenidoCSV(trabajadores) {
 
     lines.push(esc(nombreEmpresa));
     lines.push(esc('Tipo de Nómina: ' + tipoNominaTexto) + ',' + esc('Período: ' + periodoTexto));
+    if (textoAclaracionTarifaExtra()) {
+        lines.push(esc(textoAclaracionTarifaExtra()));
+    }
     lines.push(esc('Número Nómina: ' + (numeroNomina === 'Borrador' ? 'Borrador' : numeroNomina)));
     if (esBono) {
         lines.push(esc('Monto a Distribuir: ' + (montoDistribuidoGlobal > 0 ? '$' + montoDistribuidoGlobal.toFixed(2) : '(Hasta que se contabilice)')));
@@ -9859,7 +9968,8 @@ function recalcularFilaAutomatica(fila) {
     if (tipoNominaActual === 'automatica') {
         importeFeriados = salarioDiario * diasFeriados * 2;
     } else {
-        var calcExtra = calcularImporteTrabajoExtraordinarioJS(salarioHora, horas, noctT, noctD, dt);
+        var usarConvFila = parseInt(fila.data('usar-convenio'), 10) || 0;
+        var calcExtra = calcularImporteTrabajoExtraordinarioJS(salarioHora, horas, noctT, noctD, dt, usarConvFila === 1);
         importeHE = calcExtra.importeHE;
         importeNtT = calcExtra.importeNtT;
         importeNtD = calcExtra.importeNtD;
@@ -11718,7 +11828,7 @@ function renderExtraWorkerList(term = '') {
             avatarHtml = '<i class="fas fa-user" style="' + avatarIconColor + '"></i>';
         }
 
-        var centroCostoNombre = 'Sin CC';
+        var centroCostoNombre = w.centro_costo_nombre || 'Sin CC';
         if (w.centro_costo_codigo && w.centro_costo_nombre) {
             centroCostoNombre = w.centro_costo_codigo + ' - ' + w.centro_costo_nombre;
         } else if (w.centro_costo_nombre) {
@@ -11758,11 +11868,17 @@ function renderExtraWorkerList(term = '') {
 
 function updateExtraList(focusId) {
     var diasLaborables = <?php echo $dias_laborables; ?>;
+    var usarConv = parseInt($('#usarConvenioExtra').val(), 10) || 0;
+    var esConvenio = (usarConv === 1);
+    var porcentajeExtra = Math.round((recargoTrabajoExtraordinario - 1) * 100);
+    var labelRecargo = esConvenio ? ('$' + convenioValorHe.toFixed(2) + '/h') : ('+' + porcentajeExtra + '%');
+    var labelRecargoDT = esConvenio ? ('$' + convenioValorDobleTurno.toFixed(2) + '/h') : ('+' + porcentajeExtra + '%');
+    var tarifaNtT = esConvenio ? convenioValorNocturnidadTemprana : tarifaNocturnidadTemprana;
+    var tarifaNtD = esConvenio ? convenioValorNocturnidadTardia : tarifaNocturnidadTardia;
     var html = selectedExtra.map(w => {
         var salarioDiario = w.salario_mensual / diasLaborables;
-        var valorHoraExtra = redondearImporteJS(w.sh * recargoTrabajoExtraordinario);
-        var valorHoraDobleTurno = redondearImporteJS(w.sh * recargoTrabajoExtraordinario);
-        var porcentajeExtra = Math.round((recargoTrabajoExtraordinario - 1) * 100);
+        var valorHoraExtra = esConvenio ? convenioValorHe : redondearImporteJS(w.sh * recargoTrabajoExtraordinario);
+        var valorHoraDobleTurno = esConvenio ? convenioValorDobleTurno : redondearImporteJS(w.sh * recargoTrabajoExtraordinario);
         
         return `
             <div class="selected-worker-card" style="margin-bottom:0.9375rem; border-left: 0.1875rem solid #3b82f6;">
@@ -11787,12 +11903,12 @@ function updateExtraList(focusId) {
                         <div class="fw-bold text-info">$${w.sh.toFixed(2)}</div>
                     </div>
                     <div class="col-3 text-center">
-                        <small class="text-muted"><i class="fas fa-sun"></i> HE +${porcentajeExtra}%</small>
+                        <small class="text-muted"><i class="fas fa-sun"></i> HE ${labelRecargo}</small>
                         <div class="fw-bold text-warning">$${valorHoraExtra.toFixed(2)}</div>
                     </div>
                     <div class="col-3 text-center">
                         <small class="text-muted"><i class="fas fa-bed"></i> Nocturno</small>
-                        <div class="fw-bold text-success">$${tarifaNocturnidadTemprana.toFixed(2)}/h</div>
+                        <div class="fw-bold text-success">$${tarifaNtT.toFixed(2)}/h</div>
                     </div>
                 </div>
                 
@@ -11803,7 +11919,7 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm horas-input" 
                                    data-id="${w.id}" value="${w.horasExtraNormales || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#f59e0b;">
-                            <span class="input-group-text bg-dark text-warning">+${porcentajeExtra}%</span>
+                            <span class="input-group-text bg-dark text-warning">${labelRecargo}</span>
                         </div>
                         <small class="text-muted">$${valorHoraExtra.toFixed(2)}/h</small>
                     </div>
@@ -11814,7 +11930,7 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm noct-temprana-input" 
                                    data-id="${w.id}" value="${w.noctTemprana || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#3b82f6;">
-                            <span class="input-group-text bg-dark text-info">$${tarifaNocturnidadTemprana.toFixed(2)}/h</span>
+                            <span class="input-group-text bg-dark text-info">$${tarifaNtT.toFixed(2)}/h</span>
                         </div>
                         <small class="text-muted">Tarifa fija</small>
                     </div>
@@ -11825,7 +11941,7 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm noct-tardia-input" 
                                    data-id="${w.id}" value="${w.noctTardia || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#8b5cf6;">
-                            <span class="input-group-text bg-dark" style="color:#8b5cf6;">$${tarifaNocturnidadTardia.toFixed(2)}/h</span>
+                            <span class="input-group-text bg-dark" style="color:#8b5cf6;">$${tarifaNtD.toFixed(2)}/h</span>
                         </div>
                         <small class="text-muted">Tarifa fija</small>
                     </div>
@@ -11836,7 +11952,7 @@ function updateExtraList(focusId) {
                             <input type="number" step="0.5" class="form-control form-control-sm doble-turno-input" 
                                    data-id="${w.id}" value="${w.dobleTurno || ''}" 
                                    style="background:rgba(20,20,30,0.9); border-color:#22c55e;">
-                            <span class="input-group-text bg-dark text-success">+${porcentajeExtra}%</span>
+                            <span class="input-group-text bg-dark text-success">${labelRecargoDT}</span>
                         </div>
                         <small class="text-muted">$${valorHoraDobleTurno.toFixed(2)}/h</small>
                     </div>
@@ -11845,7 +11961,7 @@ function updateExtraList(focusId) {
                     <div class="col-12">
                         <small class="text-muted">
                             <i class="fas fa-calculator me-1"></i>
-                            HE: $${w.sh.toFixed(2)} × ${recargoTrabajoExtraordinario} | Nocturno 19:00-23:00: $${tarifaNocturnidadTemprana.toFixed(2)}/h | Nocturno 23:00-07:00: $${tarifaNocturnidadTardia.toFixed(2)}/h | DT: $${w.sh.toFixed(2)} × ${recargoTrabajoExtraordinario}
+                            HE: ${labelRecargo} (${esConvenio ? 'Tarifa pactada $' + convenioValorHe.toFixed(2) + '/h' : '$' + w.sh.toFixed(2) + ' × ' + recargoTrabajoExtraordinario}) | Nocturno 19:00-23:00: $${tarifaNtT.toFixed(2)}/h | Nocturno 23:00-07:00: $${tarifaNtD.toFixed(2)}/h | DT: ${labelRecargoDT}
                         </small>
                     </div>
                 </div>
@@ -11870,6 +11986,7 @@ function updateExtraList(focusId) {
 function updateExtraTotals() {
     var tHorasNorm = 0, tNoctT = 0, tNoctD = 0, tDT = 0, tDev = 0, tNeto = 0, val = 0;
     var tipoDescuento = $('#tipoDescuentoExtra').val() || window.tempSelectedDiscount || 'total_rangos';
+    var usarConvTot = parseInt($('#usarConvenioExtra').val(), 10) || 0;
     selectedExtra.forEach(w => {
         var hrsNorm = parseFloat(w.horasExtraNormales) || 0;
         var noctT = parseFloat(w.noctTemprana) || 0;
@@ -11882,7 +11999,7 @@ function updateExtraTotals() {
             tNoctD += noctD;
             tDT += dt;
             
-            var calcExtra = calcularImporteTrabajoExtraordinarioJS(w.sh, hrsNorm, noctT, noctD, dt);
+            var calcExtra = calcularImporteTrabajoExtraordinarioJS(w.sh, hrsNorm, noctT, noctD, dt, usarConvTot === 1);
             var salTotal = calcExtra.totalDevengado;
             tDev += salTotal;
             
@@ -12021,6 +12138,22 @@ $(document).on('input', '.doble-turno-input', function(){
 
 $('#modalExtraordinaria').on('show.bs.modal', function(){ 
     selectedExtra=[]; 
+
+    // Tarifa: prioriza la elegida en el modal de Seleccionar Tarifas;
+    // si se abrió directamente (Add Trab.), hereda la del lote actual (filas).
+    // Se fija ANTES de updateExtraList() para que las etiquetas y la
+    // previsualización salgan ya con la tarifa correcta.
+    var usarConv = null;
+    if (window.tempExtraTarifa) {
+        usarConv = (window.tempExtraTarifa === 'convenio') ? 1 : 0;
+        window.tempExtraTarifa = null;
+    } else {
+        var filaConv = $('#tablaNominas tbody tr:first').data('usar-convenio');
+        usarConv = (filaConv !== undefined && filaConv !== null) ? (parseInt(filaConv, 10) || 0) : 0;
+    }
+    $('#usarConvenioExtra').val(usarConv);
+    actualizarLabelTarifaExtra(usarConv);
+
     renderExtraWorkerList(); 
     updateExtraList(); 
     $('#searchExtraWorker').val('');
@@ -12028,10 +12161,25 @@ $('#modalExtraordinaria').on('show.bs.modal', function(){
     // CORRECCIÓN: Prioriza la selección del modal anterior
     var td = window.tempSelectedDiscount || $('#tablaNominas tbody tr:first').data('tipo-descuento') || 'total_rangos';
     $('#tipoDescuentoExtra').val(td);
-    
+
     // Limpiamos la variable para futuras aperturas manuales
     window.tempSelectedDiscount = null;
 });
+
+    // Etiqueta/aviso de la tarifa en uso dentro del modal de extraordinaria
+    function actualizarLabelTarifaExtra(usarConvenio) {
+        var $label = $('#labelTarifaExtra');
+        if (!$label.length) return;
+        if (parseInt(usarConvenio, 10) === 1) {
+            $label.html('<i class="fas fa-handshake me-1"></i>Tarifa empleada: Convenio Colectivo Empleador - Empleado (<strong>$' +
+                convenioValorHe.toFixed(2) + '/h HE, $' + convenioValorDobleTurno.toFixed(2) + '/h DT, $' +
+                convenioValorNocturnidadTemprana.toFixed(2) + '/h NtT, $' + convenioValorNocturnidadTardia.toFixed(2) + '/h NtD)</strong>)')
+                .removeClass('text-warning').addClass('text-success');
+        } else {
+            $label.html('<i class="fas fa-landmark me-1"></i>Tarifa empleada: <strong style="color:' + colorAcentoTexto() + ';">Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)</strong>')
+                .removeClass('text-success').addClass('text-white');
+        }
+    }
 
     $('#formExtraordinaria').on('submit', function(e){
         $(this).find('input[name="trabajador_id[]"], input[name="horas_trabajadas[]"], input[name="nocturnidad_temprana_trabajadas[]"], input[name="nocturnidad_tardia_trabajadas[]"], input[name="doble_turno_trabajadas[]"]').remove();
@@ -13449,7 +13597,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
             <table>
                 <tr><td colspan="${colsCount}" class="title" style="border:none;">MODELO SC-4-06 NOMINA - ${window.escapeHtml(nombreEmpresa)}</td></tr>
                 <tr>
-                    <td colspan="3" class="header-meta"><b>Tipo Nómina:</b> ${window.escapeHtml(tipoNominaTexto)}</td>
+                    <td colspan="3" class="header-meta"><b>Tipo Nómina:</b> ${window.escapeHtml(tipoNominaTexto)}${textoAclaracionTarifaExtra() ? '<br><span style="font-size:7.5pt;">' + window.textoAclaracionTarifaExtraHTML() + '</span>' : ''}</td>
                     <td colspan="2" class="header-meta"><b>Período:</b> ${periodoTexto}</td>
                     <td colspan="${esBono ? 3 : (esAjuste ? 3 : 5)}" class="header-meta"><b>Nº Nómina / No. Instrum. Pago:</b> ${window.escapeHtml(numeroNomina)}</td>
                     <td colspan="${esBono ? 3 : (esAjuste ? 5 : 7)}" rowspan="2" style="vertical-align:top; border:0.5pt solid #000; font-size:8.5pt; line-height:1.4;">
@@ -13865,6 +14013,7 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                             {
                                 stack: [
                                     { text: `MODELO SC-4-06 NOMINA - ${nombreEmpresa.toUpperCase()}`, fontSize: 10, bold: true },
+                                    ...(textoAclaracionTarifaExtra() ? [{ text: textoAclaracionTarifaExtra(), fontSize: 7, bold: true }] : []),
                                     {
                                         columns: [
                                             { text: `Tipo: ${tipoNominaTexto}`, fontSize: 7, bold: true },
@@ -14423,7 +14572,7 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                     <table style="width:100%; border-collapse:collapse; margin-bottom:0.625rem;">
                         <tr>
                             <td style="border:0.5pt solid #000; padding:0.1875rem; font-size:8pt; width:35%;">
-                                <strong>Tipo Nómina:</strong> ${escapeHtml(tipoNominaTexto)}
+                                <strong>Tipo Nómina:</strong> ${escapeHtml(tipoNominaTexto)}${textoAclaracionTarifaExtra() ? '<br><span style="font-size:7pt;">' + textoAclaracionTarifaExtraHTML() + '</span>' : ''}
                             </td>
                             <td style="border:0.5pt solid #000; padding:0.1875rem; font-size:8pt; width:35%;">
                                 <strong>No. Instrum. Pago:</strong> ${codigoMostrado}
@@ -14546,6 +14695,9 @@ function generarContenidoTXT(trabajadores) {
     lines.push("==========================================================================");
     lines.push("REPORTE OFICIAL DE NÓMINA - " + nombreEmpresa.toUpperCase());
     lines.push("TIPO DE NÓMINA: " + tipoNominaTexto.toUpperCase());
+    if (textoAclaracionTarifaExtra()) {
+        lines.push(textoAclaracionTarifaExtra().toUpperCase());
+    }
     lines.push("PERÍODO: " + periodoTexto.toUpperCase());
     lines.push("NÚMERO NÓMINA: " + (numeroNomina === 'Borrador' ? 'Borrador' : numeroNomina));
     

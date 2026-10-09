@@ -640,6 +640,7 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             asegurarParamsMail($pdo);
             asegurarTarifasNocturnidad($pdo);
             asegurarRecargosExtra($pdo);
+            asegurarConvenioExtra($pdo);
 
             $email = trim($_POST['email'] ?? '');
             $no_ci = trim($_POST['no_ci'] ?? '');
@@ -1123,6 +1124,7 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             asegurarColumnasResetToken($pdo);
             asegurarTarifasNocturnidad($pdo);
             asegurarRecargosExtra($pdo);
+            asegurarConvenioExtra($pdo);
 
             $token = trim($_POST['token'] ?? '');
             $password = trim($_POST['password'] ?? '');
@@ -2665,7 +2667,7 @@ body::after {
             </div>
             <div class="logo-right">
                 <div class="logo-icon2">
-                    <img src="../images/logotn.png" alt="Logo"
+                    <img src="../images/LogoTN.png" alt="Logo"
                          style="width:100%; height:100%; object-fit: contain; border-radius: inherit;"
                          onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon\'></i>';">
                 </div>

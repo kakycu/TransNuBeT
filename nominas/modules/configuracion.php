@@ -8,6 +8,7 @@ require_once __DIR__ . '/../includes/subsistemas.php';
 require_once __DIR__ . '/../includes/config_audit.php';
 
 asegurarRecargosExtra($pdo);
+asegurarConvenioExtra($pdo);
 
 // Iniciar sesión
 if (session_status() === PHP_SESSION_NONE) {
@@ -32,6 +33,21 @@ $user_rol_descripcion = $_SESSION['rol_descripcion'] ?? $user_rol_codigo;
 $user_ci = $_SESSION['usuario_ci'] ?? $_SESSION['user_ci'] ?? '';
 
 $usuario_actual_id = $_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? 0;
+
+// ============================================
+// AJAX: VALORES PACTADOS (CONVENIO) DESDE LA BD
+// ============================================
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'valores_convenio') {
+    header('Content-Type: application/json');
+    $tarifasConvenio = cargarTarifasConvenio($pdo);
+    echo json_encode([
+        'he'   => $tarifasConvenio['convenio_valor_he'],
+        'dt'   => $tarifasConvenio['convenio_valor_doble_turno'],
+        'ntt'  => $tarifasConvenio['convenio_valor_nocturnidad_temprana'],
+        'ntd'  => $tarifasConvenio['convenio_valor_nocturnidad_tardia'],
+    ]);
+    exit;
+}
 
 // ============================================
 // AJAX: PROBAR CONFIGURACIÓN SMTP
@@ -172,7 +188,7 @@ try {
 } catch (PDOException $e) {}
 
 // Ruta del logo
-$ruta_logo = '../../images/logocorto.png';
+$ruta_logo = '../../images/LogoCorto.png';
 $logo_base64 = '';
 if (file_exists($ruta_logo)) {
     $tipo = pathinfo($ruta_logo, PATHINFO_EXTENSION);
@@ -240,12 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['guardar_config_general'])) {
         $params = [
             'horas_mensuales', 'dias_mensuales', 'horas_jornada_diaria',
-            'tasa_contribucion_especial', 'nombre_empresa', 'direccion_empresa',
-            'reeup_empresa', 'nit_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_nominas',
-            'salario_minimo', 'intendente', 'especialista_gestionRRHH',
-            'tarifa_nocturnidad_temprana', 'tarifa_nocturnidad_tardia',
-            'recargo_trabajo_extraordinario', 'cess_tasa_exceso', 'cess_limite_progresivo',
-            'tope_he_anual'
+            'salario_minimo'
         ];
         
         try {
@@ -256,6 +267,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             logAction('guardar_configuracion_general', 'configuracion', 'Configuración general guardada', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
             $mensaje = "Configuración general guardada correctamente";
+            $tipo_mensaje = "success";
+        } catch (PDOException $e) {
+            $mensaje = "Error al guardar: " . $e->getMessage();
+            $tipo_mensaje = "error";
+        }
+    }
+    
+    if (isset($_POST['guardar_trabajo_extraordinario'])) {
+        $params = [
+            'recargo_trabajo_extraordinario', 'tarifa_nocturnidad_temprana',
+            'tarifa_nocturnidad_tardia', 'tope_he_anual',
+            'convenio_valor_he', 'convenio_valor_doble_turno',
+            'convenio_valor_nocturnidad_temprana', 'convenio_valor_nocturnidad_tardia'
+        ];
+        
+        try {
+            foreach ($params as $param) {
+                if (isset($_POST[$param])) {
+                    guardar_parametro_configuracion($pdo, $param, $_POST[$param]);
+                }
+            }
+            logAction('guardar_trabajo_extraordinario', 'configuracion', 'Trabajo extraordinario, nocturnidad y valores pactados guardados', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            $mensaje = "Trabajo extraordinario, nocturnidad y valores pactados guardados correctamente";
+            $tipo_mensaje = "success";
+        } catch (PDOException $e) {
+            $mensaje = "Error al guardar: " . $e->getMessage();
+            $tipo_mensaje = "error";
+        }
+    }
+    
+    if (isset($_POST['guardar_cess'])) {
+        $params = [
+            'tasa_contribucion_especial', 'cess_tasa_exceso', 'cess_limite_progresivo'
+        ];
+        
+        try {
+            foreach ($params as $param) {
+                if (isset($_POST[$param])) {
+                    guardar_parametro_configuracion($pdo, $param, $_POST[$param]);
+                }
+            }
+            logAction('guardar_cess', 'configuracion', 'Contribución Especial a la Seguridad Social guardada', ['parametros_actualizados' => $params], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            $mensaje = "Contribución Especial a la Seguridad Social (CESS) guardada correctamente";
             $tipo_mensaje = "success";
         } catch (PDOException $e) {
             $mensaje = "Error al guardar: " . $e->getMessage();
@@ -466,7 +520,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Guardado general (botón flotante): se ejecuta junto a los triggers individuales
     if (isset($_POST['guardar_todo']) && $tipo_mensaje === 'success') {
-        logAction('guardar_todo_configuracion', 'configuracion', 'Guardado general de configuración', ['secciones' => 'general, entidad, bancaria, rangos, correo, google, sistema'], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+        logAction('guardar_todo_configuracion', 'configuracion', 'Guardado general de configuración', ['secciones' => 'general, extraordinario (Ley y Convenio), cess, entidad, personal, bancaria, rangos, correo, google, sistema'], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
         $mensaje = "Toda la configuración se ha guardado correctamente";
         $tipo_mensaje = "success";
     }
@@ -475,7 +529,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // PRG (Post/Redirect/Get): tras un guardado exitoso, recargar la página para
 // que los nuevos valores se apliquen (constantes, formularios, etc.)
 if ($tipo_mensaje === 'success' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $botones_refresh = ['guardar_config_general', 'guardar_datos_entidad', 'guardar_datos_personal', 'guardar_datos_bancarios', 'guardar_rangos', 'guardar_config_mail', 'guardar_config_google', 'guardar_config_sistema', 'guardar_todo'];
+    $botones_refresh = ['guardar_config_general', 'guardar_trabajo_extraordinario', 'guardar_cess', 'guardar_datos_entidad', 'guardar_datos_personal', 'guardar_datos_bancarios', 'guardar_rangos', 'guardar_config_mail', 'guardar_config_google', 'guardar_config_sistema', 'guardar_todo'];
     foreach ($botones_refresh as $b) {
         if (isset($_POST[$b])) {
             $url = strtok($_SERVER['REQUEST_URI'], '?');
@@ -2417,7 +2471,7 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10">
                     <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseConfigGeneral" aria-expanded="false" aria-controls="collapseConfigGeneral">
-                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-sliders-h me-2" style="color: #60a5fa;"></i> Parámetros Generales de Cálculos
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-sliders-h me-2" style="color: #60a5fa;"></i> Configuración de Jornada y Salario
                     </h6>
                 </div>
                 <div id="collapseConfigGeneral" class="collapse">
@@ -2447,78 +2501,6 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                                 </div>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tasa de Contribución Especial (%)</label>
-                                <input type="number" step="0.01" class="form-control" name="tasa_contribucion_especial" value="<?php echo htmlspecialchars($config['tasa_contribucion_especial'] ?? '5'); ?>" title="Tasa de contribución especial al estado" data-tooltip="Tasa de contribución especial al estado" data-tooltip-theme="info">
-                                <small class="text-secondary">Porcentaje aplicado al salario devengado</small>
-                            </div>
-                        </div>
-                        <hr class="my-3">
-                        <h6 class="mb-3"><i class="fas fa-scale-balanced me-1"></i> Trabajo extraordinario y nocturnidad</h6>
-                        <p class="text-secondary small mb-3">
-                            <i class="fas fa-circle-info me-1"></i>
-                            Las horas extras y el doble turno se remuneran con un incremento del
-                            <strong>25 %</strong> sobre el salario por hora (Ley 189/2026 «Código de Trabajo»,
-                            arts. 227 y 230). Los turnos nocturnos se remuneran con una
-                            <strong>tarifa fija en pesos por hora</strong>, no con un porcentaje del salario
-                            (Resolución 15/2026 MTSS, QUINTO.2).
-                        </p>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Trabajo extraordinario (multiplicador)</label>
-                                <input type="number" step="0.01" class="form-control" name="recargo_trabajo_extraordinario" value="<?php echo htmlspecialchars($config['recargo_trabajo_extraordinario'] ?? '1.25'); ?>" title="Multiplicador común de las horas extras y del doble turno (Ley 189/2026, art. 230: 1.25 = 25 % de incremento)" data-tooltip="Multiplicador común de las horas extras y del doble turno (Ley 189/2026, art. 230: 1.25 = 25 % de incremento)" data-tooltip-theme="info">
-                                <small class="text-secondary">1.25 = 25 % de incremento. Aplica a horas extras y doble turno.</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Nocturno 19:00-23:00 ($/h)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_temprana" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_temprana'] ?? '0.60'); ?>" title="Tarifa fija por hora del turno de 19:00 a 23:00 (Res. 15/2026 MTSS, QUINTO.2: 0.60 pesos por hora)" data-tooltip="Tarifa fija por hora del turno de 19:00 a 23:00 (Res. 15/2026 MTSS, QUINTO.2: 0.60 pesos por hora)" data-tooltip-theme="info">
-                                </div>
-                                <small class="text-secondary">Tarifa fija, no porcentual. Valor legal: 0.60.</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Nocturno 23:00-07:00 ($/h)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_tardia" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_tardia'] ?? '1.15'); ?>" title="Tarifa fija por hora del turno de 23:00 a 07:00 (Res. 15/2026 MTSS, QUINTO.2: 1.15 pesos por hora)" data-tooltip="Tarifa fija por hora del turno de 23:00 a 07:00 (Res. 15/2026 MTSS, QUINTO.2: 1.15 pesos por hora)" data-tooltip-theme="info">
-                                </div>
-                                <small class="text-secondary">Tarifa fija, no porcentual. Valor legal: 1.15.</small>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Tope de horas extraordinarias al año (h)</label>
-                                <input type="number" step="1" min="1" class="form-control" name="tope_he_anual" value="<?php echo htmlspecialchars($config['tope_he_anual'] ?? '160'); ?>" title="Tope anual de horas extraordinarias por trabajador (Ley 189/2026, art. 229.2: 160 h al año)" data-tooltip="Tope anual de horas extraordinarias por trabajador (Ley 189/2026, art. 229.2: 160 h al año)" data-tooltip-theme="info">
-                                <small class="text-secondary">Las horas de doble turno también se acumulan a este tope. El umbral "cerca del tope" se calcula como tope − 10 h.</small>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">CESS tasa base (%)</label>
-                                <input type="number" step="0.01" min="0" max="100" class="form-control" name="tasa_contribucion_especial" value="<?php echo htmlspecialchars($config['tasa_contribucion_especial'] ?? '5'); ?>" title="Tasa base de la CESS usada en modo ISIP (plano) y como base en la CESS progresiva (PDL SOLO CESS)" data-tooltip="Tasa base de la CESS usada en modo ISIP (plano) y como base en la CESS progresiva (PDL SOLO CESS)" data-tooltip-theme="info">
-                                <small class="text-secondary">La base de la CESS progresiva se toma de Tasa CESS (ver pestaña Tasas del Sistema).</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">CESS tasa exceso (%)</label>
-                                <input type="number" step="0.01" min="0" max="100" class="form-control" name="cess_tasa_exceso" value="<?php echo htmlspecialchars($config['cess_tasa_exceso'] ?? '10'); ?>" title="Tasa sobre el exceso para CESS progresiva (PDL SOLO CESS): base hasta límite, exceso a esta tasa" data-tooltip="Tasa sobre el exceso para CESS progresiva (PDL SOLO CESS): base hasta límite, exceso a esta tasa" data-tooltip-theme="info">
-                                <small class="text-secondary">Se suma sobre el excedente del límite progresivo.</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">CESS límite progresivo (CUP)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="cess_limite_progresivo" value="<?php echo htmlspecialchars($config['cess_limite_progresivo'] ?? '15000'); ?>" title="Límite para regla progresiva de CESS (PDL SOLO CESS): hasta este monto aplica tasa base, sobre exceso aplica tasa exceso" data-tooltip="Límite para regla progresiva de CESS (PDL SOLO CESS): hasta este monto aplica tasa base, sobre exceso aplica tasa exceso" data-tooltip-theme="info">
-                                </div>
-                                <small class="text-secondary">Monto hasta el cual se cobra la tasa base.</small>
-                            </div>
-                        </div>
-                        <p class="text-secondary small mb-0">
-                            <i class="fas fa-book me-1"></i>
-                            Ley 189/2026, art. 229: máximo 4 horas en dos días consecutivos, máximo 2 turnos dobles
-                            por semana y hasta <?php echo htmlspecialchars($config['tope_he_anual'] ?? '160'); ?> horas extraordinarias al año.
-                        </p>
                         <div class="d-flex justify-content-center mt-3">
                             <button type="submit" name="guardar_config_general" class="btn-win btn-win-primary" title="Guardar configuración general" data-tooltip="Guardar configuración general" data-tooltip-theme="success">
                                 <i class="fas fa-save me-1"></i> Guardar Configuración General
@@ -2529,9 +2511,9 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                 </div>
             </div>
         </div>
-        
+
         <!-- Tasas del Sistema -->
-        <div class="col-lg-6 fade-in-up" style="animation-delay: 0.1s;">
+        <div class="col-lg-6 fade-in-up" style="animation-delay: 0.06s;">
             <div class="glass-card">
                 <div class="p-3 border-bottom border-white-10 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseTasas" aria-expanded="false" aria-controls="collapseTasas">
@@ -2565,6 +2547,262 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                             </tbody>
                         </table>
                     </div>
+                </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Trabajo extraordinario y nocturnidad -->
+        <div class="col-12 fade-in-up" style="animation-delay: 0.07s;">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseExtraordinario" aria-expanded="false" aria-controls="collapseExtraordinario">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-business-time me-2" style="color: #f59e0b;"></i> Trabajo Extraordinario y Nocturnidad <i class="fas fa-moon ms-2"></i>
+                    </h6>
+                </div>
+                <div id="collapseExtraordinario" class="collapse">
+                <div class="p-4">
+                    <form method="POST" id="extraordinarioForm">
+                        <p class="text-white small mb-2 fw-semibold fs-6">
+                            <i class="fas fa-balance-scale me-1"></i> Ley 189/2026 «Código de Trabajo»
+                        </p>
+                        <p class="text-secondary small mb-3">
+                            <i class="fas fa-circle-info me-1"></i>
+                            Las horas extras y el doble turno se remuneran con un incremento del
+                            <strong>25 %</strong> sobre el salario por hora (Ley 189/2026 «Código de Trabajo»,
+                            arts. 227 y 230). Los turnos nocturnos se remuneran con una
+                            <strong>tarifa fija en pesos por hora</strong>, no con un porcentaje del salario
+                            (Resolución 15/2026 MTSS, QUINTO.2).
+                        </p>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Trabajo extraordinario (multiplicador)</label>
+                                <input type="number" step="0.01" class="form-control" name="recargo_trabajo_extraordinario" value="<?php echo htmlspecialchars($config['recargo_trabajo_extraordinario'] ?? '1.25'); ?>" title="Multiplicador común de las horas extras y del doble turno (Ley 189/2026, art. 230: 1.25 = 25 % de incremento)" data-tooltip="Multiplicador común de las horas extras y del doble turno (Ley 189/2026, art. 230: 1.25 = 25 % de incremento)" data-tooltip-theme="info">
+                                <small class="text-secondary">1.25 = 25 % de incremento. Aplica a horas extras y doble turno.</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Nocturno 19:00-23:00 ($/h)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_temprana" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_temprana'] ?? '0.60'); ?>" title="Tarifa fija por hora del turno de 19:00 a 23:00 (Res. 15/2026 MTSS, QUINTO.2: 0.60 pesos por hora)" data-tooltip="Tarifa fija por hora del turno de 19:00 a 23:00 (Res. 15/2026 MTSS, QUINTO.2: 0.60 pesos por hora)" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Tarifa fija, no porcentual. Valor legal: 0.60.</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Nocturno 23:00-07:00 ($/h)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" class="form-control" name="tarifa_nocturnidad_tardia" value="<?php echo htmlspecialchars($config['tarifa_nocturnidad_tardia'] ?? '1.15'); ?>" title="Tarifa fija por hora del turno de 23:00 a 07:00 (Res. 15/2026 MTSS, QUINTO.2: 1.15 pesos por hora)" data-tooltip="Tarifa fija por hora del turno de 23:00 a 07:00 (Res. 15/2026 MTSS, QUINTO.2: 1.15 pesos por hora)" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Tarifa fija, no porcentual. Valor legal: 1.15.</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Tope de horas extraordinarias al año (h)</label>
+                                <input type="number" step="1" min="1" class="form-control" name="tope_he_anual" value="<?php echo htmlspecialchars($config['tope_he_anual'] ?? '160'); ?>" title="Tope anual de horas extraordinarias por trabajador (Ley 189/2026, art. 229.2: 160 h al año)" data-tooltip="Tope anual de horas extraordinarias por trabajador (Ley 189/2026, art. 229.2: 160 h al año)" data-tooltip-theme="info">
+                                <small class="text-secondary">Las horas de doble turno también se acumulan a este tope. El umbral "cerca del tope" se calcula como tope − 10 h.</small>
+                            </div>
+                        </div>
+                        <p class="text-secondary small mb-0">
+                            <i class="fas fa-book me-1"></i>
+                            Ley 189/2026, art. 229: máximo 4 horas en dos días consecutivos, máximo 2 turnos dobles
+                            por semana y hasta <?php echo htmlspecialchars($config['tope_he_anual'] ?? '160'); ?> horas extraordinarias al año.
+                        </p>
+                        <hr class="my-3">
+                        <p class="text-white small mb-3 fw-semibold fs-6">
+                            <i class="fas fa-handshake me-1"></i>
+                            Valores Pactados entre el Empleador y el Empleado (Convenio Colectivo de Trabajo)
+                        </p>
+                        <p class="text-secondary small mb-3">
+                            <i class="fas fa-circle-info me-1"></i>
+                            Tarifas fijas en pesos por hora (<strong>$ / h</strong>) que se aplican cuando la nómina
+                            extraordinaria se genera con la opción <strong>«Convenio Colectivo Empleador - Empleado»</strong>.
+                            Se usan en lugar del recargo de la Ley 189/2026 y de las tarifas de la Res. 15/2026 MTSS.
+                        </p>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Horas Extras ($/h)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="convenio_valor_he" value="<?php echo htmlspecialchars($config['convenio_valor_he'] ?? '10.25'); ?>" title="Valor pactado ($/h) para las horas extras por Convenio Colectivo de Trabajo" data-tooltip="Valor pactado ($/h) para las horas extras por Convenio Colectivo de Trabajo" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Tarifa fija pactada por hora extra.</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Doble Turno ($/h)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="convenio_valor_doble_turno" value="<?php echo htmlspecialchars($config['convenio_valor_doble_turno'] ?? '20.05'); ?>" title="Valor pactado ($/h) para el doble turno por Convenio Colectivo de Trabajo" data-tooltip="Valor pactado ($/h) para el doble turno por Convenio Colectivo de Trabajo" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Tarifa fija pactada por hora de doble turno.</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Nocturnidad 19:00-23:00 ($/h)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="convenio_valor_nocturnidad_temprana" value="<?php echo htmlspecialchars($config['convenio_valor_nocturnidad_temprana'] ?? '8.00'); ?>" oninput="actualizarNotaNocturnidadConvenio()" title="Valor pactado ($/h) para el turno nocturno de 19:00 a 23:00 por Convenio Colectivo de Trabajo" data-tooltip="Valor pactado ($/h) para el turno nocturno de 19:00 a 23:00 por Convenio Colectivo de Trabajo" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Tarifa fija pactada por hora.</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Nocturnidad 23:00-07:00 ($/h)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="convenio_valor_nocturnidad_tardia" value="<?php echo htmlspecialchars($config['convenio_valor_nocturnidad_tardia'] ?? '14.75'); ?>" oninput="actualizarNotaNocturnidadConvenio()" title="Valor pactado ($/h) para el turno nocturno de 23:00 a 07:00 por Convenio Colectivo de Trabajo" data-tooltip="Valor pactado ($/h) para el turno nocturno de 23:00 a 07:00 por Convenio Colectivo de Trabajo" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Tarifa fija pactada por hora.</small>
+                            </div>
+                        </div>
+                        <style>
+                            #notaNocturnidadConvenio .valor-dinamico {
+                                color: var(--accent-dark) !important;
+                                background: rgba(var(--accent-rgb), 0.18) !important;
+                                border-radius: 0.3rem;
+                                padding: 0 0.3rem;
+                                font-weight: 700;
+                            }
+                            html.dark #notaNocturnidadConvenio .valor-dinamico {
+                                color: var(--accent-light) !important;
+                            }
+                            html[data-theme="orgullo"] #notaNocturnidadConvenio .valor-dinamico {
+                                color: var(--accent-dark) !important;
+                            }
+                        </style>
+                        <div class="alert alert-info mt-2 mb-0" id="notaNocturnidadConvenio" role="status">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <strong><i class="fas fa-calculator me-2"></i>C&aacute;lculo Interactivo Nocturnidad (Convenio):</strong>
+                                <button type="button" class="btn-win btn-win-sm" id="btnRecargarValoresConvenio" title="Recargar valores pactados desde la BD" data-tooltip="Recarga desde la base de datos los 4 valores guardados y descarta los cambios sin guardar" data-tooltip-theme="info">
+                                    <i class="fas fa-rotate-right me-1"></i> Recargar valores de la BD
+                                </button>
+                            </div>
+                            <div class="mt-1" id="notaNoctFormula">
+                                Valor del D&iacute;a (12h) - 19:00&ndash;07:00
+                                (<span class="valor-dinamico" id="notaNoctSuma"></span>):
+                                Noct. Temprana (4h) &times;
+                                <span class="valor-dinamico" id="notaNttValor"></span>
+                                + Noct. Tard&iacute;a (8h) &times;
+                                <span class="valor-dinamico" id="notaNtdValor"></span>
+                            </div>
+                            <div>
+                                <span id="notaNoctMesTexto">Mes (192h, 24 d&iacute;as) =</span>
+                                <span class="valor-dinamico" id="notaNoctMes"></span>
+                            </div>
+                        </div>
+                        <script>
+                            function actualizarNotaNocturnidadConvenio() {
+                                const ntt = parseFloat(document.querySelector('input[name="convenio_valor_nocturnidad_temprana"]').value) || 0;
+                                const ntd = parseFloat(document.querySelector('input[name="convenio_valor_nocturnidad_tardia"]').value) || 0;
+                                const fmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                const dia = (4 * ntt) + (8 * ntd);
+                                document.getElementById('notaNoctSuma').textContent = fmt(dia);
+                                document.getElementById('notaNttValor').textContent = fmt(ntt);
+                                document.getElementById('notaNtdValor').textContent = fmt(ntd);
+                                document.getElementById('notaNoctMes').textContent = fmt(dia * 24);
+                            }
+                            actualizarNotaNocturnidadConvenio();
+
+                            document.getElementById('btnRecargarValoresConvenio').addEventListener('click', function() {
+                                const btn = this;
+                                btn.disabled = true;
+                                fetch('configuracion.php?ajax=valores_convenio', { credentials: 'same-origin' })
+                                    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+                                    .then(t => JSON.parse(t.replace(/^\uFEFF/, '').trim()))
+                                    .then(d => {
+                                        const set = (n, v) => {
+                                            const el = document.querySelector('input[name="' + n + '"]');
+                                            if (el && v !== null && v !== undefined && v !== '') el.value = parseFloat(v).toFixed(2);
+                                        };
+                                        set('convenio_valor_he', d.he);
+                                        set('convenio_valor_doble_turno', d.dt);
+                                        set('convenio_valor_nocturnidad_temprana', d.ntt);
+                                        set('convenio_valor_nocturnidad_tardia', d.ntd);
+                                        actualizarNotaNocturnidadConvenio();
+                                        if (typeof Swal !== 'undefined') {
+                                            Swal.fire({ toast: true, position: 'top-end', icon: 'success',
+                                                title: 'Valores recargados desde la BD', showConfirmButton: false, timer: 1800 });
+                                        }
+                                    })
+                                    .catch(() => {
+                                        if (typeof Swal !== 'undefined') {
+                                            Swal.fire({ toast: true, position: 'top-end', icon: 'error',
+                                                title: 'No se pudieron recargar los valores', showConfirmButton: false, timer: 2200 });
+                                        }
+                                    })
+                                    .finally(() => { btn.disabled = false; });
+                            });
+                        </script>
+                        <div class="border-top border-white-10 mt-3 pt-3">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="small fw-semibold text-secondary me-1">
+                                    <i class="fas fa-file-arrow-down me-1" style="color: #f59e0b;"></i> Descargar Nuevo C&oacute;digo de Trabajo:
+                                </span>
+                                <a href="../../documentos/P-GOC%5B158-2026%5D.pdf" target="_blank" rel="noopener"
+                                   class="btn-win btn-win-sm btn-win-primary"
+                                   title="Descargar el PDF alojado en este equipo (LOCAL)"
+                                   data-tooltip="C&oacute;digo de Trabajo P-GOC 158-2026 copia local" data-tooltip-theme="info">
+                                    <i class="fas fa-folder-open me-1"></i> (LOCAL) P-GOC[158-2026].pdf
+                                </a>
+                                <a href="https://www.mfp.gob.cu/ficheros/publicaciones/P-GOC%5B158-2026%5D.pdf" target="_blank" rel="noopener"
+                                   class="btn-win btn-win-sm"
+                                   title="Descargar desde el sitio del Ministro de Finanzas Públicas (MFP)"
+                                   data-tooltip="Fuente oficial MFP (mfp.gob.cu)" data-tooltip-theme="success">
+                                    <i class="fas fa-globe me-1"></i> (MFP) P-GOC[158-2026].pdf
+                                </a>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-center mt-3">
+                            <button type="submit" name="guardar_trabajo_extraordinario" class="btn-win btn-win-primary" title="Guardar trabajo extraordinario, nocturnidad y valores pactados" data-tooltip="Guarda los valores legales (Ley 189/2026) y los pactados por Convenio Colectivo" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Trabajo Extraordinario y Valores Pactados
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contribución Especial a la Seguridad Social (CESS) -->
+        <div class="col-12 fade-in-up" style="animation-delay: 0.105s;">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseCess" aria-expanded="false" aria-controls="collapseCess">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-shield-halved me-2" style="color: #f59e0b;"></i> Constribución Especial a la Seguridad Social (CESS): tasas y límite progresivo
+                    </h6>
+                </div>
+                <div id="collapseCess" class="collapse">
+                <div class="p-4">
+                    <form method="POST" id="cessForm">
+                        <p class="text-secondary small mb-3">
+                            <i class="fas fa-circle-info me-1"></i>
+                            Tasa base aplicada hasta el l&iacute;mite progresivo y tasa adicional sobre el exceso
+                            (PDL SOLO CESS). La base de la CESS progresiva se toma de <strong>Tasa CESS</strong>
+                            (ver pestaña Tasas del Sistema).
+                        </p>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">CESS tasa base (%)</label>
+                                <input type="number" step="0.01" min="0" max="100" class="form-control" name="tasa_contribucion_especial" value="<?php echo htmlspecialchars($config['tasa_contribucion_especial'] ?? '5'); ?>" title="Tasa base de la CESS usada en modo ISIP (plano) y como base en la CESS progresiva (PDL SOLO CESS)" data-tooltip="Tasa base de la CESS usada en modo ISIP (plano) y como base en la CESS progresiva (PDL SOLO CESS)" data-tooltip-theme="info">
+                                <small class="text-secondary">Porcentaje aplicado al salario devengado.</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">CESS tasa exceso (%)</label>
+                                <input type="number" step="0.01" min="0" max="100" class="form-control" name="cess_tasa_exceso" value="<?php echo htmlspecialchars($config['cess_tasa_exceso'] ?? '10'); ?>" title="Tasa sobre el exceso para CESS progresiva (PDL SOLO CESS): base hasta límite, exceso a esta tasa" data-tooltip="Tasa sobre el exceso para CESS progresiva (PDL SOLO CESS): base hasta límite, exceso a esta tasa" data-tooltip-theme="info">
+                                <small class="text-secondary">Se suma sobre el excedente del límite progresivo.</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">CESS límite progresivo (CUP)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" min="0" class="form-control" name="cess_limite_progresivo" value="<?php echo htmlspecialchars($config['cess_limite_progresivo'] ?? '15000'); ?>" title="Límite para regla progresiva de CESS (PDL SOLO CESS): hasta este monto aplica tasa base, sobre exceso aplica tasa exceso" data-tooltip="Límite para regla progresiva de CESS (PDL SOLO CESS): hasta este monto aplica tasa base, sobre exceso aplica tasa exceso" data-tooltip-theme="info">
+                                </div>
+                                <small class="text-secondary">Monto hasta el cual se cobra la tasa base.</small>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-center mt-3">
+                            <button type="submit" name="guardar_cess" class="btn-win btn-win-primary" title="Guardar CESS" data-tooltip="Guardar CESS" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar CESS
+                            </button>
+                        </div>
+                    </form>
                 </div>
                 </div>
             </div>
@@ -3255,6 +3493,8 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                 <h6 class="mb-2" style="color: #e5e7eb;"><i class="fas fa-list-check me-2" style="color: var(--color-success);"></i> Se guardarán todos los cambios realizados en:</h6>
                 <ul class="mb-4" style="color: #d1d5db; line-height: 1.9; padding-left: 1.25rem;">
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Configuración General</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Trabajo Extraordinario, Nocturnidad y Valores Pactados (Convenio Colectivo)</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Contribución Especial a la Seguridad Social (CESS)</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Datos de la Entidad</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Personal Autorizado</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Información Bancaria</li>
@@ -4260,12 +4500,18 @@ document.getElementById('btnConfirmBackupWithName')?.addEventListener('click', f
     realizarBackupConNombre(nombre);
 });
 
-// Evento para tecla Enter en el input
-document.getElementById('backupNombreInput')?.addEventListener('keypress', function(e) {
+// Evento para tecla Enter en el input (Generar Backup igual que el botón)
+document.getElementById('backupNombreInput')?.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         document.getElementById('btnConfirmBackupWithName').click();
     }
+});
+
+// Foco en el input al abrir el modal de backup con nombre
+document.getElementById('backupNameModal')?.addEventListener('shown.bs.modal', function() {
+    const inp = document.getElementById('backupNombreInput');
+    if (inp) { inp.focus(); inp.select(); }
 });
 
 // ==========================================
@@ -4778,7 +5024,7 @@ function recargarConfiguracion() {
     if (!confirmar) return;
 
     confirmar.addEventListener('click', function () {
-        var formIds = ['configGeneralForm', 'rangosForm', 'datosEntidadForm', 'datosPersonalForm', 'bancariaForm', 'mailForm', 'googleForm', 'sistemaForm'];
+        var formIds = ['configGeneralForm', 'extraordinarioForm', 'cessForm', 'rangosForm', 'datosEntidadForm', 'datosPersonalForm', 'bancariaForm', 'mailForm', 'googleForm', 'sistemaForm'];
         var hiddenForm = document.createElement('form');
         hiddenForm.method = 'POST';
         hiddenForm.style.display = 'none';
@@ -4879,7 +5125,7 @@ function recargarConfiguracion() {
     var btn = document.getElementById('btnToggleAllCards');
     var texto = document.getElementById('btnToggleAllCardsTexto');
     if (!btn || !texto) return;
-    var selectores = ['#collapseDB', '#collapseConfigGeneral', '#collapseTasas', '#collapseDatosEntidad', '#collapsePersonal', '#collapseBancaria', '#collapseMail', '#collapseRangos'];
+    var selectores = ['#collapseDB', '#collapseConfigGeneral', '#collapseExtraordinario', '#collapseCess', '#collapseTasas', '#collapseDatosEntidad', '#collapsePersonal', '#collapseBancaria', '#collapseMail', '#collapseRangos'];
 
     function todosAbiertos() {
         return selectores.every(function (sel) {
