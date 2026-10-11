@@ -1295,22 +1295,6 @@ $modo_mantenimiento_activo = modo_mantenimiento_activo($pdo);
         .search-box { position: relative; }
         .search-box i { position: absolute; left:0.75rem; top:50%; transform: translateY(-50%); color: rgba(255,255,255,0.5); z-index: 10; }
         .search-box input { padding-left:2rem !important; }
-		#backupNamePreview {
-			background: rgba(96, 165, 250, 0.1);
-			padding:0.125rem 0.5rem;
-			border-radius: 0.25rem;
-			font-family: monospace;
-			font-size:0.85rem;
-		}
-
-		#backupNameModal .form-check-input:checked {
-			background-color: var(--color-success);
-			border-color: var(--color-success);
-		}
-
-		#backupNameModal .form-check-label {
-			cursor: pointer;
-		}
 ::placeholder {
     color: rgba(255, 255, 255, 0.35) !important;
     opacity: 1 !important;
@@ -2413,7 +2397,7 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                 <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseDB" aria-expanded="false" aria-controls="collapseDB">
                     <i class="fas fa-chevron-down collapse-chevron"></i>
                     <i class="fas fa-database me-1" style="color: #f59e0b;"></i> 
-                    Base de Datos (SALVAS Y RESTAURAS)
+                    Base de Datos (Salvas, Restauras, Diagnóstico y Reparación)
                 </h6>
 				
             </div>
@@ -2432,7 +2416,7 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                                     <button class="btn-win btn-win-success" id="btnBackupManualCard" title="Generar backup del sistema" data-tooltip="Generar backup del sistema" data-tooltip-theme="info">
                                         <i class="fas fa-download me-2"></i> Generar Backup
                                     </button>
-                                    <button class="btn-win btn-win-primary" id="btnBackupWithNameCard" data-bs-toggle="modal" data-bs-target="#backupNameModal" title="Backup con nombre personalizado" data-tooltip="Backup con nombre personalizado" data-tooltip-theme="info">
+                                    <button class="btn-win btn-win-primary" id="btnBackupWithNameCard" type="button" title="Backup con nombre personalizado" data-tooltip="Backup con nombre personalizado" data-tooltip-theme="info">
                                         <i class="fas fa-file-export me-2"></i> Backup con nombre
                                     </button>
                                 </div>
@@ -2780,6 +2764,11 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                                 </div>
                                 <small class="text-secondary">Tarifa fija pactada por hora.</small>
                             </div>
+                            <div class="col-md-12 d-flex justify-content-end align-items-center">
+                                <button type="button" class="btn-win btn-win-sm" id="btnRecargarValoresConvenio" title="Recargar valores pactados desde la BD" data-tooltip="Recarga desde la base de datos los 4 valores guardados y descarta los cambios sin guardar" data-tooltip-theme="info">
+                                    <i class="fas fa-rotate-right me-1"></i> Recargar valores de la BD
+                                </button>
+                            </div>
                         </div>
                         <style>
                             #notaNocturnidadConvenio .valor-dinamico {
@@ -2799,9 +2788,6 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                         <div class="alert alert-info mt-2 mb-0" id="notaNocturnidadConvenio" role="status">
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                 <strong><i class="fas fa-calculator me-2"></i>C&aacute;lculo Interactivo Nocturnidad (Convenio):</strong>
-                                <button type="button" class="btn-win btn-win-sm" id="btnRecargarValoresConvenio" title="Recargar valores pactados desde la BD" data-tooltip="Recarga desde la base de datos los 4 valores guardados y descarta los cambios sin guardar" data-tooltip-theme="info">
-                                    <i class="fas fa-rotate-right me-1"></i> Recargar valores de la BD
-                                </button>
                             </div>
                             <div class="mt-1" id="notaNoctFormula">
                                 Valor del D&iacute;a (12h) - 19:00&ndash;07:00
@@ -2812,7 +2798,7 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                                 <span class="valor-dinamico" id="notaNtdValor"></span>
                             </div>
                             <div>
-                                <span id="notaNoctMesTexto">Mes (192h, 24 d&iacute;as) =</span>
+                                <span id="notaNoctMesTexto">Mes (288h: 96h temprana + 192h tard&iacute;a, 24 d&iacute;as) =</span>
                                 <span class="valor-dinamico" id="notaNoctMes"></span>
                             </div>
                         </div>
@@ -3532,70 +3518,6 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                         <i class="fas fa-upload me-2"></i> Restaurar Backup
                     </button>
                 </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para Backup con nombre personalizado -->
-<div class="modal fade" id="backupNameModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content modal-content-win">
-            <div class="modal-header modal-header-win">
-                <h5 class="modal-title"><i class="fas fa-file-export me-2" style="color: var(--color-success);"></i> Backup con nombre personalizado</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="alert alert-info mb-4" style="background: rgba(96, 165, 250, 0.12); border: 0.0625rem solid rgba(96, 165, 250, 0.35); border-radius: 0.75rem;">
-                    <div style="display: flex; align-items: flex-start; gap:0.75rem;">
-                        <i class="fas fa-info-circle fa-2x" style="color: #60a5fa;"></i>
-                        <div>
-                            <strong style="color: #60a5fa;">Backup personalizado</strong>
-                            <p class="mb-0 mt-1" style="color: #d1d5db;">Asigna un nombre descriptivo a tu backup para identificarlo fácilmente.</p>
-                        </div>
-                    </div>
-                </div>
-                <form id="backupNameForm">
-                    <div class="mb-4">
-                        <label class="form-label"><i class="fas fa-tag me-1"></i> Nombre del backup <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="backupNombreInput" 
-                               placeholder="Ej: backup_pre_actualizacion_2026_07_12" 
-                               required maxlength="50">
-                        <small class="text-secondary d-block mt-2">
-                            <i class="fas fa-info-circle me-1"></i> 
-                            Se agregará automáticamente la fecha y hora: 
-                            <span id="backupNamePreview" style="color: #60a5fa; font-family: monospace;">backup_sistema_YYYY_MM_DD_HH_MM</span>
-                        </small>
-                        <small class="text-secondary d-block mt-1">
-                            <i class="fas fa-info-circle me-1"></i> 
-                            Máximo 50 caracteres (solo letras, números, guiones y guiones bajos)
-                        </small>
-                    </div>
-                    <div class="mb-3 p-3" style="background: rgba(var(--color-success-rgb), 0.05); border-radius: 0.5rem;">
-                        <h6 class="text-muted small"><i class="fas fa-list-check me-1"></i> Contenido del backup:</h6>
-                        <ul class="text-muted small" style="list-style: none; padding-left:0; margin-bottom:0;">
-                            <li><i class="fas fa-check-circle text-success me-1"></i> Estructura completa de la base de datos</li>
-                            <li><i class="fas fa-check-circle text-success me-1"></i> Datos de empleados y nóminas</li>
-                            <li><i class="fas fa-check-circle text-success me-1"></i> Configuración del sistema y tasas</li>
-                            <li><i class="fas fa-check-circle text-success me-1"></i> Historial de vacaciones y submayores</li>
-                        </ul>
-                    </div>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="confirmBackupName" required>
-                        <label class="form-check-label" for="confirmBackupName" style="color: #d1d5db;">
-                            <i class="fas fa-check-circle me-1" style="color: var(--color-success);"></i> 
-                            Confirmo que deseo crear este backup con el nombre especificado
-                        </label>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer modal-footer-win">
-                <button type="button" class="btn-win btn-win-sm" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger">
-                    <i class="fas fa-times me-1"></i> Cancelar
-                </button>
-                <button type="button" class="btn-win btn-win-success" id="btnConfirmBackupWithName" title="Generar backup con nombre" data-tooltip="Generar backup con nombre" data-tooltip-theme="info">
-                    <i class="fas fa-download me-1"></i> Generar Backup
-                </button>
             </div>
         </div>
     </div>
@@ -4492,155 +4414,12 @@ function mostrarErrorBackupManualOrb(mensaje) {
 }
 // ==========================================
 // BACKUP CON NOMBRE PERSONALIZADO
+// (Diálogo unificado: se reutiliza accionSalvaConNombre() de includes/user_menu.php)
 // ==========================================
 
-function realizarBackupConNombre(nombre) {
-    Swal.fire({
-        title: '<i class="fas fa-spinner fa-pulse me-2"></i> Generando Backup...',
-        html: `<p>Creando backup: <strong>${nombre}</strong></p><p class="text-muted small">Este proceso puede tomar unos segundos...</p>`,
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-        background: '#1a1a2e',
-        color: '#fff'
-    });
-
-    fetch('../ajax/backup_db.php?nombre_custom=' + encodeURIComponent(nombre), { 
-        method: 'GET', 
-        headers: { 'X-Requested-With': 'XMLHttpRequest' } 
-    })
-    .then(response => response.json())
-    .then(data => {
-        Swal.close();
-        if (data.success) {
-            Swal.fire({
-                title: '<i class="fas fa-check-circle me-2" style="color: 1;"></i> Backup Completado',
-                html: `
-                    <div class="text-start">
-                        <p><strong>Archivo:</strong> ${data.filename}</p>
-                        <p><strong>Tamaño:</strong> ${data.size}</p>
-                        <p><strong>Nombre asignado:</strong> ${data.nombre || nombre}</p>
-                        <div class="mt-3">
-                            <a href="../${data.download_url}" class="btn btn-success w-100" download>
-                                <i class="fas fa-download me-2"></i> Descargar Backup
-                            </a>
-                        </div>
-                    </div>
-                `,
-                icon: 'success',
-                background: '#1a1a2e',
-                color: '#fff',
-                confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
-            });
-        } else {
-            Swal.fire({
-                title: '<i class="fas fa-exclamation-triangle me-2" style="color: #f59e0b;"></i> Error',
-                text: data.message || 'Error al generar el backup',
-                icon: 'error',
-                background: '#1a1a2e',
-                color: '#fff'
-            });
-        }
-    })
-    .catch(() => {
-        Swal.close();
-        Swal.fire({
-            title: '<i class="fas fa-wifi me-2" style="color: #dc3545;"></i> Error de Conexión',
-            text: 'No se pudo conectar con el servidor',
-            icon: 'error',
-            background: '#1a1a2e',
-            color: '#fff'
-        });
-    });
-}
-
-// Previsualizar nombre del backup
-document.getElementById('backupNombreInput')?.addEventListener('input', function() {
-    const nombre = this.value.trim() || 'backup_sistema';
-    // Limpiar caracteres especiales para previsualización
-    const nombreLimpio = nombre.replace(/[^a-zA-Z0-9_\-]/g, '_');
-    const fecha = new Date();
-    const fechaStr = fecha.getFullYear() + '_' + 
-                     String(fecha.getMonth() + 1).padStart(2, '0') + '_' + 
-                     String(fecha.getDate()).padStart(2, '0') + '_' + 
-                     String(fecha.getHours()).padStart(2, '0') + '_' + 
-                     String(fecha.getMinutes()).padStart(2, '0');
-    const nombreCompleto = nombreLimpio + '_' + fechaStr;
-    document.getElementById('backupNamePreview').textContent = nombreCompleto;
-    document.getElementById('backupNamePreview').style.color = nombreLimpio.length > 0 ? '#60a5fa' : '#f59e0b';
-});
-
-// Botón confirmar backup con nombre
-document.getElementById('btnConfirmBackupWithName')?.addEventListener('click', function() {
-    const nombreInput = document.getElementById('backupNombreInput');
-    let nombre = nombreInput.value.trim();
-    
-    if (!nombre) {
-        Swal.fire({
-            title: '<i class="fas fa-exclamation-circle me-2" style="color: #f59e0b;"></i> Nombre requerido',
-            text: 'Por favor, ingresa un nombre para identificar el backup',
-            icon: 'warning',
-            background: '#1a1a2e',
-            color: '#fff',
-            confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
-        });
-        nombreInput.focus();
-        return;
-    }
-    
-    // Limpiar caracteres especiales
-    nombre = nombre.replace(/[^a-zA-Z0-9_\-]/g, '_');
-    
-    if (nombre.length < 3) {
-        Swal.fire({
-            title: '<i class="fas fa-exclamation-circle me-2" style="color: #f59e0b;"></i> Nombre muy corto',
-            text: 'El nombre debe tener al menos 3 caracteres',
-            icon: 'warning',
-            background: '#1a1a2e',
-            color: '#fff'
-        });
-        nombreInput.focus();
-        return;
-    }
-    
-    const confirmCheckbox = document.getElementById('confirmBackupName');
-    if (!confirmCheckbox.checked) {
-        Swal.fire({
-            title: '<i class="fas fa-exclamation-circle me-2" style="color: #f59e0b;"></i> Confirmación requerida',
-            text: 'Debes marcar la casilla de confirmación para crear el backup',
-            icon: 'warning',
-            background: '#1a1a2e',
-            color: '#fff',
-			confirmButtonText: '<i class="fas fa-check me-2"></i> Entendido'
-        });
-        return;
-    }
-    
-    // Cerrar modal y ejecutar backup
-    bootstrap.Modal.getInstance(document.getElementById('backupNameModal')).hide();
-    
-    // Limpiar el campo para la próxima vez
-    setTimeout(() => {
-        nombreInput.value = '';
-        confirmCheckbox.checked = false;
-        document.getElementById('backupNamePreview').textContent = 'backup_sistema_YYYY_MM_DD_HH_MM';
-        document.getElementById('backupNamePreview').style.color = '#60a5fa';
-    }, 300);
-    
-    realizarBackupConNombre(nombre);
-});
-
-// Evento para tecla Enter en el input (Generar Backup igual que el botón)
-document.getElementById('backupNombreInput')?.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        document.getElementById('btnConfirmBackupWithName').click();
-    }
-});
-
-// Foco en el input al abrir el modal de backup con nombre
-document.getElementById('backupNameModal')?.addEventListener('shown.bs.modal', function() {
-    const inp = document.getElementById('backupNombreInput');
-    if (inp) { inp.focus(); inp.select(); }
+document.getElementById('btnBackupWithNameCard')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    accionSalvaConNombre();
 });
 
 // ==========================================

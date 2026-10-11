@@ -6335,6 +6335,16 @@ function accionSalvaConNombre() {
                 input.addEventListener('input', updatePreview);
                 updatePreview();
                 setTimeout(function () { input.focus({ preventScroll: true }); }, 50);
+
+                // Enter en el input = clic en Generar Backup (solo si está habilitado)
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (btnConfirm && !btnConfirm.disabled) {
+                            btnConfirm.click();
+                        }
+                    }
+                });
             }
 
             // Confirmar

@@ -419,6 +419,8 @@ if ($action === 'crear') {
         $response['message'] = "Error: El segundo apellido es obligatorio.";
     } elseif (empty($_POST['fecha_alta'])) {
         $response['message'] = "Error: La fecha de alta es obligatoria.";
+    } elseif (!empty($_POST['fecha_baja']) && !empty($_POST['fecha_alta']) && $_POST['fecha_baja'] < $_POST['fecha_alta']) {
+        $response['message'] = "No se puede establecer esa fecha pues es anterior a la fecha de Alta del Trabajador: " . transnubet_fecha_txt($_POST['fecha_alta']) . ", rectifique.";
     } elseif (empty($_POST['centro_costo_id'])) {
         $response['message'] = "Error: Debe seleccionar un Centro de Costo.";
     } elseif (empty($_POST['categoria_id'])) {
@@ -546,6 +548,8 @@ $stmt->execute([$id_nuevo]);
         $response['message'] = "Error: El segundo apellido es obligatorio.";
     } elseif (empty($_POST['fecha_alta'])) {
         $response['message'] = "Error: La fecha de alta es obligatoria.";
+    } elseif (!empty($_POST['fecha_baja']) && !empty($_POST['fecha_alta']) && $_POST['fecha_baja'] < $_POST['fecha_alta']) {
+        $response['message'] = "No se puede establecer esa fecha pues es anterior a la fecha de Alta del Trabajador: " . transnubet_fecha_txt($_POST['fecha_alta']) . ", rectifique.";
     } elseif (empty($_POST['centro_costo_id'])) {
         $response['message'] = "Error: Debe seleccionar un Centro de Costo.";
     } elseif (empty($_POST['categoria_id'])) {
@@ -787,12 +791,13 @@ function transnubet_fechas_para_js($rows) {
     $anios = array(); $meses = array(); $mesesPorAnio = array(); $aniosPorMes = array();
     foreach ($rows as $r) {
         $a = (int)$r['anio']; $m = (int)$r['mes'];
+        $mKey = str_pad($m, 2, '0', STR_PAD_LEFT); // clave igual al value del select (<option value="01">)
         if (!in_array($a, $anios, true)) $anios[] = $a;
         if (!in_array($m, $meses, true)) $meses[] = $m;
         if (!isset($mesesPorAnio[$a])) $mesesPorAnio[$a] = array();
         if (!in_array($m, $mesesPorAnio[$a], true)) $mesesPorAnio[$a][] = $m;
-        if (!isset($aniosPorMes[$m])) $aniosPorMes[$m] = array();
-        if (!in_array($a, $aniosPorMes[$m], true)) $aniosPorMes[$m][] = $a;
+        if (!isset($aniosPorMes[$mKey])) $aniosPorMes[$mKey] = array();
+        if (!in_array($a, $aniosPorMes[$mKey], true)) $aniosPorMes[$mKey][] = $a;
     }
     rsort($anios); sort($meses);
     foreach ($mesesPorAnio as &$mm) sort($mm);
@@ -803,6 +808,26 @@ function transnubet_fechas_para_js($rows) {
 }
 $jsAlta = transnubet_fechas_para_js($fechas_alta);
 $jsBaja = transnubet_fechas_para_js($fechas_baja);
+
+// Devuelve la fecha como 'YYYY-MM-DD' sin usar strtotime (evita el warning
+// "Epoch doesn't fit in a PHP integer" con años fuera de rango, p. ej. 0006-05-04)
+function transnubet_fecha_iso($f) {
+    $f = trim((string)$f);
+    if ($f === '' || strpos($f, '0000-00-00') === 0) return '';
+    $f = substr($f, 0, 10);
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $f, $m)) return '';
+    if (!checkdate((int)$m[2], (int)$m[3], (int)$m[1])) return '';
+    return $f;
+}
+
+// Devuelve la fecha como 'DD/MM/YYYY' (o '-' si está vacía/inválida)
+function transnubet_fecha_txt($f) {
+    $iso = transnubet_fecha_iso($f);
+    if ($iso === '') return '-';
+    $p = explode('-', $iso);
+    return $p[2] . '/' . $p[1] . '/' . $p[0];
+}
+
 $nombres_meses = array('1'=>'Enero','2'=>'Febrero','3'=>'Marzo','4'=>'Abril','5'=>'Mayo','6'=>'Junio','7'=>'Julio','8'=>'Agosto','9'=>'Septiembre','10'=>'Octubre','11'=>'Noviembre','12'=>'Diciembre');
 $cont_hoy = 0; $cont_mes = 0; $cont_anio = 0;
 foreach ($empleados as $_ee) {
@@ -2538,6 +2563,29 @@ img, canvas, table { max-width: 100%; }
     .modal-title { font-size: 0.85rem; }
     .scroll-quick-btn { width: 2.1rem; height: 2.1rem; font-size: 0.75rem; }
 }
+
+/* ============ ALERTA DE FECHAS EN SWEETALERT (legible en todos los temas) ============ */
+html {
+    --resaltar-rojo: #ff9aa0;
+    --msg-fechas-bg: rgba(239, 68, 68, 0.12);
+    --msg-fechas-border: rgba(239, 68, 68, 0.45);
+    --msg-fechas-accent: #ef4444;
+}
+html[data-theme="light"],
+html[data-theme="orgullo"] {
+    --resaltar-rojo: #b02a37;
+    --msg-fechas-bg: rgba(209, 52, 56, 0.10);
+    --msg-fechas-border: rgba(209, 52, 56, 0.45);
+    --msg-fechas-accent: #D13438;
+}
+.swal2-popup .msg-fechas-error {
+    background: var(--msg-fechas-bg);
+    border: 1px solid var(--msg-fechas-border);
+    border-left: 4px solid var(--msg-fechas-accent);
+    border-radius: 0.5rem;
+    color: var(--txt, #e8edf6);
+}
+.swal2-popup .resaltar-rojo { color: var(--resaltar-rojo); }
     </style>
 
 
@@ -2989,7 +3037,7 @@ img, canvas, table { max-width: 100%; }
                     $fila_roja = (($emp['vacaciones_acumuladas'] ?? 0) > 20);
                     if (($emp['no_acumular_vacaciones'] ?? 0) == 1) $valor_a_pagar = $emp['valor_vacaciones'];
                     ?>
-                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>" data-creado="<?php echo date('Y-m-d', strtotime($emp['created_at'] ?? '')); ?>" data-fecha-alta="<?php echo (!empty($emp['fecha_alta']) && $emp['fecha_alta'] !== '0000-00-00') ? date('Y-m-d', strtotime($emp['fecha_alta'])) : ''; ?>" data-fecha-baja="<?php echo (!empty($emp['fecha_baja']) && $emp['fecha_baja'] !== '0000-00-00') ? date('Y-m-d', strtotime($emp['fecha_baja'])) : ''; ?>" data-tiene-nomina="<?php echo isset($tiene_nomina_set[(int)$emp['id']]) ? '1' : '0'; ?>">
+                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>" data-creado="<?php echo transnubet_fecha_iso($emp['created_at'] ?? ''); ?>" data-fecha-alta="<?php echo transnubet_fecha_iso($emp['fecha_alta'] ?? ''); ?>" data-fecha-baja="<?php echo transnubet_fecha_iso($emp['fecha_baja'] ?? ''); ?>" data-tiene-nomina="<?php echo isset($tiene_nomina_set[(int)$emp['id']]) ? '1' : '0'; ?>">
                         <td class="text-center">
                             <?php if ($puede_eliminar_empleados): ?>
                             <button class="btn-win btn-win-danger btn-win-sm" onclick="eliminarTrabajador(<?php echo $emp['id']; ?>, '<?php echo addslashes($emp['nombre_completo'] ?? ''); ?>')" title="Eliminar Empleado" data-tooltip="Eliminar Empleado" data-tooltip-theme="danger">
@@ -3023,8 +3071,8 @@ img, canvas, table { max-width: 100%; }
                         <td class="text-end"><?php echo formatearMoneda($emp['salario_mensual'] ?? 0); ?></td>
                         <td class="text-end"><?php echo formatearMoneda($emp['salario_hora_ordinaria'] ?? 0); ?></td>
                         <td class="text-center"><?php echo htmlspecialchars($emp['cuentabanc'] ?? '-'); ?></td>
-                        <td class="text-center"><?php echo $emp['fecha_alta'] ? date('d/m/Y', strtotime($emp['fecha_alta'])) : '-'; ?></td>
-                        <td class="text-center"><?php echo $emp['fecha_baja'] ? date('d/m/Y', strtotime($emp['fecha_baja'])) : '-'; ?></td>
+                        <td class="text-center"><?php echo transnubet_fecha_txt($emp['fecha_alta'] ?? ''); ?></td>
+                        <td class="text-center"><?php echo transnubet_fecha_txt($emp['fecha_baja'] ?? ''); ?></td>
                         <td class="text-end fw-bold <?php echo $fila_roja ? 'text-danger' : 'text-info'; ?>">
                             <?php echo number_format((float)($emp['vacaciones_acumuladas'] ?? 0), 2); ?>
                         </td>
@@ -4485,10 +4533,51 @@ function validarCuentaBancaria(input) {
     markFormDirty();
 }
 
+// Valida que la fecha de baja no sea anterior a la fecha de alta.
+// Devuelve true si la fecha es válida; si no, muestra el SweetAlert y enfoca el campo de baja.
+function validarFechaBajaNoAnteriorAAlta(valorBaja) {
+    const fechaAltaEl = document.getElementById('fecha_alta');
+    const valorAlta = fechaAltaEl ? fechaAltaEl.value : '';
+    const campoBaja = document.getElementById('fecha_baja');
+
+    if (!valorBaja || !valorAlta) return true;
+    if (String(valorBaja) >= String(valorAlta)) return true;
+
+    Swal.fire(Object.assign({
+        icon: 'error',
+        title: '<i class="fas fa-calendar-times text-danger me-2"></i> Fecha de Baja Inválida',
+        html: `
+            <div class="text-start">
+                <p class="mb-2">No se puede establecer esa fecha pues es anterior a la fecha de Alta del Trabajador: <strong class="resaltar-rojo">${formatearFechaTabla(valorAlta)}</strong>, rectifique.</p>
+                <div class="msg-fechas-error p-2">
+                    <i class="fas fa-info-circle me-1"></i> La <strong>Fecha de Baja</strong> debe ser igual o posterior al <strong class="resaltar-rojo">${formatearFechaTabla(valorAlta)}</strong>.
+                </div>
+            </div>
+        `,
+        confirmButtonText: '<i class="fas fa-check me-2"></i> Aceptar',
+        confirmButtonColor: '#dc3545'
+    }, swalDark)).then(() => {
+        if (campoBaja) campoBaja.focus();
+    });
+    return false;
+}
+
 // Configs y Formulario Baja
 const fechaBajaInput = document.getElementById('fecha_baja');
 if (fechaBajaInput) {
     fechaBajaInput.addEventListener('change', function(){
+        if (!validarFechaBajaNoAnteriorAAlta(this.value)) {
+            this.value = '';
+            const activoCheckIni = document.getElementById('activo');
+            const motivoBajaIni = document.getElementById('motivo_baja');
+            if (activoCheckIni) activoCheckIni.checked = true;
+            if (motivoBajaIni) {
+                motivoBajaIni.disabled = true;
+                motivoBajaIni.value = '';
+            }
+            actualizarInfoDesdeFormulario();
+            return;
+        }
         const activoCheck = document.getElementById('activo');
         const motivoBajaSelect = document.getElementById('motivo_baja');
         if (activoCheck) activoCheck.checked = !this.value;
@@ -4498,6 +4587,25 @@ if (fechaBajaInput) {
         }
         actualizarInfoDesdeFormulario(); 
         markFormDirty();
+    });
+}
+
+// Si al cambiar la fecha de alta queda anterior a la fecha de baja ya introducida, se corrige
+const fechaAltaInputBaja = document.getElementById('fecha_alta');
+if (fechaAltaInputBaja) {
+    fechaAltaInputBaja.addEventListener('change', function(){
+        const campoBaja = document.getElementById('fecha_baja');
+        if (campoBaja && campoBaja.value && !validarFechaBajaNoAnteriorAAlta(campoBaja.value)) {
+            campoBaja.value = '';
+            const activoCheckAlta = document.getElementById('activo');
+            const motivoBajaAlta = document.getElementById('motivo_baja');
+            if (activoCheckAlta) activoCheckAlta.checked = true;
+            if (motivoBajaAlta) {
+                motivoBajaAlta.disabled = true;
+                motivoBajaAlta.value = '';
+            }
+            actualizarInfoDesdeFormulario();
+        }
     });
 }
 
@@ -5321,6 +5429,25 @@ document.getElementById('empleadoForm').addEventListener('submit', function(e) {
         return;
     }
     
+    // Validación de Fecha de Baja vs Fecha de Alta antes de enviar
+    const fechaBajaSubmit = document.getElementById('fecha_baja');
+    const fechaAltaSubmit = document.getElementById('fecha_alta');
+    if (fechaBajaSubmit && fechaBajaSubmit.value && fechaAltaSubmit && fechaAltaSubmit.value &&
+        String(fechaBajaSubmit.value) < String(fechaAltaSubmit.value)) {
+        const fechaBajaCopia = fechaBajaSubmit.value;
+        fechaBajaSubmit.value = '';
+        const activoSubmit = document.getElementById('activo');
+        const motivoBajaSubmit = document.getElementById('motivo_baja');
+        if (activoSubmit) activoSubmit.checked = true;
+        if (motivoBajaSubmit) {
+            motivoBajaSubmit.disabled = true;
+            motivoBajaSubmit.value = '';
+        }
+        actualizarInfoDesdeFormulario();
+        validarFechaBajaNoAnteriorAAlta(fechaBajaCopia);
+        return;
+    }
+    
     // Mostrar loading
     Swal.fire(Object.assign({
         title: '<i class="fas fa-spinner fa-pulse me-2"></i> Guardando...',
@@ -5394,6 +5521,7 @@ document.getElementById('empleadoForm').addEventListener('submit', function(e) {
             let icono = 'error';
             let titulo = '<i class="fas fa-exclamation-triangle text-danger me-2"></i> Error';
             let htmlError = `<p class="mb-0">${mensajeError}</p>`;
+            let enfocarFechaBaja = false;
             
             if (mensajeError.includes('CI') || mensajeError.includes('Carnet')) {
                 titulo = '<i class="fas fa-id-card text-danger me-2"></i> Error de Identificación';
@@ -5448,6 +5576,28 @@ document.getElementById('empleadoForm').addEventListener('submit', function(e) {
                 titulo = '<i class="fas fa-chart-pie text-danger me-2"></i> Error de Selección';
                 htmlError = `<p class="mb-0">${mensajeError}</p>`;
             }
+            else if (mensajeError.includes('anterior a la fecha de Alta')) {
+                titulo = '<i class="fas fa-calendar-times text-danger me-2"></i> Fecha de Baja Inválida';
+                htmlError = `
+                    <div class="text-start">
+                        <p class="mb-2">${mensajeError}</p>
+                        <div class="msg-fechas-error p-2">
+                            <i class="fas fa-info-circle me-1"></i> Corrija la <strong>Fecha de Baja</strong>: debe ser igual o posterior a la <strong>Fecha de Alta</strong>.
+                        </div>
+                    </div>
+                `;
+                enfocarFechaBaja = true;
+                const fbServidor = document.getElementById('fecha_baja');
+                if (fbServidor) fbServidor.value = '';
+                const acServidor = document.getElementById('activo');
+                const mbServidor = document.getElementById('motivo_baja');
+                if (acServidor) acServidor.checked = true;
+                if (mbServidor) {
+                    mbServidor.disabled = true;
+                    mbServidor.value = '';
+                }
+                actualizarInfoDesdeFormulario();
+            }
             else if (mensajeError.includes('fecha')) {
                 titulo = '<i class="fas fa-calendar-alt text-danger me-2"></i> Error de Fecha';
                 htmlError = `<p class="mb-0">${mensajeError}</p>`;
@@ -5459,7 +5609,12 @@ document.getElementById('empleadoForm').addEventListener('submit', function(e) {
                 html: htmlError,
                 confirmButtonText: '<i class="fas fa-check me-2"></i>Aceptar',
                 confirmButtonColor: '#dc3545'
-            }, swalDark));
+            }, swalDark)).then(() => {
+                if (enfocarFechaBaja) {
+                    const fbFocus = document.getElementById('fecha_baja');
+                    if (fbFocus) fbFocus.focus();
+                }
+            });
         }
     })
     .catch(err => {
@@ -6671,7 +6826,7 @@ function configurarFiltroMesAnio(mesId, anioId, nombreFiltro, attrFecha, datos) 
             var fecha = (node && node.getAttribute(attrFecha)) || '';
             if (!fecha) return false;
             if (m && fecha.slice(5, 7) !== m) return false;
-            if (a && fecha.indexOf(a) !== 0) return false;
+            if (a && fecha.slice(0, 4) !== String(a).padStart(4, '0')) return false;
             return true;
         };
         fnFiltro.filtroNombre = nombreFiltro;
@@ -6681,14 +6836,29 @@ function configurarFiltroMesAnio(mesId, anioId, nombreFiltro, attrFecha, datos) 
 
     $mes.on('change', function() {
         var m = this.value;
-        rellenarOpciones($anio, m ? (datos.aniosPorMes[m] || []) : datos.anios, false);
+        rellenarOpciones($anio, aniosDelMes(datos, m), false);
         dibujar();
     });
     $anio.on('change', function() {
         var a = this.value;
-        rellenarOpciones($mes, a ? (datos.mesesPorAnio[a] || []) : datos.meses, true);
+        rellenarOpciones($mes, mesesDelAnio(datos, a), true);
         dibujar();
     });
+}
+
+// El mapa del PHP usa claves de mes sin rellenar ("1".."12") y el select valores con cero ("01".."09").
+// Se normaliza la clave para que el desplegable de años no se vacíe al elegir Enero..Septiembre.
+function aniosDelMes(datos, m) {
+    if (!m) return datos.anios || [];
+    var mapa = datos.aniosPorMes || {};
+    var plano = String(parseInt(m, 10));
+    return mapa[m] || mapa[plano] || mapa[String(plano).padStart(2, '0')] || [];
+}
+
+function mesesDelAnio(datos, a) {
+    if (!a) return datos.meses || [];
+    var mapa = datos.mesesPorAnio || {};
+    return mapa[a] || mapa[String(parseInt(a, 10))] || [];
 }
 
 var FECHAS_ALTA_DATOS = <?php echo json_encode($jsAlta); ?>;
@@ -7332,8 +7502,9 @@ function mostrarModalFoto(url, nombre, empleadoId, tieneFotoReal, esLogoPorDefec
                                                     height:20.5cm !important;
                                                     margin:2.54cm 0 0 2.54cm;
                                                 }
-                                            }
-                                        </style>
+}
+
+    </style>
                                     </head>
                                     <body>
                                         ${PRINT_TOOLBAR_HTML}
@@ -8220,6 +8391,13 @@ function formatearFechaTabla(dateStr) {
 }
 
 // Actualiza los valores de la fila en el DOM y redibuja la tabla sin cerrarla
+// Convierte una fecha del registro en 'YYYY-MM-DD' válida para los data-fecha-* de la fila
+function normalizarFechaAttr(f) {
+    if (!f) return '';
+    var s = String(f).slice(0, 10);
+    return (s === '' || s === '0000-00-00') ? '' : s;
+}
+
 function actualizarFilaTablaHTML(emp) {
     let row = $(`#empleadosTable tbody tr[data-id="${emp.id}"]`);
     if (row.length) {
@@ -8236,6 +8414,10 @@ function actualizarFilaTablaHTML(emp) {
         row.find('td:eq(11)').text(emp.cuentabanc || '-');
         row.find('td:eq(12)').text(formatearFechaTabla(emp.fecha_alta));
         row.find('td:eq(13)').text(formatearFechaTabla(emp.fecha_baja));
+        
+        // Sincroniza los atributos que leen los filtros por Fecha Alta / Fecha Baja
+        row.attr('data-fecha-alta', normalizarFechaAttr(emp.fecha_alta));
+        row.attr('data-fecha-baja', normalizarFechaAttr(emp.fecha_baja));
         
         let vacDias = parseFloat(emp.vacaciones_acumuladas) || 0;
         let vacDiasCell = row.find('td:eq(14)');

@@ -203,19 +203,24 @@ var tipoNomina = window.tipoNomina; // Para compatibilidad en ambas llamadas
 // Devuelve 1 si la nómina usa Convenio, 0 si usa la Ley y '' si no aplica.
 function convenioActivoAclaracion() {
     if (tipoNomina !== 'extraordinaria') return '';
-    var conv = 0;
-    var $fila = $('#tablaNominas tbody tr:first');
-    if ($fila.length) {
-        var v = parseInt($fila.data('usar-convenio'), 10);
-        if (!isNaN(v)) conv = v;
-    }
-    return conv === 1 ? 1 : 0;
+    var conv = null;
+        $('#tablaNominas tbody tr').each(function() {
+            var v = parseInt($(this).attr('data-usar-convenio'), 10);
+        if (isNaN(v)) return;
+        if (conv === null) { conv = v; }
+        else if (conv !== v) { conv = 'mixto'; return false; }
+    });
+    if (conv === null) return '';
+    return conv;
 }
 
 // Versión en texto plano: para TXT, DBF, PDF y cualquier salida escapada.
 function textoAclaracionTarifaExtra() {
     var conv = convenioActivoAclaracion();
     if (conv === '') return '';
+    if (conv === 'mixto') {
+        return 'Tarifa empleada: Mixta (Ley 189/2026 + Convenio Colectivo)';
+    }
     if (conv === 1) {
         return 'Tarifa empleada: Convenio Colectivo Empleador - Empleado ($'
             + convenioValorHe.toFixed(2) + '/h HE, $' + convenioValorDobleTurno.toFixed(2) + '/h DT, $'
@@ -236,12 +241,27 @@ function colorAcentoTexto() {
 function textoAclaracionTarifaExtraHTML() {
     var conv = convenioActivoAclaracion();
     if (conv === '') return '';
+    if (conv === 'mixto') {
+        return 'Tarifa empleada: <strong>Mixta</strong> (Ley 189/2026 + Convenio Colectivo)';
+    }
     if (conv === 1) {
         return 'Tarifa empleada: Convenio Colectivo Empleador - Empleado (<strong>$'
             + convenioValorHe.toFixed(2) + '/h HE, $' + convenioValorDobleTurno.toFixed(2) + '/h DT, $'
             + convenioValorNocturnidadTemprana.toFixed(2) + '/h NtT, $' + convenioValorNocturnidadTardia.toFixed(2) + '/h NtD)</strong>)';
     }
     return 'Tarifa empleada: <strong style="color:' + colorAcentoTexto() + ';">Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)</strong>';
+}
+
+// Badge de la columna "Tarifa Extra" del listado (por fila).
+function badgeTarifaFilaHtml(uc) {
+    if (parseInt(uc, 10) === 1) {
+        return '<span class="badge" style="background: rgba(16,185,129,0.18); border: 0.0625rem solid rgba(16,185,129,0.4); color: #6ee7b7; font-size:0.68rem; white-space:nowrap;" title="Convenio Colectivo de Trabajo (Empleador - Empleado)"><i class="fas fa-handshake me-1"></i>Convenio</span>';
+    }
+    return '<span class="badge" style="background: rgba(245,158,11,0.18); border: 0.0625rem solid rgba(245,158,11,0.4); color: #fcd34d; font-size:0.68rem; white-space:nowrap;" title="Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)"><i class="fas fa-landmark me-1"></i>Ley 189</span>';
+}
+
+function actualizarBadgeTarifaFila($row, uc) {
+    $row.find('td.col-tarifa-extra').html(badgeTarifaFilaHtml(uc));
 }
 var puedeCrearNomina = <?php echo $puede_crear_nomina ? 'true' : 'false'; ?>;
 window.trabajadores = <?php echo json_encode($trabajadores); ?>;
@@ -999,6 +1019,22 @@ function calcularImporteTrabajoExtraordinarioJS(salarioHora, horasHE, noctT, noc
         totalDevengado: redondearImporteJS(importeHE + importeNtT + importeNtD + importeDT)
     };
 }
+
+function validarPareoNocturno48(noctT, noctD) {
+    noctT = parseFloat(noctT) || 0;
+    noctD = parseFloat(noctD) || 0;
+    if (noctT < 0) noctT = 0;
+    if (noctD < 0) noctD = 0;
+    if (noctT === 0 || noctD === 0) return { ok: true };
+    var desvio = Math.abs(noctD - (noctT * 2));
+    if (desvio > 8.001) {
+        var min = Math.max(0, Math.round((noctT * 2 - 8) * 100) / 100);
+        var max = Math.round((noctT * 2 + 8) * 100) / 100;
+        return { ok: false, error: 'Nocturnidades incoherentes: con las dos franjas activas cada noche son 4 h (19:00-23:00) + 8 h (23:00-07:00), con margen de ±1 noche parcial. Con ' + noctT + ' h tempranas, las tardías deben estar entre ' + min + ' y ' + max + ' h (capturó ' + noctD + ' h). Si el trabajador solo hace un turno (19:00-23:00 o 23:00-07:00), capture 0 en la otra franja.' };
+    }
+    return { ok: true };
+}
+
 var PRINT_TOOLBAR_HTML = '<style>#auto-hide-toolbar{transition:transform 0.3s ease}#auto-hide-toolbar.hidden{transform:translateY(-100%)}</style><div id="auto-hide-toolbar" class="no-print" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:0.625rem 1.25rem;display:flex;justify-content:center;align-items:center;gap:0.875rem;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;border-bottom:0.1875rem solid #1e40af;transition:transform 0.3s ease;">'
         + '<span style="color:#e0e7ff;font-weight:bold;font-size:0.8125rem;letter-spacing:0.0312rem;">🖨️ VISTA PREVIA DE IMPRESIÓN</span>'
         + '<button onclick="window.print()" style="padding:0.5625rem 1.375rem;background:#22c55e;color:#fff;border:none;border-radius:0.375rem;font-size:0.8125rem;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;gap:0.375rem;box-shadow:0 0.125rem 0.375rem rgba(0,0,0,0.2);transition:all 0.2s;" onmouseover="this.style.background=\'#16a34a\';this.style.transform=\'translateY(-0.0625rem)\';" onmouseout="this.style.background=\'#22c55e\';this.style.transform=\'translateY(0)\';">'
@@ -2062,8 +2098,8 @@ function mapRowToTrabajador($row) {
         importeNtT = parseCell($row.find('.col-noct-t-imp')) || 0;
         importeNtD = parseCell($row.find('.col-noct-d-imp')) || 0;
         importeDT  = parseCell($row.find('.col-dt-imp')) || 0;
-        var importeSalarioLaboral = parseCell($row.find('.salario-laboral')) || 0;
-        importeHE = importeSalarioLaboral - importeDT;
+        importeHE  = parseCell($row.find('.col-hed')) || 0;
+        aCobrar = importeHE + importeDT; // = importe_salario_laboral (HE diurnas + doble turno)
     }
 
     return {
@@ -2106,6 +2142,9 @@ function mapRowToTrabajador($row) {
         importeNtT: importeNtT,
         importeNtD: importeNtD,
         importeDT: importeDT,
+        tarifaExtra: (tipoNomina === 'extraordinaria')
+            ? ((parseInt($row.attr('data-usar-convenio'), 10) || 0) === 1 ? 'Convenio' : 'Ley 189')
+            : '',
         firma: ''
     };
 }
@@ -2965,6 +3004,7 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                             <td class="text-left">${escapeHtml(t.nombre)}</td>
                             <td class="text-center">${escapeHtml(t.categoriaCodigo)}</td>
                             <td class="text-right">$${(t.tarifaSal || 0).toFixed(2)}</td>
+                            <td class="text-center">${escapeHtml(t.tarifaExtra || '-')}</td>
                             <td class="text-right">${(t.horas || 0).toFixed(0)}</td>
                             <td class="text-right">$${(t.importeHE || 0).toFixed(2)}</td>
                             <td class="text-right">${(t.noctT || 0).toFixed(0)}</td>
@@ -3143,7 +3183,7 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
             
             pag.rows.forEach(row => {
                 if (row.tipo === 'grupo_header') {
-                    let totalColsSpan = esBono ? 11 : (esExtraominaria ? 19 : 17);
+                    let totalColsSpan = esBono ? 11 : (esExtraominaria ? 20 : 17);
                     cuerpoHtml += `<tr><td colspan="${totalColsSpan}" style="background:#e0e0e0; font-weight:bold;">${escapeHtml(row.titulo)}</td></tr>`;
                 } else if (row.tipo === 'registro') {
                     if (esBono) {
@@ -3168,6 +3208,7 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                             <td style="border:0.5pt solid #000;">${escapeHtml(row.data.nombre)}</td>
                             <td style="text-align:center; border:0.5pt solid #000;">${escapeHtml(row.data.categoriaCodigo)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.tarifaSal || 0).toFixed(2)}</td>
+                            <td style="text-align:center; border:0.5pt solid #000;">${escapeHtml(row.data.tarifaExtra || '-')}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">${(row.data.horas || 0).toFixed(0)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeHE || 0).toFixed(2)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctT || 0).toFixed(0)}</td>
@@ -3461,7 +3502,7 @@ function generarHtmlCompletoConPaginacion(cuerpoHtml, alcance, filtroNombre, nom
     const esAjuste = (tipoNomina === 'ajuste');
     const esExtraominaria = (tipoNomina === 'extraordinaria');
     const esVacaciones = (tipoNomina === 'vacaciones');
-    const colsCount = esBono ? 11 : (esExtraominaria ? 19 : (esVacaciones ? 16 : 17));
+    const colsCount = esBono ? 11 : (esExtraominaria ? 20 : (esVacaciones ? 16 : 17));
 
     const cabecerasTabla = esBono ? `
         <tr>
@@ -3479,11 +3520,11 @@ function generarHtmlCompletoConPaginacion(cuerpoHtml, alcance, filtroNombre, nom
         </tr>
     ` : esExtraominaria ? `
         <tr>
-            <th style="width:3%">Código</th><th style="width:6%">CI</th><th style="width:22%">Nombre y Apellidos</th><th style="width:3%">Cat.</th><th style="width:3%">Tarf.</th>
-            <th style="width:4%">HE/D</th><th style="width:4%">$HE/D</th><th style="width:3%">Nt 19-23h</th><th style="width:4%">$/Nt 19-23h</th>
+            <th style="width:3%">Código</th><th style="width:5%">CI</th><th style="width:19%">Nombre y Apellidos</th><th style="width:3%">Cat.</th><th style="width:3%">Tarf.</th><th style="width:5%">Tipo Tarf.</th>
+            <th style="width:4%">HE/D</th><th style="width:4%">$/HED</th><th style="width:3%">Nt 19-23h</th><th style="width:4%">$/Nt 19-23h</th>
             <th style="width:3%">Nt 23-7h</th><th style="width:4%">$/Nt 23-7h</th>
             <th style="width:3%">D/T</th><th style="width:4%">$/DT</th>
-            <th style="width:6%">Deven.</th><th style="width:5%">Imp. CESS</th><th style="width:5%">Dsctos.</th><th style="width:5%">Ret. Tot.</th><th style="width:6%">Pagado</th><th style="width:8%">Firma</th>
+            <th style="width:6%">Deven.</th><th style="width:5%">Imp. CESS</th><th style="width:5%">Dsctos.</th><th style="width:5%">Ret. Tot.</th><th style="width:6%">Pagado</th><th style="width:6%">Firma</th>
         </tr>
     ` : `
         <tr>
@@ -4469,23 +4510,41 @@ function cargarModalEdicion($row) {
         
         var disabledAttr = (netoActual <= 0) ? 'disabled' : '';
         
+        if (tipo === 'extraordinaria') {
+            var usarConvRow = parseInt($row.attr('data-usar-convenio'), 10) || 0;
+            originalValues.usarConvenio = usarConvRow;
+            html += '<div class="mb-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 0.0625rem solid rgba(255,255,255,0.08);">';
+            html += '<label class="form-label d-block mb-2"><i class="fas fa-scale-balanced me-1 text-warning"></i> Tarifa aplicable al cálculo</label>';
+            html += '<input type="hidden" id="editUsarConvenio" value="' + usarConvRow + '">';
+            html += '<div class="form-check form-check-inline">';
+            html += '<input class="form-check-input" type="radio" name="editTarifaExtraRadio" id="editTarifaLey" value="ley" ' + (usarConvRow === 1 ? '' : 'checked') + ' ' + isDisabledAttr + '>';
+            html += '<label class="form-check-label small text-white" for="editTarifaLey"><i class="fas fa-landmark me-1 text-warning"></i> Ley 189/2026</label>';
+            html += '</div>';
+            html += '<div class="form-check form-check-inline ms-3">';
+            html += '<input class="form-check-input" type="radio" name="editTarifaExtraRadio" id="editTarifaConvenio" value="convenio" ' + (usarConvRow === 1 ? 'checked' : '') + ' ' + isDisabledAttr + '>';
+            html += '<label class="form-check-label small text-white" for="editTarifaConvenio"><i class="fas fa-handshake me-1 text-success"></i> Convenio Colectivo</label>';
+            html += '</div>';
+            html += '<div id="labelTarifaEditExtra" class="small mt-2 text-white-50"></div>';
+            html += '</div>';
+        }
+
         html += '<div class="row">';
         if (tipo === 'extraordinaria') {
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-sun me-1 text-warning"></i>Horas Extra (+' + Math.round((recargoTrabajoExtraordinario - 1) * 100) + '%)</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label" id="lblEditHorasExtra"><i class="fas fa-sun me-1 text-warning"></i>Horas Extra (+' + Math.round((recargoTrabajoExtraordinario - 1) * 100) + '%)</label>';
         } else {
             html += '<div class="col-md-3 mb-3"><label class="form-label"><i class="fas fa-clock me-1 text-info"></i>Horas Laboradas</label>';
         }
         html += '<input type="number" step="0.5" class="form-control edit-field" id="editHoras" value="' + horas.toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
         
         if (tipo === 'extraordinaria') {
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1 text-info"></i>Nocturno 19:00-23:00 ($' + tarifaNocturnidadTemprana.toFixed(2) + '/h)</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label" id="lblEditNoctT"><i class="fas fa-moon me-1 text-info"></i>Nocturno 19:00-23:00 ($' + tarifaNocturnidadTemprana.toFixed(2) + '/h)</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctT" value="' + (originalValues.noctT || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
-            html += '<div class="col-md-4 mb-3"><label class="form-label"><i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nocturno 23:00-07:00 ($' + tarifaNocturnidadTardia.toFixed(2) + '/h)</label>';
+            html += '<div class="col-md-4 mb-3"><label class="form-label" id="lblEditNoctD"><i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nocturno 23:00-07:00 ($' + tarifaNocturnidadTardia.toFixed(2) + '/h)</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editNoctD" value="' + (originalValues.noctD || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
             html += '</div>';
             
             html += '<div class="row">';
-            html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (+' + Math.round((recargoTrabajoExtraordinario - 1) * 100) + '%)</label>';
+            html += '<div class="col-md-6 mb-3"><label class="form-label" id="lblEditDT"><i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (+' + Math.round((recargoTrabajoExtraordinario - 1) * 100) + '%)</label>';
             html += '<input type="number" step="0.5" class="form-control edit-field" id="editDT" value="' + (originalValues.dt || 0).toFixed(2) + '" ' + isReadOnlyAttr + '></div>';
             html += '<div class="col-md-6 mb-3"><label class="form-label"><i class="fas fa-minus-circle me-1"></i>Descuentos</label>';
             html += '<input type="number" step="0.01" class="form-control edit-field" id="editDescuentos" value="' + descuentos.toFixed(2) + '" ' + isReadOnlyAttr + ' ' + disabledAttr + '></div>';
@@ -4728,6 +4787,12 @@ function cargarModalEdicion($row) {
         });
         recalcularPreviewAuto();
     } else if (tipo === 'extraordinaria') {
+        actualizarLabelsEdicionExtra();
+        $('#editTarifaLey, #editTarifaConvenio').off('change').on('change', function() {
+            $('#editUsarConvenio').val($(this).val() === 'convenio' ? '1' : '0');
+            actualizarLabelsEdicionExtra();
+            recalcularPreviewAutoExtraordinaria();
+        });
         $('#editHoras, #editNoctT, #editNoctD, #editDT, #editDescuentos').off('input').on('input', function() {
             recalcularPreviewAutoExtraordinaria();
         });
@@ -5221,6 +5286,25 @@ function recalcularPreviewAuto() {
     $('#previewNeto').text('$' + neto.toFixed(2));
 }
 
+    function actualizarLabelsEdicionExtra() {
+        if (!$('#editUsarConvenio').length) return;
+        var conv = parseInt($('#editUsarConvenio').val(), 10) === 1;
+        var recargoPct = Math.round((recargoTrabajoExtraordinario - 1) * 100);
+        if (conv) {
+            $('#lblEditHorasExtra').html('<i class="fas fa-sun me-1 text-warning"></i>Horas Extra ($' + convenioValorHe.toFixed(2) + '/h)');
+            $('#lblEditNoctT').html('<i class="fas fa-moon me-1 text-info"></i>Nocturno 19:00-23:00 ($' + convenioValorNocturnidadTemprana.toFixed(2) + '/h)');
+            $('#lblEditNoctD').html('<i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nocturno 23:00-07:00 ($' + convenioValorNocturnidadTardia.toFixed(2) + '/h)');
+            $('#lblEditDT').html('<i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno ($' + convenioValorDobleTurno.toFixed(2) + '/h)');
+            $('#labelTarifaEditExtra').html('<i class="fas fa-handshake me-1"></i>Tarifa empleada: <strong class="text-success">Convenio Colectivo Empleador - Empleado</strong>');
+        } else {
+            $('#lblEditHorasExtra').html('<i class="fas fa-sun me-1 text-warning"></i>Horas Extra (+' + recargoPct + '%)');
+            $('#lblEditNoctT').html('<i class="fas fa-moon me-1 text-info"></i>Nocturno 19:00-23:00 ($' + tarifaNocturnidadTemprana.toFixed(2) + '/h)');
+            $('#lblEditNoctD').html('<i class="fas fa-moon me-1" style="color:#8b5cf6;"></i>Nocturno 23:00-07:00 ($' + tarifaNocturnidadTardia.toFixed(2) + '/h)');
+            $('#lblEditDT').html('<i class="fas fa-exchange-alt me-1 text-success"></i>Doble Turno (+' + recargoPct + '%)');
+            $('#labelTarifaEditExtra').html('<i class="fas fa-landmark me-1"></i>Tarifa empleada: <strong>Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)</strong>');
+        }
+    }
+
     function recalcularPreviewAutoExtraordinaria() {
         var salarioHora = parseFloat($('#tablaNominas tbody tr[data-id="' + window.editCurrentRowId + '"]').data('salario-hora')) || 0;
         var horas = parseFloat($('#editHoras').val()) || 0;
@@ -5229,7 +5313,10 @@ function recalcularPreviewAuto() {
         var dt = parseFloat($('#editDT').val()) || 0;
         var descuentos = parseFloat($('#editDescuentos').val()) || 0;
         var tipoDescuento = $('#tablaNominas tbody tr[data-id="' + window.editCurrentRowId + '"]').data('tipo-descuento') || 'total_rangos';
-        var usarConv = parseInt($('#tablaNominas tbody tr[data-id="' + window.editCurrentRowId + '"]').data('usar-convenio'), 10) || 0;
+        var usarConv = parseInt($('#editUsarConvenio').val(), 10);
+        if (isNaN(usarConv)) {
+            usarConv = parseInt($('#tablaNominas tbody tr[data-id="' + window.editCurrentRowId + '"]').attr('data-usar-convenio'), 10) || 0;
+        }
         
         var calcExtra = calcularImporteTrabajoExtraordinarioJS(salarioHora, horas, noctT, noctD, dt, usarConv === 1);
         var importeHE = calcExtra.importeHE;
@@ -5508,6 +5595,10 @@ function recalcularPreviewVacaciones() {
                             $row.find('.edit-noct-temprana').val(valNoctT);
                             $row.find('.edit-noct-tardia').val(valNoctD);
                             $row.find('.edit-doble-turno').val(valDT);
+                            if (datos.usar_convenio !== undefined) {
+                                $row.attr('data-usar-convenio', datos.usar_convenio);
+                                actualizarBadgeTarifaFila($row, datos.usar_convenio);
+                            }
                         }
                         $row.find('.edit-horas').trigger('input');
                         
@@ -5550,7 +5641,8 @@ function recalcularPreviewVacaciones() {
                         originalValues = { 
                             horas: valHoras.toString(), 
                             nocturnas: valNocturnas.toString(), 
-                            descuentos: valDesc.toString() 
+                            descuentos: valDesc.toString(),
+                            usarConvenio: (datos.usar_convenio !== undefined) ? datos.usar_convenio : (parseInt($row.attr('data-usar-convenio'), 10) || 0)
                         };
                     } else if (tipoNomina === 'bono') {
                         originalValues = { 
@@ -5838,9 +5930,34 @@ $('#btnModalActualizar').on('click', function() {
                 return;
             }
             
+            var pareoEdit = validarPareoNocturno48(noctT, noctD);
+            if (!pareoEdit.ok) {
+                Swal.fire({
+                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i> Nocturnidades incoherentes',
+                    html: `
+                        <div class="text-center">
+                            <i class="fas fa-moon fa-3x mb-3" style="color: #3b82f6;"></i>
+                            <p>El trabajador <strong>${escapeHtml(nombre)}</strong>: ${escapeHtml(pareoEdit.error)}</p>
+                            <p class="text-muted small">Cada noche de 12 h se captura como 4 h (19:00-23:00) + 8 h (23:00-07:00), con margen de ±1 noche parcial. Si solo trabaja un turno (19:00-23:00 o 23:00-07:00), deje 0 en la otra franja. El pago es por hora.</p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    confirmButtonText: '<i class="fas fa-pen me-2"></i>Corregir captura',
+                    background: '#1a1a2e',
+                    color: '#ffffff'
+                }).then(() => {
+                    setTimeout(function() {
+                        $('#editNoctT').focus().select();
+                    }, 200);
+                });
+                return;
+            }
+            
             datos.nocturnidad_temprana = noctT;
             datos.nocturnidad_tardia = noctD;
             datos.doble_turno = dt;
+            var $editUsarConv = $('#editUsarConvenio');
+            datos.usar_convenio = $editUsarConv.length ? (parseInt($editUsarConv.val(), 10) === 1 ? 1 : 0) : (parseInt($filaOriginal.attr('data-usar-convenio'), 10) || 0);
             datos.dias_feriados = 0;
             datos.otros_salarios = 0;
         }
@@ -6014,6 +6131,10 @@ $('#btnModalActualizar').on('click', function() {
                             $row.find('.edit-noct-temprana').val(noctT || 0);
                             $row.find('.edit-noct-tardia').val(noctD || 0);
                             $row.find('.edit-doble-turno').val(dt || 0);
+                            if (typeof datos.usar_convenio !== 'undefined') {
+                                $row.attr('data-usar-convenio', datos.usar_convenio);
+                                actualizarBadgeTarifaFila($row, datos.usar_convenio);
+                            }
                         }
                         $row.find('.edit-horas').trigger('input');
                     } else if (tipoNomina === 'vacaciones') {
@@ -6059,7 +6180,11 @@ $('#btnModalActualizar').on('click', function() {
                     feriados: feriados.toString(),
                     otrosPagos: otrosPagos.toString(),
                     nocturnas: nocturnas.toString(),
-                    dias: dias.toString()
+                    dias: dias.toString(),
+                    noctT: (typeof noctT !== 'undefined' && noctT !== null) ? noctT.toString() : '0',
+                    noctD: (typeof noctD !== 'undefined' && noctD !== null) ? noctD.toString() : '0',
+                    dt: (typeof dt !== 'undefined' && dt !== null) ? dt.toString() : '0',
+                    usarConvenio: (typeof datos.usar_convenio !== 'undefined') ? datos.usar_convenio : null
                 };
                 console.log('Guardando valores originales en modal:', originalValues);
                 $('#modalEdicionRapida').data('originalValues', originalValues);
@@ -6130,6 +6255,13 @@ $(document).on('closed.bs.alert', '#modalEdicionBody .alert', function () {
             $('#editNoctD').val(original.noctD || 0);
             $('#editDT').val(original.dt || 0);
             $('#editDescuentos').val(original.descuentos);
+            if (original.usarConvenio !== undefined && original.usarConvenio !== null && $('#editUsarConvenio').length && !$('#editTarifaLey').prop('disabled')) {
+                var ucReset = parseInt(original.usarConvenio, 10) === 1 ? 1 : 0;
+                $('#editUsarConvenio').val(ucReset);
+                $('#editTarifaLey, #editTarifaConvenio').prop('checked', false);
+                $(ucReset === 1 ? '#editTarifaConvenio' : '#editTarifaLey').prop('checked', true);
+                actualizarLabelsEdicionExtra();
+            }
             recalcularPreviewAutoExtraordinaria();
         } else if (tipoNomina === 'bono') {
             $('#editMontoBono').val(original.monto);
@@ -6333,6 +6465,148 @@ function ajustarColumnasPorTipoDescuento(apiInstance) {
         guardarTodosLosCambios();
     });
 
+    function escaparTextoLista(txt) {
+        return $('<div>').text(String(txt)).html();
+    }
+
+    function imprimirErroresValidacion(fallas, exitosas, errores, lineaResultado) {
+        var w = window.open('', '_blank');
+        if (!w) {
+            Swal.fire({
+                title: 'Ventana bloqueada',
+                text: 'El navegador bloqueó la ventana de impresión. Permita las ventanas emergentes de este sitio e inténtelo de nuevo.',
+                icon: 'warning',
+                background: '#1a1a2e',
+                color: '#ffffff',
+                confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido'
+            });
+            return;
+        }
+        var tituloReporte = 'Errores de Validación Horas Extras y Nocturnidad';
+        var filas = '';
+        for (var i = 0; i < fallas.length; i++) {
+            filas += '<tr>' +
+                     '<td style="font-size:8pt;text-align:center;white-space:nowrap;">' + (i + 1) + '</td>' +
+                     '<td style="font-size:8pt;">' + escaparTextoLista(fallas[i].trabajador) + '</td>' +
+                     '<td style="font-size:8pt;text-align:center;white-space:nowrap;">' + escaparTextoLista(fallas[i].id) + '</td>' +
+                     '<td style="font-size:8pt;">' + escaparTextoLista(fallas[i].motivo) + '</td></tr>';
+        }
+        if (!filas) {
+            filas = '<tr><td colspan="4" style="font-size:8pt;text-align:center;">No se registraron errores de validación</td></tr>';
+        }
+        var ahora = new Date();
+        var fecha = ahora.toLocaleDateString('es-ES') + ' ' + ahora.toLocaleTimeString('es-ES');
+        var metaResultado = lineaResultado
+            ? escaparTextoLista(lineaResultado)
+            : exitosas + ' registro(s) guardado(s) correctamente · <strong>' + errores + ' error(es) de validación</strong>';
+        var logoCabecera = logoBase64 ? '<img src="' + logoBase64 + '" width="70" height="69">' : '';
+        var cabeceraHtml = '<table border="0" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;">' +
+            '<tr>' +
+            '<td style="width:5.5rem;text-align:center;vertical-align:middle;">' + logoCabecera + '</td>' +
+            '<td style="text-align:center;font-weight:bold;font-size:13pt;">' + tituloReporte +
+            '<br><span style="font-size:9.5pt;font-weight:normal;">' + escaparTextoLista((nombreEmpresa || 'PDL TransNuBeT\u00ae').toUpperCase()) + '</span>' +
+            '<br><span style="font-size:9pt;font-weight:normal;">' + escaparTextoLista(tipoNominaTexto) + ' · Per&iacute;odo ' + escaparTextoLista(periodoTexto) + '</span></td>' +
+            '<td style="width:14rem;font-size:9pt;vertical-align:top;"><b>Emisi&oacute;n:</b> ' + fecha + '</td>' +
+            '</tr></table>';
+        var metaHtml = '<div style="border:1px solid #999;padding:6px 8px;margin:8px 0 10px;line-height:1.6;font-size:9.5pt;">' +
+            '<strong>Generado:</strong> ' + fecha + '<br><strong>Resultado:</strong> ' + metaResultado + '</div>';
+        var tablaHtml = '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;">' +
+            '<tr style="background:#004b87;">' +
+            '<th style="color:#fff;font-size:8pt;width:2rem;">#</th>' +
+            '<th style="color:#fff;font-size:8pt;width:12rem;">Trabajador</th>' +
+            '<th style="color:#fff;font-size:8pt;width:4.5rem;">ID</th>' +
+            '<th style="color:#fff;font-size:8pt;">Motivo del rechazo</th></tr>' + filas + '</table>' +
+            '<div style="margin-top:8px;font-weight:bold;font-size:9.5pt;">Total de errores: ' + errores + '</div>';
+        var firmasHtml = '<div style="margin-top:2.5rem;text-align:center;font-size:8pt;">' +
+            '<div style="display:inline-block;border-top:0.0625rem solid #000;padding:0.375rem 1.5rem 0;min-width:12rem;">' +
+            escaparTextoLista(especialistaNominas || '') +
+            '<br><span style="font-size:7pt;">Elaborado por &mdash; Especialista de N&oacute;minas</span></div></div>';
+        var cuerpoHtml = cabeceraHtml + metaHtml + tablaHtml + firmasHtml;
+        var html = '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">' +
+            '<title>' + tituloReporte + '</title><style>' +
+            '@page { margin: 1.2cm; }' +
+            'body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #111; margin: 20px; }' +
+            'table { width: 100%; border-collapse: collapse; }' +
+            'th, td { border: 1px solid #555; padding: 5px 7px; vertical-align: top; text-align: left; }' +
+            'th { background: #004b87; color: #fff; font-size: 11px; text-transform: uppercase; }' +
+            '.acciones { margin-top: 14px; text-align: center; }' +
+            '.acciones button { padding: 7px 16px; font-size: 13px; margin: 0 4px; border: 1px solid #555; background: #f5f5f5; color: #111; border-radius: 4px; cursor: pointer; }' +
+            '.pie { margin-top: 16px; font-size: 10px; color: #555; text-align: center; }' +
+            '@media print { .acciones { display: none; } body { margin: 0; } }' +
+            '</style></head><body>' +
+            '<div id="cuerpoDocumento">' + cuerpoHtml + '</div>' +
+            '<div class="acciones">' +
+            '<button onclick="window.print()">&#128424; Imprimir</button>' +
+            '<button id="btnWordErrores">&#128196; Descargar Word</button>' +
+            '<button id="btnCerrarReporte">&#10006; Cerrar</button>' +
+            '</div>' +
+            '<div class="pie">Documento generado autom&aacute;ticamente por SisGesNom&reg; · ' + fecha + '</div>' +
+            '<scr' + 'ipt>' +
+            'document.getElementById("btnWordErrores").addEventListener("click", function(){' +
+            '  var cuerpo = document.getElementById("cuerpoDocumento").innerHTML;' +
+            '  var htmlWord = "<html xmlns:o=\\"urn:schemas-microsoft-com:office:office\\" xmlns:w=\\"urn:schemas-microsoft-com:office:word\\" xmlns=\\"http://www.w3.org/TR/REC-html40\\"><head><meta charset=\\"utf-8\\"><title>' + tituloReporte + '</title></head><body>" + cuerpo + "</body></html>";' +
+            '  var blob = new Blob(["\\ufeff", htmlWord], { type: "application/msword;charset=utf-8;" });' +
+            '  var a = document.createElement("a");' +
+            '  a.href = URL.createObjectURL(blob);' +
+            '  a.download = "errores_validacion_horas_extras_nocturnidad.doc";' +
+            '  document.body.appendChild(a); a.click(); document.body.removeChild(a);' +
+            '});' +
+            'document.getElementById("btnCerrarReporte").addEventListener("click", function(){ window.close(); });' +
+            'window.onload = function(){ setTimeout(function(){ window.print(); }, 400); };' +
+            '</scr' + 'ipt></body></html>';
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+    }
+
+    function construirHtmlErroresValidacion(cabecera, fallas, errores) {
+        var html = cabecera;
+        if (errores > 0) {
+            var lista = '';
+            for (var i = 0; i < fallas.length; i++) {
+                lista += '<div class="mb-1 text-start">• <strong>' + escaparTextoLista(fallas[i].trabajador) +
+                         '</strong> <span class="text-muted">(ID ' + escaparTextoLista(fallas[i].id) + ')</span>: ' +
+                         escaparTextoLista(fallas[i].motivo) + '</div>';
+            }
+            html += '<hr class="my-2" style="border-color:rgba(255,255,255,.15)">' +
+                '<div class="text-danger fw-bold text-start"><i class="fas fa-exclamation-triangle me-1"></i># ' + errores + ' Errores Encontrados</div>' +
+                '<div class="mt-2 text-white-50" style="max-height:260px;overflow-y:auto;padding-right:6px;font-size:.92em">' + lista + '</div>';
+        }
+        return html;
+    }
+
+    function mostrarDialogoErroresValidacion(opc) {
+        var fallas = opc.fallas || [];
+        var errores = fallas.length;
+        var exitosas = opc.exitosas || 0;
+        var recargar = opc.recargarAlCerrar !== false;
+        function renderizar() {
+            Swal.fire({
+                title: errores > 0 ? opc.tituloError : opc.tituloOk,
+                html: construirHtmlErroresValidacion(opc.cabecera, fallas, errores),
+                icon: errores > 0 ? (opc.iconoError || 'warning') : 'success',
+                background: '#1a1a2e',
+                color: '#ffffff',
+                showCloseButton: true,
+                allowOutsideClick: false,
+                showDenyButton: errores > 0,
+                denyButtonText: '<i class="fas fa-file-export me-2"></i>Exportar e Imprimir',
+                denyButtonColor: '#0d6efd',
+                confirmButtonText: opc.textoConfirm
+            }).then(function(result) {
+                if (result.isDenied) {
+                    imprimirErroresValidacion(fallas, exitosas, errores, opc.lineaResultado);
+                    renderizar();
+                    return;
+                }
+                if (recargar) {
+                    location.reload();
+                }
+            });
+        }
+        renderizar();
+    }
+
     function guardarTodosLosCambios() {
         if (contabilizada) {
             Swal.fire({
@@ -6386,20 +6660,41 @@ function ajustarColumnasPorTipoDescuento(apiInstance) {
         var procesadas = 0;
         var errores = 0;
         var exitosas = 0;
+        var fallas = [];
+        
+        function nombreTrabajadorFila(tr) {
+            var nombre = $(tr).find('.col-nombre').eq(0).text().trim();
+            if (!nombre) {
+                nombre = $(tr).find('td').eq(1).text().trim();
+            }
+            return nombre || 'Sin nombre';
+        }
+        
+        function registrarFalla(tr, motivo) {
+            errores++;
+            fallas.push({
+                trabajador: nombreTrabajadorFila(tr),
+                id: $(tr).data('id') || '-',
+                motivo: motivo
+            });
+        }
+        
+        function mostrarResumenGuardado() {
+            mostrarDialogoErroresValidacion({
+                fallas: fallas,
+                exitosas: exitosas,
+                cabecera: '<strong>' + exitosas + '</strong> registros guardados correctamente.',
+                tituloOk: '<i class="fas fa-check-circle text-success me-2"></i>Guardado completado',
+                tituloError: 'Guardado completado',
+                iconoError: 'warning',
+                textoConfirm: '<i class="fas fa-check me-2"></i>Aceptar',
+                recargarAlCerrar: true
+            });
+        }
         
         function procesarFila(index) {
             if (index >= totalFilas) {
-                Swal.fire({
-                    title: '<i class="fas fa-check-circle text-success me-2"></i>Guardado completado',
-                    html: '<strong>' + exitosas + '</strong> registros guardados correctamente.<br>' +
-                          (errores > 0 ? '<span class="text-danger">' + errores + ' errores encontrados.</span>' : ''),
-                    icon: errores > 0 ? 'warning' : 'success',
-                    background: '#1a1a2e',
-                    color: '#ffffff',
-                    confirmButtonText: '<i class="fas fa-check me-2"></i>Aceptar'
-                }).then(() => {
-                    location.reload();
-                });
+                mostrarResumenGuardado();
                 return;
             }
             
@@ -6445,6 +6740,14 @@ function ajustarColumnasPorTipoDescuento(apiInstance) {
                     datos.doble_turno = dtInput.length ? parseNumber(dtInput.val()) : 0;
                     datos.dias_feriados = 0;
                     datos.otros_salarios = 0;
+                    var pareoLote = validarPareoNocturno48(datos.nocturnidad_temprana, datos.nocturnidad_tardia);
+                    if (!pareoLote.ok) {
+                        procesadas++;
+                        registrarFalla(fila, pareoLote.error);
+                        console.error('Nocturnidades incoherentes en ID ' + id + ': ' + pareoLote.error);
+                        procesarFila(index + 1);
+                        return;
+                    }
                 }
             } else if (tipoNomina === 'bono') {
                 var bonoInput = fila.find('.edit-bono');
@@ -6486,14 +6789,14 @@ function ajustarColumnasPorTipoDescuento(apiInstance) {
                     if (r.success) {
                         exitosas++;
                     } else {
-                        errores++;
+                        registrarFalla(fila, r.error || 'Error desconocido devuelto por el servidor');
                         console.error('Error guardando ID ' + id + ': ' + (r.error || 'Desconocido'));
                     }
                     procesarFila(index + 1);
                 },
                 error: function(xhr, status, error) {
                     procesadas++;
-                    errores++;
+                    registrarFalla(fila, 'Error de conexión con el servidor' + (error ? ': ' + error : ''));
                     console.error('Error AJAX guardando ID ' + id + ': ' + error);
                     procesarFila(index + 1);
                 }
@@ -6858,21 +7161,6 @@ customize: function(win) {
 
     var $table = $(win.document.body).find('table');
 
-    // 🔽 EXTRAORDINARIA: Inyectar columna $HE/D (importe) justo después de HE/D (horas)
-    if (tipoNomina === 'extraordinaria') {
-        $table.find('tbody tr').each(function() {
-            var $fila = $(this);
-            var $celdaHoras = $fila.find('td').eq(9);
-            var $salDev = $fila.find('td').eq(16);
-            var $dtImp = $fila.find('td').eq(15);
-            if ($celdaHoras.length && $salDev.length && $dtImp.length) {
-                var _pHE = function(txt) { return parseFloat(String(txt).replace(/[^0-9.\-]/g, '')) || 0; };
-                var importeHE = _pHE($salDev.text()) - _pHE($dtImp.text());
-                $celdaHoras.after('<td class="text-right">$' + importeHE.toFixed(2) + '</td>');
-            }
-        });
-    }
-
     var totalColumns = $table.find('tbody tr:first td').length;
 
     // 🔽 NUEVO: Quitar el título <h1> que agrega el plugin (la cabecera ya trae el título del reporte)
@@ -6928,6 +7216,25 @@ customize: function(win) {
             border-collapse: collapse !important;
             page-break-inside: auto !important;
         }
+        /* SOLO EN PANTALLA: la tabla se comprime para que quepa en la vista previa.
+           Al imprimir NO aplica, por lo que conserva su tamaño natural en Carta horizontal. */
+        @media screen {
+            html, body {
+                overflow-x: auto !important;
+                overflow-y: auto !important;
+            }
+            table {
+                table-layout: fixed !important;
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            th, td {
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+                font-size: 0.625rem !important;
+                padding: 0.1875rem 0.0937rem !important;
+            }
+        }
         tr {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
@@ -6942,6 +7249,23 @@ customize: function(win) {
             border: 0.5pt solid #000000 !important;
             padding: 0.25rem 0.1562rem !important;
             font-family: 'Arial', sans-serif !important;
+        }
+        /* SOLO AL IMPRIMIR: comprimir la tabla para que quepa en Carta horizontal (~1309px).
+           Firefox no recala la tabla si excede el área imprimible, por lo que sin este
+           ajuste las últimas columnas (NETO, Total Ret., CESS) se cortan en el PDF.
+           No toca la vista previa en pantalla. */
+        @media print {
+            .print-sheet-table {
+                table-layout: fixed !important;
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            .print-sheet-table th, .print-sheet-table td {
+                font-size: 0.5rem !important;
+                padding: 0.125rem 0.0625rem !important;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+            }
         }
         th {
             background-color: #004B87 !important;
@@ -7175,16 +7499,16 @@ customize: function(win) {
                 <th rowspan="2">Cat.</th>
                 <th rowspan="2">Escala</th>
                 <th rowspan="2" class="text-right">S. Básico</th>
+                <th rowspan="2" class="text-right">Tarifa Horaria</th>
+                <th rowspan="2" class="text-center">T. Tarif.</th>
                 <th rowspan="2" class="text-right">HE/D</th>
-                <th rowspan="2" class="text-right">$/HE/D</th>
+                <th rowspan="2" class="text-right">$/HED</th>
                 <th rowspan="2" class="text-right">Nt 19-23h</th>
                 <th rowspan="2" class="text-right">$/Nt 19-23h</th>
                 <th rowspan="2" class="text-right">Nt 23-7h</th>
                 <th rowspan="2" class="text-right">$/Nt 23-7h</th>
                 <th rowspan="2" class="text-right">D/T</th>
                 <th rowspan="2" class="text-right">$/DT</th>
-                <th rowspan="2" class="text-right">S. Dev.</th>
-                <th rowspan="2" class="text-right">$/Hora</th>
                 <th rowspan="2" class="text-right">Total Dev.</th>
                 <th rowspan="2" class="text-right">Otros Desc.</th>
                 <th rowspan="2" class="text-right">CESS</th>
@@ -7342,10 +7666,12 @@ customize: function(win) {
     var theadHtml = $table.find('thead').html();
 
     // DETECCIÓN DE COLUMNAS NUMÉRICAS (desde salario_básico en adelante)
+    // En extraordinaria las columnas 9 ("Tarifa Horaria") y 10 ("T. Tarif." texto Ley 189/Convenio) son tasas: se excluyen de sumatorias
     var firstNumCol = (quitarConceptoCol || tipoNomina === 'vacaciones') ? 7 : 8;
     var totalCols = ($filasImpresion.length > 0) ? $filasImpresion.first().find('td').length : 0;
     var numericCols = [];
     var isMoneyCol = [];
+    var textCols = (tipoNomina === 'extraordinaria') ? [9, 10] : [];
     for (var ci = firstNumCol; ci < totalCols; ci++) {
         numericCols.push(ci);
         var hasMoney = false;
@@ -7371,6 +7697,7 @@ customize: function(win) {
         var $tds = $(this).find('td');
         for (var gi = 0; gi < numericCols.length; gi++) {
             var gci = numericCols[gi];
+            if (textCols.indexOf(gci) !== -1) continue;
             if (gci < $tds.length) grandVals[gci] += _parseCell($tds.eq(gci).text().trim());
         }
     });
@@ -7382,7 +7709,11 @@ customize: function(win) {
         var html = '<tr style="page-break-inside:avoid !important;">';
         html += '<td colspan="' + firstNumCol + '" style="' + style + 'text-align:left !important;">' + label + '</td>';
         for (var si = 0; si < numericCols.length; si++) {
-            html += '<td style="' + style + '">' + _fmtCell(vals[numericCols[si]], isMoneyCol[si]) + '</td>';
+            if (textCols.indexOf(numericCols[si]) !== -1) {
+                html += '<td style="' + style + 'text-align:center !important;">-</td>';
+            } else {
+                html += '<td style="' + style + '">' + _fmtCell(vals[numericCols[si]], isMoneyCol[si]) + '</td>';
+            }
         }
         html += '</tr>';
         return html;
@@ -7402,6 +7733,7 @@ customize: function(win) {
                 var $tds = $(this).find('td');
                 for (var si = 0; si < numericCols.length; si++) {
                     var sci = numericCols[si];
+                    if (textCols.indexOf(sci) !== -1) continue;
                     if (sci < $tds.length) subVals[sci] += _parseCell($tds.eq(sci).text().trim());
                 }
             });
@@ -7432,27 +7764,29 @@ customize: function(win) {
     $table.replaceWith(htmlPaginado);
 
     // INYECCIÓN DEL BLOQUE OFICIAL DE FIRMAS DE RESPONSABILIDAD
+    // Espaciado compacto para que las firmas quepan en la MISMA hoja que la tabla
+    // (si el bloque es muy alto, el navegador lo empuja a una segunda hoja).
     $(win.document.body).append(`
-        <div style="margin-top:3.125rem; page-break-inside: avoid; break-inside: avoid; font-family: Arial, sans-serif;">
-            <table style="width:100%; border: none !important; margin-top:1.875rem; border-collapse: collapse;">
+        <div style="margin-top:0.9375rem; page-break-inside: avoid; break-inside: avoid; font-family: Arial, sans-serif;">
+            <table style="width:100%; border: none !important; margin-top:0.3125rem; border-collapse: collapse;">
                 <tr style="border: none !important;">
-                    <td style="width:25%; text-align: center; border: none !important; padding:0.625rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.4;">
-                        <p style="margin-bottom:3.125rem;"><b>Elaborado por:</b></p>
+                    <td style="width:25%; text-align: center; border: none !important; padding:0.3125rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.3;">
+                        <p style="margin-bottom:1.25rem;"><b>Elaborado por:</b></p>
                         <p style="border-top: 0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${especialistaNominas}</b></p>
                         <p style="font-size:7.5pt; color: #555; margin-top:0.125rem;">Especialista de Nóminas</p>
                     </td>
-                    <td style="width:25%; text-align: center; border: none !important; padding:0.625rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.4;">
-                        <p style="margin-bottom:3.125rem;"><b>Revisado por:</b></p>
+                    <td style="width:25%; text-align: center; border: none !important; padding:0.3125rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.3;">
+                        <p style="margin-bottom:1.25rem;"><b>Revisado por:</b></p>
                         <p style="border-top: 0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${especialistaGestion}</b></p>
                         <p style="font-size:7.5pt; color: #555; margin-top:0.125rem;">Especialista en Gestión Económica</p>
                     </td>
-                    <td style="width:25%; text-align: center; border: none !important; padding:0.625rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.4;">
-                        <p style="margin-bottom:3.125rem;"><b>Aprobado por:</b></p>
+                    <td style="width:25%; text-align: center; border: none !important; padding:0.3125rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.3;">
+                        <p style="margin-bottom:1.25rem;"><b>Aprobado por:</b></p>
                         <p style="border-top: 0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${jefeProyecto}</b></p>
                         <p style="font-size:7.5pt; color: #555; margin-top:0.125rem;">Director de Proyecto</p>
                     </td>
-                    <td style="width:25%; text-align: center; border: none !important; padding:0.625rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.4;">
-                        <p style="margin-bottom:3.125rem;"><b>Contabilizado por:</b></p>
+                    <td style="width:25%; text-align: center; border: none !important; padding:0.3125rem; font-size:8.5pt; font-family: Arial, sans-serif; line-height:1.3;">
+                        <p style="margin-bottom:1.25rem;"><b>Contabilizado por:</b></p>
                         <p style="border-top: 0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;">Firma del Contador</p>
                         <p style="font-size:7.5pt; color: #555; margin-top:0.125rem;">Área Contable y Financiera</p>
                     </td>
@@ -7532,8 +7866,8 @@ function generarContenidoCSV(trabajadores) {
     } else if (esAjuste) {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('MONTO AJUSTE'), esc('OTROS PAGOS'), esc('VAC. DÍAS'), esc('VAC. IMPORTE'), esc('DEVENGADO'), esc('CESS'), esc('RET.'), esc('NETO')];
     } else if (esExtraominaria) {
-        header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('CAT.'), esc('TARF.'),
-                  esc('HE/D'), esc('$/HE/D'), esc('NT 19-23H'), esc('$/NT 19-23H'), esc('NT 23-7H'), esc('$/NT 23-7H'),
+        header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('CAT.'), esc('TARF.'), esc('TIPO TARF.'),
+                  esc('HE/D'), esc('$/HED'), esc('NT 19-23H'), esc('$/NT 19-23H'), esc('NT 23-7H'), esc('$/NT 23-7H'),
                   esc('DT'), esc('$/DT'), esc('DEVENGADO'), esc('CESS'), esc('DSCTOS.'), esc('RET. TOT.'), esc('PAGADO')];
     } else {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('DEVENGADO'), esc('DEDUCC.'), esc('NETO')];
@@ -7566,7 +7900,7 @@ function generarContenidoCSV(trabajadores) {
         } else if (esExtraominaria) {
             row = [
                 esc(t.codigo), esc(t.ci), esc(t.nombre),
-                esc(t.categoriaCodigo), esc((t.tarifaSal || 0).toFixed(2)),
+                esc(t.categoriaCodigo), esc((t.tarifaSal || 0).toFixed(2)), esc(t.tarifaExtra || '-'),
                 esc((t.horas || 0).toFixed(0)), esc('$' + (t.importeHE || 0).toFixed(2)),
                 esc((t.noctT || 0).toFixed(0)), esc('$' + (t.importeNtT || 0).toFixed(2)),
                 esc((t.noctD || 0).toFixed(0)), esc('$' + (t.importeNtD || 0).toFixed(2)),
@@ -7591,6 +7925,54 @@ function generarContenidoCSV(trabajadores) {
             lines.push(esc('Observación: ' + (t.concepto || 'Sin concepto')));
         }
     });
+
+    // ============================================================
+    // FILA DE TOTALES
+    // ============================================================
+    var tot = { devengado: 0, impS: 0, descuentos: 0, retenciones: 0, pagado: 0, bono: 0, aCobrar: 0,
+                horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
+    trabajadores.forEach(function(t) {
+        tot.devengado += t.devengado || 0;
+        tot.impS += t.impS || 0;
+        tot.descuentos += t.descuentos || 0;
+        tot.retenciones += t.retenciones || 0;
+        tot.pagado += t.pagado || 0;
+        tot.bono += t.bono || 0;
+        tot.aCobrar += t.aCobrar || 0;
+        tot.horas += t.horas || 0;
+        tot.importeHE += t.importeHE || 0;
+        tot.noctT += t.noctT || 0;
+        tot.importeNtT += t.importeNtT || 0;
+        tot.noctD += t.noctD || 0;
+        tot.importeNtD += t.importeNtD || 0;
+        tot.dt += t.dt || 0;
+        tot.importeDT += t.importeDT || 0;
+    });
+    var totalRow;
+    if (esBono) {
+        totalRow = [esc('TOTAL'), esc(''), esc('TOTALES GENERALES'),
+                    esc('$' + tot.bono.toFixed(2)), esc('$' + tot.pagado.toFixed(2))];
+    } else if (esAjuste) {
+        totalRow = [esc('TOTAL'), esc(''), esc('TOTALES GENERALES'),
+                    esc('$' + tot.aCobrar.toFixed(2)), esc('$' + tot.bono.toFixed(2)),
+                    esc(''), esc(''),
+                    esc('$' + tot.devengado.toFixed(2)), esc('$' + tot.impS.toFixed(2)),
+                    esc('$' + tot.retenciones.toFixed(2)), esc('$' + tot.pagado.toFixed(2))];
+    } else if (esExtraominaria) {
+        totalRow = [esc('TOTAL'), esc(''), esc('TOTALES GENERALES'), esc(''), esc(''), esc(''),
+                    esc(tot.horas.toFixed(0)), esc('$' + tot.importeHE.toFixed(2)),
+                    esc(tot.noctT.toFixed(0)), esc('$' + tot.importeNtT.toFixed(2)),
+                    esc(tot.noctD.toFixed(0)), esc('$' + tot.importeNtD.toFixed(2)),
+                    esc(tot.dt.toFixed(0)), esc('$' + tot.importeDT.toFixed(2)),
+                    esc('$' + tot.devengado.toFixed(2)), esc('$' + tot.impS.toFixed(2)),
+                    esc('$' + tot.descuentos.toFixed(2)), esc('$' + tot.retenciones.toFixed(2)),
+                    esc('$' + tot.pagado.toFixed(2))];
+    } else {
+        totalRow = [esc('TOTAL'), esc(''), esc('TOTALES GENERALES'),
+                    esc('$' + tot.devengado.toFixed(2)), esc('$' + tot.retenciones.toFixed(2)),
+                    esc('$' + tot.pagado.toFixed(2))];
+    }
+    lines.push(totalRow.join(','));
 
     if (observacionesCierreGlobal) {
         lines.push(esc('Observaciones de Cierre: ' + observacionesCierreGlobal));
@@ -7798,6 +8180,7 @@ function actualizarEstadisticas() {
     var tHorasNormales = 0, tNoctT = 0, tImporteNtT = 0, tNoctD = 0, tImporteNtD = 0, tDT = 0, tImporteDT = 0;
     var tBono = 0;
     var tSalarioBasico = 0, tSalarioLaboral = 0, tFeriadosDias = 0, tFeriadosImporte = 0;
+    var tHed = 0;
     var tVacacionesDias = 0, tVacacionesImporte = 0, tOtrosPagos = 0;
     var tContribucion = 0;
     
@@ -7863,7 +8246,7 @@ function actualizarEstadisticas() {
             }
             tDias += diasValue;
         } else if (tipoNomina === 'automatica' || tipoNomina === 'extraordinaria') {
-            var horasNorm = $row.find('.edit-horas').length ? parseNumber($row.find('.edit-horas').val()) : parseNumber($row.find('td').eq(8).text());
+            var horasNorm = $row.find('.edit-horas').length ? parseNumber($row.find('.edit-horas').val()) : parseNumber($row.find('.col-horas').text());
             tHorasNormales += horasNorm;
             
             var salarioBasico = parseNumber($row.find('.salario-basico').text());
@@ -7880,12 +8263,13 @@ function actualizarEstadisticas() {
             }
             
             if (tipoNomina === 'extraordinaria') {
+                tHed += parseNumber($row.find('.col-hed').text());
                 tNoctT += $row.find('.edit-noct-temprana').length ? parseNumber($row.find('.edit-noct-temprana').val()) : 0;
-                tImporteNtT += parseNumber($row.find('.importe-nt-temprana').text());
+                tImporteNtT += parseNumber($row.find('.col-noct-t-imp').text());
                 tNoctD += $row.find('.edit-noct-tardia').length ? parseNumber($row.find('.edit-noct-tardia').val()) : 0;
-                tImporteNtD += parseNumber($row.find('.importe-nt-tardia').text());
+                tImporteNtD += parseNumber($row.find('.col-noct-d-imp').text());
                 tDT += $row.find('.edit-doble-turno').length ? parseNumber($row.find('.edit-doble-turno').val()) : 0;
-                tImporteDT += parseNumber($row.find('.importe-doble-turno').text());
+                tImporteDT += parseNumber($row.find('.col-dt-imp').text());
             }
             
             if (tipoNomina === 'automatica') {
@@ -7918,6 +8302,7 @@ function actualizarEstadisticas() {
         totalHoras: tHorasNormales,
         totalSalarioBasico: tSalarioBasico,
         totalSalarioLaboral: tSalarioLaboral,
+        totalHed: tHed,
         totalFeriadosDias: tFeriadosDias,
         totalFeriadosImporte: tFeriadosImporte,
         totalNoctTempranas: tNoctT,
@@ -7968,7 +8353,7 @@ function actualizarTfootTotales(totales) {
     if (tipoNomina === 'extraordinaria') {
         $('.total-horas-footer').text(formatNumber(totales.totalHoras));
         $('.total-salario-basico-footer').text('$' + formatNumber(totales.totalSalarioBasico));
-        $('.total-salario-laboral-footer').text('$' + formatNumber(totales.totalSalarioLaboral));
+        $('.total-hed-footer').text('$' + formatNumber(totales.totalHed));
         $('.total-nt-temprana-footer').text(formatNumber(totales.totalNoctTempranas));
         $('.total-importe-nt-temprana-footer').text('$' + formatNumber(totales.totalImporteNtTemprana));
         $('.total-nt-tardia-footer').text(formatNumber(totales.totalNoctTardias));
@@ -9766,6 +10151,46 @@ function actualizarEstadoVista() {
         }
     });
 
+    $('#cuadreToggle').on('click', function() {
+        var $body = $('#cuadreBody');
+        var $chevron = $('#cuadreChevron');
+        if ($body.is(':visible')) {
+            $body.slideUp(200);
+            $chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        } else {
+            $body.slideDown(200);
+            $chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        }
+    });
+
+    $('#consultaRapidaAcciones').on('click', function(e) {
+        e.stopPropagation();
+    });
+
+    $('#consultaRapidaToggle').on('click', function() {
+        var $body = $('#consultaRapidaBody');
+        var $chevron = $('#consultaRapidaChevron');
+        if ($body.is(':visible')) {
+            $body.slideUp(200);
+            $chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        } else {
+            $body.slideDown(200);
+            $chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        }
+    });
+
+    $('#detalleNominaToggle').on('click', function() {
+        var $body = $('#detalleNominaBody');
+        var $chevron = $('#detalleNominaChevron');
+        if ($body.is(':visible')) {
+            $body.slideUp(200);
+            $chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        } else {
+            $body.slideDown(200);
+            $chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        }
+    });
+
 $('#btnLimpiarFiltros').off('click').on('click', function(e) {
     e.preventDefault();
     
@@ -9968,7 +10393,7 @@ function recalcularFilaAutomatica(fila) {
     if (tipoNominaActual === 'automatica') {
         importeFeriados = salarioDiario * diasFeriados * 2;
     } else {
-        var usarConvFila = parseInt(fila.data('usar-convenio'), 10) || 0;
+        var usarConvFila = parseInt(fila.attr('data-usar-convenio'), 10) || 0;
         var calcExtra = calcularImporteTrabajoExtraordinarioJS(salarioHora, horas, noctT, noctD, dt, usarConvFila === 1);
         importeHE = calcExtra.importeHE;
         importeNtT = calcExtra.importeNtT;
@@ -10032,9 +10457,10 @@ function recalcularFilaAutomatica(fila) {
     var netoFinal = Math.max(0, totalDevengado - (contribucion + impuestoTotal + descuentos));
     
     if (tipoNominaActual === 'extraordinaria') {
-        var salarioLaboralHE = importeHE + importeDT;
-        fila.find('.salario-laboral').text('$' + formatNumber(salarioLaboralHE));
-        fila.find('.salario-hora-real').text('$' + formatNumber(horas > 0 ? salarioLaboralHE/horas : 0));
+        fila.find('.col-hed').text('$' + formatNumber(importeHE));
+        fila.find('.col-noct-t-imp').text('$' + formatNumber(importeNtT));
+        fila.find('.col-noct-d-imp').text('$' + formatNumber(importeNtD));
+        fila.find('.col-dt-imp').text('$' + formatNumber(importeDT));
     } else {
         var salarioLaboral = salarioHora * horas;
         fila.find('.salario-laboral').text('$' + formatNumber(salarioLaboral));
@@ -10212,6 +10638,28 @@ $(document).on('click', '.guardar-fila', function() {
                 } else if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
                     eliminarTrabajadorPorId(id, trabajadorNombre);
                 }
+            });
+            return;
+        }
+        var pareoFila = validarPareoNocturno48(ntTExt, ntDExt);
+        if (!pareoFila.ok) {
+            Swal.fire({
+                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i> Nocturnidades incoherentes',
+                html: `
+                    <div class="text-center">
+                        <i class="fas fa-moon fa-3x mb-3" style="color: #3b82f6;"></i>
+                        <p>El trabajador <strong>${escapeHtml(trabajadorNombre)}</strong>: ${escapeHtml(pareoFila.error)}</p>
+                        <p class="text-muted small">Cada noche de 12 h se captura como 4 h (19:00-23:00) + 8 h (23:00-07:00), con margen de ±1 noche parcial. Si solo trabaja un turno (19:00-23:00 o 23:00-07:00), deje 0 en la otra franja. El pago es por hora.</p>
+                    </div>
+                `,
+                icon: 'warning',
+                confirmButtonText: '<i class="fas fa-pen me-2"></i>Corregir captura',
+                background: '#1a1a2e',
+                color: '#ffffff'
+            }).then(() => {
+                setTimeout(function() {
+                    fila.find('.edit-noct-temprana').focus().select();
+                }, 200);
             });
             return;
         }
@@ -11194,6 +11642,40 @@ $('#contabilizarBtn').on('click', function() {
     var nombreCampo = getNombreCampo(tipoNomina);
     var selectorCampo = getSelectorCampo(tipoNomina);
     
+    // ==========================================
+    // ✅ NOCTURNIDADES (misma regla que "Guardar Todo") ANTES DE CONTABILIZAR
+    // ==========================================
+    if (tipoNomina === 'automatica' || tipoNomina === 'extraordinaria') {
+        var fallasNocturnidad = [];
+        $('#tablaNominas tbody tr').each(function() {
+            var $filaNoct = $(this);
+            var $nt = $filaNoct.find('.edit-noct-temprana');
+            if (!$nt.length) return;
+            var revisionNoct = validarPareoNocturno48(parseNumber($nt.val()), parseNumber($filaNoct.find('.edit-noct-tardia').val()));
+            if (revisionNoct && !revisionNoct.ok) {
+                fallasNocturnidad.push({
+                    trabajador: $filaNoct.find('.col-nombre').eq(0).text().trim() || 'Sin nombre',
+                    id: $filaNoct.data('id') || '-',
+                    motivo: revisionNoct.error
+                });
+            }
+        });
+        if (fallasNocturnidad.length > 0) {
+            mostrarDialogoErroresValidacion({
+                fallas: fallasNocturnidad,
+                cabecera: '<i class="fas fa-ban text-danger me-2"></i>La nómina <strong>NO puede contabilizarse</strong>' +
+                          '<br><span class="text-white-50">Corrija las nocturnidades incoherentes de los trabajadores listados e inténtelo de nuevo.</span>',
+                tituloOk: '<i class="fas fa-ban text-danger me-2"></i>No se puede contabilizar',
+                tituloError: '<i class="fas fa-ban text-danger me-2"></i>No se puede contabilizar',
+                iconoError: 'error',
+                textoConfirm: '<i class="fas fa-check me-2"></i>Entendido',
+                lineaResultado: 'No se contabilizó la nómina: ' + fallasNocturnidad.length + ' trabajador(es) con nocturnidades incoherentes.',
+                recargarAlCerrar: false
+            });
+            return;
+        }
+    }
+    
     if (selectorCampo) {
         var $filas = $('#tablaNominas tbody tr');
         
@@ -11203,8 +11685,15 @@ $('#contabilizarBtn').on('click', function() {
             // Omitir filas ya contabilizadas (sin campo editable) en vistas mixtas
             if (!$campoInput.length) return;
             var campoValor = parseNumber($campoInput.val());
+            var sinValor = (campoValor === 0 || campoValor < 0.5);
+            if (tipoNomina === 'extraordinaria') {
+                var vNoctT = parseNumber($fila.find('.edit-noct-temprana').val());
+                var vNoctD = parseNumber($fila.find('.edit-noct-tardia').val());
+                var vDoble = parseNumber($fila.find('.edit-doble-turno').val());
+                sinValor = (campoValor === 0 && vNoctT === 0 && vNoctD === 0 && vDoble === 0);
+            }
             
-            if (campoValor === 0 || campoValor < 0.5) {
+            if (sinValor) {
                 var nombre = $fila.find('td:eq(2)').text().trim();
                 var id = $fila.data('id');
                 trabajadoresCero.push({ id: id, nombre: nombre });
@@ -11606,7 +12095,7 @@ function validarCamposCero(fila) {
 function getNombreCampo(tipo) {
     switch(tipo) {
         case 'automatica': return 'horas laboradas';
-        case 'extraordinaria': return 'horas laboradas';
+        case 'extraordinaria': return 'horas laboradas (normales o nocturnas)';
         case 'vacaciones': return 'días tomados';
         case 'bono': return 'monto del bono';
         case 'ajuste': return 'monto del ajuste';
@@ -12140,7 +12629,8 @@ $('#modalExtraordinaria').on('show.bs.modal', function(){
     selectedExtra=[]; 
 
     // Tarifa: prioriza la elegida en el modal de Seleccionar Tarifas;
-    // si se abrió directamente (Add Trab.), hereda la del lote actual (filas).
+    // si se abrió directamente (Add Trab.), hereda la del lote actual
+    // (mayoría de las filas; en empate, la de la primera fila).
     // Se fija ANTES de updateExtraList() para que las etiquetas y la
     // previsualización salgan ya con la tarifa correcta.
     var usarConv = null;
@@ -12148,11 +12638,21 @@ $('#modalExtraordinaria').on('show.bs.modal', function(){
         usarConv = (window.tempExtraTarifa === 'convenio') ? 1 : 0;
         window.tempExtraTarifa = null;
     } else {
-        var filaConv = $('#tablaNominas tbody tr:first').data('usar-convenio');
-        usarConv = (filaConv !== undefined && filaConv !== null) ? (parseInt(filaConv, 10) || 0) : 0;
+        var convLey = 0, convConv = 0, primero = null;
+        $('#tablaNominas tbody tr').each(function() {
+        var v = parseInt($(this).attr('data-usar-convenio'), 10);
+            if (isNaN(v)) return;
+            if (primero === null) primero = v;
+            if (v === 1) { convConv++; } else { convLey++; }
+        });
+        if (convConv > convLey) { usarConv = 1; }
+        else if (convLey > convConv) { usarConv = 0; }
+        else { usarConv = (primero !== null ? primero : 0); }
     }
     $('#usarConvenioExtra').val(usarConv);
     actualizarLabelTarifaExtra(usarConv);
+    $('#extraTarifaLey, #extraTarifaConvenio').prop('checked', false);
+    $(parseInt($('#usarConvenioExtra').val(), 10) === 1 ? '#extraTarifaConvenio' : '#extraTarifaLey').prop('checked', true);
 
     renderExtraWorkerList(); 
     updateExtraList(); 
@@ -12164,6 +12664,16 @@ $('#modalExtraordinaria').on('show.bs.modal', function(){
 
     // Limpiamos la variable para futuras aperturas manuales
     window.tempSelectedDiscount = null;
+});
+
+// Cambio de tarifa desde dentro del modal de extraordinaria (igual que en el modal de edición)
+$('#extraTarifaLey, #extraTarifaConvenio').on('change', function() {
+    var uc = ($(this).val() === 'convenio') ? 1 : 0;
+    $('#usarConvenioExtra').val(uc);
+    actualizarLabelTarifaExtra(uc);
+    if (typeof updateExtraTotals === 'function') {
+        updateExtraTotals();
+    }
 });
 
     // Etiqueta/aviso de la tarifa en uso dentro del modal de extraordinaria
@@ -12184,6 +12694,7 @@ $('#modalExtraordinaria').on('show.bs.modal', function(){
     $('#formExtraordinaria').on('submit', function(e){
         $(this).find('input[name="trabajador_id[]"], input[name="horas_trabajadas[]"], input[name="nocturnidad_temprana_trabajadas[]"], input[name="nocturnidad_tardia_trabajadas[]"], input[name="doble_turno_trabajadas[]"]').remove();
         var valid = false;
+        var pareoIncumplido = [];
         
         selectedExtra.forEach(w => { 
             var hNorm = parseFloat(w.horasExtraNormales) || 0;
@@ -12192,6 +12703,11 @@ $('#modalExtraordinaria').on('show.bs.modal', function(){
             var dt = parseFloat(w.dobleTurno) || 0;
             
             if(hNorm > 0 || noctT > 0 || noctD > 0 || dt > 0){ 
+                var pareo = validarPareoNocturno48(noctT, noctD);
+                if (!pareo.ok) {
+                    pareoIncumplido.push((w.codigo ? w.codigo + ' - ' : '') + (w.nombre || '') + ': ' + pareo.error);
+                    return;
+                }
                 $(this).append(`<input type="hidden" name="trabajador_id[]" value="${w.id}">`);
                 $(this).append(`<input type="hidden" name="horas_trabajadas[]" value="${hNorm}">`);
                 $(this).append(`<input type="hidden" name="nocturnidad_temprana_trabajadas[]" value="${noctT}">`);
@@ -12200,6 +12716,21 @@ $('#modalExtraordinaria').on('show.bs.modal', function(){
                 valid = true; 
             } 
         });
+        
+        if (pareoIncumplido.length > 0) {
+            e.preventDefault();
+            Swal.fire({
+                title: '<i class="fas fa-exclamation-triangle text-warning me-2"></i> Nocturnidades incoherentes',
+                html: '<div class="text-left" style="max-height:16rem; overflow:auto;">' +
+                    pareoIncumplido.map(m => '<p class="mb-2"><i class="fas fa-moon me-1 text-info"></i>' + escapeHtml(m) + '</p>').join('') +
+                    '</div><p class="text-muted small mb-0 mt-2">Cada noche de 12 h se captura como 4 h (19:00-23:00) + 8 h (23:00-07:00), con margen de ±1 noche parcial. Si solo trabaja un turno (19:00-23:00 o 23:00-07:00), deje 0 en la otra franja. El pago es por hora.</p>',
+                icon: 'warning',
+                background: '#1a1a2e',
+                color: 'white',
+                confirmButtonText: '<i class="fas fa-pen me-2"></i>Corregir captura'
+            });
+            return false;
+        }
         
         if(!valid){ 
             e.preventDefault(); 
@@ -13131,6 +13662,7 @@ function filaTotalExtraordinaria(label, data, cfg) {
     return '<tr' + (cfg.trClass ? ' class="' + cfg.trClass + '"' : '') + (cfg.trStyle ? ' style="' + cfg.trStyle + '"' : '') + '>' +
         '<td colspan="4"' + cc + cs + '>' + st + label + en + '</td>' +
         '<td' + cc + cs + '>' + st + '-' + en + '</td>' +
+        '<td' + cc + cs + '>' + st + '-' + en + '</td>' +
         '<td' + cc + cs + '>' + num('horas') + '</td>' +
         '<td' + cc + cs + '>' + mon('importeHE') + '</td>' +
         '<td' + cc + cs + '>' + num('noctT') + '</td>' +
@@ -13338,7 +13870,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 19 : (tipoNomina === 'vacaciones' ? 14 : 16)));
+        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 14 : 16)));
         let estructura = construirPaginasDeNomina(trabajadores, alcance);
         let htmlBody = '';
 
@@ -13385,6 +13917,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                                 <td style="border:0.5pt solid #000;">${window.escapeHtml(row.data.nombre)}</td>
                                 <td style="text-align:center; border:0.5pt solid #000;">${window.escapeHtml(row.data.categoriaCodigo)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">${row.data.tarifaSal.toFixed(2)}</td>
+                                <td style="text-align:center; border:0.5pt solid #000;">${window.escapeHtml(row.data.tarifaExtra || '-')}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">${(row.data.horas || 0).toFixed(0)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.importeHE || 0).toFixed(2)}</td>
                                 <td style="text-align:right; border:0.5pt solid #000;">${(row.data.noctT || 0).toFixed(0)}</td>
@@ -13554,8 +14087,8 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
             </tr>
         ` : esExtraominaria ? `
             <tr class="table-header">
-                <td>Código</td><td>CI</td><td>Nombre y Apellidos</td><td>Cat.</td><td>Tarf.</td>
-                <td>HE/D</td><td>$/HE/D</td><td>Nt 19-23h</td><td>$/Nt 19-23h</td>
+                <td>Código</td><td>CI</td><td>Nombre y Apellidos</td><td>Cat.</td><td>Tarf.</td><td>Tipo Tarf.</td>
+                <td>HE/D</td><td>$/HED</td><td>Nt 19-23h</td><td>$/Nt 19-23h</td>
                 <td>Nt 23-7h</td><td>$/Nt 23-7h</td>
                 <td>D/T</td><td>$/DT</td>
                 <td>Deven.</td><td>Imp. CESS.</td><td>Dsctos.</td><td>Ret. Tot.</td><td>Pagado</td><td>Firma</td>
@@ -13689,8 +14222,8 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 19 : (tipoNomina === 'vacaciones' ? 15 : 17)));
-        const widthsConfig = esBono ? [35, 55, '*', 22, 55, 55, 50, 55, 55, 55, 55] : esAjuste ? [30, 45, '*', 18, 42, 45, 24, 42, 42, 38, 42, 42, 42] : esExtraominaria ? [30, 50, '*', 18, 26, 28, 28, 28, 28, 28, 28, 28, 28, 38, 38, 38, 38, 42, 42] : (tipoNomina === 'vacaciones' ? [30, 50, '*', 18, 42, 30, 24, 38, 38, 38, 38, 42, 22, 40, 42] : [30, 50, '*', 18, 42, 30, 24, 38, 30, 38, 38, 38, 38, 42, 22, 40, 42]);
+        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 15 : 17)));
+        const widthsConfig = esBono ? [35, 55, '*', 22, 55, 55, 50, 55, 55, 55, 55] : esAjuste ? [30, 45, '*', 18, 42, 45, 24, 42, 42, 38, 42, 42, 42] : esExtraominaria ? [30, 50, '*', 18, 26, 32, 28, 28, 28, 28, 28, 28, 28, 28, 38, 38, 38, 38, 42, 42] : (tipoNomina === 'vacaciones' ? [30, 50, '*', 18, 42, 30, 24, 38, 38, 38, 38, 42, 22, 40, 42] : [30, 50, '*', 18, 42, 30, 24, 38, 30, 38, 38, 38, 38, 42, 22, 40, 42]);
 
         // 🔽 Fila de total/subtotal para EXTRAORDINARIA: totaliza TODAS las columnas excepto Tarifa
         function filaTotalExtraPdf(label, data, style) {
@@ -13699,6 +14232,7 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
             var boldStyle = style === 'groupFooter' ? 'groupFooterBold' : (style === 'pageSubtotal' ? 'pageSubtotalBold' : 'tableFooterBold');
             return [
                 { text: label, colSpan: 4, alignment: 'right', style: style }, {}, {}, {},
+                { text: '-', alignment: 'right', style: style },
                 { text: '-', alignment: 'right', style: style },
                 h('horas'), c('importeHE'), h('noctT'), c('importeNtT'), h('noctD'), c('importeNtD'), h('dt'), c('importeDT'),
                 c('devengado'), c('impS'), c('descuentos'), c('retenciones'),
@@ -13752,8 +14286,9 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                     { text: 'Nombre y Apellidos', style: 'tableHeader' },
                     { text: 'Cat.', style: 'tableHeader' },
                     { text: 'Tarf.', style: 'tableHeader' },
+                    { text: 'Tipo Tarf.', style: 'tableHeader' },
                     { text: 'HE/D', style: 'tableHeader' },
-                    { text: '$/HE/D', style: 'tableHeader' },
+                    { text: '$/HED', style: 'tableHeader' },
                     { text: 'Nt 19-23h', style: 'tableHeader' },
                     { text: '$/Nt 19-23h', style: 'tableHeader' },
                     { text: 'Nt 23-7h', style: 'tableHeader' },
@@ -13827,6 +14362,7 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                             { text: row.data.nombre, alignment: 'left', style: 'tableCell' },
                             { text: row.data.categoriaCodigo, alignment: 'center', style: 'tableCell' },
                             { text: row.data.tarifaSal.toFixed(2), alignment: 'right', style: 'tableCell' },
+                            { text: row.data.tarifaExtra || '-', alignment: 'center', style: 'tableCell' },
                             { text: (row.data.horas || 0).toFixed(0), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.importeHE || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
                             { text: (row.data.noctT || 0).toFixed(0), alignment: 'right', style: 'tableCell' },
@@ -14193,7 +14729,7 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 19 : (tipoNomina === 'vacaciones' ? 14 : 16)));
+        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 14 : 16)));
         
         let paginas = [];
         let paginaActual = [];
@@ -14310,6 +14846,7 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                                 <td class="text-left" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.nombre)}</td>
                                 <td class="text-center" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.categoriaCodigo)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.tarifaSal.toFixed(2)}</td>
+                                <td class="text-center" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.tarifaExtra || '-')}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.horas || 0).toFixed(0)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.importeHE || 0).toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.noctT || 0).toFixed(0)}</td>
@@ -14509,15 +15046,32 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:3.4375rem;">Pagado</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:4.0625rem;">Firma</th>
                 </tr>
-            ` : esExtraominaria ? `
+            ` : esAjuste ? `
                 <tr style="background-color:#004b87; color:#ffffff; font-weight:bold; text-align:center;">
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Código</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:3.125rem;">CI</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:6.875rem;">Nombre y Apellidos</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Cat.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Monto Ajuste</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Otros Pagos</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Vac. Días</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Vac. Importe</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Total Deven.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Imp. CESS</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Total Ret.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">NETO</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:3.125rem;">Firma</th>
+                </tr>
+            ` : esExtraominaria ? `
+                <tr style="background-color:#004b87; color:#ffffff; font-weight:bold; text-align:center;">
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Código</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:3.125rem;">CI</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:5.625rem;">Nombre y Apellidos</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Cat.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Tarf.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.6875rem;">Tipo Tarf.</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.875rem;">HE/D</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/HE/D</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/HED</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">Nt 19-23h</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">$/Nt 19-23h</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.5625rem;">Nt 23-7h</th>
@@ -14732,8 +15286,9 @@ function generarContenidoTXT(trabajadores) {
         header = padRight("COD", 6) + " | " + 
                  padRight("CI", 11) + " | " + 
                  padRight("NOMBRE Y APELLIDOS", 30) + " | " + 
+                 padRight("TIPO TARF.", 10) + " | " + 
                  padLeft("HE/D", 10) + " | " + 
-                 padLeft("$/HE/D", 10) + " | " + 
+                 padLeft("$/HED", 10) + " | " + 
                  padLeft("NT 19-23H", 8) + " | " + 
                  padLeft("$/NT 19-23H", 10) + " | " + 
                  padLeft("NT 23-7H", 8) + " | " + 
@@ -14804,6 +15359,7 @@ function generarContenidoTXT(trabajadores) {
             line = padRight(t.codigo, 6) + " | " + 
                    padRight(t.ci, 11) + " | " + 
                    padRight(nombreTruncado, 30) + " | " + 
+                   padRight(t.tarifaExtra || '-', 10) + " | " + 
                    padLeft((t.horas || 0).toFixed(0), 10) + " | " + 
                    padLeft("$" + (t.importeHE || 0).toFixed(2), 10) + " | " + 
                    padLeft((t.noctT || 0).toFixed(0), 8) + " | " + 
@@ -14851,6 +15407,7 @@ function generarContenidoTXT(trabajadores) {
         totalLine = padRight("TOTAL", 6) + " | " + 
                     padRight("", 11) + " | " + 
                     padRight("TOTALES GENERALES", 30) + " | " + 
+                    padRight("", 10) + " | " + 
                     padLeft(totalHoras.toFixed(0), 10) + " | " + 
                     padLeft("$" + totalImporteHE.toFixed(2), 10) + " | " + 
                     padLeft(totalNoctT.toFixed(0), 8) + " | " + 

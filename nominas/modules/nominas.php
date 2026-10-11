@@ -675,6 +675,15 @@ if (isset($_POST['actualizar_nomina'])) {
             $horas_nocturnas_tardias = max(0, floatval($_POST['nocturnidad_tardia'] ?? $_POST['horas_nocturnas_tardias'] ?? 0));
             $horas_doble_turno = max(0, floatval($_POST['doble_turno'] ?? $_POST['horas_doble_turno'] ?? 0));
             $horas_nocturnas = $horas_nocturnas_tempranas + $horas_nocturnas_tardias;
+            // Coherencia de la nocturnidad: 4 h (19:00-23:00) + 8 h (23:00-07:00)
+            // por noche, con margen de ±1 noche parcial. Un registro incoherente
+            // paga mal, así que se rechaza aquí, en el servidor, aunque el POST
+            // llegue sin pasar por el formulario.
+            $error_pareo = validarPareoNocturno48($horas_nocturnas_tempranas, $horas_nocturnas_tardias);
+            if ($error_pareo !== null) {
+                echo json_encode(['success' => false, 'error' => $error_pareo]);
+                exit;
+            }
             // La tarifa (Ley vs Convenio) se recibe del formulario de edición;
             // si no viene, se conserva la que ya tenía la fila en la BD para no
             // recalcular el lote con la tarifa equivocada.
@@ -1940,6 +1949,19 @@ if (isset($_POST['generar_nomina_extraordinaria']) && isset($_POST['confirmar_ex
 
     $agregados = 0;
 
+    // Coherencia de la nocturnidad (4:8 por noche, margen ±1 parcial), revisada
+    // ANTES de insertar nada: si un solo registro viene incoherente no se genera
+    // el lote completo.
+    foreach ($trabajadores_ids as $index => $trabajador_id) {
+        $nt_chk = max(0, floatval($noct_temprana_por_trabajador[$index] ?? 0));
+        $nd_chk = max(0, floatval($noct_tardia_por_trabajador[$index] ?? 0));
+        $error_pareo = validarPareoNocturno48($nt_chk, $nd_chk);
+        if ($error_pareo !== null) {
+            header("Location: nominas.php?periodo=$periodo&tipo=$tipo&error=pareo_48");
+            exit;
+        }
+    }
+
     foreach ($trabajadores_ids as $index => $trabajador_id) {
         $trabajador_id = intval($trabajador_id);
         // Ninguna magnitud de horas admite valores negativos: se recorta a cero
@@ -2535,6 +2557,36 @@ if (isset($_POST['contabilizar_nomina'])) {
         exit;
     }
     
+    // 1.4 REVISIÓN DE NOCTURNIDADES PRE-CONTABILIZACIÓN
+    // Misma regla que la captura: con las dos franjas activas la tardía debe ser
+    // el doble de la temprana con margen de ±1 noche; turno exclusivo (una franja
+    // en 0) pasa sin importar la cantidad.
+    $pareo_contabilizar = [];
+    if ($tipo_contabilizar == 'automatica' || $tipo_contabilizar == 'extraordinaria') {
+        $stmt_pareo = $pdo->prepare("
+            SELECT n.id, n.horas_nocturnas_tempranas, n.horas_nocturnas_tardias, t.nombre_completo
+            FROM nominas n
+            JOIN trabajadores t ON n.trabajador_id = t.id
+            WHERE n.periodo_desde = ? AND n.periodo_hasta = ? AND n.tipo_nomina = ? AND n.estado = 'borrador'
+        ");
+        $stmt_pareo->execute([$periodo_desde, $periodo_hasta, $tipo_contabilizar]);
+        foreach ($stmt_pareo->fetchAll(PDO::FETCH_ASSOC) as $fila_pareo) {
+            $motivo_pareo = validarPareoNocturno48($fila_pareo['horas_nocturnas_tempranas'], $fila_pareo['horas_nocturnas_tardias']);
+            if ($motivo_pareo !== null) {
+                $pareo_contabilizar[] = [
+                    'trabajador' => $fila_pareo['nombre_completo'],
+                    'id'         => $fila_pareo['id'],
+                    'motivo'     => $motivo_pareo,
+                ];
+            }
+        }
+    }
+    if (!empty($pareo_contabilizar)) {
+        $_SESSION['pareo_contab_errores'] = $pareo_contabilizar;
+        header("Location: nominas.php?periodo=$periodo&tipo=$tipo_contabilizar&error=pareo_contabilizar&filas=" . count($pareo_contabilizar));
+        exit;
+    }
+    
     // 1.5 REVISIÓN DE CUADRE PRE-CONTABILIZACIÓN
     // Antes de contabilizar, los borradores del período/tipo deben pasar el cuadre:
     // composición del devengado, aritmética de deducciones y neto, e impuestos (CESS/ISIP).
@@ -3113,6 +3165,12 @@ if (isset($_POST['agregar_extraordinaria_existente'])) {
     $noct_temprana = max(0, floatval($_POST['nocturnidad_temprana'] ?? 0));
     $noct_tardia = max(0, floatval($_POST['nocturnidad_tardia'] ?? 0));
     $doble_turno = max(0, floatval($_POST['doble_turno'] ?? 0));
+    // Coherencia de la nocturnidad (4:8 por noche, margen ±1 parcial): se rechaza
+    // la adición si viene incoherente.
+    if (validarPareoNocturno48($noct_temprana, $noct_tardia) !== null) {
+        header("Location: nominas.php?periodo=$periodo&tipo=extraordinaria&error=pareo_48");
+        exit;
+    }
     $concepto = trim($_POST['concepto_extra'] ?? '');
     $tipo = 'extraordinaria';
     $tasa_contribucion = getTasaContribucion($pdo);
@@ -3375,6 +3433,23 @@ if ($tipo_nomina_activa === 'ajuste') {
             $contabilizada = true;
             $observaciones_cierre = $obs_aj;
         }
+    } elseif ($existe_nomina) {
+        // 🔽 CORRECCIÓN: Sin filtro explícito de número, detectar el cierre por
+        // periodo + tipo (como el resto de tipos de nómina) para cargar las
+        // observaciones de cierre y reflejarlas en los reportes/exportes.
+        $stmt_check_aj = $pdo->prepare("SELECT COUNT(*) FROM cierres_nomina 
+                                        WHERE periodo_desde = ? AND periodo_hasta = ? 
+                                        AND tipo_nomina = 'ajuste'");
+        $stmt_check_aj->execute([$periodo_desde, $periodo_hasta]);
+        $contabilizada = $stmt_check_aj->fetchColumn() > 0;
+
+        if ($contabilizada) {
+            $stmt_obs_aj2 = $pdo->prepare("SELECT observaciones FROM cierres_nomina 
+                                           WHERE periodo_desde = ? AND periodo_hasta = ? 
+                                           AND tipo_nomina = 'ajuste' LIMIT 1");
+            $stmt_obs_aj2->execute([$periodo_desde, $periodo_hasta]);
+            $observaciones_cierre = $stmt_obs_aj2->fetchColumn() ?: '';
+        }
     }
 } else {
     // Lógica original para el resto de tipos
@@ -3537,6 +3612,23 @@ if ($existe_nomina) {
             if ($obs_aj !== false) {
                 $contabilizada = true;
                 $observaciones_cierre = $obs_aj;
+            }
+        } elseif ($existe_nomina) {
+            // 🔽 CORRECCIÓN: Sin filtro explícito de número, detectar el cierre por
+            // periodo + tipo (como el resto de tipos de nómina) para cargar las
+            // observaciones de cierre y reflejarlas en los reportes/exportes.
+            $stmt_check_aj = $pdo->prepare("SELECT COUNT(*) FROM cierres_nomina 
+                                            WHERE periodo_desde = ? AND periodo_hasta = ? 
+                                            AND tipo_nomina = 'ajuste'");
+            $stmt_check_aj->execute([$periodo_desde, $periodo_hasta]);
+            $contabilizada = $stmt_check_aj->fetchColumn() > 0;
+
+            if ($contabilizada) {
+                $stmt_obs_aj2 = $pdo->prepare("SELECT observaciones FROM cierres_nomina 
+                                               WHERE periodo_desde = ? AND periodo_hasta = ? 
+                                               AND tipo_nomina = 'ajuste' LIMIT 1");
+                $stmt_obs_aj2->execute([$periodo_desde, $periodo_hasta]);
+                $observaciones_cierre = $stmt_obs_aj2->fetchColumn() ?: '';
             }
         }
     } else {
@@ -4025,36 +4117,38 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
 </div>
 
     <!-- CUADRE DE NÓMINAS CONTABILIZADAS -->
+    <?php
+    /* Puntero real de la BD, que no es lo mismo que el periodo que se
+     * esta viendo en pantalla (puede ser otro). Es el mes abierto mas
+     * antiguo y por lo tanto el que decide que periodos se pueden
+     * generar; por eso conviene tenerlo siempre a la vista. */
+    $periodoCurso = periodoNominasEnCurso($pdo);
+    ?>
+    <div class="periodo-curso-chip mb-3 fade-in-up" title="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas automi&aacute;ticamente" data-tooltip="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas automi&aacute;ticamente" data-tooltip-theme="info">
+        <i class="fas fa-calendar-days"></i>
+        <span class="periodo-curso-label">Per&iacute;odo en curso:</span>
+        <span class="periodo-curso-valor"><?php echo htmlspecialchars(etiquetaMesNominas($periodoCurso['mes']) . ' / ' . (int)$periodoCurso['anio']); ?></span>
+    </div>
     <?php $cuadre = verificarCuadreValores($pdo); ?>
     <div class="glass-card mb-4 fade-in-up" style="animation-delay: 0.15s;">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <div style="width:2.625rem; height:2.625rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; background: <?php echo $cuadre['filas_con_error'] > 0 ? 'rgba(248,113,113,0.15)' : 'rgba(var(--color-success-soft-rgb),0.15)'; ?>;">
-                    <i class="fas fa-scale-balanced" style="color: <?php echo $cuadre['filas_con_error'] > 0 ? '#f87171' : 'var(--color-success-soft)'; ?>;"></i>
-                </div>
-                <div>
-                    <h5 class="text-white mb-0" style="font-weight: 600; font-size:0.95rem;">Cuadre de Nóminas Contabilizadas
-                        <?php if (($cuadre['filas_con_error'] > 0) || (($cuadre['cierres_con_error'] ?? 0) > 0)): ?>
-                            <span class="badge" style="background: rgba(248,113,113,0.15); color: #f87171; margin-left:0.5rem;"><i class="fas fa-exclamation-triangle me-1"></i><?php echo $cuadre['filas_con_error']; ?> fila<?php echo $cuadre['filas_con_error'] === 1 ? '' : 's'; ?><?php if (($cuadre['cierres_con_error'] ?? 0) > 0): ?> · <?php echo $cuadre['cierres_con_error']; ?> cierre<?php echo $cuadre['cierres_con_error'] === 1 ? '' : 's'; ?> con descuadres<?php endif; ?></span>
-                        <?php else: ?>
-                            <span class="badge" style="background: rgba(var(--color-success-soft-rgb),0.15); color: var(--color-success-soft); margin-left:0.5rem;"><i class="fas fa-check-circle me-1"></i>Sin descuadres</span>
-                        <?php endif; ?>
-                    </h5>
-                    <p class="mb-0" style="font-size:0.75rem; color: rgba(255,255,255,0.5);">Revalida la composición del devengado, la aritmética, los impuestos (CESS / ISIP) y los totales de los cierres registrados.</p>
-                    <?php
-                    /* Puntero real de la BD, que no es lo mismo que el periodo que se
-                     * esta viendo en pantalla (puede ser otro). Es el mes abierto mas
-                     * antiguo y por lo tanto el que decide que periodos se pueden
-                     * generar; por eso conviene tenerlo siempre a la vista. */
-                    $periodoCurso = periodoNominasEnCurso($pdo);
-                    ?>
-                    <div class="periodo-curso-chip" title="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas" data-tooltip="Mes abierto m&aacute;s antiguo. Se cambia en Configuraci&oacute;n &rarr; Cierres de N&oacute;minas" data-tooltip-theme="info">
-                        <i class="fas fa-calendar-days"></i>
-                        <span class="periodo-curso-label">Per&iacute;odo en curso:</span>
-                        <span class="periodo-curso-valor"><?php echo htmlspecialchars(etiquetaMesNominas($periodoCurso['mes']) . ' / ' . (int)$periodoCurso['anio']); ?></span>
-                    </div>
-                </div>
+        <div class="d-flex align-items-center gap-3 mb-1" id="cuadreToggle" style="cursor: pointer; user-select: none;">
+            <div style="width:2.625rem; height:2.625rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; background: <?php echo $cuadre['filas_con_error'] > 0 ? 'rgba(248,113,113,0.15)' : 'rgba(var(--color-success-soft-rgb),0.15)'; ?>;">
+                <i class="fas fa-scale-balanced" style="color: <?php echo $cuadre['filas_con_error'] > 0 ? '#f87171' : 'var(--color-success-soft)'; ?>;"></i>
             </div>
+            <h5 class="text-white mb-0" style="font-weight: 600; font-size:0.95rem;">Cuadre de Nóminas Contabilizadas
+                <?php if (($cuadre['filas_con_error'] > 0) || (($cuadre['cierres_con_error'] ?? 0) > 0)): ?>
+                    <span class="badge" style="background: rgba(248,113,113,0.15); color: #f87171; margin-left:0.5rem;"><i class="fas fa-exclamation-triangle me-1"></i><?php echo $cuadre['filas_con_error']; ?> fila<?php echo $cuadre['filas_con_error'] === 1 ? '' : 's'; ?><?php if (($cuadre['cierres_con_error'] ?? 0) > 0): ?> · <?php echo $cuadre['cierres_con_error']; ?> cierre<?php echo $cuadre['cierres_con_error'] === 1 ? '' : 's'; ?> con descuadres<?php endif; ?></span>
+                <?php else: ?>
+                    <span class="badge" style="background: rgba(var(--color-success-soft-rgb),0.15); color: var(--color-success-soft); margin-left:0.5rem;"><i class="fas fa-check-circle me-1"></i>Sin descuadres</span>
+                <?php endif; ?>
+            </h5>
+            <i class="fas fa-chevron-up ms-auto" id="cuadreChevron" style="color: rgba(255,255,255,0.4); font-size:0.7rem; transition: transform 0.3s ease;"></i>
+        </div>
+        <div id="cuadreBody" style="display:none;">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div>
+                    <p class="mb-0" style="font-size:0.75rem; color: rgba(255,255,255,0.5);">Revalida la composición del devengado, la aritmética, los impuestos (CESS / ISIP) y los totales de los cierres registrados.</p>
+                </div>
             <div class="d-flex align-items-center gap-4 flex-wrap">
                 <div class="text-center px-2">
                     <div style="font-size:1.2rem; font-weight: 700; color: #93c5fd;"><?php echo $cuadre['filas']; ?></div>
@@ -4088,6 +4182,7 @@ $all_centros = $pdo->query("SELECT id, codigo, nombre FROM centros_costo ORDER B
                     <i class="fas fa-clipboard-check me-1"></i> Verificar Cuadre
                 </button>
             </div>
+        </div>
         </div>
     </div>
 
@@ -4484,9 +4579,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <!-- Selector de Años/Meses para consulta rápida -->
 <div class="glass-card mb-4 fade-in-up" style="animation-delay: 0.05s;">
-    <div class="row align-items-end">
-        <!-- Título -->
-        <div class="row g-2 align-items-end p-3" style="background: rgba(255,255,255,0.02); border-radius: 0.75rem; border: 0.0625rem solid rgba(255,255,255,0.05);">
+    <!-- Título (toggle collapsed/expanded) -->
+    <div class="row g-2 align-items-end p-3 mb-1" style="background: rgba(255,255,255,0.02); border-radius: 0.75rem; border: 0.0625rem solid rgba(255,255,255,0.05); cursor: pointer; user-select: none;" id="consultaRapidaToggle">
             <div class="d-flex align-items-center justify-content-between w-100">
                 <div class="d-flex align-items-center gap-2">
                     <i class="fas fa-chart-line" style="font-size:1.3rem; color: #60a5fa;"></i>
@@ -4497,7 +4591,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         </p>
                     </div>
                 </div>
-<div class="d-flex gap-2">
+<div class="d-flex align-items-center gap-2">
+<div class="d-flex gap-2" id="consultaRapidaAcciones">
     
     <!-- Botón condicionado por PHP según la pestaña activa (La condicion se la comente , siempre sale)-->
     <?php //if ($tipo_nomina_activa == 'bono'): ?>
@@ -4521,9 +4616,12 @@ document.addEventListener('DOMContentLoaded', function () {
         <i class="fas fa-home me-1"></i> Inicio
     </button>
 </div>
+                <i class="fas fa-chevron-down" id="consultaRapidaChevron" style="color: rgba(255,255,255,0.4); font-size:0.7rem; transition: transform 0.3s ease;"></i>
             </div>
         </div>
-        
+    </div>
+    <div id="consultaRapidaBody">
+        <div class="row align-items-end">
         <!-- 1. Año -->
         <div class="col-md-2">
             <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #60a5fa;">
@@ -4624,6 +4722,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <span id="infoNominasPeriodo">Seleccione año, tipo, estado, mes para filtrar nóminas</span>
             </small>
         </div>
+    </div>
     </div>
 </div>
 
@@ -5442,6 +5541,28 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
             <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> Seleccione al menos un trabajador con horas válidas.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
             <?php elseif ($_GET['error'] == 'worker_in_automatica'): ?>
             <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> El trabajador ya tiene nómina automática.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'pareo_48'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-moon me-2"></i> Nocturnidades incoherentes: con las dos franjas activas cada noche son 4 h (19:00-23:00) + 8 h (23:00-07:00) con margen de ±1 noche parcial. Si el trabajador solo hace un turno, deje 0 en la otra franja. Corrija la captura antes de generar.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+            <?php elseif ($_GET['error'] == 'pareo_contabilizar'): ?>
+            <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white">
+                <i class="fas fa-moon me-2"></i>
+                <strong>La nómina NO fue contabilizada:</strong> hay
+                <strong><?php echo intval($_GET['filas'] ?? 0); ?></strong> trabajador(es) con nocturnidades incoherentes.
+                <button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                <?php $lista_pareo_contab = $_SESSION['pareo_contab_errores'] ?? []; ?>
+                <?php if (!empty($lista_pareo_contab)): ?>
+                <ul class="mt-2 mb-0 text-start" style="max-height:14rem; overflow-y:auto; padding-left:1.25rem;">
+                    <?php foreach ($lista_pareo_contab as $fila_pareo_contab): ?>
+                    <li><strong><?php echo htmlspecialchars($fila_pareo_contab['trabajador']); ?></strong>
+                        (ID <?php echo intval($fila_pareo_contab['id']); ?>):
+                        <?php echo htmlspecialchars($fila_pareo_contab['motivo']); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php endif; ?>
+                <small class="d-block w-100 mt-1" style="opacity:.85;">
+                    Corrija las nocturnidades en la captura (si el trabajador solo hace un turno, deje 0 en la otra franja) y vuelva a contabilizar.
+                </small>
+            </div>
             <?php elseif ($_GET['error'] == 'todos_duplicados'): ?>
             <div class="alert alert-danger bg-danger bg-opacity-25 border-danger text-white"><i class="fas fa-exclamation-triangle me-2"></i> Todos los seleccionados ya tienen nómina automática.<button type="button" class="btn-close" style="float:right;" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
             <?php elseif ($_GET['error'] == 'cuadre_pendiente'): ?>
@@ -5679,9 +5800,9 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
     <div class="d-flex align-items-center gap-2 mb-1" id="nomFiltrosToggle" style="cursor: pointer; user-select: none;">
         <i class="fas fa-filter" style="color: #60a5fa; font-size:1rem;"></i>
         <h5 class="mb-0" style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.9);">Filtros:</h5>
-        <i class="fas fa-chevron-down ms-auto" id="nomFiltrosChevron" style="color: rgba(255,255,255,0.4); font-size:0.7rem; transition: transform 0.3s ease;"></i>
+        <i class="fas fa-chevron-up ms-auto" id="nomFiltrosChevron" style="color: rgba(255,255,255,0.4); font-size:0.7rem; transition: transform 0.3s ease;"></i>
     </div>
-    <div id="nomFiltrosBody">
+    <div id="nomFiltrosBody" style="display:none;">
     <div class="row g-3 align-items-end">
         <div class="col-md-3">
             <label class="form-label"><i class="fas fa-user me-1"></i> Por Nombre</label>
@@ -5790,7 +5911,7 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
 		}
 		?>
 		<!-- Título de la Tarjeta del DataTable (Card Title) -->
-		<div class="card-header-custom mb-3 pb-2" style="border-bottom: 0.0625rem solid rgba(255,255,255,0.1);">
+		<div class="card-header-custom mb-3 pb-2" id="detalleNominaToggle" style="border-bottom: 0.0625rem solid rgba(255,255,255,0.1); cursor: pointer; user-select: none;">
 			<div class="d-flex justify-content-between align-items-center">
 				<h5 class="text-white mb-0" style="font-weight: 600; font-size:0.95rem;">
 					<i class="fas fa-file-invoice-dollar me-2" style="color: #60a5fa;"></i>
@@ -5799,6 +5920,7 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
 					<span class="mx-2" style="color: rgba(255,255,255,0.3);">|</span> 
 					Período: <span class="text-success"><?php echo htmlspecialchars($nombre_mes . ' ' . $anio); ?></span>
 				</h5>
+				<i class="fas fa-chevron-down ms-auto" id="detalleNominaChevron" style="color: rgba(255,255,255,0.4); font-size:0.7rem; transition: transform 0.3s ease;"></i>
 			</div>
 			<?php if ($badge_tarifa_extra !== ''): ?>
 			<div class="mt-2 mb-0 py-1 px-2" style="border-radius: 0.5rem; font-size:0.8rem; <?php echo $estilo_tarifa; ?>">
@@ -5810,6 +5932,7 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
 				<strong>Observaciones de Cierre:</strong> <span id="textoObservacionesCierre"><?php echo htmlspecialchars($observaciones_cierre); ?></span>
 			</div>
 		</div>
+		<div id="detalleNominaBody">
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <h5 class="mb-0"><i class="fas fa-list me-2"></i>Detalle de Nómina</h5>
@@ -5893,9 +6016,14 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
         <?php if ($tipo_nomina_activa == 'automatica' || $tipo_nomina_activa == 'extraordinaria'): ?>
             <th class="col-escala" rowspan="2">Escala</th>
             <th class="col-salario-basico" rowspan="2">Salario<br>Básico</th>
+            <?php if ($tipo_nomina_activa == 'extraordinaria'): ?>
+                <th class="col-valor-hora" rowspan="2" title="Tarifa horaria del trabajador según su escala salarial (sueldo por hora ordinaria)">Tarifa<br>Horaria</th>
+                <th class="col-tarifa-extra" rowspan="2" title="Opción de tarifa elegida al generar la nómina (Ley 189/2026 o Convenio Colectivo); se puede cambiar desde el modal de edición de cada fila">Tarifa<br>Extra</th>
+            <?php endif; ?>
             <th class="col-horas" rowspan="2"><?php echo $tipo_nomina_activa == 'extraordinaria' ? 'HE<br>Diurnas' : 'Horas<br>Trab'; ?></th>
             
             <?php if ($tipo_nomina_activa == 'extraordinaria'): ?>
+                <th class="col-hed" rowspan="2" title="Importe de las Horas Extras Diurnas (HE diurnas × tarifa HE diurnas)">$/HED</th>
                 <th class="col-noct-t" rowspan="2">Nt<br>19-23h</th>
                 <th class="col-noct-t-imp" rowspan="2">$/Nt<br>19-23h</th>
                 <th class="col-noct-d" rowspan="2">Nt<br>23-7h</th>
@@ -5904,10 +6032,9 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
                 <th class="col-dt-imp" rowspan="2">$/DT</th>
             <?php endif; ?>
             
-            <th class="col-salario-dev" rowspan="2">Salario<br>Dev</th>
-            <th class="col-valor-hora" rowspan="2">$/Hora</th>
-            
             <?php if ($tipo_nomina_activa == 'automatica'): ?>
+                <th class="col-salario-dev" rowspan="2">Salario<br>Dev</th>
+                <th class="col-valor-hora" rowspan="2">$/Hora</th>
                 <th colspan="2" class="col-feriados-header">Días Feriados</th>
                 <th colspan="2" class="col-vacaciones-header">Acum. Vacaciones</th>
                 <th class="col-otros-pagos" rowspan="2">Otros<br>Pagos</th>
@@ -5971,6 +6098,7 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
     <?php 
     $total_horas = 0; $total_feriados_dias = 0; $total_feriados_importe = 0; $total_devengado_calc = 0;
     $total_salario_laboral = 0; $total_descuentos = 0; $total_salario_basico = 0; $total_vacaciones_dias = 0;
+    $total_hed = 0;
     $total_vacaciones_importe = 0; $total_otros_pagos = 0;
     $total_horas_nocturnas = 0; $total_importe_nocturno = 0;
     $total_noct_tempranas = 0; $total_importe_noct_tempranas = 0;
@@ -6032,6 +6160,7 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
         $total_devengado_calc += $n['total_salario_devengado'] ?? 0;
         $total_pago_resultado += $n['pago_resultado'] ?? 0;
         $total_salario_laboral += $n['importe_salario_laboral'] ?? 0;
+        $total_hed += ($n['importe_salario_laboral'] ?? 0) - ($n['importe_doble_turno'] ?? 0);
         $total_descuentos += $n['descuentos'] ?? 0;
         $total_salario_basico += $n['salario_mensual'] ?? 0;
         $total_vacaciones_dias += ($n['dias_acumulados'] ?? 0) + $dias_acum_proy;
@@ -6121,6 +6250,16 @@ data-escala-descripcion="<?php
     <?php if ($tipo_nomina_activa == 'automatica' || $tipo_nomina_activa == 'extraordinaria'): ?>
         <td class="text-center col-escala"><?php echo $escala; ?></td>
         <td class="text-end col-salario-basico salario-basico">$<?php echo number_format($n['salario_mensual'], 2); ?></td>
+        <?php if ($tipo_nomina_activa == 'extraordinaria'): ?>
+            <td class="text-end col-valor-hora tarifa-horaria" title="Tarifa horaria del trabajador según su escala salarial (sueldo por hora ordinaria)">$<?php echo number_format($n['salario_hora_ordinaria'] ?? 0, 2); ?></td>
+            <td class="text-center col-tarifa-extra">
+                <?php if ((int)($n['usar_convenio'] ?? 0) === 1): ?>
+                    <span class="badge" style="background: rgba(16,185,129,0.18); border: 0.0625rem solid rgba(16,185,129,0.4); color: #6ee7b7; font-size:0.68rem; white-space:nowrap;" title="Convenio Colectivo de Trabajo (Empleador - Empleado)"><i class="fas fa-handshake me-1"></i>Convenio</span>
+                <?php else: ?>
+                    <span class="badge" style="background: rgba(245,158,11,0.18); border: 0.0625rem solid rgba(245,158,11,0.4); color: #fcd34d; font-size:0.68rem; white-space:nowrap;" title="Ley 189/2026 «Código de Trabajo» (arts. 227 y 230)"><i class="fas fa-landmark me-1"></i>Ley 189</span>
+                <?php endif; ?>
+            </td>
+        <?php endif; ?>
         <td class="text-center col-horas">
             <?php if (!$contabilizada): ?>
                 <input type="text" class="edit-input edit-horas" value="<?php echo number_format($n['horas_laboradas'], 2); ?>">
@@ -6128,6 +6267,7 @@ data-escala-descripcion="<?php
         </td>
         
         <?php if ($tipo_nomina_activa == 'extraordinaria'): ?>
+            <td class="text-end col-hed" title="Importe de las Horas Extras Diurnas (HE diurnas × tarifa HE diurnas)">$<?php echo number_format(($n['importe_salario_laboral'] ?? 0) - ($n['importe_doble_turno'] ?? 0), 2); ?></td>
             <td class="text-center col-noct-t">
                 <?php if (!$contabilizada): ?>
                     <input type="text" class="edit-input edit-noct-temprana" value="<?php echo number_format($n['horas_nocturnas_tempranas'] ?? 0, 2); ?>">
@@ -6148,10 +6288,10 @@ data-escala-descripcion="<?php
             <td class="text-end col-dt-imp">$<?php echo number_format($n['importe_doble_turno'] ?? 0, 2); ?></td>
         <?php endif; ?>
         
+        <?php if ($tipo_nomina_activa == 'automatica'): ?>
         <td class="text-end col-salario-dev salario-laboral">$<?php echo number_format($n['importe_salario_laboral'], 2); ?></td>
-        <td class="text-end col-valor-hora salario-hora-real">$<?php echo number_format(($n['horas_laboradas'] > 0) ? $n['importe_salario_laboral'] / $n['horas_laboradas'] : 0, 2); ?></td>
         
-		<?php if ($tipo_nomina_activa == 'automatica'): ?>
+                        <td class="text-end col-valor-hora salario-hora-real">$<?php echo number_format(($n['horas_laboradas'] > 0) ? $n['importe_salario_laboral'] / $n['horas_laboradas'] : 0, 2); ?></td>
                         <td class="text-center col-feriados-dias">
                             <?php if (!$contabilizada): ?>
                                 <input type="text" class="edit-input edit-feriados" value="<?php echo number_format($n['dias_feriados'] ?? 0, 2); ?>">
@@ -6320,15 +6460,16 @@ if ($existe_nomina) {
             
             <td class="text-end fw-bold">TOTALES:</td>
             <td class="text-end total-salario-basico-footer">$<?php echo number_format($total_salario_basico, 2); ?></td>
+            <td class="text-center">-</td> <!-- Tarifa Horaria (tasa por trabajador, no se suma) -->
+            <td class="text-center">-</td> <!-- Tarifa Extra -->
             <td class="text-center total-horas-footer"><?php echo number_format($total_horas, 2); ?></td>
-            <td class="text-center"><?php echo number_format($total_noct_tempranas, 2); ?></td>
-            <td class="text-end">$<?php echo number_format($total_importe_noct_tempranas, 2); ?></td>
-            <td class="text-center"><?php echo number_format($total_noct_tardias, 2); ?></td>
-            <td class="text-end">$<?php echo number_format($total_importe_noct_tardias, 2); ?></td>
-            <td class="text-center"><?php echo number_format($total_doble_turno, 2); ?></td>
-            <td class="text-end">$<?php echo number_format($total_importe_doble_turno, 2); ?></td>
-            <td class="text-end total-salario-laboral-footer">$<?php echo number_format($total_salario_laboral, 2); ?></td>
-            <td class="text-end total-promedio-hora-footer">$<?php echo number_format($total_horas > 0 ? $total_salario_laboral / $total_horas : 0, 2); ?></td>
+            <td class="text-end total-hed-footer">$<?php echo number_format($total_hed, 2); ?></td>
+            <td class="text-center total-nt-temprana-footer"><?php echo number_format($total_noct_tempranas, 2); ?></td>
+            <td class="text-end total-importe-nt-temprana-footer">$<?php echo number_format($total_importe_noct_tempranas, 2); ?></td>
+            <td class="text-center total-nt-tardia-footer"><?php echo number_format($total_noct_tardias, 2); ?></td>
+            <td class="text-end total-importe-nt-tardia-footer">$<?php echo number_format($total_importe_noct_tardias, 2); ?></td>
+            <td class="text-center total-doble-turno-footer"><?php echo number_format($total_doble_turno, 2); ?></td>
+            <td class="text-end total-importe-doble-turno-footer">$<?php echo number_format($total_importe_doble_turno, 2); ?></td>
             
             <!-- Columnas comunes de totales y retenciones en orden correcto -->
             <td class="text-end total-devengado-footer">$<?php echo number_format($total_devengado, 2); ?></td>
@@ -6444,6 +6585,7 @@ if ($existe_nomina) {
 
 </table
 >
+		</div>
 		</div>
 		</div>
     <?php endif; ?>
@@ -6655,7 +6797,20 @@ if ($existe_nomina) {
                 <input type="hidden" name="tipo_descuento_extra" id="tipoDescuentoExtra" value="total_rangos">
                 <input type="hidden" name="usar_convenio" id="usarConvenioExtra" value="0">
                 <div class="modal-body">
-                    <div id="labelTarifaExtra" class="alert py-2 px-3 mb-3 small text-warning" style="border: 0.0625rem solid rgba(255,255,255,0.15); background: var(--panel-2);"></div>
+                    <div id="labelTarifaExtra" class="alert py-2 px-3 mb-2 small text-warning" style="border: 0.0625rem solid rgba(255,255,255,0.15); background: var(--panel-2);"></div>
+                    <div id="grupoTarifaExtra" class="mb-3">
+                        <label class="form-label d-block mb-2"><i class="fas fa-balance-scale me-1 text-warning"></i> Tarifa empleada (puede cambiarla aquí)</label>
+                        <div class="d-flex gap-4 flex-wrap">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="extraTarifaRadio" id="extraTarifaLey" value="ley">
+                                <label class="form-check-label small" for="extraTarifaLey"><i class="fas fa-landmark me-1 text-warning"></i> Ley 189/2026 (recargo + nocturnidades)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="extraTarifaRadio" id="extraTarifaConvenio" value="convenio">
+                                <label class="form-check-label small" for="extraTarifaConvenio"><i class="fas fa-handshake me-1 text-success"></i> Convenio Colectivo Empleador - Empleado</label>
+                            </div>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-md-5">
                             <div class="row g-2 mb-3">
@@ -7828,7 +7983,7 @@ function generarTirillasPago(trabajadores) {
         filasHtml += `
             <div class="tirilla">
                 <div class="header-tirilla">
-                    ${escapeHtml(nombreEmpresa)} - NOTIFICACION DE PAGO - <span style="color:red;">${mesAnio}</span> - ${escapeHtml(t.ci)}  <span style="color:red;">${escapeHtml(t.nombre)}</span> (${tipoNomina})
+                    ${escapeHtml(nombreEmpresa)} - NOTIFICACION DE PAGO - <span style="color:red;">${mesAnio}</span> - ${escapeHtml(t.ci)}  <span style="color:red;">${escapeHtml(t.nombre)}</span> (${tipoNomina})${tipoNominaActiva === 'extraordinaria' && t.tarifaExtra ? ' Tarifa: ' + escapeHtml(t.tarifaExtra) : ''}
                 </div>
                 ${tablaTirillaHtml}
                 ${infoVacacionesHtml}

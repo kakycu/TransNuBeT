@@ -2533,6 +2533,33 @@ function calcularImporteTrabajoExtraordinario($salario_hora, array $cantidades, 
 }
 }
 
+if (!function_exists('validarPareoNocturno48')) {
+    /**
+     * Coherencia de la nocturnidad por Convenio. Hay serenos de turno exclusivo
+     * (solo 19:00-23:00 o solo 23:00-07:00): si una de las dos franjas está en
+     * cero se permite cualquier cantidad de horas en la otra. Cuando hay ambas
+     * franjas, cada noche son 4 h (19:00-23:00) + 8 h (23:00-07:00), de modo que
+     * la tardía debe ser el doble de la temprana con margen de ±1 noche parcial
+     * (el turno puede empezar/finalizar fuera de la franja completa). Devuelve
+     * null si el parámetro cumple o un mensaje con el error si las dos franjas
+     * narran historias distintas (p. ej. 132:132). El pago es SIEMPRE por hora:
+     * la noche completa 4:8 da $150, cualquier parcial se paga proporcional,
+     * así que aquí solo se valida coherencia.
+     */
+    function validarPareoNocturno48($noct_t, $noct_d) {
+        $noct_t = max(0, (float)$noct_t);
+        $noct_d = max(0, (float)$noct_d);
+        if ($noct_t == 0 || $noct_d == 0) return null;
+        $desvio = abs($noct_d - ($noct_t * 2));
+        if ($desvio > 8.001) {
+            $min = max(0, round($noct_t * 2 - 8, 2));
+            $max = round($noct_t * 2 + 8, 2);
+            return 'Nocturnidades incoherentes: con las dos franjas activas cada noche son 4 h (19:00-23:00) + 8 h (23:00-07:00), con margen de ±1 noche parcial. Con ' . $noct_t . ' h tempranas, las tardías deben estar entre ' . $min . ' y ' . $max . ' h (capturó ' . $noct_d . ' h). Si el trabajador solo hace un turno (19:00-23:00 o 23:00-07:00), capture 0 en la otra franja.';
+        }
+        return null;
+    }
+}
+
 if (!function_exists('horasTrabajoExtraordinarioTotales')) {
 /**
  * Total de horas extraordinarias de un trabajador en un año natural, sumando horas
