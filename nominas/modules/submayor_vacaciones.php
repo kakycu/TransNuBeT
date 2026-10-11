@@ -116,8 +116,8 @@ if (!function_exists('registrarMovimientoVacacionesValidado')) {
             ]);
 
             // 2. Actualizar el saldo acumulado en la ficha del trabajador
-            // Disfrute descuenta; acumulación suma; ajuste aplica el signo del día (permite ajustes negativos)
-            $mod_dias = ($tipo_mov === 'disfrute') ? -$dias : $dias;
+            // Disfrute y liquidación descuentan; acumulación suma; ajuste aplica el signo del día (permite ajustes negativos)
+            $mod_dias = ($tipo_mov === 'disfrute' || $tipo_mov === 'liquidac') ? -$dias : $dias;
 
             $stmt_upd = $pdo->prepare("
                 UPDATE trabajadores 
@@ -298,14 +298,14 @@ if (isset($_GET['versat_report']) && $_GET['versat_report'] == '1') {
             e.escala_numero,
             co.nombre as categoria_ocupacional,
             COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'acumulacion' THEN sv.dias
-                              WHEN sv.tipo_movimiento = 'disfrute' THEN -sv.dias
+                              WHEN sv.tipo_movimiento IN ('disfrute','liquidac') THEN -sv.dias
                               ELSE sv.dias END), 0) as saldo_periodo,
             COALESCE((SELECT SUM(CASE WHEN s.tipo_movimiento = 'acumulacion' THEN s.dias
-                                      WHEN s.tipo_movimiento = 'disfrute' THEN -s.dias
+                                      WHEN s.tipo_movimiento IN ('disfrute','liquidac') THEN -s.dias
                                       ELSE 0 END)
                       FROM submayor_vacaciones s
                       WHERE s.trabajador_id = t.id
-                        AND s.tipo_movimiento IN ('acumulacion', 'disfrute')
+                        AND s.tipo_movimiento IN ('acumulacion', 'disfrute', 'liquidac')
                         AND s.periodo_hasta < :desde_ini), 0) as saldo_inicial
         FROM trabajadores t
         LEFT JOIN submayor_vacaciones sv ON t.id = sv.trabajador_id
@@ -1288,17 +1288,19 @@ $sql_saldos = "
         COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'acumulacion' THEN sv.importe ELSE 0 END), 0) as importe_acumulado,
         COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'disfrute' THEN sv.dias ELSE 0 END), 0) as total_disfrutado,
         COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'disfrute' THEN sv.importe ELSE 0 END), 0) as importe_disfrutado,
+        COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'liquidac' THEN sv.dias ELSE 0 END), 0) as total_liquidado,
+        COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'liquidac' THEN sv.importe ELSE 0 END), 0) as importe_liquidado,
         COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'ajuste' THEN sv.dias ELSE 0 END), 0) as total_ajuste_dias,
         COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'ajuste' THEN sv.importe ELSE 0 END), 0) as total_ajuste_importe,
         COALESCE(SUM(CASE WHEN sv.tipo_movimiento = 'acumulacion' THEN sv.dias
-                          WHEN sv.tipo_movimiento = 'disfrute' THEN -sv.dias
+                          WHEN sv.tipo_movimiento IN ('disfrute','liquidac') THEN -sv.dias
                           ELSE sv.dias END), 0) as saldo_periodo,
         COALESCE((SELECT SUM(CASE WHEN s.tipo_movimiento = 'acumulacion' THEN s.dias
-                                  WHEN s.tipo_movimiento = 'disfrute' THEN -s.dias
+                                  WHEN s.tipo_movimiento IN ('disfrute','liquidac') THEN -s.dias
                                   ELSE 0 END)
                   FROM submayor_vacaciones s
                   WHERE s.trabajador_id = t.id
-                    AND s.tipo_movimiento IN ('acumulacion', 'disfrute')
+                    AND s.tipo_movimiento IN ('acumulacion', 'disfrute', 'liquidac')
                     AND s.periodo_hasta < :desde_ini), 0) as saldo_inicial
     FROM trabajadores t
     LEFT JOIN submayor_vacaciones sv ON t.id = sv.trabajador_id
@@ -1347,7 +1349,7 @@ $trabajadores_excedidos_ids = [];
 try {
     $stmt_exc = $pdo->query("
         SELECT trabajador_id,
-               COALESCE(SUM(CASE WHEN tipo_movimiento = 'disfrute' THEN -dias ELSE dias END), 0) as saldo_submayor
+               COALESCE(SUM(CASE WHEN tipo_movimiento IN ('disfrute','liquidac') THEN -dias ELSE dias END), 0) as saldo_submayor
         FROM submayor_vacaciones
         GROUP BY trabajador_id
         HAVING saldo_submayor > 20
@@ -1398,6 +1400,8 @@ if ($trabajador_id) {
 //  - Pierna B (Trazabilidad): toda nómina contabilizada con efecto de vacaciones (automática/ajuste
 //    por acumulación, o tipo 'vacaciones' por disfrute) debe tener su movimiento en submayor_vacaciones,
 //    enlazado por nomina_id y con los mismos días.
+//  Las liquidaciones de fracciones (tipo_movimiento='liquidac') se contemplan como descuento de saldo,
+//  igual que un disfrute, y se detectan en la pierna B vía EXISTS sobre 'liquidac'.
 // Los trabajadores con no_acumular_vacaciones = 1 se excluyen: su acumulación se paga en efectivo y
 // por diseño no genera movimientos en submayor ni modifica su saldo.
 // =========================================================
@@ -1411,12 +1415,12 @@ try {
     $stmt_cuadre = $pdo->query("
         SELECT t.id, t.codigo, t.nombre_completo, t.activo, t.no_acumular_vacaciones,
                ROUND(t.vacaciones_acumuladas, 2) as acum_trab,
-               ROUND(COALESCE((SELECT SUM(CASE WHEN s.tipo_movimiento = 'disfrute' THEN -s.dias ELSE s.dias END)
+               ROUND(COALESCE((SELECT SUM(CASE WHEN s.tipo_movimiento IN ('disfrute','liquidac') THEN -s.dias ELSE s.dias END)
                                FROM submayor_vacaciones s WHERE s.trabajador_id = t.id), 0), 2) as saldo_submayor,
                ROUND(COALESCE((SELECT SUM(CASE WHEN n.tipo_nomina = 'vacaciones' THEN -n.dias_vacaciones_tomados
                                                WHEN n.tipo_nomina IN ('automatica','ajuste') AND n.vacaciones_acumuladas_mes > 0
                                                     AND EXISTS(SELECT 1 FROM submayor_vacaciones s2
-                                                               WHERE s2.nomina_id = n.id AND s2.tipo_movimiento = 'disfrute')
+                                                               WHERE s2.nomina_id = n.id AND s2.tipo_movimiento IN ('disfrute','liquidac'))
                                                     THEN -n.vacaciones_acumuladas_mes
                                                WHEN n.tipo_nomina IN ('automatica','ajuste') THEN n.vacaciones_acumuladas_mes
                                                ELSE 0 END)
@@ -1430,7 +1434,7 @@ try {
         SELECT n.trabajador_id,
                SUM(CASE WHEN n.tipo_nomina IN ('automatica','ajuste') AND n.vacaciones_acumuladas_mes > 0
                          AND NOT EXISTS(SELECT 1 FROM submayor_vacaciones sd2
-                                        WHERE sd2.nomina_id = n.id AND sd2.tipo_movimiento = 'disfrute')
+                                        WHERE sd2.nomina_id = n.id AND sd2.tipo_movimiento IN ('acumulacion','liquidac'))
                          AND (sm.id IS NULL OR ABS(COALESCE(sm.dias, 0) - n.vacaciones_acumuladas_mes) > 0.009)
                          THEN 1 ELSE 0 END) AS nomina_sin_acumulacion,
                SUM(CASE WHEN n.tipo_nomina = 'vacaciones' AND n.dias_vacaciones_tomados > 0
@@ -2037,7 +2041,7 @@ CARDS ============ */
 /* Tarjetas de cristal (banner / resumen) */
 
 /* ============ STATS ============ */
-.stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap:0.875rem; }
+.stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap:0.875rem; }
 .stat-card-prof {
     background: linear-gradient(160deg, var(--panel-2), var(--panel));
     border: 0.0625rem solid var(--border); border-radius: var(--radius);
@@ -2674,12 +2678,14 @@ IMPRESIÓN ============ */
     </div>
 </div>
 
-<!-- Metodología Ley 116 Cuba Banner -->
+<!-- Metodología Ley 189/2026 (Código de Trabajo) Banner -->
 <?php 
 $total_acumulado = array_sum(array_column($saldos, 'total_acumulado'));
 $total_devengado = array_sum(array_column($saldos, 'importe_acumulado'));
 $total_disfrutado = array_sum(array_column($saldos, 'total_disfrutado'));
 $total_importe_disfrutado = array_sum(array_column($saldos, 'importe_disfrutado'));
+$total_liquidado = array_sum(array_column($saldos, 'total_liquidado'));
+$total_importe_liquidado = array_sum(array_column($saldos, 'importe_liquidado'));
 $total_ajuste_dias = array_sum(array_column($saldos, 'total_ajuste_dias'));
 $total_ajuste_importe = array_sum(array_column($saldos, 'total_ajuste_importe'));
 $total_saldo_inicial = array_sum(array_column($saldos, 'saldo_inicial'));
@@ -2697,7 +2703,7 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
             <div class="d-flex align-items-center flex-wrap gap-2">
                 <i class="fas fa-scale-balanced fa-2x" style="color: #60a5fa;"></i>
                 <strong>Bases de Auditoría Cubana</strong>
-                <span class="badge-factor"><i class="fas fa-percent me-1"></i>Base 9.09%</span>
+                <span class="badge-factor"><i class="fas fa-percent me-1"></i>Base 9.09% · <strong style="color:var(--color-success-soft);font-size:0.7rem;">Ley 189/2026, Art. 239.1</strong></span>
             </div>
             <p class="mb-1 text-muted-win" style="font-size:0.85rem;">
                 El submayor acumula el <strong style="color:var(--color-success-soft);">tiempo de descanso</strong> y el <strong style="color:var(--color-success-soft);">importe acumulado</strong> sobre la base del 9.09% del total de salarios devengados en el período de pago.
@@ -2705,29 +2711,6 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
             </p>
         </div>
     </div>
-</div>
-
-<!-- Línea de Resumen del Período -->
-<div class="glass-card mb-4 p-4 fade-in-up">
-    <small class="d-flex align-items-start gap-3 flex-wrap">
-        <div class="text-muted-win">
-            <i class="fas fa-calendar-week me-1" style="color:#60a5fa;"></i>
-            Período consultado: <strong><?php echo htmlspecialchars($rango_string); ?></strong> · 
-            <span class="badge px-2 py-1 rounded-pill" style="background: rgba(var(--color-success-rgb),0.15); border: 0.0625rem solid rgba(var(--color-success-rgb),0.4); color: var(--color-success-soft);">
-                <i class="fas fa-users me-1"></i><?php echo count($saldos); ?> trabajadores
-            </span>
-            De ellos: 
-            <span class="badge px-2 py-1 rounded-pill" style="background: rgba(var(--blue-soft-rgb),0.15); border: 0.0625rem solid rgba(var(--blue-soft-rgb),0.4); color: var(--blue-soft);">
-                <i class="fas fa-user-check me-1"></i><?php echo count($activos); ?> activos
-            </span>
-            <span class="badge px-2 py-1 rounded-pill" style="background: rgba(var(--amber-soft-rgb),0.15); border: 0.0625rem solid rgba(var(--amber-soft-rgb),0.4); color: var(--amber-soft);">
-                <i class="fas fa-user-slash me-1"></i><?php echo count($bajas); ?> Bajas
-            </span>
-            <span class="badge px-2 py-1 rounded-pill" style="background: rgba(239,68,68,0.13); border: 0.0625rem solid rgba(239,68,68,0.4); color: var(--red);">
-                <i class="fas fa-exclamation-triangle me-1"></i><?php echo $total_excedidos; ?> con más de 20 días
-            </span>
-        </div>
-    </small>
 </div>
 
 <!-- ========================================== -->
@@ -2757,6 +2740,18 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                 <div class="stat-bar"><i style="width:<?php echo ($total_acumulado > 0) ? max(2, min(100, round($total_disfrutado / $total_acumulado * 100))) : 0; ?>%; background:linear-gradient(90deg,#d97706,#fbbf24);"></i></div>
             </div>
 
+            <div class="stat-card-prof" style="border-left:0.1875rem solid var(--teal, #14b8a6);">
+                <div class="stat-top">
+                    <div>
+                        <div class="stat-value" style="color:#5eead4;"><?php echo number_format($total_liquidado, 2); ?><small> días</small></div>
+                        <div class="stat-label">Liquidaciones</div>
+                        <div class="stat-sub"><?php echo formatearMoneda($total_importe_liquidado); ?> liquidado</div>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(20,184,166,0.14); color:#2dd4bf;"><i class="fas fa-money-bill-wave"></i></div>
+                </div>
+                <div class="stat-bar"><i style="width:<?php echo ($total_acumulado > 0) ? max(2, min(100, round($total_liquidado / $total_acumulado * 100))) : 0; ?>%; background:linear-gradient(90deg,#0d9488,#2dd4bf);"></i></div>
+            </div>
+
             <div class="stat-card-prof" style="border-left:0.1875rem solid var(--blue);">
                 <div class="stat-top">
                     <div>
@@ -2768,7 +2763,6 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                 </div>
                 <div class="stat-bar"><i style="width:100%; background:linear-gradient(90deg,#2563eb,#818cf8);"></i></div>
             </div>
-
             <div class="stat-card-prof" style="border-left:0.1875rem solid var(--violet);">
                 <div class="stat-top">
                     <div>
@@ -2847,6 +2841,30 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                 </div>
             </div>
         </div>
+
+<!-- Línea de Resumen del Período -->
+<div class="glass-card mb-3 p-4 fade-in-up" style="animation-delay:0.05s;">
+    <small class="d-flex align-items-start gap-3 flex-wrap">
+        <div class="text-muted-win">
+            <i class="fas fa-calendar-week me-1" style="color:#60a5fa;"></i>
+            <?php $rango_html = preg_replace('/(\d{2}\/\d{2}\/\d{4})/', '<strong style="color:var(--color-success-soft);">$1</strong>', htmlspecialchars($rango_string)); ?>
+            Período consultado: <?php echo $rango_html; ?> ·
+            <span class="badge px-2 py-1 rounded-pill" style="background: rgba(var(--color-success-rgb),0.15); border: 0.0625rem solid rgba(var(--color-success-rgb),0.4); color: var(--color-success-soft);">
+                <i class="fas fa-users me-1"></i><?php echo count($saldos); ?> trabajadores
+            </span>
+            De ellos:
+            <span class="badge px-2 py-1 rounded-pill" style="background: rgba(var(--blue-soft-rgb),0.15); border: 0.0625rem solid rgba(var(--blue-soft-rgb),0.4); color: var(--blue-soft);">
+                <i class="fas fa-user-check me-1"></i><?php echo count($activos); ?> activos
+            </span>
+            <span class="badge px-2 py-1 rounded-pill" style="background: rgba(var(--amber-soft-rgb),0.15); border: 0.0625rem solid rgba(var(--amber-soft-rgb),0.4); color: var(--amber-soft);">
+                <i class="fas fa-user-slash me-1"></i><?php echo count($bajas); ?> Bajas
+            </span>
+            <span class="badge px-2 py-1 rounded-pill" style="background: rgba(239,68,68,0.13); border: 0.0625rem solid rgba(239,68,68,0.4); color: var(--red);">
+                <i class="fas fa-exclamation-triangle me-1"></i><?php echo $total_excedidos; ?> con más de 20 días
+            </span>
+        </div>
+    </small>
+</div>
 
         <!-- ============ FILTROS ============ -->
         <div class="card-prof mb-3 fade-in-up" style="animation-delay:0.1s;">
@@ -2929,6 +2947,7 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                                 <option value="">-- Todos --</option>
                                 <option value="acumulacion" <?php echo $tipo_movimiento == 'acumulacion' ? 'selected' : ''; ?>>Acumulación</option>
                                 <option value="disfrute" <?php echo $tipo_movimiento == 'disfrute' ? 'selected' : ''; ?>>Disfrute</option>
+                                <option value="liquidac" <?php echo $tipo_movimiento == 'liquidac' ? 'selected' : ''; ?>>Liquidación</option>
                                 <option value="ajuste" <?php echo $tipo_movimiento == 'ajuste' ? 'selected' : ''; ?>>Ajuste</option>
                             </select>
                         </div>
@@ -3022,6 +3041,8 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                                 <th class="c-center"><span>Importe </span><span>Acum.</span></th>
                                 <th class="c-center"><span>Días </span><span>Disfr.</span></th>
                                 <th class="c-center"><span>Importe </span><span>Disfr.</span></th>
+                                <th class="c-center"><span>Días </span><span>Liquid.</span></th>
+                                <th class="c-center"><span>Importe </span><span>Liquid.</span></th>
                                 <th class="c-center"><span>Días </span><span>Ajuste</span></th>
                                 <th class="c-center"><span>Saldo </span><span>Inicial</span></th>
                                 <th class="c-center"><span>Saldo al </span><span>Cierre</span></th>
@@ -3059,6 +3080,8 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                                 <td class="c-num" style="color:var(--color-success-soft);"><?php echo formatearMoneda($s['importe_acumulado']); ?></td>
                                 <td class="c-num"><?php echo number_format($s['total_disfrutado'], 2); ?></td>
                                 <td class="c-num" style="color:var(--amber-soft);"><?php echo formatearMoneda($s['importe_disfrutado']); ?></td>
+                                <td class="c-num"><?php echo number_format($s['total_liquidado'], 2); ?></td>
+                                <td class="c-num" style="color:#2dd4bf;"><?php echo formatearMoneda($s['importe_liquidado']); ?></td>
                                 <td class="c-num"><?php echo number_format($s['total_ajuste_dias'], 2); ?></td>
                                 <td class="c-num"><?php echo number_format($s['saldo_inicial'], 2); ?></td>
                                 <td class="c-num saldo-cierre fw-bold <?php echo $fila_excedida ? 'text-danger' : ''; ?>" style="<?php echo $fila_excedida ? '' : 'color:#a78bfa;'; ?>"><?php echo number_format($s['saldo_cierre'], 2); ?></td>
@@ -3073,6 +3096,8 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                                 <td class="c-num"><?php echo formatearMoneda($total_devengado); ?></td>
                                 <td class="c-num"><?php echo number_format($total_disfrutado, 2); ?></td>
                                 <td class="c-num"><?php echo formatearMoneda($total_importe_disfrutado); ?></td>
+                                <td class="c-num"><?php echo number_format($total_liquidado, 2); ?></td>
+                                <td class="c-num"><?php echo formatearMoneda($total_importe_liquidado); ?></td>
                                 <td class="c-num"><?php echo number_format($total_ajuste_dias, 2); ?></td>
                                 <td class="c-num"><?php echo number_format($total_saldo_inicial, 2); ?></td>
                                 <td class="c-num"><?php echo number_format($total_saldo, 2); ?></td>
@@ -3120,6 +3145,8 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                                         <span class="badge-op badge-acumulacion"><i class="fas fa-calendar-plus"></i> Acumulado</span>
                                     <?php elseif ($m['tipo_movimiento'] === 'disfrute'): ?>
                                         <span class="badge-op badge-disfrute"><i class="fas fa-calendar-minus"></i> Disfrutado</span>
+                                    <?php elseif ($m['tipo_movimiento'] === 'liquidac'): ?>
+                                        <span class="badge-op badge-disfrute"><i class="fas fa-calendar-check"></i> Liquidado</span>
                                     <?php else: ?>
                                         <span class="badge-op badge-ajuste"><i class="fas fa-balance-scale"></i> Ajuste</span>
                                     <?php endif; ?>
@@ -3213,6 +3240,8 @@ $total_excedidos = count(array_filter($saldos, function ($s) use ($trabajadores_
                                             <span class="badge-op badge-acumulacion"><i class="fas fa-plus"></i> Acumulación</span>
                                         <?php elseif ($mov['tipo_movimiento'] === 'disfrute'): ?>
                                             <span class="badge-op badge-disfrute"><i class="fas fa-minus"></i> Disfrute</span>
+                                        <?php elseif ($mov['tipo_movimiento'] === 'liquidac'): ?>
+                                            <span class="badge-op badge-disfrute"><i class="fas fa-calendar-check"></i> Liquidación</span>
                                         <?php else: ?>
                                             <span class="badge-op badge-ajuste"><i class="fas fa-balance-scale"></i> Ajuste Manual</span>
                                         <?php endif; ?>
@@ -4732,6 +4761,8 @@ window.verHistorialTrabajador = function (trabajadorId, nombreCompleto) {
                         conceptBadge = '<span class="badge-op badge-acumulacion"><i class="fas fa-plus me-1"></i>Acumulado</span>';
                     } else if (reg.tipo_movimiento === 'disfrute') {
                         conceptBadge = '<span class="badge-op badge-disfrute"><i class="fas fa-minus me-1"></i>Disfrute</span>';
+                    } else if (reg.tipo_movimiento === 'liquidac') {
+                        conceptBadge = '<span class="badge-op badge-disfrute"><i class="fas fa-calendar-check me-1"></i>Liquidación</span>';
                     } else {
                         conceptBadge = '<span class="badge-op badge-ajuste"><i class="fas fa-balance-scale me-1"></i>Ajuste</span>';
                     }
@@ -4836,6 +4867,8 @@ window.actualizarLibroAuxiliar = function () {
                     badge = '<span class="badge-op badge-acumulacion"><i class="fas fa-plus"></i> Acumulación</span>';
                 } else if (reg.tipo_movimiento === 'disfrute') {
                     badge = '<span class="badge-op badge-disfrute"><i class="fas fa-minus"></i> Disfrute</span>';
+                } else if (reg.tipo_movimiento === 'liquidac') {
+                    badge = '<span class="badge-op badge-disfrute"><i class="fas fa-calendar-check"></i> Liquidación</span>';
                 } else {
                     badge = '<span class="badge-op badge-ajuste"><i class="fas fa-balance-scale"></i> Ajuste Manual</span>';
                 }
@@ -4925,6 +4958,8 @@ window.actualizarAuxiliarIndividual = function () {
                     badge = '<span class="badge-op badge-acumulacion"><i class="fas fa-plus me-1"></i>Acumulado</span>';
                 } else if (reg.tipo_movimiento === 'disfrute') {
                     badge = '<span class="badge-op badge-disfrute"><i class="fas fa-minus me-1"></i>Disfrute</span>';
+                } else if (reg.tipo_movimiento === 'liquidac') {
+                    badge = '<span class="badge-op badge-disfrute"><i class="fas fa-calendar-check me-1"></i>Liquidación</span>';
                 } else {
                     badge = '<span class="badge-op badge-ajuste"><i class="fas fa-balance-scale me-1"></i>Ajuste</span>';
                 }

@@ -2301,6 +2301,7 @@ function updateAjusteList() {
     }).join('');
     
     $('#ajusteSelectedList').html(html || '<em class="text-white-50"><i class="fas fa-users me-1"></i>Seleccione trabajadores de la lista</em>');
+    refrescarEstadoQuitarTodos('btnQuitarTodosAjuste', selectedAjuste.length);
     updateAjusteTotals();
 }
 
@@ -2670,6 +2671,43 @@ if ($('#consultaAnioSelect').val()) {
     var selectedWorkers = [];
     var selectedBonos = [];
     var selectedExtra = [];
+
+    // Botón "Quitar Todos" de los modales con selección de trabajadores:
+    // deshabilitado con 0 seleccionados, habilitado desde 1 en adelante.
+    function refrescarEstadoQuitarTodos(btnId, cantidad) {
+        var $btn = $('#' + btnId);
+        if ($btn.length) {
+            $btn.prop('disabled', !(cantidad > 0));
+        }
+    }
+
+    $(document).on('click', '#btnQuitarTodosAjuste', function(){
+        if (!selectedAjuste.length) return;
+        selectedAjuste = [];
+        renderAjusteWorkerList($('#searchAjusteWorker').val());
+        updateAjusteList();
+    });
+
+    $(document).on('click', '#btnQuitarTodosExtra', function(){
+        if (!selectedExtra.length) return;
+        selectedExtra = [];
+        renderExtraWorkerList($('#searchExtraWorker').val());
+        updateExtraList();
+    });
+
+    $(document).on('click', '#btnQuitarTodosVac', function(){
+        if (!selectedWorkers.length) return;
+        selectedWorkers = [];
+        renderWorkerList($('#searchWorker').val());
+        updateSelectedList();
+    });
+
+    $(document).on('click', '#btnQuitarTodosBono', function(){
+        if (!selectedBonos.length) return;
+        selectedBonos = [];
+        renderBonoWorkerList($('#searchBonoWorker').val());
+        updateBonosList();
+    });
     var idsConNomina = <?php echo json_encode($ids_con_nomina_vacaciones); ?>;
     var trabajadores = <?php echo json_encode($trabajadores); ?>;
     var trabajadoresLiquidacion = <?php echo json_encode($trabajadores_liquidacion); ?>;
@@ -12459,6 +12497,7 @@ function updateExtraList(focusId) {
     }).join('');
     
     $('#selectedExtraList').html(html || '<em class="text-white-50"><i class="fas fa-users me-1"></i>Seleccione trabajadores de la lista izquierda</em>');
+    refrescarEstadoQuitarTodos('btnQuitarTodosExtra', selectedExtra.length);
     
     if (focusId) {
         setTimeout(function() {
@@ -12930,6 +12969,7 @@ function updateSelectedList(focusId) {
     });
     
     $('#selectedWorkersList').html(html || '<div style="color: #aaa; text-align: center; padding:1.25rem;"><i class="fas fa-users me-1"></i>Seleccione trabajadores de la lista izquierda</div>');
+    refrescarEstadoQuitarTodos('btnQuitarTodosVac', selectedWorkers.length);
     
     // Verificación defensiva antes de aplicar el foco
     if (typeof focusId !== 'undefined' && focusId) {
@@ -13262,6 +13302,7 @@ function updateBonosList(focusId) {
         }, 50);
     }
     
+    refrescarEstadoQuitarTodos('btnQuitarTodosBono', selectedBonos.length);
     updateBonosPreviewTotals();
 }
     

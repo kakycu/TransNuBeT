@@ -232,12 +232,12 @@ try {
         ];
     }
 
-    // Trabajadores con más de 20 días de vacaciones en el submayor (Ley 116)
+    // Trabajadores con más de 20 días de vacaciones en el submayor (Ley 189/2026)
     $trabajadores_excedidos = [];
     $stmt_exc = $pdo->query("
         SELECT t.id, t.codigo, t.nombre_completo, a.nombre_area, cc.nombre as centro_costo,
                COALESCE(SUM(
-                   CASE WHEN sv.tipo_movimiento = 'disfrute' THEN -sv.dias ELSE sv.dias END
+                   CASE WHEN sv.tipo_movimiento IN ('disfrute','liquidac') THEN -sv.dias ELSE sv.dias END
                ), 0) as saldo_submayor
         FROM trabajadores t
         INNER JOIN submayor_vacaciones sv ON sv.trabajador_id = t.id
@@ -6003,7 +6003,7 @@ if (!function_exists('nombreMesEspanol')) {
 }
 ?>
 
-<!-- Modal: Trabajadores con más de 20 días de vacaciones en el submayor (Ley 116) -->
+<!-- Modal: Trabajadores con más de 20 días de vacaciones en el submayor (Ley 189/2026) -->
 <div class="modal fade" id="modalVacacionesExcedidas" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content" style="background: var(--panel); backdrop-filter: blur(1.25rem); border: 0.0625rem solid rgba(255,255,255,0.1); border-radius: 1.25rem; color: var(--txt);">

@@ -2103,7 +2103,7 @@ var CONTENIDO_MODALES_FOOTER = {
             '<h4>Traza completa</h4>' +
             '<p>Queda constancia de quién realizó cada operación, cuándo y qué cambios se efectuaron sobre los registros de nóminas, trabajadores y configuraciones, garantizando la trazabilidad total del proceso.</p>' +
             '<h4>Cumplimiento normativo</h4>' +
-            '<p>El sistema está alineado con la normativa laboral y contable vigente en el país (Ley 116 del Código de Trabajo y disposiciones complementarias), facilitando la conciliación, la fiscalización y la rendición de cuentas.</p>' +
+            '<p>El sistema está alineado con la normativa laboral y contable vigente en el país (Ley 189/2026, Código de Trabajo, y disposiciones complementarias), facilitando la conciliación, la fiscalización y la rendición de cuentas.</p>' +
             '<p><b>Transparencia:</b> cada resultado se sustenta en datos verificables y reproducibles, lo que refuerza la confianza en los procesos de pago y control.</p>'
     }
 };

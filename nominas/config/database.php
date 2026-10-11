@@ -713,7 +713,7 @@ function registrarMovimientoVacaciones($pdo, $trabajador_id, $periodo_desde, $pe
 }
 
 // ============================================
-// FUNCIONES DE VACACIONES (Ley 116)
+// FUNCIONES DE VACACIONES (Ley 189/2026, Art. 239.1)
 // ============================================
 
 function calcularDiasVacacionesGenerados($dias_trabajados) {

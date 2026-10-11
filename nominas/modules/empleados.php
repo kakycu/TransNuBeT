@@ -3677,7 +3677,7 @@ function exportarRangosEdadPNG() {
                                     <div class="col-md-4">
                                         <label class="form-label small mb-0">
                                             <i class="fas fa-file-signature me-1"></i>Tipo de Contrato
-                                            <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Según Ley 116: Determinado (plazo fijo), Indeterminado (sin fecha límite), A Prueba (período de prueba)" style="cursor: help; font-size:0.65rem;"></i>
+                                            <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Según Ley 189/2026: Determinado (plazo fijo), Indeterminado (sin fecha límite), A Prueba (período de prueba)" style="cursor: help; font-size:0.65rem;"></i>
                                         </label>
                                         <select class="form-select form-select-sm" name="tipo_contrato" id="tipo_contrato" onchange="markFormDirty()" title="Tipo de contrato laboral" data-tooltip="Tipo de contrato laboral" data-tooltip-theme="secondary">
 											<option value="Indeterminado">♾️ Indeterminado (Sin fecha límite)</option>
@@ -3784,7 +3784,7 @@ function exportarRangosEdadPNG() {
                                             <div class="col-6">
                                                 <label class="form-label small mb-0">
                                                     <i class="fas fa-umbrella-beach text-info me-1"></i>Vac. Acum. (días)
-                                                    <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Días de vacaciones acumulados según Ley 116 (máximo 22-24 días)" style="cursor: help; font-size:0.65rem;"></i>
+                                                    <i class="fas fa-question-circle text-muted" data-bs-toggle="tooltip" title="Días de vacaciones acumulados según Ley 189/2026, Art. 239.1 (método 9,09 %)" style="cursor: help; font-size:0.65rem;"></i>
                                                 </label>
                                                 <input type="number" step="0.01" class="form-control form-control-sm" name="vacaciones_acumuladas" id="vacaciones_acumuladas" value="0" oninput="actualizarValoresVacaciones()"
                                                        data-bs-toggle="tooltip" title="Ingrese la cantidad de días acumulados">

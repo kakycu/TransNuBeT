@@ -1696,22 +1696,17 @@ if (!function_exists('nombreMesEspanol')) {
 // PROCESAR ACCIONES POST
 // ============================================
 
-// Restaura el saldo de vacaciones y elimina los movimientos de disfrute del
-// submayor de los registros borrador de liquidación de fracciones que se borren.
+// Limpieza de los movimientos 'liquidac' del submayor de los registros borrador de liquidación de
+// fracciones que se borren. El saldo NO se restaura porque, con la lógica actual, un borrador de
+// liquidación nunca descuenta el saldo: eso ocurre solo al contabilizar. Se borran los movimientos
+// huérfanos que pudieran quedar de borradores generados con la lógica previa (que escribía el
+// submayor al generar) para no dejar asientos sin nómina asociada.
 if (!function_exists('revertirDisfrutesLiquidacion')) {
     function revertirDisfrutesLiquidacion($pdo, $ids) {
         $ids = array_values(array_filter(array_map('intval', $ids)));
         if (empty($ids)) return;
         $ph = implode(',', array_fill(0, count($ids), '?'));
-        $stmt = $pdo->prepare("SELECT nomina_id, trabajador_id, dias 
-                               FROM submayor_vacaciones 
-                               WHERE nomina_id IN ($ph) AND tipo_movimiento = 'disfrute'");
-        $stmt->execute($ids);
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $sv) {
-            $pdo->prepare("UPDATE trabajadores SET vacaciones_acumuladas = vacaciones_acumuladas + ? WHERE id = ?")
-                ->execute([floatval($sv['dias']), $sv['trabajador_id']]);
-        }
-        $pdo->prepare("DELETE FROM submayor_vacaciones WHERE nomina_id IN ($ph) AND tipo_movimiento = 'disfrute'")->execute($ids);
+        $pdo->prepare("DELETE FROM submayor_vacaciones WHERE nomina_id IN ($ph) AND tipo_movimiento = 'liquidac'")->execute($ids);
     }
 }
 
@@ -2203,19 +2198,20 @@ if (isset($_POST['generar_nomina_ajuste']) && isset($_POST['confirmar_ajuste']))
             $monto_nuevo = roundExcel($importe_laboral + $importe_vac_adicional, 2);
         }
         if ($modo_ajuste == 'liquidacion') {
-            // Liquidación final de vacaciones: se liquida el saldo TOTAL acumulado del
-            // trabajador (queda en cero días en la tabla trabajadores). Si el borrador de
-            // este período ya fue generado antes, se suma lo ya liquidado en él para que
-            // la regeneración quede consistente con el submayor.
-            $stmt_frac = $pdo->prepare("SELECT COALESCE(SUM(sv.dias), 0) 
-                                        FROM submayor_vacaciones sv
-                                        JOIN nominas n ON n.id = sv.nomina_id
-                                        WHERE sv.trabajador_id = ? AND sv.tipo_movimiento = 'disfrute'
+            // Liquidación final de vacaciones: se fija el saldo TOTAL a liquidar del trabajador.
+            // El saldo NO se descuenta ni se escribe en el submayor hasta contabilizar la nómina,
+            // por lo que para que la regeneración sea determinista se leen los días que este mismo
+            // borrador ya tenía fijados (guardados en la propia nómina, no en el submayor) y se
+            // devuelven al saldo virtual antes de recalcular.
+            $stmt_frac = $pdo->prepare("SELECT COALESCE(n.vacaciones_acumuladas_mes, 0)
+                                        FROM nominas n
+                                        WHERE n.trabajador_id = ?
                                           AND n.tipo_nomina = 'ajuste'
                                           AND n.periodo_desde = ? AND n.periodo_hasta = ?
                                           AND n.estado = 'borrador'");
             $stmt_frac->execute([$trabajador_id, $periodo_desde, $periodo_hasta]);
-            $dias_vac_calc = roundExcel($vac_acumuladas_aj + floatval($stmt_frac->fetchColumn()), 2);
+            $dias_ya_fijados_borrador = floatval($stmt_frac->fetchColumn());
+            $dias_vac_calc = roundExcel($vac_acumuladas_aj + $dias_ya_fijados_borrador, 2);
             $importe_vac_calc = roundExcel($dias_vac_calc * ($salario_mensual_aj / $dias_laborables), 2);
             $monto_nuevo = roundExcel($importe_vac_calc, 2);
         }
@@ -2335,30 +2331,19 @@ if (isset($_POST['generar_nomina_ajuste']) && isset($_POST['confirmar_ajuste']))
         }
         
         if ($modo_ajuste == 'liquidacion') {
-            // Liquidación final de fracciones: rebajar el submayor de vacaciones
-            // registrando el disfrute y descontando los días del acumulado del trabajador.
-            $stmt_disf_prev = $pdo->prepare("SELECT dias FROM submayor_vacaciones WHERE nomina_id = ? AND tipo_movimiento = 'disfrute'");
+            // La liquidación solo FIJA los días a liquidar en la propia nómina (vacaciones_acumuladas_mes)
+            // y calcula el importe. El saldo del trabajador NO se descuenta ni se registra en el submayor
+            // hasta que la nómina se contabiliza, de modo que un borrador no afecta el libro de vacaciones.
+            // Limpieza defensiva: si un borrador anterior (generado con la lógica previa) dejó un movimiento
+            // 'liquidac' huérfano, se revierte su efecto para no duplicar el descuento al contabilizar.
+            $stmt_disf_prev = $pdo->prepare("SELECT dias FROM submayor_vacaciones WHERE nomina_id = ? AND tipo_movimiento = 'liquidac'");
             $stmt_disf_prev->execute([$nomina_id_final]);
             $dias_disf_prev = $stmt_disf_prev->fetchColumn();
             if ($dias_disf_prev !== false && floatval($dias_disf_prev) > 0) {
                 $pdo->prepare("UPDATE trabajadores SET vacaciones_acumuladas = vacaciones_acumuladas + ? WHERE id = ?")
                     ->execute([floatval($dias_disf_prev), $trabajador_id]);
-                $pdo->prepare("DELETE FROM submayor_vacaciones WHERE nomina_id = ? AND tipo_movimiento = 'disfrute'")->execute([$nomina_id_final]);
+                $pdo->prepare("DELETE FROM submayor_vacaciones WHERE nomina_id = ? AND tipo_movimiento = 'liquidac'")->execute([$nomina_id_final]);
             }
-            $pdo->prepare("UPDATE trabajadores SET vacaciones_acumuladas = vacaciones_acumuladas - ? WHERE id = ?")
-                ->execute([$dias_vac_calc, $trabajador_id]);
-            $pdo->prepare("INSERT INTO submayor_vacaciones 
-                (trabajador_id, periodo_desde, periodo_hasta, tipo_movimiento, dias, importe, 
-                 nomina_id, tipo_nomina, referencia, usuario_registro, observaciones) 
-                VALUES (?, ?, ?, 'disfrute', ?, ?, ?, ?, ?, ?, ?)")
-                ->execute([
-                    $trabajador_id, $periodo_desde, $periodo_hasta,
-                    $dias_vac_calc, $importe_vac_calc,
-                    $nomina_id_final, $tipo,
-                    "Liquidación fracción de vacaciones - Período: " . date('m/Y', strtotime($periodo_desde)),
-                    $user_nombre_completo,
-                    "Liquidación final de {$dias_vac_calc} días del submayor de vacaciones"
-                ]);
         }
     }
     
@@ -2637,7 +2622,7 @@ if (isset($_POST['contabilizar_nomina'])) {
                 foreach ($nominas_periodo as $nomina) {
                     if (empty($nomina['no_acumular_vacaciones']) || $nomina['no_acumular_vacaciones'] == 0) {
                         // Acumulación proporcional al tiempo efectivamente laborado
-                        // Método 9.09% (Ley 116, Art. 102): Días = (Horas laboradas × 0.0909) / Jornada diaria
+                        // Método 9.09% (Ley 189/2026, Art. 239.1): Días = (Horas laboradas × 0.0909) / Jornada diaria
                         $horas_laboradas_n = floatval($nomina['horas_laboradas'] ?? 0);
                         $dias_a_acumular = roundExcel(($horas_laboradas_n * $factor_909) / $horas_jornada, 2);
                         $valor_por_dia = $nomina['salario_mensual'] / $dias_laborables;
@@ -2786,7 +2771,59 @@ if (isset($_POST['contabilizar_nomina'])) {
                     }
                 }
             }
-            
+
+            // =========================================================
+            // LÓGICA ESPECÍFICA POR TIPO DE NÓMINA (AJUSTE - LIQUIDACIÓN DE FRACCIONES)
+            // =========================================================
+            // El descuento de saldo y el registro en el submayor de las liquidaciones de fracciones
+            // se hacen AQUÍ, al contabilizar (no al generar el borrador). Se identifican porque tienen
+            // vacaciones_acumuladas_mes > 0 y NO son ajuste por horas (horas_laboradas = 0).
+            // Los días a liquidar son los fijados al generar el borrador, lo que hace imposible el
+            // doble descuento aunque la contabilización se ejecute más de una vez.
+            if ($tipo_contabilizar == 'ajuste') {
+                $stmt_liq = $pdo->prepare("
+                    SELECT n.id, n.trabajador_id, n.vacaciones_acumuladas_mes, n.importe_vacaciones_acumulado_mes
+                    FROM nominas n
+                    WHERE n.periodo_desde = ? AND n.periodo_hasta = ?
+                      AND n.tipo_nomina = 'ajuste' AND n.estado = 'borrador' AND n.numero_nomina IS NULL
+                      AND COALESCE(n.horas_laboradas, 0) = 0 AND COALESCE(n.vacaciones_acumuladas_mes, 0) > 0
+                ");
+                $stmt_liq->execute([$periodo_desde, $periodo_hasta]);
+                foreach ($stmt_liq->fetchAll(PDO::FETCH_ASSOC) as $liq) {
+                    $dias_liquidar = floatval($liq['vacaciones_acumuladas_mes']);
+                    $importe_liquidar = floatval($liq['importe_vacaciones_acumulado_mes']);
+
+                    // Idempotencia: si esta liquidación ya fue registrada en el submayor, no repetirla.
+                    $stmt_check_liq = $pdo->prepare("SELECT COUNT(*) FROM submayor_vacaciones
+                                                     WHERE nomina_id = ? AND tipo_movimiento = 'liquidac'");
+                    $stmt_check_liq->execute([$liq['id']]);
+                    if (intval($stmt_check_liq->fetchColumn()) > 0) continue;
+
+                    // Descontar el saldo de vacaciones del trabajador
+                    $pdo->prepare("UPDATE trabajadores
+                                   SET vacaciones_acumuladas = vacaciones_acumuladas - ?
+                                   WHERE id = ?")->execute([$dias_liquidar, $liq['trabajador_id']]);
+
+                    // Registrar el movimiento de liquidación en el submayor
+                    $pdo->prepare("INSERT INTO submayor_vacaciones
+                        (trabajador_id, periodo_desde, periodo_hasta, tipo_movimiento, dias, importe,
+                         nomina_id, tipo_nomina, referencia, usuario_registro, observaciones)
+                        VALUES (?, ?, ?, 'liquidac', ?, ?, ?, ?, ?, ?, ?)")
+                        ->execute([
+                            $liq['trabajador_id'],
+                            $periodo_desde,
+                            $periodo_hasta,
+                            $dias_liquidar,
+                            $importe_liquidar,
+                            $liq['id'],
+                            'ajuste',
+                            "Liquidación fracción de vacaciones - Período: " . date('m/Y', strtotime($periodo_desde)),
+                            $user_nombre_completo,
+                            "Liquidación final de {$dias_liquidar} días del submayor de vacaciones"
+                        ]);
+                }
+            }
+
             // =========================================================
             // LÓGICA ESPECÍFICA POR TIPO DE NÓMINA (VACACIONES)
             // =========================================================
@@ -3075,7 +3112,7 @@ if (isset($_POST['revertir_nomina'])) {
         if ($tipo_revertir == 'ajuste') {
             // Deshacer el efecto de vacaciones según el modo del ajuste:
             //  - modo 'horas': se sumaron días al contabilizar (submayor 'acumulacion') -> restarlos.
-            //  - modo 'liquidacion': se restaron días al generar (submayor 'disfrute') -> devolverlos.
+            //  - modo 'liquidacion': se restaron días al CONTABILIZAR (submayor 'liquidac') -> devolverlos.
             //  - modo 'directo': no mueve días de vacaciones -> no hacer nada.
             foreach ($nominas_revertir as $nomina_r) {
                 $stmt_sv = $pdo->prepare("SELECT dias FROM submayor_vacaciones WHERE nomina_id = ? AND tipo_movimiento = 'acumulacion' LIMIT 1");
@@ -3087,7 +3124,7 @@ if (isset($_POST['revertir_nomina'])) {
                         $pdo->prepare("UPDATE trabajadores SET vacaciones_acumuladas = vacaciones_acumuladas - ? WHERE id = ?")->execute([$dias_acum, $nomina_r['trabajador_id']]);
                     }
                 } else {
-                    $stmt_sv2 = $pdo->prepare("SELECT dias FROM submayor_vacaciones WHERE nomina_id = ? AND tipo_movimiento = 'disfrute' LIMIT 1");
+                    $stmt_sv2 = $pdo->prepare("SELECT dias FROM submayor_vacaciones WHERE nomina_id = ? AND tipo_movimiento = 'liquidac' LIMIT 1");
                     $stmt_sv2->execute([$nomina_r['id']]);
                     $fila_disf = $stmt_sv2->fetch();
                     if ($fila_disf) {
@@ -3135,7 +3172,7 @@ if (isset($_POST['revertir_nomina'])) {
         }
 
         // 4. Eliminar los movimientos del submayor creados al contabilizar
-        $pdo->prepare("DELETE FROM submayor_vacaciones WHERE nomina_id IN ($placeholders_ids) AND tipo_movimiento IN ('acumulacion', 'disfrute')")->execute($ids_revertir);
+        $pdo->prepare("DELETE FROM submayor_vacaciones WHERE nomina_id IN ($placeholders_ids) AND tipo_movimiento IN ('acumulacion', 'disfrute', 'liquidac')")->execute($ids_revertir);
 
         // 5. Volver la nómina a estado borrador sin número asignado
         $pdo->prepare("UPDATE nominas SET estado = 'borrador', numero_nomina = NULL, fecha_contab = NULL WHERE id IN ($placeholders_ids) AND estado = 'contabilizado'")->execute($ids_revertir);
@@ -6127,7 +6164,7 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
     }
     
     foreach ($nominas_filtradas as $n): 
-        // Acumulación de vacaciones proporcional a las horas de la nómina (Método 9.09% - Ley 116)
+        // Acumulación de vacaciones proporcional a las horas de la nómina (Método 9.09% - Ley 189/2026)
         $dias_acum_proy = roundExcel((($n['horas_laboradas'] ?? 0) * $factor_909) / $horas_jornada, 2);
         $importe_acum_proy = roundExcel($dias_acum_proy * (($n['salario_mensual'] ?? 0) / $dias_laborables), 2);
         
@@ -6856,6 +6893,7 @@ if ($existe_nomina) {
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn-win" id="btnQuitarTodosExtra" disabled title="Quitar todos los trabajadores seleccionados" data-tooltip="Quitar todos los seleccionados" data-tooltip-theme="danger"><i class="fas fa-eraser me-2"></i>Quitar Todos</button>
                     <button type="button" class="btn-win" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger"><i class="fas fa-times me-2"></i>Cancelar</button>
                     <button type="submit" name="generar_nomina_extraordinaria" class="btn-win-primary" id="btnGenerarExtraordinaria" title="Generar nómina extraordinaria" data-tooltip="Generar nómina extraordinaria" data-tooltip-theme="success"><i class="fas fa-save me-2"></i>Generar Nómina</button>
                 </div>
@@ -6933,6 +6971,7 @@ if ($existe_nomina) {
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn-win" id="btnQuitarTodosVac" disabled title="Quitar todos los trabajadores seleccionados" data-tooltip="Quitar todos los seleccionados" data-tooltip-theme="danger"><i class="fas fa-eraser me-2"></i>Quitar Todos</button>
                     <button type="button" class="btn-win" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger"><i class="fas fa-times me-2"></i>Cancelar</button>
                     <button type="submit" name="agregar_vacaciones" class="btn-win-primary" id="btnAgregarVacaciones" title="Guardar vacaciones" data-tooltip="Guardar vacaciones" data-tooltip-theme="success"><i class="fas fa-save me-2"></i>Guardar</button>
                 </div>
@@ -7034,6 +7073,7 @@ if ($existe_nomina) {
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn-win" id="btnQuitarTodosBono" disabled title="Quitar todos los trabajadores seleccionados" data-tooltip="Quitar todos los seleccionados" data-tooltip-theme="danger"><i class="fas fa-eraser me-2"></i>Quitar Todos</button>
                     <button type="button" class="btn-win" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger"><i class="fas fa-times me-2"></i>Cancelar</button>
                     <button type="submit" name="generar_nomina_bono" class="btn-win-primary" id="btnGenerarBonos" title="Generar pago de bonos" data-tooltip="Generar pago de bonos" data-tooltip-theme="success"><i class="fas fa-save me-2"></i>Generar Pago</button>
                 </div>
@@ -8495,6 +8535,7 @@ function generarTirillasPago(trabajadores) {
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn-win" id="btnQuitarTodosAjuste" disabled title="Quitar todos los trabajadores seleccionados" data-tooltip="Quitar todos los seleccionados" data-tooltip-theme="danger"><i class="fas fa-eraser me-2"></i>Quitar Todos</button>
                     <button type="button" class="btn-win" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger"><i class="fas fa-times me-2"></i>Cancelar</button>
                     <button type="submit" name="generar_nomina_ajuste" class="btn-win-primary" id="btnGenerarAjuste" title="Generar ajuste" data-tooltip="Generar ajuste" data-tooltip-theme="success"><i class="fas fa-save me-2"></i>Generar Ajuste</button>
                 </div>

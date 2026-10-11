@@ -423,7 +423,10 @@ $pageTitle = 'Cierres de nómina';
         </div>
 
         <div class="cierre-leyenda">
-            <span><i class="fas fa-lock"></i> Cerrado</span>
+			<span class="badge bg-light text-dark border" style="font-size: 0.7rem;">
+			  <i class="fas fa-info-circle text-warning"></i> Leyenda:
+			</span>
+			<span><i class="fas fa-lock"></i> Cerrado</span>
             <span><i class="fas fa-unlock"></i> Revertido</span>
             <span><i class="fas fa-clock"></i> Con datos, abierto</span>
             <span><i class="fas fa-minus"></i> Sin nómina</span>

@@ -141,26 +141,6 @@ function getConfiguracion($pdo, $parametro) {
 }
 
 /**
- * Calcula las vacaciones generadas según la Ley 116
- * Fórmula: días de vacaciones = días trabajados ?? 11
- * Valor a pagar = Salarios devengados ?? 11
- * 
- * @param float $dias_trabajados
- * @param float $salarios_devengados
- * @return array ['dias' => float, 'valor' => float]
- */
-if (!function_exists('calcularVacacionesLey116')) {
-function calcularVacacionesLey116($dias_trabajados, $salarios_devengados) {
-    $dias_vacaciones = $dias_trabajados / 11;
-    $valor_vacaciones = $salarios_devengados / 11;
-    
-    return [
-        'dias' => round($dias_vacaciones, 2),
-        'valor' => round($valor_vacaciones, 2)
-    ];
-}
-}
-
 /**
  * Obtiene la configuración de vacaciones vigente
  * 
