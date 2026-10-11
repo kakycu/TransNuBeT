@@ -6384,6 +6384,8 @@ data-escala-descripcion="<?php
             <?php else: echo "$" . number_format($n['pago_resultado'] ?? 0, 2); endif; ?>
             <?php if (floatval($n['horas_laboradas'] ?? 0) > 0): ?>
                 <span class="badge bg-info text-dark ms-1" title="Nómina por horas trabajadas (acumula vacaciones)"><?php echo number_format($n['horas_laboradas'], 2); ?> h</span>
+            <?php elseif ($n['estado'] == 'contabilizado' && floatval($n['horas_laboradas'] ?? 0) == 0 && floatval($n['vacaciones_acumuladas_mes'] ?? 0) > 0): ?>
+                <span class="badge bg-warning text-dark ms-1" title="Liquidación: días a liquidar del submayor de vacaciones"><?php echo number_format($n['vacaciones_acumuladas_mes'], 2); ?>d</span>
             <?php endif; ?>
         </td>
         <td class="text-end col-otros-pagos">
@@ -7866,7 +7868,18 @@ $(document).on('input', '#buscarEnSelector', function() {
     });
 
     $('#selectImpresion').html(htmlOptions);
-    $('#badgeResultadosCount').text(`${coinciden} encontrados`);
+    $('#badgeResultadosCount').text(term ? `${coinciden} encontrados` : `${coinciden} disponibles`);
+    // La X de limpiar solo aparece mientras haya texto en el buscador
+    $('#btnLimpiarFiltroSelector').toggle(term.length > 0);
+    // Con filtro activo, deja elegida la primera coincidencia en el desplegable
+    if (term && coinciden > 0) {
+        $('#selectImpresion').prop('selectedIndex', 1).trigger('change');
+    }
+});
+
+// Botón X: limpia el filtro y repone la lista completa
+$(document).on('click', '#btnLimpiarFiltroSelector', function() {
+    $('#buscarEnSelector').val('').trigger('input').trigger('focus');
 });
 
 // Selector personalizado de tipo de nómina con iconos

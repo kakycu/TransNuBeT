@@ -132,8 +132,11 @@ function cargarSelectores() {
             <div class="input-group mb-2 shadow-sm">
                 <span class="input-group-text border-secondary" style="background: rgba(20,20,30,0.8); border-color: rgba(255,255,255,0.12) !important; color: #60a5fa;"><i class="fas fa-filter"></i></span>
                 <input type="text" id="buscarEnSelector" class="form-control border-secondary text-white" placeholder="Escriba para buscar..." style="background: rgba(20,20,30,0.8); border-color: rgba(255,255,255,0.12) !important; font-size:0.85rem;" autocomplete="off">
+                <button type="button" class="btn border-secondary" id="btnLimpiarFiltroSelector" title="Limpiar filtro" style="background: rgba(20,20,30,0.8); border-color: rgba(255,255,255,0.12) !important; color: #94a3b8; display:none;">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <select class="form-select form-select-custom select-scroll-panel" id="selectImpresion" size="4" style="max-height:9.375rem; overflow-y: auto;">
+            <select class="form-select form-select-custom" id="selectImpresion">
                 <option value="" selected>-- Todos --</option>
     `;
 
@@ -2145,6 +2148,10 @@ function mapRowToTrabajador($row) {
         tarifaExtra: (tipoNomina === 'extraordinaria')
             ? ((parseInt($row.attr('data-usar-convenio'), 10) || 0) === 1 ? 'Convenio' : 'Ley 189')
             : '',
+        esLiquidacionAjuste: (tipoNomina === 'ajuste' && horasVal == 0
+            && (parseNumber($row.data('vacaciones-acumuladas-mes')) || 0) > 0),
+        diasLiquidacion: (tipoNomina === 'ajuste' && horasVal == 0
+            ? (parseNumber($row.data('vacaciones-acumuladas-mes')) || 0) : 0),
         firma: ''
     };
 }
@@ -2222,7 +2229,7 @@ function renderAjusteWorkerList(term = '') {
             <div class="worker-avatar">${avatarHtml}</div>
             <div class="worker-info">
                 <div class="worker-name">${w.codigo} - ${w.nombre_completo}${parseInt(w.activo) !== 1 ? ' <span class="badge bg-danger" style="font-size:0.625rem; vertical-align: middle;">DE BAJA</span>' : ''}</div>
-                <div class="worker-detail"><i class="fas fa-wallet me-1"></i>Salario Básico: $${parseFloat(w.salario_mensual).toFixed(2)} | <i class="fas fa-clock me-1"></i>$${parseFloat(w.salario_hora_ordinaria).toFixed(2)}/h</div>
+                <div class="worker-detail"><i class="fas fa-wallet me-1"></i>Salario Escala: $${parseFloat(w.salario_mensual).toFixed(2)} | <i class="fas fa-clock me-1"></i>Tarif.Hor.: $${parseFloat(w.salario_hora_ordinaria).toFixed(2)}/h${(modoAjuste === 'liquidacion') ? ' | <i class="fas fa-sun me-1"></i>Días a liquidar: ' + (parseFloat(w.dias_submayor_periodo) || parseFloat(w.vacaciones_acumuladas_mes) || 0).toFixed(2) + 'd' : ''}</div>
             </div>
         </div>`;
     });
@@ -3066,7 +3073,7 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                         <td class="text-center">${escapeHtml(t.categoriaCodigo)}</td>
                         <td class="text-right">$${(t.salarioMensual || 0).toFixed(2)}</td>
                         <td class="text-right">$${(t.tarifaSal || 0).toFixed(2)}</td>
-                        <td class="text-right">${esVacaciones ? (t.diasTomados || 0).toFixed(2) : (t.horas || 0)}</td>
+                        <td class="text-right">${esVacaciones ? (t.diasTomados || 0).toFixed(2) : (t.esLiquidacionAjuste && parseFloat(t.diasLiquidacion) > 0) ? parseFloat(t.diasLiquidacion).toFixed(2) + 'd' : (t.horas || 0)}</td>
                         <td class="text-right">$${(t.aCobrar || 0).toFixed(2)}</td>
                         ${esVacaciones ? '' : `<td class="text-right">$${(t.bono || 0).toFixed(2)}</td>`}
                         ${esVacaciones ? '' : `<td class="text-right">$${(t.devengado || 0).toFixed(2)}</td>`}
@@ -3271,7 +3278,7 @@ window.generarNominaImpresa = function(trabajadores, alcance, filtroNombre) {
                             <td style="text-align:center; border:0.5pt solid #000;">${escapeHtml(row.data.categoriaCodigo)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.salarioMensual || 0).toFixed(2)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.tarifaSal || 0).toFixed(2)}</td>
-                            <td style="text-align:right; border:0.5pt solid #000;">${esVacaciones ? (row.data.diasTomados || 0).toFixed(2) : row.data.horas}</td>
+                            <td style="text-align:right; border:0.5pt solid #000;">${esVacaciones ? (row.data.diasTomados || 0).toFixed(2) : (row.data.esLiquidacionAjuste && parseFloat(row.data.diasLiquidacion) > 0) ? parseFloat(row.data.diasLiquidacion).toFixed(2) + 'd' : (row.data.horas || 0)}</td>
                             <td style="text-align:right; border:0.5pt solid #000;">$${(row.data.aCobrar || 0).toFixed(2)}</td>
                             ${esVacaciones ? '' : `<td style="text-align:right; border:0.5pt solid #000;">$${(row.data.bono || 0).toFixed(2)}</td>`}
                             ${esVacaciones ? '' : `<td style="text-align:right; border:0.5pt solid #000;">$${(row.data.devengado || 0).toFixed(2)}</td>`}
@@ -7230,6 +7237,31 @@ customize: function(win) {
     // Para BONO y AJUSTE, el "Concepto" se imprime debajo de cada trabajador, no como columna
     var quitarConceptoCol = esBono || esAjuste;
     if (quitarConceptoCol) totalColumns = totalColumns - 1;
+    // 🔽 AJUSTE EN MODO LIQUIDACIÓN DE FRACCIONES DEL SUBMAYOR:
+    //    se adicionan columnas Salario Básico y Tarif. Horaria, y se ajustan Monto/Días/Importe
+    //    IMPORTANTE: el popup de print convierte badges y data-* a texto plano, por eso la
+    //    detección y los datos se leen de la tabla ORIGINAL (#tablaNominas / nominasTable)
+    var esAjusteLiquidacion = false;
+    var mapaLiqPorCodigo = {};
+    if (esAjuste) {
+        esAjusteLiquidacion = (typeof window.ajusteModoTipo !== 'undefined' && window.ajusteModoTipo === 'liquidacion') ||
+            $('#tablaNominas tbody td.bono-val-cell span.badge[title*="Liquidaci"]').length > 0;
+        if (esAjusteLiquidacion) {
+            totalColumns = totalColumns + 3; // Salario Básico + Tarif. Horaria + desdoble Monto (Días/Monto)
+            // Mapa por código de trabajador: salario mensual, tarifa horaria y días a liquidar
+            $(nominasTable.rows({ search: 'applied' }).nodes()).each(function() {
+                var $trOrig = $(this);
+                var codOrig = ($trOrig.find('td').eq(0).text() || '').trim();
+                if (!codOrig) return;
+                var $bOrig = $trOrig.find('td.bono-val-cell span.badge');
+                mapaLiqPorCodigo[codOrig] = {
+                    sal: parseFloat($trOrig.attr('data-salario-mensual') || 0),
+                    tar: parseFloat($trOrig.attr('data-salario-hora') || 0),
+                    dias: $bOrig.length ? (parseFloat(($bOrig.text() || '').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0) : 0
+                };
+            });
+        }
+    }
     var montoDistribuir = montoDistribuidoGlobal || 0;
     var mostrarMonto = (esBono && montoDistribuir > 0);
     var montoTexto = mostrarMonto ? '$' + montoDistribuir.toFixed(2) : '(Hasta que se contabilice)';
@@ -7288,6 +7320,10 @@ customize: function(win) {
             padding: 0.25rem 0.1562rem !important;
             font-family: 'Arial', sans-serif !important;
         }
+        /* Liquidación de ajuste: forzar table-layout fixed en pantalla (en @media print ya está),
+           para que los widths de Área/Cargo/CC/Cat./Tarifa/Días a Liq. se respeten y no se
+           expandan por el reparto del sobrante del 100%. */
+        ${esAjusteLiquidacion ? 'table.print-sheet-table { table-layout: fixed !important; }' : ''}
         /* SOLO AL IMPRIMIR: comprimir la tabla para que quepa en Carta horizontal (~1309px).
            Firefox no recala la tabla si excede el área imprimible, por lo que sin este
            ajuste las últimas columnas (NETO, Total Ret., CESS) se cortan en el PDF.
@@ -7601,18 +7637,27 @@ customize: function(win) {
         `;
         tr2 = visibleTaxesCount > 0 ? `<tr>${subImpuestosHtml}</tr>` : '';
     } else if (tipoNomina === 'ajuste') {
+        var thAjusteLiq = esAjusteLiquidacion ? `
+                <th rowspan="2" class="text-right">Salario<br>Básico</th>
+                <th rowspan="2" class="text-right" style="width:3.25rem;">Tarif.<br>Horaria</th>
+                <th rowspan="2" class="text-right" style="width:2.75rem;">Días<br>a Liq.</th>` : '';
+        var clsCentroAjuste = esAjusteLiquidacion ? ' class="text-center"' : '';
+        var estiloCorto = ' style="width:2.5rem;"';
+        var montoHdrAjuste = esAjusteLiquidacion ? 'Monto' : 'Monto/hrs';
+        var acumVacHdrCls = esAjusteLiquidacion ? 'col-vacaciones-header text-center' : 'col-vacaciones-header text-right';
         tr1 = `
             <tr>
                 <th rowspan="2">Código</th>
                 <th rowspan="2">CI</th>
-                <th rowspan="2" style="width:8.75rem;">Nombre y Apellidos</th>
-                <th rowspan="2">Área</th>
-                <th rowspan="2">Cargo</th>
-                <th rowspan="2">CC</th>
-                <th rowspan="2">Cat.</th>
-                <th rowspan="2" class="text-right">Monto/hrs</th>
+                <th rowspan="2" style="width:12rem;">Nombre y Apellidos</th>
+                <th rowspan="2"${clsCentroAjuste}${estiloCorto}>Área</th>
+                <th rowspan="2"${clsCentroAjuste}${estiloCorto}>Cargo</th>
+                <th rowspan="2"${clsCentroAjuste}${estiloCorto}>CC</th>
+                <th rowspan="2"${clsCentroAjuste}${estiloCorto}>Cat.</th>
+                ${thAjusteLiq}
+                <th rowspan="2" class="text-right">${montoHdrAjuste}</th>
                 <th rowspan="2" class="text-right">Otros Pagos</th>
-                <th colspan="2" class="col-vacaciones-header text-right">Acum. Vacaciones</th>
+                <th colspan="2" class="${acumVacHdrCls}">Acum. Vacaciones</th>
                 <th rowspan="2" class="text-right">Total Dev.</th>
                 <th rowspan="2" class="text-right">Otros Desc.</th>
                 <th rowspan="2" class="text-right">CESS</th>
@@ -7697,6 +7742,48 @@ customize: function(win) {
         });
     }
 
+    // 🔽 AJUSTE-LIQUIDACIÓN (fracciones del submayor): centrar Área/Cargo/CC/Cat.,
+    //    añadir columnas Salario Básico, Tarif. Horaria y desdoblar "Monto" en Días + Monto.
+    //    Los datos salen de mapaLiqPorCodigo (tabla original) porque el popup solo conserva texto.
+    if (esAjusteLiquidacion) {
+        $table.find('tbody tr').each(function() {
+            var $tdsIni = $(this).children('td');
+            if ($tdsIni.length < 8) {
+                // Filas de Observación (1 celda): ampliar colspan por las 3 columnas nuevas
+                if ($tdsIni.length === 1) {
+                    var csObs = parseInt($tdsIni.attr('colspan') || '0', 10);
+                    if (csObs > 0) $tdsIni.attr('colspan', csObs + 3);
+                }
+                return;
+            }
+            $tdsIni.eq(3).css('text-align', 'center');
+            $tdsIni.eq(4).css('text-align', 'center');
+            $tdsIni.eq(5).css('text-align', 'center');
+            $tdsIni.eq(6).css('text-align', 'center');
+            var codFila = ($tdsIni.eq(0).text() || '').trim();
+            var datosLiq = mapaLiqPorCodigo[codFila] || null;
+            var txtMonto = ($tdsIni.eq(7).text() || '').trim();
+            var mMatch = txtMonto.match(/-?[\d,]+\.\d{2}/);
+            var montoLimpio = mMatch ? ('$' + mMatch[0].replace(/^-/, '')) : txtMonto;
+            var diasLiqPrint = datosLiq ? datosLiq.dias : 0;
+            if (!diasLiqPrint) {
+                // Fallback: el texto del popup aún puede contener "8.31d" si el badge no se quitó
+                var dMatch = txtMonto.match(/(\d+[.,]\d+)\s*d/);
+                if (dMatch) diasLiqPrint = parseFloat(dMatch[1].replace(',', '.')) || 0;
+            }
+            // Nuevas columnas: Salario Básico y Tarif. Horaria tras Cat.
+            $tdsIni.eq(6).after(
+                '<td style="text-align:right !important;">$' + (datosLiq ? datosLiq.sal : 0).toFixed(2) + '</td>' +
+                '<td style="text-align:right !important;">$' + (datosLiq ? datosLiq.tar : 0).toFixed(2) + '</td>'
+            );
+            // Desdoblar la celda Monto (ahora eq 9) en: Días a Liq. + Monto limpio
+            $(this).children('td').eq(9).replaceWith(
+                '<td style="text-align:right !important;">' + (diasLiqPrint > 0 ? diasLiqPrint.toFixed(2) : '0.00') + '</td>' +
+                '<td style="text-align:right !important;">' + montoLimpio + '</td>'
+            );
+        });
+    }
+
     // 🔽 PAGINACIÓN DEL REPORTE CON SUBTOTALES POR HOJA Y TOTAL GENERAL
     var ROWS_POR_PAGINA = 12;
     var $filasImpresion = $table.find('tbody tr');
@@ -7705,11 +7792,12 @@ customize: function(win) {
 
     // DETECCIÓN DE COLUMNAS NUMÉRICAS (desde salario_básico en adelante)
     // En extraordinaria las columnas 9 ("Tarifa Horaria") y 10 ("T. Tarif." texto Ley 189/Convenio) son tasas: se excluyen de sumatorias
+    // En ajuste-liquidación la columna 8 ("Tarif. Horaria") también es tasa: se excluye
     var firstNumCol = (quitarConceptoCol || tipoNomina === 'vacaciones') ? 7 : 8;
     var totalCols = ($filasImpresion.length > 0) ? $filasImpresion.first().find('td').length : 0;
     var numericCols = [];
     var isMoneyCol = [];
-    var textCols = (tipoNomina === 'extraordinaria') ? [9, 10] : [];
+    var textCols = (tipoNomina === 'extraordinaria') ? [9, 10] : (esAjusteLiquidacion ? [8] : []);
     for (var ci = firstNumCol; ci < totalCols; ci++) {
         numericCols.push(ci);
         var hasMoney = false;
@@ -7758,6 +7846,18 @@ customize: function(win) {
     }
 
     var htmlPaginado = '';
+    // Liquidación de ajuste: con table-layout:fixed los widths de los th NO se aplican
+    // (la 1ª fila del thead es el título con colspan y el navegador reparte por igual).
+    // El colgroup SÍ respeta los anchos: Nombre ancho, Área/Cargo/CC/Cat./Tarifa/Días estrechos.
+    var colgroupLiqHtml = '';
+    if (esAjusteLiquidacion) {
+        colgroupLiqHtml = '<colgroup>' +
+            '<col><col><col style="width:12rem;">' +
+            '<col style="width:2.25rem;"><col style="width:2.25rem;"><col style="width:2.25rem;"><col style="width:2.25rem;">' +
+            '<col><col style="width:3rem;"><col style="width:2.75rem;">' +
+            '<col><col><col><col><col><col><col><col><col>' +
+            '</colgroup>';
+    }
     for (var pIdx = 0; pIdx < totalPaginasReales; pIdx++) {
         var filasPagina = $filasImpresion.slice(pIdx * ROWS_POR_PAGINA, (pIdx + 1) * ROWS_POR_PAGINA);
         var filasHtml = '';
@@ -7788,6 +7888,7 @@ customize: function(win) {
         htmlPaginado += `
             <div class="print-sheet-page ${esUltimaHoja ? 'print-sheet-last' : ''}">
                 <table class="print-sheet-table">
+                    ${colgroupLiqHtml}
                     <thead>${theadHtml}</thead>
                     <tbody>${filasHtml}</tbody>
                 </table>
@@ -7902,7 +8003,7 @@ function generarContenidoCSV(trabajadores) {
     if (esBono) {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('MONTO BONO'), esc('NETO')];
     } else if (esAjuste) {
-        header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('MONTO AJUSTE'), esc('OTROS PAGOS'), esc('VAC. DÍAS'), esc('VAC. IMPORTE'), esc('DEVENGADO'), esc('CESS'), esc('RET.'), esc('NETO')];
+        header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('HORAS'), esc('MONTO AJUSTE'), esc('OTROS PAGOS'), esc('VAC. DÍAS'), esc('VAC. IMPORTE'), esc('DEVENGADO'), esc('CESS'), esc('RET.'), esc('NETO')];
     } else if (esExtraominaria) {
         header = [esc('COD'), esc('CI'), esc('NOMBRE Y APELLIDOS'), esc('CAT.'), esc('TARF.'), esc('TIPO TARF.'),
                   esc('HE/D'), esc('$/HED'), esc('NT 19-23H'), esc('$/NT 19-23H'), esc('NT 23-7H'), esc('$/NT 23-7H'),
@@ -7924,9 +8025,14 @@ function generarContenidoCSV(trabajadores) {
                 esc('$' + (t.pagado || 0).toFixed(2))
             ];
         } else if (esAjuste) {
+            var montoAjusteCsv = '$' + (t.aCobrar || 0).toFixed(2);
+            var horasCsv = (t.esLiquidacionAjuste && parseFloat(t.diasLiquidacion) > 0)
+                ? parseFloat(t.diasLiquidacion).toFixed(2) + 'd'
+                : (t.horas || 0).toFixed(2);
             row = [
                 esc(t.codigo), esc(t.ci), esc(t.nombre),
-                esc('$' + (t.aCobrar || 0).toFixed(2)),
+                esc(horasCsv),
+                esc(montoAjusteCsv),
                 esc('$' + (t.bono || 0).toFixed(2)),
                 esc((t.vacDias || 0).toFixed(2)),
                 esc('$' + (t.tiempoImp || 0).toFixed(2)),
@@ -7968,6 +8074,7 @@ function generarContenidoCSV(trabajadores) {
     // FILA DE TOTALES
     // ============================================================
     var tot = { devengado: 0, impS: 0, descuentos: 0, retenciones: 0, pagado: 0, bono: 0, aCobrar: 0,
+                vacDias: 0, tiempoImp: 0,
                 horas: 0, importeHE: 0, noctT: 0, importeNtT: 0, noctD: 0, importeNtD: 0, dt: 0, importeDT: 0 };
     trabajadores.forEach(function(t) {
         tot.devengado += t.devengado || 0;
@@ -7977,7 +8084,11 @@ function generarContenidoCSV(trabajadores) {
         tot.pagado += t.pagado || 0;
         tot.bono += t.bono || 0;
         tot.aCobrar += t.aCobrar || 0;
-        tot.horas += t.horas || 0;
+        tot.vacDias += t.vacDias || 0;
+        tot.tiempoImp += t.tiempoImp || 0;
+        tot.horas += (t.esLiquidacionAjuste && parseFloat(t.diasLiquidacion) > 0)
+            ? parseFloat(t.diasLiquidacion)
+            : (t.horas || 0);
         tot.importeHE += t.importeHE || 0;
         tot.noctT += t.noctT || 0;
         tot.importeNtT += t.importeNtT || 0;
@@ -7988,16 +8099,21 @@ function generarContenidoCSV(trabajadores) {
     });
     var totalRow;
     if (esBono) {
-        totalRow = [esc('TOTAL'), esc(''), esc('TOTALES GENERALES'),
+        totalRow = [esc(''), esc(''), esc('TOTALES GENERALES'),
                     esc('$' + tot.bono.toFixed(2)), esc('$' + tot.pagado.toFixed(2))];
     } else if (esAjuste) {
-        totalRow = [esc('TOTAL'), esc(''), esc('TOTALES GENERALES'),
+        var totalDiasLiqAjuste = trabajadores.reduce(function(s, t) {
+            return s + ((t.esLiquidacionAjuste && parseFloat(t.diasLiquidacion) > 0) ? parseFloat(t.diasLiquidacion) : (t.horas || 0));
+        }, 0);
+        totalRow = [esc(''), esc(''), esc('TOTALES GENERALES'),
+                    esc((totalDiasLiqAjuste > 0 ? totalDiasLiqAjuste.toFixed(2) + 'd' : '')),
                     esc('$' + tot.aCobrar.toFixed(2)), esc('$' + tot.bono.toFixed(2)),
-                    esc(''), esc(''),
+                    esc(tot.vacDias.toFixed(2)),
+                    esc('$' + tot.tiempoImp.toFixed(2)),
                     esc('$' + tot.devengado.toFixed(2)), esc('$' + tot.impS.toFixed(2)),
                     esc('$' + tot.retenciones.toFixed(2)), esc('$' + tot.pagado.toFixed(2))];
     } else if (esExtraominaria) {
-        totalRow = [esc('TOTAL'), esc(''), esc('TOTALES GENERALES'), esc(''), esc(''), esc(''),
+        totalRow = [esc(''), esc(''), esc('TOTALES GENERALES'), esc(''), esc(''), esc(''),
                     esc(tot.horas.toFixed(0)), esc('$' + tot.importeHE.toFixed(2)),
                     esc(tot.noctT.toFixed(0)), esc('$' + tot.importeNtT.toFixed(2)),
                     esc(tot.noctD.toFixed(0)), esc('$' + tot.importeNtD.toFixed(2)),
@@ -8006,7 +8122,7 @@ function generarContenidoCSV(trabajadores) {
                     esc('$' + tot.descuentos.toFixed(2)), esc('$' + tot.retenciones.toFixed(2)),
                     esc('$' + tot.pagado.toFixed(2))];
     } else {
-        totalRow = [esc('TOTAL'), esc(''), esc('TOTALES GENERALES'),
+        totalRow = [esc(''), esc(''), esc('TOTALES GENERALES'),
                     esc('$' + tot.devengado.toFixed(2)), esc('$' + tot.retenciones.toFixed(2)),
                     esc('$' + tot.pagado.toFixed(2))];
     }
@@ -13764,13 +13880,18 @@ function generarFilaPdf(t) {
 }
 
 function generarFilaExcelAjuste(t) {
+    var montoAjusteTxt = t.aCobrar.toFixed(2);
+    var horasAjusteTxt = (t.esLiquidacionAjuste && parseFloat(t.diasLiquidacion) > 0)
+        ? parseFloat(t.diasLiquidacion).toFixed(2) + 'd'
+        : (t.horas || 0).toFixed(2);
     return `
         <tr>
             <td style="text-align:center; border:0.5pt solid #000;">${window.escapeHtml(t.codigo)}</td>
             <td style="text-align:center; border:0.5pt solid #000;">${window.escapeHtml(t.ci)}</td>
             <td style="border:0.5pt solid #000;">${window.escapeHtml(t.nombre)}</td>
             <td style="text-align:center; border:0.5pt solid #000;">${window.escapeHtml(t.categoriaCodigo)}</td>
-            <td style="text-align:right; border:0.5pt solid #000;">${t.aCobrar.toFixed(2)}</td>
+            <td style="text-align:right; border:0.5pt solid #000;">${horasAjusteTxt}</td>
+            <td style="text-align:right; border:0.5pt solid #000;">${montoAjusteTxt}</td>
             <td style="text-align:right; border:0.5pt solid #000;">${t.bono.toFixed(2)}</td>
             <td style="text-align:right; border:0.5pt solid #000;">${t.vacDias.toFixed(2)}</td>
             <td style="text-align:right; border:0.5pt solid #000;">${t.tiempoImp.toFixed(2)}</td>
@@ -13783,12 +13904,19 @@ function generarFilaExcelAjuste(t) {
 }
 
 function generarFilaPdfAjuste(t) {
+    var montoAjusteTxt = t.aCobrar.toFixed(2);
+    var horasAjusteTxt = (t.esLiquidacionAjuste && parseFloat(t.diasLiquidacion) > 0)
+        ? parseFloat(t.diasLiquidacion).toFixed(2) + 'd'
+        : (t.horas || 0).toFixed(2);
     return [
         { text: t.codigo, alignment: 'center', style: 'tableCell' },
         { text: t.ci, alignment: 'center', style: 'tableCell' },
         { text: t.nombre, alignment: 'left', style: 'tableCell' },
         { text: t.categoriaCodigo, alignment: 'center', style: 'tableCell' },
-        { text: t.aCobrar.toFixed(2), alignment: 'right', style: 'tableCell' },
+        { text: (t.salarioMensual || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
+        { text: (t.tarifaSal || 0).toFixed(2), alignment: 'right', style: 'tableCell' },
+        { text: horasAjusteTxt, alignment: 'right', style: 'tableCell' },
+        { text: montoAjusteTxt, alignment: 'right', style: 'tableCell' },
         { text: t.bono.toFixed(2), alignment: 'right', style: 'tableCell' },
         { text: t.vacDias.toFixed(2), alignment: 'right', style: 'tableCell' },
         { text: t.tiempoImp.toFixed(2), alignment: 'right', style: 'tableCell' },
@@ -13911,7 +14039,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 14 : 16)));
+        const colsCount = esBono ? 11 : (esAjuste ? 14 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 14 : 16)));
         let estructura = construirPaginasDeNomina(trabajadores, alcance);
         let htmlBody = '';
 
@@ -13948,7 +14076,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                         htmlBody += generarFilaExcelAjuste(row.data);
                         htmlBody += `
                         <tr>
-                            <td colspan="13" style="text-align:left; border:0.5pt solid #000;">Observación: ${window.escapeHtml(row.data.concepto)}</td>
+                            <td colspan="14" style="text-align:left; border:0.5pt solid #000;">Observación: ${window.escapeHtml(row.data.concepto)}</td>
                         </tr>`;
                     } else if (esExtraominaria) {
                         htmlBody += `
@@ -14071,6 +14199,10 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
         });
 
         let gTot = estructura.totalGeneral;
+        // Suma de la columna "Horas": días a liquidar (liquidación) u horas (ajuste simple)
+        let totalDiasLiqAjuste = trabajadores.reduce(function(s, t) {
+            return s + (t.esLiquidacionAjuste ? (parseFloat(t.diasLiquidacion) || 0) : (t.horas || 0));
+        }, 0);
         if (esBono) {
             htmlBody += `
                 <tr style="background-color:#d9e1f2; font-weight:bold;">
@@ -14086,6 +14218,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
             htmlBody += `
                 <tr style="background-color:#d9e1f2; font-weight:bold;">
                     <td colspan="4" style="text-align:right; border:0.5pt solid #000;"><b>TOTAL GENERAL NOMINA:</b></td>
+                    <td style="text-align:right; border:0.5pt solid #000;">${totalDiasLiqAjuste.toFixed(2)}</td>
                     <td style="text-align:right; border:0.5pt solid #000;">${gTot.aCobrar.toFixed(2)}</td>
                     <td style="text-align:right; border:0.5pt solid #000;">${gTot.bono.toFixed(2)}</td>
                     <td style="text-align:right; border:0.5pt solid #000;">${gTot.vacDias.toFixed(2)}</td>
@@ -14123,7 +14256,7 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
             </tr>
         ` : esAjuste ? `
             <tr class="table-header">
-                <td>Código</td><td>CI</td><td>Nombre y Apellidos</td><td>Cat.</td><td>Monto Ajuste</td>
+                <td>Código</td><td>CI</td><td>Nombre y Apellidos</td><td>Cat.</td><td>Horas</td><td>Monto Ajuste</td>
                 <td>Otros Pagos</td><td>Vac. Días</td><td>Vac. Importe</td><td>Total Deven.</td><td>Imp. CESS.</td><td>Total Ret.</td><td>NETO</td><td>Firma</td>
             </tr>
         ` : esExtraominaria ? `
@@ -14198,6 +14331,35 @@ function exportarExcelOficial(trabajadores, alcance, filtroNombre) {
                 <tr><td colspan="${colsCount}" style="border:none; height:0.625rem;"></td></tr>
                 ${headersExcel}
                 ${htmlBody}
+                <tr><td colspan="${colsCount}" style="border:none; height:1.25rem;"></td></tr>
+                <tr>
+                    <td colspan="${colsCount}" style="border:none; padding-top:0.625rem;">
+                        <table style="width:100%; border:none; border-collapse:collapse;">
+                            <tr>
+                                <td style="border:none; width:25%; text-align:center; font-size:8.5pt;">
+                                    <p style="margin-bottom:1.25rem;"><b>Elaborado por:</b></p>
+                                    <p style="border-top:0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${nombreElaborado}</b></p>
+                                    <p style="font-size:7.5pt; color:#555;">Especialista de Nóminas</p>
+                                </td>
+                                <td style="border:none; width:25%; text-align:center; font-size:8.5pt;">
+                                    <p style="margin-bottom:1.25rem;"><b>Revisado por:</b></p>
+                                    <p style="border-top:0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${nombreRevisado}</b></p>
+                                    <p style="font-size:7.5pt; color:#555;">Especialista en Gestión Económica</p>
+                                </td>
+                                <td style="border:none; width:25%; text-align:center; font-size:8.5pt;">
+                                    <p style="margin-bottom:1.25rem;"><b>Aprobado por:</b></p>
+                                    <p style="border-top:0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${nombreAprobado}</b></p>
+                                    <p style="font-size:7.5pt; color:#555;">Director de Proyecto</p>
+                                </td>
+                                <td style="border:none; width:25%; text-align:center; font-size:8.5pt;">
+                                    <p style="margin-bottom:1.25rem;"><b>Contabilizado por:</b></p>
+                                    <p style="border-top:0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;">Firma del Contador</p>
+                                    <p style="font-size:7.5pt; color:#555;">Área Contable y Financiera</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
             </table>
         </body>
         </html>`;
@@ -14263,8 +14425,8 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 15 : 17)));
-        const widthsConfig = esBono ? [35, 55, '*', 22, 55, 55, 50, 55, 55, 55, 55] : esAjuste ? [30, 45, '*', 18, 42, 45, 24, 42, 42, 38, 42, 42, 42] : esExtraominaria ? [30, 50, '*', 18, 26, 32, 28, 28, 28, 28, 28, 28, 28, 28, 38, 38, 38, 38, 42, 42] : (tipoNomina === 'vacaciones' ? [30, 50, '*', 18, 42, 30, 24, 38, 38, 38, 38, 42, 22, 40, 42] : [30, 50, '*', 18, 42, 30, 24, 38, 30, 38, 38, 38, 38, 42, 22, 40, 42]);
+        const colsCount = esBono ? 11 : (esAjuste ? 16 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 15 : 17)));
+        const widthsConfig = esBono ? [35, 55, '*', 22, 55, 55, 50, 55, 55, 55, 55] : esAjuste ? [28, 40, '*', 16, 38, 32, 20, 40, 38, 22, 38, 38, 34, 38, 38, 38] : esExtraominaria ? [30, 50, '*', 18, 26, 32, 28, 28, 28, 28, 28, 28, 28, 28, 38, 38, 38, 38, 42, 42] : (tipoNomina === 'vacaciones' ? [30, 50, '*', 18, 42, 30, 24, 38, 38, 38, 38, 42, 22, 40, 42] : [30, 50, '*', 18, 42, 30, 24, 38, 30, 38, 38, 38, 38, 42, 22, 40, 42]);
 
         // 🔽 Fila de total/subtotal para EXTRAORDINARIA: totaliza TODAS las columnas excepto Tarifa
         function filaTotalExtraPdf(label, data, style) {
@@ -14310,6 +14472,9 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                     { text: 'CI', style: 'tableHeader' },
                     { text: 'Nombre y Apellidos', style: 'tableHeader' },
                     { text: 'Cat.', style: 'tableHeader' },
+                    { text: 'Salario Base', style: 'tableHeader' },
+                    { text: 'Tarif/h', style: 'tableHeader' },
+                    { text: 'Horas', style: 'tableHeader' },
                     { text: 'Monto Ajuste', style: 'tableHeader' },
                     { text: 'Otros Pagos', style: 'tableHeader' },
                     { text: 'Vac. Días', style: 'tableHeader' },
@@ -14395,7 +14560,7 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                         tableRows.push([{ text: 'Observación: ' + (row.data.concepto || ''), colSpan: 11, alignment: 'left', style: 'tableCell' }]);
                     } else if (esAjuste) {
                         tableRows.push(generarFilaPdfAjuste(row.data));
-                        tableRows.push([{ text: 'Observación: ' + (row.data.concepto || ''), colSpan: 13, alignment: 'left', style: 'tableCell' }]);
+                        tableRows.push([{ text: 'Observación: ' + (row.data.concepto || ''), colSpan: 16, alignment: 'left', style: 'tableCell' }]);
                     } else if (esExtraominaria) {
                         tableRows.push([
                             { text: row.data.codigo, alignment: 'center', style: 'tableCell' },
@@ -14454,8 +14619,8 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                         ]);
                     } else if (esAjuste) {
                         tableRows.push([
-                            { text: `${row.titulo}:`, colSpan: 4, alignment: 'right', style: 'groupFooter' },
-                            {}, {}, {},
+                            { text: `${row.titulo}:`, colSpan: 7, alignment: 'right', style: 'groupFooter' },
+                            {}, {}, {}, {}, {}, {},
                             { text: row.data.aCobrar.toFixed(2), alignment: 'right', style: 'groupFooter' },
                             { text: row.data.bono.toFixed(2), alignment: 'right', style: 'groupFooter' },
                             { text: row.data.vacDias.toFixed(2), alignment: 'right', style: 'groupFooter' },
@@ -14501,8 +14666,8 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                 ]);
             } else if (esAjuste) {
                 tableRows.push([
-                    { text: `SUBTOTAL PÁGINA ${numPag}:`, colSpan: 4, alignment: 'right', style: 'pageSubtotal' },
-                    {}, {}, {},
+                    { text: `SUBTOTAL PÁGINA ${numPag}:`, colSpan: 7, alignment: 'right', style: 'pageSubtotal' },
+                    {}, {}, {}, {}, {}, {},
                     { text: pag.subtotal.aCobrar.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
                     { text: pag.subtotal.bono.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
                     { text: pag.subtotal.vacDias.toFixed(2), alignment: 'right', style: 'pageSubtotal' },
@@ -14548,8 +14713,8 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
                     ]);
                 } else if (esAjuste) {
                     tableRows.push([
-                        { text: 'TOTAL GENERAL NOMINA:', colSpan: 4, alignment: 'right', style: 'tableFooter' },
-                        {}, {}, {},
+                        { text: 'TOTAL GENERAL NOMINA:', colSpan: 7, alignment: 'right', style: 'tableFooter' },
+                        {}, {}, {}, {}, {}, {},
                         { text: gTot.aCobrar.toFixed(2), alignment: 'right', style: 'tableFooter' },
                         { text: gTot.bono.toFixed(2), alignment: 'right', style: 'tableFooter' },
                         { text: gTot.vacDias.toFixed(2), alignment: 'right', style: 'tableFooter' },
@@ -14674,6 +14839,53 @@ function exportarPdfOficial(trabajadores, alcance, filtroNombre) {
             }
         });
 
+        // 🔽 BLOQUE DE FIRMAS AL PIE DEL DOCUMENTO (una sola vez, al final)
+        docContent.push({
+            table: {
+                widths: ['25%', '25%', '25%', '25%'],
+                body: [[
+                    {
+                        stack: [
+                            { text: 'Elaborado por:', fontSize: 7.5, bold: true, alignment: 'center', margin: [0, 26, 0, 2] },
+                            { canvas: [{ type: 'line', x1: 10, y1: 0, x2: 130, y2: 0, lineWidth: 0.6, lineColor: '#000000' }], margin: [0, 0, 0, 2] },
+                            { text: nombreElaborado, fontSize: 8, bold: true, alignment: 'center' },
+                            { text: 'Especialista de Nóminas', fontSize: 6.5, color: '#555555', alignment: 'center' }
+                        ],
+                        border: [false, false, false, false]
+                    },
+                    {
+                        stack: [
+                            { text: 'Revisado por:', fontSize: 7.5, bold: true, alignment: 'center', margin: [0, 26, 0, 2] },
+                            { canvas: [{ type: 'line', x1: 10, y1: 0, x2: 130, y2: 0, lineWidth: 0.6, lineColor: '#000000' }], margin: [0, 0, 0, 2] },
+                            { text: nombreRevisado, fontSize: 8, bold: true, alignment: 'center' },
+                            { text: 'Especialista en Gestión Económica', fontSize: 6.5, color: '#555555', alignment: 'center' }
+                        ],
+                        border: [false, false, false, false]
+                    },
+                    {
+                        stack: [
+                            { text: 'Aprobado por:', fontSize: 7.5, bold: true, alignment: 'center', margin: [0, 26, 0, 2] },
+                            { canvas: [{ type: 'line', x1: 10, y1: 0, x2: 130, y2: 0, lineWidth: 0.6, lineColor: '#000000' }], margin: [0, 0, 0, 2] },
+                            { text: nombreAprobado, fontSize: 8, bold: true, alignment: 'center' },
+                            { text: 'Director de Proyecto', fontSize: 6.5, color: '#555555', alignment: 'center' }
+                        ],
+                        border: [false, false, false, false]
+                    },
+                    {
+                        stack: [
+                            { text: 'Contabilizado por:', fontSize: 7.5, bold: true, alignment: 'center', margin: [0, 26, 0, 2] },
+                            { canvas: [{ type: 'line', x1: 10, y1: 0, x2: 130, y2: 0, lineWidth: 0.6, lineColor: '#000000' }], margin: [0, 0, 0, 2] },
+                            { text: 'Firma del Contador', fontSize: 8, bold: true, alignment: 'center' },
+                            { text: 'Área Contable y Financiera', fontSize: 6.5, color: '#555555', alignment: 'center' }
+                        ],
+                        border: [false, false, false, false]
+                    }
+                ]]
+            },
+            layout: 'noBorders',
+            margin: [0, 8, 0, 0]
+        });
+
         var docDefinition = {
             pageOrientation: 'landscape',
             pageSize: 'LETTER',
@@ -14770,7 +14982,7 @@ function exportarWordOficial(trabajadores, alcance, filtroNombre) {
         const esAjuste = (tipoNomina === 'ajuste');
         const esExtraominaria = (tipoNomina === 'extraordinaria');
         const mostrarConcepto = esBono || esAjuste;
-        const colsCount = esBono ? 11 : (esAjuste ? 13 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 14 : 16)));
+        const colsCount = esBono ? 11 : (esAjuste ? 16 : (esExtraominaria ? 20 : (tipoNomina === 'vacaciones' ? 14 : 16)));
         
         let paginas = [];
         let paginaActual = [];
@@ -14866,6 +15078,9 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                                 <td class="text-center" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.ci)}</td>
                                 <td class="text-left" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.nombre)}</td>
                                 <td class="text-center" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.categoriaCodigo)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.salarioMensual || 0).toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.tarifaSal || 0).toFixed(2)}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${(row.data.esLiquidacionAjuste && parseFloat(row.data.diasLiquidacion) > 0) ? parseFloat(row.data.diasLiquidacion).toFixed(2) + 'd' : (row.data.horas || 0).toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.aCobrar.toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.bono.toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.vacDias.toFixed(2)}</td>
@@ -14877,7 +15092,7 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                                 <td style="border:0.5pt solid #000;"></td>
                             </tr>
                             <tr>
-                                <td class="text-left" colspan="13" style="border:0.5pt solid #000; font-size:7pt;">Observación: ${escapeHtml(row.data.concepto)}</td>
+                                <td class="text-left" colspan="16" style="border:0.5pt solid #000; font-size:7pt;">Observación: ${escapeHtml(row.data.concepto)}</td>
                             </tr>`;
                     } else if (esExtraominaria) {
                         cuerpoHtml += `
@@ -14911,7 +15126,7 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                                 <td class="text-left" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.nombre)}</td>
                                 <td class="text-center" style="border:0.5pt solid #000; font-size:7pt;">${escapeHtml(row.data.categoriaCodigo)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.tarifaSal.toFixed(2)}</td>
-                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${tipoNomina === 'vacaciones' ? (row.data.diasTomados || 0).toFixed(2) : row.data.horas}</td>
+                                <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.esLiquidacionAjuste && parseFloat(row.data.diasLiquidacion) > 0 ? parseFloat(row.data.diasLiquidacion).toFixed(2) + 'd' : (tipoNomina === 'vacaciones' ? (row.data.diasTomados || 0).toFixed(2) : (typeof row.data.horas === 'number' ? row.data.horas.toFixed(2) : (row.data.horas || 0)))}</td>
                                 <td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.aCobrar.toFixed(2)}</td>
                                 ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.bono.toFixed(2)}</td>`}
                                 ${tipoNomina === 'vacaciones' ? '' : `<td class="text-right" style="border:0.5pt solid #000; font-size:7pt;">${row.data.devengado.toFixed(2)}</td>`}
@@ -14945,7 +15160,7 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                     } else if (esAjuste) {
                         cuerpoHtml += `
                             <tr style="background-color:#f9f9f9; font-weight:bold; font-size:7pt;">
-                                <td colspan="4" style="text-align:right; border:0.5pt solid #000;"><b>${escapeHtml(row.titulo)}:</b></td>
+                                <td colspan="7" style="text-align:right; border:0.5pt solid #000;"><b>${escapeHtml(row.titulo)}:</b></td>
                                 <td class="text-right" style="border:0.5pt solid #000;">${row.data.aCobrar.toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000;">${row.data.bono.toFixed(2)}</td>
                                 <td class="text-right" style="border:0.5pt solid #000;">${row.data.vacDias.toFixed(2)}</td>
@@ -14992,7 +15207,7 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
             } else if (esAjuste) {
                 cuerpoHtml += `
                     <tr style="background-color:#fff3cd; font-weight:bold; font-size:7pt;">
-                        <td colspan="4" style="text-align:right; border:0.5pt solid #000;"><b>SUBTOTAL PÁGINA ${numPag}:</b></td>
+                        <td colspan="7" style="text-align:right; border:0.5pt solid #000;"><b>SUBTOTAL PÁGINA ${numPag}:</b></td>
                         <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.aCobrar.toFixed(2)}</td>
                         <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.bono.toFixed(2)}</td>
                         <td class="text-right" style="border:0.5pt solid #000;">${pag.subtotal.vacDias.toFixed(2)}</td>
@@ -15039,7 +15254,7 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                 } else if (esAjuste) {
                     cuerpoHtml += `
                         <tr style="background-color:#d9e1f2; font-weight:bold; font-size:7pt;">
-                            <td colspan="4" style="text-align:right; border:0.5pt solid #000;"><b>TOTAL GENERAL NOMINA:</b></td>
+                            <td colspan="7" style="text-align:right; border:0.5pt solid #000;"><b>TOTAL GENERAL NOMINA:</b></td>
                             <td class="text-right" style="border:0.5pt solid #000;">${gTot.aCobrar.toFixed(2)}</td>
                             <td class="text-right" style="border:0.5pt solid #000;">${gTot.bono.toFixed(2)}</td>
                             <td class="text-right" style="border:0.5pt solid #000;">${gTot.vacDias.toFixed(2)}</td>
@@ -15092,7 +15307,10 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Código</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:3.125rem;">CI</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:6.875rem;">Nombre y Apellidos</th>
-                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.375rem;">Cat.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.8125rem;">Cat.</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">S. Básico</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Tarifa Hora</th>
+                    <th style="border:0.5pt solid #000; padding:0.1875rem; width:1.75rem;">Horas</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.5rem;">Monto Ajuste</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Otros Pagos</th>
                     <th style="border:0.5pt solid #000; padding:0.1875rem; width:2.1875rem;">Vac. Días</th>
@@ -15217,6 +15435,33 @@ let subTotalGrupo = { aCobrar: 0, bono: 0, devengado: 0, impS: 0, retenciones: 0
                             ${cuerpoHtml}
                         </tbody>
                     </table>
+                    ${index === paginas.length - 1 ? `
+                    <div style="margin-top:1.25rem; page-break-inside:avoid; break-inside:avoid;">
+                        <table style="width:100%; border-collapse:collapse;">
+                            <tr>
+                                <td style="border:none; width:25%; text-align:center; font-size:8.5pt; padding:0.3125rem;">
+                                    <p style="margin-bottom:1.25rem;"><b>Elaborado por:</b></p>
+                                    <p style="border-top:0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${nombreElaborado}</b></p>
+                                    <p style="font-size:7.5pt; color:#555;">Especialista de Nóminas</p>
+                                </td>
+                                <td style="border:none; width:25%; text-align:center; font-size:8.5pt; padding:0.3125rem;">
+                                    <p style="margin-bottom:1.25rem;"><b>Revisado por:</b></p>
+                                    <p style="border-top:0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${nombreRevisado}</b></p>
+                                    <p style="font-size:7.5pt; color:#555;">Especialista en Gestión Económica</p>
+                                </td>
+                                <td style="border:none; width:25%; text-align:center; font-size:8.5pt; padding:0.3125rem;">
+                                    <p style="margin-bottom:1.25rem;"><b>Aprobado por:</b></p>
+                                    <p style="border-top:0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;"><b>${nombreAprobado}</b></p>
+                                    <p style="font-size:7.5pt; color:#555;">Director de Proyecto</p>
+                                </td>
+                                <td style="border:none; width:25%; text-align:center; font-size:8.5pt; padding:0.3125rem;">
+                                    <p style="margin-bottom:1.25rem;"><b>Contabilizado por:</b></p>
+                                    <p style="border-top:0.0625rem solid #000; width:85%; margin:0 auto; padding-top:0.1875rem;">Firma del Contador</p>
+                                    <p style="font-size:7.5pt; color:#555;">Área Contable y Financiera</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>` : ''}
                 </div>`;
         });
 
@@ -15323,6 +15568,19 @@ function generarContenidoTXT(trabajadores) {
                  padRight("NOMBRE Y APELLIDOS", 30) + " | " + 
                  padLeft("MONTO BONO", 14) + " | " + 
                  padLeft("NETO", 14);
+    } else if (esAjuste) {
+        header = padRight("COD", 6) + " | " + 
+                 padRight("CI", 11) + " | " + 
+                 padRight("NOMBRE Y APELLIDOS", 30) + " | " + 
+                 padLeft("HORAS", 10) + " | " + 
+                 padLeft("MONTO AJUSTE", 14) + " | " + 
+                 padLeft("OTROS PAGOS", 14) + " | " + 
+                 padLeft("VAC. DÍAS", 11) + " | " + 
+                 padLeft("VAC. IMPORTE", 14) + " | " + 
+                 padLeft("DEVENGADO", 14) + " | " + 
+                 padLeft("CESS", 12) + " | " + 
+                 padLeft("RET.", 12) + " | " + 
+                 padLeft("NETO", 14);
     } else if (esExtraominaria) {
         header = padRight("COD", 6) + " | " + 
                  padRight("CI", 11) + " | " + 
@@ -15362,6 +15620,7 @@ function generarContenidoTXT(trabajadores) {
     var totalDescuentos = 0;
     var totalNet = 0;
     var totalBono = 0;
+    var totalAjuste = 0;
     var totalHoras = 0;
     var totalImporteHE = 0;
     var totalNoctT = 0;
@@ -15370,6 +15629,8 @@ function generarContenidoTXT(trabajadores) {
     var totalImporteNtD = 0;
     var totalDt = 0;
     var totalImporteDT = 0;
+    var totalVacDias = 0;
+    var totalTiempoImp = 0;
 
     trabajadores.forEach(function(t) {
         totalDev += t.devengado || 0;
@@ -15378,6 +15639,7 @@ function generarContenidoTXT(trabajadores) {
         totalDescuentos += t.descuentos || 0;
         totalNet += t.pagado || 0;
         totalBono += t.bono || 0;
+        totalAjuste += t.aCobrar || 0;
         totalHoras += t.horas || 0;
         totalImporteHE += t.importeHE || 0;
         totalNoctT += t.noctT || 0;
@@ -15386,6 +15648,10 @@ function generarContenidoTXT(trabajadores) {
         totalImporteNtD += t.importeNtD || 0;
         totalDt += t.dt || 0;
         totalImporteDT += t.importeDT || 0;
+        if (esAjuste) {
+            totalVacDias += t.vacDias || 0;
+            totalTiempoImp += t.tiempoImp || 0;
+        }
 
         var nombreTruncado = t.nombre.substring(0, 30);
         
@@ -15395,6 +15661,23 @@ function generarContenidoTXT(trabajadores) {
                    padRight(t.ci, 11) + " | " + 
                    padRight(nombreTruncado, 30) + " | " + 
                    padLeft("$" + (t.bono || 0).toFixed(2), 14) + " | " + 
+                   padLeft("$" + (t.pagado || 0).toFixed(2), 14);
+        } else if (esAjuste) {
+            var montoAjusteTxt = '$' + (t.aCobrar || 0).toFixed(2);
+            var horasTxt = (t.esLiquidacionAjuste && parseFloat(t.diasLiquidacion) > 0)
+                ? parseFloat(t.diasLiquidacion).toFixed(2) + 'd'
+                : (t.horas || 0).toFixed(2);
+            line = padRight(t.codigo, 6) + " | " + 
+                   padRight(t.ci, 11) + " | " + 
+                   padRight(nombreTruncado, 30) + " | " + 
+                   padLeft(horasTxt, 10) + " | " + 
+                   padLeft(montoAjusteTxt, 14) + " | " + 
+                   padLeft("$" + (t.bono || 0).toFixed(2), 14) + " | " + 
+                   padLeft((t.vacDias || 0).toFixed(2), 11) + " | " + 
+                   padLeft("$" + (t.tiempoImp || 0).toFixed(2), 14) + " | " + 
+                   padLeft("$" + (t.devengado || 0).toFixed(2), 14) + " | " + 
+                   padLeft("$" + (t.impS || 0).toFixed(2), 12) + " | " + 
+                   padLeft("$" + (t.retenciones || 0).toFixed(2), 12) + " | " + 
                    padLeft("$" + (t.pagado || 0).toFixed(2), 14);
         } else if (esExtraominaria) {
             line = padRight(t.codigo, 6) + " | " + 
@@ -15439,13 +15722,30 @@ function generarContenidoTXT(trabajadores) {
     // ============================================================
     var totalLine;
     if (esBono) {
-        totalLine = padRight("TOTAL", 6) + " | " + 
+        totalLine = padRight("", 6) + " | " + 
                     padRight("", 11) + " | " + 
                     padRight("TOTALES GENERALES", 30) + " | " + 
                     padLeft("$" + totalBono.toFixed(2), 14) + " | " + 
                     padLeft("$" + totalNet.toFixed(2), 14);
+    } else if (esAjuste) {
+        var totalHorasAjuste = trabajadores.reduce(function(s, t) {
+            return s + ((t.esLiquidacionAjuste && parseFloat(t.diasLiquidacion) > 0) ? parseFloat(t.diasLiquidacion) : (t.horas || 0));
+        }, 0);
+        var horasTxtTotal = totalHorasAjuste > 0 ? totalHorasAjuste.toFixed(2) + 'd' : '';
+        totalLine = padRight("", 6) + " | " + 
+                    padRight("", 11) + " | " + 
+                    padRight("TOTALES GENERALES", 30) + " | " + 
+                    padLeft(horasTxtTotal, 10) + " | " + 
+                    padLeft("$" + totalAjuste.toFixed(2), 14) + " | " + 
+                    padLeft("$" + totalBono.toFixed(2), 14) + " | " + 
+                    padLeft(totalVacDias.toFixed(2), 11) + " | " + 
+                    padLeft("$" + totalTiempoImp.toFixed(2), 14) + " | " + 
+                    padLeft("$" + totalDev.toFixed(2), 14) + " | " + 
+                    padLeft("$" + totalCess.toFixed(2), 12) + " | " + 
+                    padLeft("$" + totalDed.toFixed(2), 12) + " | " + 
+                    padLeft("$" + totalNet.toFixed(2), 14);
     } else if (esExtraominaria) {
-        totalLine = padRight("TOTAL", 6) + " | " + 
+        totalLine = padRight("", 6) + " | " + 
                     padRight("", 11) + " | " + 
                     padRight("TOTALES GENERALES", 30) + " | " + 
                     padRight("", 10) + " | " + 
@@ -15463,7 +15763,7 @@ function generarContenidoTXT(trabajadores) {
                     padLeft("$" + totalDed.toFixed(2), 12) + " | " + 
                     padLeft("$" + totalNet.toFixed(2), 14);
     } else {
-        totalLine = padRight("TOTAL", 6) + " | " + 
+        totalLine = padRight("", 6) + " | " + 
                     padRight("", 11) + " | " + 
                     padRight("TOTALES GENERALES", 30) + " | " + 
                     padLeft("$" + totalDev.toFixed(2), 14) + " | " + 

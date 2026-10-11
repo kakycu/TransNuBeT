@@ -762,6 +762,7 @@ $nombre_mes_actual = nombreMesEspanol($mes);
 // DATOS PARA EXPORTACIÓN (desde PHP)
 // ============================================
 const ASSP_DATA = {
+    sistema:        'Sistema SisGesNom®',
     empresa:        <?php echo json_encode($config_empresa['nombre_empresa']); ?>,
     jefe:           <?php echo json_encode($config_empresa['jefe_proyecto']); ?>,
     especialista:   <?php echo json_encode($config_empresa['especialista_gestion']); ?>,
@@ -842,6 +843,9 @@ function fmtMoneda(v) {
 function obtenerFechaHora() {
     const d = new Date();
     return d.toLocaleDateString('es-ES') + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+}
+function tituloAssp() {
+    return ASSP_DATA.sistema + ' - ' + ASSP_DATA.empresa;
 }
 function descargarBlob(blob, nombre) {
     const url = URL.createObjectURL(blob);
@@ -924,7 +928,7 @@ document.getElementById('btnExportarExcel')?.addEventListener('click', function 
     ws.mergeCells(f, 1, f, 8);
     ws.getRow(f).height = 26;
     f++;
-    celda(f, 1, String(ASSP_DATA.empresa).toUpperCase(), { bold: true, size: 11, align: 'center' });
+    celda(f, 1, tituloAssp().toUpperCase(), { bold: true, size: 11, align: 'center' });
     ws.mergeCells(f, 1, f, 8);
     f++;
     celda(f, 1, 'Período: ' + ASSP_DATA.periodo_label + '    ·    REEUP: ' + (ASSP_DATA.reeup || '—') + '    ·    NIT: ' + (ASSP_DATA.nit || '—') + '    ·    Emisión: ' + obtenerFechaHora(), { align: 'center' });
@@ -1041,11 +1045,11 @@ function construirHtmlWordAssp() {
     const headers = ['Tipo Nómina', 'DEVENGADO', 'DEDUCC. TOTALES', 'PAGADO (base aporte)', '12.5% Seg. Social Patronal', '1.5% Prest. Corto Plazo', '5% Frza. Trab. (NO aplica PDL)', 'Total Aporte (12.5+5%)'];
     const encabezados = headers.map(function (h) { return '<th style="border:0.0625rem solid #000;padding:0.25rem;background:#004b87;color:#fff;text-align:center;font-size:8pt;">' + escHtmlAssp(h) + '</th>'; }).join('');
     return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
-        + '<head><meta charset="utf-8"><title>' + escHtmlAssp(ASSP_DATA.empresa) + ' - Aporte Seguridad Social</title>'
+        + '<head><meta charset="utf-8"><title>' + escHtmlAssp(tituloAssp()) + ' - Aporte Seguridad Social</title>'
         + '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/><w:PageSetup><w:Orientation>Landscape</w:Orientation><w:PageWidth>11in</w:PageWidth><w:PageHeight>8.5in</w:PageHeight></w:PageSetup></w:WordDocument></xml><![endif]-->'
         + '<style>@page WordSection1 { size: 11in 8.5in; margin:0.6in; } div.WordSection1 { page: WordSection1; } body { font-family: Arial, sans-serif; font-size:9pt; color:#000; } h1 { font-size:14pt; text-align:center; margin:0 0 0.25rem; } h2 { font-size:11pt; text-align:center; font-weight:normal; margin:0 0 0.25rem; } .periodo { text-align:center; font-size:9pt; margin-bottom:0.5rem; } table { border-collapse: collapse; width:100%; } td { border:0.0625rem solid #000; padding:0.25rem; font-size:8.5pt; }</style></head>'
         + '<body><div class="WordSection1">'
-        + '<h1>' + escHtmlAssp(String(ASSP_DATA.empresa).toUpperCase()) + '</h1>'
+        + '<h1>' + escHtmlAssp(tituloAssp().toUpperCase()) + '</h1>'
         + '<h2>DESGLOSE DE PAGO DE SALARIOS PARA EL APORTE DE LA SEGURIDAD SOCIAL PATRONAL</h2>'
         + '<p class="periodo">Período: ' + escHtmlAssp(ASSP_DATA.periodo_label) + ' &nbsp;·&nbsp; REEUP: ' + escHtmlAssp(ASSP_DATA.reeup || '—') + ' &nbsp;·&nbsp; NIT: ' + escHtmlAssp(ASSP_DATA.nit || '—') + ' &nbsp;·&nbsp; Emisión: ' + escHtmlAssp(obtenerFechaHora()) + '</p>'
         + '<table><thead><tr>' + encabezados + '</tr></thead><tbody>' + filas + totalRow + '</tbody></table>'
@@ -1066,7 +1070,12 @@ document.getElementById('btnExportarCsv')?.addEventListener('click', function (e
     e.preventDefault();
     const t = ASSP_DATA.totales;
     const headers = ['Tipo Nómina', 'DEVENGADO', 'DEDUCC. TOTALES', 'PAGADO (base aporte)', '12.5% Seg. Social Patronal', '1.5% Prest. Corto Plazo', '5% Frza. Trab. (NO aplica PDL)', 'Total Aporte (12.5+5%)'];
-    const filas = [headers];
+    const filas = [
+        ['APORTE SEGURIDAD SOCIAL PATRONAL'],
+        [tituloAssp()],
+        []
+    ];
+    filas.push(headers);
     ASSP_DATA.desglose.forEach(function (d) {
         filas.push([d.label, d.devengado, d.deducciones, d.pagado, d.aporte_seg, d.aporte_corto, d.aporte_frza, d.aporte_total]);
     });
@@ -1085,7 +1094,7 @@ document.getElementById('btnExportarTxt')?.addEventListener('click', function (e
     const t = ASSP_DATA.totales;
     const lineas = [];
     lineas.push('APORTE SEGURIDAD SOCIAL PATRONAL');
-    lineas.push('Empresa: ' + ASSP_DATA.empresa);
+    lineas.push(tituloAssp());
     lineas.push('Período: ' + ASSP_DATA.periodo_label + '   |   REEUP: ' + (ASSP_DATA.reeup || '—') + '   |   NIT: ' + (ASSP_DATA.nit || '—'));
     lineas.push('Generado: ' + obtenerFechaHora());
     lineas.push('============================================================');
@@ -1121,8 +1130,9 @@ document.getElementById('btnExportarPDF')?.addEventListener('click', function ()
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
     doc.setTextColor(0, 0, 0);
-    doc.text(ASSP_DATA.empresa.toUpperCase(), pageW / 2, y, { align: 'center' });
-    y += 16;
+    const lineasTitulo = doc.splitTextToSize(tituloAssp().toUpperCase(), pageW - 60);
+    doc.text(lineasTitulo, pageW / 2, y, { align: 'center' });
+    y += 16 * lineasTitulo.length;
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     doc.text('Desglose de Pago de Salarios para el Aporte de la Seguridad Social Patronal', pageW / 2, y, { align: 'center' });
@@ -1264,7 +1274,7 @@ document.getElementById('btnImprimir')?.addEventListener('click', function () {
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        <title>Aporte Seguridad Social - ${ASSP_DATA.periodo_label}</title>
+        <title>${tituloAssp()} - Aporte Seguridad Social - ${ASSP_DATA.periodo_label}</title>
         <style>
             @page { size: letter landscape; margin: 14mm 12mm; }
             * { box-sizing: border-box; }
@@ -1310,7 +1320,7 @@ document.getElementById('btnImprimir')?.addEventListener('click', function () {
         <div class="header">
             <div class="logo">${ASSP_DATA.logo ? '<img src="' + ASSP_DATA.logo + '">' : ''}</div>
             <div class="titulo">
-                <h2>${ASSP_DATA.empresa.toUpperCase()}</h2>
+                <h2>${tituloAssp().toUpperCase()}</h2>
                 <h3>Desglose de Pago de Salarios para el Aporte de la Seguridad Social Patronal</h3>
             </div>
             <div class="meta">

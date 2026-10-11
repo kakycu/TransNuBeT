@@ -1301,35 +1301,11 @@ td.dtfc-fixed-left:nth-child(2) {
 .animate-fade-in {
     animation: fadeInSlide 0.25s ease-out forwards;
 }
-/* Panel Scrollbar del Select */
-.select-scroll-panel {
-    background: rgba(15, 15, 20, 0.9) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #ffffff !important;
-    border-radius: 8px !important;
-    padding:0.25rem !important;
+/* Selector de alcance del modal de impresión (Cargo, Área, Centro de
+   Costo…): es un desplegable normal, con el chevron del tema. Solo se
+   ajusta el tamaño para que acompañe al buscador que tiene encima. */
+#selectImpresion {
     font-size:0.85rem !important;
-    outline: none !important;
-}
-
-.select-scroll-panel option {
-    padding:0.375rem 0.625rem !important;
-    border-radius: 6px !important;
-    margin-bottom:0.125rem !important;
-    transition: background 0.15s ease;
-    color: rgba(255, 255, 255, 0.85);
-}
-
-/* Resaltado del item al pasar el cursor o ser seleccionado */
-.select-scroll-panel option:hover {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    color: #ffffff !important;
-}
-
-.select-scroll-panel option:checked {
-    background: linear-gradient(135deg, rgba(0, 120, 212, 0.3), rgba(0, 120, 212, 0.15)) !important;
-    color: #60a5fa !important;
-    font-weight: 500;
 }
 /* Animación blink para mensaje de contabilizada */
 .blink-text {
