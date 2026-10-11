@@ -950,7 +950,7 @@ try {
 $nit_empresa = $config_empresa['nit_empresa'] ?? 'S/R';
 
 // Logo de la empresa para los reportes de impresión
-$ruta_logo = '../../images/LogoCorto.png';
+$ruta_logo = '../../images/LogoTN.png';
 $logo_base64 = '';
 if (file_exists($ruta_logo)) {
     $tipo_logo = pathinfo($ruta_logo, PATHINFO_EXTENSION);
@@ -7087,7 +7087,25 @@ if ($existe_nomina) {
 
 
 <!-- MODAL TRABAJADORES SIN NÓMINA -->
-<div class="modal fade" id="modalSinNomina" tabindex="-1" data-bs-backdrop="static">
+<div class="modal fade" id="modalSinNomina" tabindex="-1" data-bs-backdrop="static" data-periodo-limite="<?php
+    // Límite superior del dropdown: MAX(periodo_nominas_en_curso, último cerrado + 1 mes)
+    try {
+        $lim_cfg_sn = trim((string)$pdo->query("SELECT valor FROM configuracion_general WHERE parametro = 'periodo_nominas_en_curso' LIMIT 1")->fetchColumn());
+    } catch (Exception $e_lim_sn) { $lim_cfg_sn = ''; }
+    $lim_cand_sn = [];
+    if (preg_match('/^(\d{4})-(\d{1,2})/', $lim_cfg_sn, $m_lim_sn)) {
+        $lim_cand_sn[] = sprintf('%04d-%02d', (int)$m_lim_sn[1], (int)$m_lim_sn[2]);
+    }
+    try {
+        $lim_hasta_sn = $pdo->query("SELECT MAX(periodo_hasta) FROM cierres_periodo_nomina WHERE estado = 'cerrado'")->fetchColumn();
+    } catch (Exception $e_hasta_sn) { $lim_hasta_sn = null; }
+    if ($lim_hasta_sn) {
+        // Último mes CERRADO directamente (sin +1): nunca genera un mes fantasma futuro
+        $lim_cand_sn[] = date('Y-m', strtotime($lim_hasta_sn));
+    }
+    $periodo_limite_sn = $lim_cand_sn ? max($lim_cand_sn) : date('Y-m');
+    echo htmlspecialchars($periodo_limite_sn);
+?>">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content modal-content-modern">
             <div class="modal-header" style="background: linear-gradient(135deg, #b91c1c, #ef4444); border-bottom: none;">
@@ -7103,12 +7121,22 @@ if ($existe_nomina) {
                             $stmt_sn = $pdo->query("SELECT DISTINCT YEAR(periodo_desde) as anio FROM nominas ORDER BY anio DESC");
                             $anios_sn = $stmt_sn->fetchAll(PDO::FETCH_COLUMN);
                             if (empty($anios_sn)) $anios_sn = [(int)date('Y')];
-                            $periodo_ref_sn = date('Y-m');
+                            // Periodo por defecto del modal: configuracion_general.periodo_nominas_en_curso (fallback: mes actual)
+                            try {
+                                $periodo_cfg_sn = trim((string)$pdo->query("SELECT valor FROM configuracion_general WHERE parametro = 'periodo_nominas_en_curso' LIMIT 1")->fetchColumn());
+                            } catch (Exception $e_cfg_sn) {
+                                $periodo_cfg_sn = '';
+                            }
+                            $periodo_ref_sn = preg_match('/^(\d{4})-(\d{1,2})/', $periodo_cfg_sn, $m_cfg_sn)
+                                ? sprintf('%04d-%02d', (int)$m_cfg_sn[1], (int)$m_cfg_sn[2])
+                                : date('Y-m');
                             $anio_ref_sn = (int)substr($periodo_ref_sn, 0, 4);
                             $mes_ref_sn = (int)substr($periodo_ref_sn, 5, 2);
                             if (!in_array($anio_ref_sn, $anios_sn)) $anios_sn[] = $anio_ref_sn;
+                            $anio_limite_sn = (int)substr($periodo_limite_sn, 0, 4);
+                            $mes_limite_sn = (int)substr($periodo_limite_sn, 5, 2);
                             foreach ($anios_sn as $yy): ?>
-                            <option value="<?php echo $yy; ?>" <?php echo $yy == $anio_ref_sn ? 'selected' : ''; ?>><?php echo $yy; ?></option>
+                            <option value="<?php echo $yy; ?>" <?php echo $yy == $anio_ref_sn ? 'selected' : ''; ?> <?php echo $yy > $anio_limite_sn ? 'disabled' : ''; ?>><?php echo $yy; ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -7124,7 +7152,7 @@ if ($existe_nomina) {
                         <button type="button" class="btn-win btn-win-sm" id="btnBuscarSinNomina" title="Buscar trabajadores sin nómina" data-tooltip="Buscar trabajadores sin nómina" data-tooltip-theme="primary"><i class="fas fa-search me-1"></i> Buscar</button>
                     </div>
                     <div class="col-md-3 text-md-end">
-                        <span class="badge" id="sinNominaResumen" style="background: rgba(248,113,113,0.15); color: #f87171; font-size:0.8rem;"><i class="fas fa-user-slash me-1"></i>Sin datos</span>
+                        <span class="badge" id="sinNominaResumen" style="background: rgba(248,113,113,0.15); color: #f87171; font-size:0.8rem; white-space: normal; text-align: right; line-height: 1.4; display: inline-block; max-width: 100%;"><i class="fas fa-user-slash me-1"></i>Sin datos</span>
                     </div>
                 </div>
                 <div class="table-responsive" style="max-height:26.25rem; overflow-y: auto;">
@@ -7217,7 +7245,7 @@ if ($existe_nomina) {
     </div>
 </div>
 
-<div class="modal fade" id="modalSinCuenta" tabindex="-1" data-bs-backdrop="static">
+<div class="modal fade" id="modalSinCuenta" tabindex="-1" data-bs-backdrop="static" data-periodo-defecto="<?php echo htmlspecialchars($periodo_ref_sc); ?>">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content modal-content-modern">
             <div class="modal-header" style="background: linear-gradient(135deg, #92400e, #d97706); border-bottom: none;">
@@ -7233,7 +7261,15 @@ if ($existe_nomina) {
                             $stmt_sc = $pdo->query("SELECT DISTINCT YEAR(periodo_desde) as anio FROM nominas ORDER BY anio DESC");
                             $anios_sc = $stmt_sc->fetchAll(PDO::FETCH_COLUMN);
                             if (empty($anios_sc)) $anios_sc = [(int)date('Y')];
-                            $periodo_ref_sc = date('Y-m');
+                            // Periodo por defecto del modal: configuracion_general.periodo_nominas_en_curso (fallback: mes actual)
+                            try {
+                                $periodo_cfg_sc = trim((string)$pdo->query("SELECT valor FROM configuracion_general WHERE parametro = 'periodo_nominas_en_curso' LIMIT 1")->fetchColumn());
+                            } catch (Exception $e_cfg_sc) {
+                                $periodo_cfg_sc = '';
+                            }
+                            $periodo_ref_sc = preg_match('/^(\d{4})-(\d{1,2})/', $periodo_cfg_sc, $m_cfg_sc)
+                                ? sprintf('%04d-%02d', (int)$m_cfg_sc[1], (int)$m_cfg_sc[2])
+                                : date('Y-m');
                             $anio_ref_sc = (int)substr($periodo_ref_sc, 0, 4);
                             $mes_ref_sc = (int)substr($periodo_ref_sc, 5, 2);
                             if (!in_array($anio_ref_sc, $anios_sc)) $anios_sc[] = $anio_ref_sc;
@@ -7242,12 +7278,20 @@ if ($existe_nomina) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-auto" style="width:7rem;">
+                    <div class="col-md-auto" style="width:11rem;">
                         <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #f59e0b;"><i class="fas fa-calendar-day me-1"></i> Mes</label>
                         <select id="sinCuentaMes" class="form-select form-select-sm" title="Seleccionar mes" data-tooltip="Seleccionar mes" data-tooltip-theme="secondary">
-                            <?php for ($mm = 1; $mm <= 12; $mm++): ?>
-                            <option value="<?php echo $mm; ?>" <?php echo $mm == $mes_ref_sc ? 'selected' : ''; ?>><?php echo ucfirst(nombreMesEspanol($mm)); ?></option>
-                            <?php endfor; ?>
+                            <?php
+                            // Solo meses con valores (nóminas) para el año/estado por defecto; evita mostrar meses vacíos
+                            try {
+                                $stmt_mes_sc = $pdo->prepare("SELECT DISTINCT MONTH(periodo_desde) FROM nominas WHERE YEAR(periodo_desde) = ? AND estado = ? ORDER BY 1");
+                                $stmt_mes_sc->execute([$anio_ref_sc, 'contabilizado']);
+                                $meses_sc = $stmt_mes_sc->fetchAll(PDO::FETCH_COLUMN);
+                            } catch (Exception $e_mes_sc) { $meses_sc = []; }
+                            if (empty($meses_sc)) $meses_sc = [$mes_ref_sc];
+                            foreach ($meses_sc as $mm): ?>
+                            <option value="<?php echo (int)$mm; ?>" <?php echo (int)$mm == $mes_ref_sc ? 'selected' : ''; ?>><?php echo ucfirst(nombreMesEspanol((int)$mm)); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -7266,7 +7310,7 @@ if ($existe_nomina) {
                             <option value="todos">Todos</option>
                         </select>
                     </div>
-                    <div class="col-md">
+                    <div class="col">
                         <label class="form-label mb-1" style="font-size:0.7rem; font-weight: 600; color: #f59e0b;"><i class="fas fa-user me-1 text-info"></i> Nombre del Trabajador</label>
                         <div class="buscador-trabajador-modal">
                             <div class="input-group input-group-sm">
@@ -7300,12 +7344,12 @@ if ($existe_nomina) {
                                 <th>No.</th>
                                 <th>No CI.</th>
                                 <th>Nombre y Apellidos</th>
-                                <th class="text-end">SALAR. BÁSICO</th>
-                                <th class="text-end">NOCT. H. EXT</th>
+                                <th class="text-end">SALAR.<br>BÁSICO</th>
+                                <th class="text-end">NOCT.<br>H. EXT</th>
                                 <th class="text-end">VACAC.</th>
-                                <th class="text-end">AJUSTE Y/O LIQUID.</th>
+                                <th class="text-end">AJUSTE Y/O<br>LIQUID.</th>
                                 <th class="text-end">RENDIM.</th>
-                                <th class="text-end">TOTAL A PAGAR</th>
+                                <th class="text-end">TOTAL A<br>PAGAR</th>
                             </tr>
                         </thead>
                         <tbody>

@@ -91,18 +91,20 @@ function obtenerSinNomina($pdo, $periodo_desde, $periodo_hasta) {
         LEFT JOIN areas a ON t.area_id = a.id
         LEFT JOIN centros_costo cc ON t.centro_costo_id = cc.id
         LEFT JOIN nominas n2 ON n2.trabajador_id = t.id
-        WHERE (t.fecha_alta IS NOT NULL AND t.fecha_alta >= :ini)
+        WHERE t.fecha_alta IS NOT NULL
+          AND t.fecha_alta <= :fin
+          AND (t.fecha_baja IS NULL OR t.fecha_baja >= :ini)
           AND t.id NOT IN (
               SELECT DISTINCT n.trabajador_id
               FROM nominas n
-              WHERE n.estado != 'borrador'
+              WHERE n.estado IN ('borrador', 'contabilizado')
                 AND MONTH(n.periodo_desde) = :mes
                 AND YEAR(n.periodo_desde) = :anio
           )
         GROUP BY t.id, t.codigo, t.ci, t.nombre_completo, a.nombre_area, cc.nombre, t.fecha_alta, t.fecha_baja
         ORDER BY t.nombre_completo ASC
     ");
-    $stmt->execute([':ini' => $ini, ':mes' => $mes, ':anio' => $anio]);
+    $stmt->execute([':ini' => $ini, ':fin' => $fin, ':mes' => $mes, ':anio' => $anio]);
     $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $resultado = [];
@@ -576,7 +578,7 @@ if ($formato === 'excel') {
     }
     $y -= 60;
 
-    $contenido .= "BT /F1 8 Tf 0.3 0.3 0.3 rg 1 0 0 1 $x0 30 Tm (Página " . $numPag . ") Tj ET\n";
+    $contenido .= "BT /F1 8 Tf 0.3 0.3 0.3 rg 1 0 0 1 $x0 30 Tm (" . pdfEscape(sanitizar('Página ' . $numPag, 'Windows-1252')) . ") Tj ET\n";
     $paginas[] = $contenido;
 
     $nPaginas = count($paginas);
@@ -609,8 +611,8 @@ if ($formato === 'excel') {
     }
     $font1 = $idx;
     $font2 = $idx + 1;
-    $objs[$font1] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
-    $objs[$font2] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+    $objs[$font1] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+    $objs[$font2] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
 
     $maxObj = $font2;
     $pdf = "%PDF-1.4\n";

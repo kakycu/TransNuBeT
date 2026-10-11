@@ -675,7 +675,7 @@ if ($formato === 'excel') {
     }
     $y -= 60;
 
-    $contenido .= "BT /F1 8 Tf 0.3 0.3 0.3 rg 1 0 0 1 $x0 30 Tm (Página " . $numPag . ") Tj ET\n";
+    $contenido .= "BT /F1 8 Tf 0.3 0.3 0.3 rg 1 0 0 1 $x0 30 Tm (" . pdfEscape(sanitizar('Página ' . $numPag, 'Windows-1252')) . ") Tj ET\n";
     $paginas[] = $contenido;
 
     $nPaginas = count($paginas);
@@ -708,8 +708,8 @@ if ($formato === 'excel') {
     }
     $font1 = $idx;
     $font2 = $idx + 1;
-    $objs[$font1] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
-    $objs[$font2] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+    $objs[$font1] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+    $objs[$font2] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
 
     $maxObj = $font2;
     $pdf = "%PDF-1.4\n";

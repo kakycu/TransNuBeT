@@ -13,7 +13,7 @@
 //   * eliminar_registro-> borra un registro concreto y re-encadena
 //
 // eliminar_todo: antes de borrar exporta todos los registros a
-// nominas/logs/ (logs-sisgestonHistorico-fecha-hora.log) y reinicia
+// nominas/logs/ (logs-sisgesnomHistorico-fecha-hora.log) y reinicia
 // el autoincrement de la tabla a 1.
 // ============================================================
 
@@ -122,7 +122,7 @@ try {
                 exit;
             }
 
-            $archivo = $dir_logs . '/logs-sisgestonHistorico-' . date('dmY') . '-' . date('His') . '.log';
+            $archivo = $dir_logs . '/logs-sisgesnomHistorico-' . date('dmY') . '-' . date('His') . '.log';
 
             $user_login  = trim((string)($_SESSION['username'] ?? $_SESSION['usuario'] ?? ''));
             $user_nombre = trim((string)($_SESSION['user_nombre'] ?? $_SESSION['usuario_nombre'] ?? ''));

@@ -8639,12 +8639,20 @@ backdrop: 'rgba(0,0,0,0.6)'
         var sel = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionResumenSalarial'));
         if (sel) sel.hide();
         var modal = new bootstrap.Modal(document.getElementById('modalSinCuenta'), { backdrop: 'static' });
+        // Siempre abrir con el periodo por defecto de configuracion_general.periodo_nominas_en_curso
+        var periodoDef = ($('#modalSinCuenta').data('periodo-defecto') || '').toString();
+        if (/^\d{4}-\d{2}$/.test(periodoDef)) {
+            if ($('#sinCuentaAnio option[value="' + periodoDef.slice(0, 4) + '"]').length) {
+                $('#sinCuentaAnio').val(periodoDef.slice(0, 4));
+            }
+            $('#sinCuentaMes').val(String(parseInt(periodoDef.slice(5), 10)));
+        }
         modal.show();
         if (!sinCuentaBuscarIniciado) {
             sinCuentaBuscarIniciado = true;
             sinCuentaInitBuscar();
         }
-        cargarSinCuenta();
+        cargarMesesSinCuenta(function() { cargarSinCuenta(); });
     });
 
     $('#menuExportPDF').on('click', function(e) {
@@ -8679,13 +8687,14 @@ backdrop: 'rgba(0,0,0,0.6)'
 
     // ==================== TRABAJADORES SIN NÓMINA ====================
     var SIN_NOMINA_LOGO = <?php echo json_encode($logo_base64); ?>;
+    var SIN_NOMINA_SIS = 'SisGesNom';
     var SIN_NOMINA_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? COMPANY_NAME); ?>;
     var SIN_NOMINA_USUARIO = <?php echo json_encode($user_nombre_completo ?? 'Usuario'); ?>;
     var SIN_NOMINA_JEFE = <?php echo json_encode($config_empresa['jefe_proyecto'] ?? JEFE_PROYECTO); ?>;
     var SIN_NOMINA_ESP_GESTION = <?php echo json_encode($config_empresa['especialista_gestion'] ?? ESPECIALISTA); ?>;
     var SIN_NOMINA_ESP_RRHH = <?php echo json_encode($config_empresa['especialista_gestionRRHH'] ?? ''); ?>;
     var SIN_NOMINA_PRINT_CSS = <?php echo json_encode('
-        @page { size: landscape; margin: 6mm 10mm 10mm 10mm; }
+        @page { size: letter landscape; margin: 6mm 8mm 8mm 8mm; }
         * { box-sizing: border-box; }
         body { font-family: Arial, Helvetica, sans-serif; font-size: 0.6875rem; color: #000; margin: 0; }
         .btn-print { background: #b91c1c; color: #fff; border: none; border-radius: 0.375rem; padding: 0.625rem 1.125rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
@@ -8700,11 +8709,19 @@ backdrop: 'rgba(0,0,0,0.6)'
         .sn-cabecera-datos { font-size: 8pt; text-align: right; vertical-align: middle; }
         .sn-total { font-weight: bold; color: #b91c1c; }
         .sn-tabla { width: 100%; border-collapse: collapse; }
+        .sn-tabla-c { width: auto; margin-left: auto; margin-right: auto; }
+        .sn-tabla .sn-c { text-align: center; }
+        .sn-tabla .sn-l { text-align: left; }
+        .sn-tabla .sn-r { text-align: right; }
         .sn-tabla th { background: #b91c1c; color: #fff; border: 0.0625rem solid #000; padding: 0.1875rem; font-size: 8pt; }
         .sn-tabla td { border: 0.0625rem solid #666; padding: 0.125rem 0.1875rem; font-size: 8pt; }
         .sn-tabla tbody tr:nth-child(even) { background: #f3f4f6; }
         .sn-total-fila { background: #fed7d7; font-weight: bold; }
         .sn-total-fila td { border-top: 0.125rem solid #000; }
+        .sn-tabla tr { page-break-inside: avoid; }
+        .page-break { page-break-after: always; break-after: page; height: 0; }
+        .sn-pie { display: flex; justify-content: space-between; align-items: center; font-size: 7.5pt; color: #555; border-top: 0.0625rem solid #999; margin-top: 0.375rem; padding-top: 0.1875rem; }
+        .sn-pie-centro { font-weight: bold; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .sn-firmas { margin-top: 1.5625rem; }
@@ -8721,6 +8738,7 @@ backdrop: 'rgba(0,0,0,0.6)'
         e.preventDefault();
         var modal = new bootstrap.Modal(document.getElementById('modalSinNomina'), { backdrop: 'static' });
         modal.show();
+        aplicarLimiteMesSinNomina();
         cargarSinNomina();
     });
 
@@ -9217,7 +9235,32 @@ backdrop: 'rgba(0,0,0,0.6)'
         cargarSinNomina();
     });
 
-    $('#sinNominaAnio, #sinNominaMes').on('change', function() {
+    // Límite superior del dropdown de meses: data-periodo-limite (AAAA-MM) del modal
+    function aplicarLimiteMesSinNomina() {
+        var lim = ($('#modalSinNomina').data('periodo-limite') || '').toString();
+        if (!/^\d{4}-\d{1,2}$/.test(lim)) return;
+        var limAnio = parseInt(lim.slice(0, 4), 10);
+        var limMes = parseInt(lim.slice(5), 10);
+        var anioSel = parseInt($('#sinNominaAnio').val(), 10);
+        var $meses = $('#sinNominaMes option');
+        $meses.each(function() {
+            var m = parseInt($(this).val(), 10);
+            var fuera = (anioSel > limAnio) || (anioSel === limAnio && m > limMes);
+            $(this).prop('disabled', fuera);
+        });
+        // Si el mes seleccionado quedó fuera del rango, recorrer al último permitido
+        var $sel = $('#sinNominaMes option:selected');
+        if ($sel.length && $sel.prop('disabled')) {
+            var $ok = $('#sinNominaMes option:not([disabled])').last();
+            if ($ok.length) $('#sinNominaMes').val($ok.val());
+        }
+    }
+
+    $('#sinNominaAnio').on('change', function() {
+        aplicarLimiteMesSinNomina();
+        cargarSinNomina();
+    });
+    $('#sinNominaMes').on('change', function() {
         cargarSinNomina();
     });
 
@@ -9276,11 +9319,21 @@ backdrop: 'rgba(0,0,0,0.6)'
     function exportarSinNomina(formato) {
         var periodo = periodoSinNominaActual();
         var extensiones = { pdf: 'pdf', word: 'doc', excel: 'xlsx', csv: 'csv', txt: 'txt' };
+        var fmtLabelMapSN = { pdf: 'PDF', word: 'Word', excel: 'Excel', csv: 'CSV', txt: 'TXT' };
+        if (!document.getElementById('snExportSpinnerCss')) {
+            var snCssSN = document.createElement('style');
+            snCssSN.id = 'snExportSpinnerCss';
+            snCssSN.textContent = '@keyframes snSpin{to{transform:rotate(360deg)}}'
+                + '.sn-spin{width:2.75rem;height:2.75rem;margin:0 auto 0.75rem;border:0.3rem solid rgba(255,255,255,0.2);'
+                + 'border-top-color:#f87171;border-radius:50%;animation:snSpin 0.9s linear infinite;}';
+            document.head.appendChild(snCssSN);
+        }
         Swal.fire({
-            title: '<i class="fas fa-spinner fa-pulse me-2" style="color: #f87171;"></i> Generando archivo',
-            text: 'Por favor espere, se está generando el listado de trabajadores sin nómina...',
+            title: 'Generando Reporte',
+            html: '<div class="sn-spin"></div><div>Formato: <b>' + (fmtLabelMapSN[formato] || String(formato).toUpperCase()) + '</b></div>',
             allowOutsideClick: false,
-            didOpen: () => Swal.showLoading(),
+            allowEscapeKey: false,
+            showConfirmButton: false,
             background: '#1a1a2e',
             color: '#ffffff'
         });
@@ -9543,9 +9596,47 @@ backdrop: 'rgba(0,0,0,0.6)'
         cargarSinCuenta();
     });
 
-    $('#sinCuentaAnio, #sinCuentaMes, #sinCuentaEstado, #sinCuentaCuenta').on('change', function() {
+    // Mes y Cuenta: solo recargan la tabla
+    $('#sinCuentaMes, #sinCuentaCuenta').on('change', function() {
         cargarSinCuenta();
     });
+    // Año o Estado cambian la lista de meses con valores: repoblar y luego recargar
+    $('#sinCuentaAnio, #sinCuentaEstado').on('change', function() {
+        cargarMesesSinCuenta(function() { cargarSinCuenta(); });
+    });
+
+    // Solo muestra los meses con valores (con nóminas) para el año/estado seleccionados
+    function cargarMesesSinCuenta(done) {
+        var MESES_SN = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        var anio = parseInt($('#sinCuentaAnio').val(), 10);
+        var estado = $('#sinCuentaEstado').val() || '';
+        var mesPrevio = parseInt($('#sinCuentaMes').val(), 10) || 0;
+        var $sel = $('#sinCuentaMes');
+        if (!anio) { if (typeof done === 'function') done(); return; }
+        $sel.prop('disabled', true);
+        $.getJSON(window.location.pathname, {
+            action: 'get_meses_nominas', ajax: 1, anio: anio,
+            estado: (estado === 'todos' ? '' : estado)
+        })
+        .done(function(r) {
+            var meses = (r && r.success && Array.isArray(r.meses)) ? r.meses : [];
+            if (!meses.length) {
+                $sel.html('<option value="">(Sin datos)</option>');
+            } else {
+                var html = '';
+                meses.forEach(function(m) {
+                    var v = parseInt(m, 10);
+                    html += '<option value="' + v + '"' + (v === mesPrevio ? ' selected' : '') + '>' + (MESES_SN[v] || v) + '</option>';
+                });
+                $sel.html(html);
+                if (!$sel.val()) $sel.val(String(parseInt(meses[0], 10)));
+            }
+        })
+        .always(function() {
+            $sel.prop('disabled', false);
+            if (typeof done === 'function') done();
+        });
+    }
 
     function periodoSinCuentaActual() {
         var anio = $('#sinCuentaAnio').val() || new Date().getFullYear();
@@ -9650,6 +9741,32 @@ backdrop: 'rgba(0,0,0,0.6)'
         var nombreBase = 'trabajadores_' + sufijoCuenta + '_' + periodo + '_' + estado + '_' + fechats;
         var nombreArchivo = nombreBase + '.' + (extMap[formato] || formato);
 
+        // Spinner animado + mensaje "Generando Reporte" mientras se arma/exporta
+        var fmtLabelMap = { pdf: 'PDF', word: 'Word', excel: 'Excel', csv: 'CSV', txt: 'TXT' };
+        if (!document.getElementById('snExportSpinnerCss')) {
+            var snCss = document.createElement('style');
+            snCss.id = 'snExportSpinnerCss';
+            snCss.textContent = '@keyframes snSpin{to{transform:rotate(360deg)}}'
+                + '.sn-spin{width:2.75rem;height:2.75rem;margin:0 auto 0.75rem;border:0.3rem solid rgba(255,255,255,0.2);'
+                + 'border-top-color:#3b82f6;border-radius:50%;animation:snSpin 0.9s linear infinite;}';
+            document.head.appendChild(snCss);
+        }
+        var snGenInicio = Date.now();
+        var snGenMinMs = 1500; // mínimo visible para apreciar la animación
+        function snCerrarGen() {
+            var falta = snGenMinMs - (Date.now() - snGenInicio);
+            setTimeout(function() { Swal.close(); }, Math.max(0, falta));
+        }
+        Swal.fire({
+            title: 'Generando Reporte',
+            html: '<div class="sn-spin"></div><div>Formato: <b>' + (fmtLabelMap[formato] || String(formato).toUpperCase()) + '</b></div>',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            background: '#1a1a2e',
+            color: '#ffffff'
+        });
+
         function sinCuentaDescargar(contenido, nombreArch, mime) {
             var blob = new Blob(['\ufeff' + contenido], { type: mime || 'text/plain;charset=utf-8' });
             var url = URL.createObjectURL(blob);
@@ -9683,22 +9800,23 @@ backdrop: 'rgba(0,0,0,0.6)'
         var usuarioTxt = SIN_NOMINA_USUARIO || usuarioNombre || '';
 
         if (formato === 'pdf') {
-            var body = [[
-                { text: 'No.', style: 'tableHeader' },
-                { text: 'No CI.', style: 'tableHeader' },
-                { text: 'Nombre y Apellidos', style: 'tableHeader' },
-                { text: 'SALAR. BÁSICO', style: 'tableHeader', alignment: 'right' },
-                { text: 'NOCT. H. EXT', style: 'tableHeader', alignment: 'right' },
+            var theadRowPDF = [
+                { text: 'No.', style: 'tableHeader', alignment: 'center' },
+                { text: 'No CI.', style: 'tableHeader', alignment: 'center' },
+                { text: 'Nombre y Apellidos', style: 'tableHeader', alignment: 'left' },
+                { text: 'SALARIO\nBÁSICO', style: 'tableHeader', alignment: 'right' },
+                { text: 'NOCT.\nH. EXT', style: 'tableHeader', alignment: 'right' },
                 { text: 'VACAC.', style: 'tableHeader', alignment: 'right' },
-                { text: 'AJUSTE Y/O LIQUID.', style: 'tableHeader', alignment: 'right' },
+                { text: 'AJUSTE Y/O\nLIQUID.', style: 'tableHeader', alignment: 'right' },
                 { text: 'RENDIM.', style: 'tableHeader', alignment: 'right' },
-                { text: 'TOTAL A PAGAR', style: 'tableHeader', alignment: 'right' }
-            ]];
+                { text: 'TOTAL A\nPAGAR', style: 'tableHeader', alignment: 'right' }
+            ];
+            var filasDataPDF = [];
             $.each(d.trabajadores, function(i, t) {
-                body.push([
-                    { text: String(i + 1) },
-                    { text: String(t.ci || '') },
-                    { text: String(t.nombre || '') },
+                filasDataPDF.push([
+                    { text: String(i + 1), alignment: 'center' },
+                    { text: String(t.ci || ''), alignment: 'center' },
+                    { text: String(t.nombre || ''), alignment: 'left' },
                     { text: sinCuentaNum(t.salar_basico), alignment: 'right' },
                     { text: sinCuentaNum(t.noct_h_ext), alignment: 'right' },
                     { text: sinCuentaNum(t.vacac), alignment: 'right' },
@@ -9707,8 +9825,9 @@ backdrop: 'rgba(0,0,0,0.6)'
                     { text: sinCuentaNum(t.total_a_pagar), alignment: 'right', bold: true }
                 ]);
             });
+            var filaTotalesPDF = null;
             if (d.totales) {
-                body.push([
+                filaTotalesPDF = [
                     { text: 'TOTAL GENERAL', bold: true, fillColor: '#f0f4f8', colSpan: 3 }, {}, {},
                     { text: sinCuentaNum(d.totales.salar_basico), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
                     { text: sinCuentaNum(d.totales.noct_h_ext), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
@@ -9716,12 +9835,49 @@ backdrop: 'rgba(0,0,0,0.6)'
                     { text: sinCuentaNum(d.totales.ajuste_liquid), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
                     { text: sinCuentaNum(d.totales.rendim), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
                     { text: sinCuentaNum(d.totales.total_a_pagar), bold: true, alignment: 'right', fillColor: '#f0f4f8' }
-                ]);
+                ];
             }
+            // Paginación por líneas: 1ª hoja 23, intermedias 31, última (con firmas) hasta 20
+            var LIM_PRIMERA = 23, LIM_INTERMEDIA = 31, LIM_ULTIMA = 20;
+            var totalF = filasDataPDF.length;
+            var paginasPDF = [], idxPDF = 0, restantePDF = totalF, tomarPDF;
+            tomarPDF = Math.min(LIM_PRIMERA, restantePDF);
+            paginasPDF.push(filasDataPDF.slice(0, tomarPDF));
+            idxPDF = tomarPDF; restantePDF -= tomarPDF;
+            while (restantePDF > LIM_ULTIMA) {
+                tomarPDF = Math.min(LIM_INTERMEDIA, restantePDF - LIM_ULTIMA);
+                paginasPDF.push(filasDataPDF.slice(idxPDF, idxPDF + tomarPDF));
+                idxPDF += tomarPDF; restantePDF -= tomarPDF;
+            }
+            if (restantePDF > 0) {
+                paginasPDF.push(filasDataPDF.slice(idxPDF));
+            }
+            var tablasPDF = [];
+            $.each(paginasPDF, function(nP, hoja) {
+                // Clonar el encabezado por tabla: pdfMake muta los objetos compartidos
+                // y la última página (al combinarse con las firmas) perdía los títulos.
+                var theadCopia = JSON.parse(JSON.stringify(theadRowPDF));
+                var cuerpo = [theadCopia].concat(hoja);
+                if (nP === paginasPDF.length - 1 && filaTotalesPDF) { cuerpo.push(filaTotalesPDF); }
+                var tbl = {
+                    table: {
+                        headerRows: 1,
+                        widths: [42, 82, '*', 62, 62, 56, 73, 56, 62],
+                        body: cuerpo
+                    },
+                    layout: {
+                        fillColor: function(rowIndex) { return rowIndex === 0 ? '#004B87' : null; }
+                    },
+                    margin: [4, 0, 12, 0],
+                    dontBreakRows: true
+                };
+                if (nP < paginasPDF.length - 1) { tbl.pageBreak = 'after'; }
+                tablasPDF.push(tbl);
+            });
             var docDefinition = {
                 pageSize: 'LETTER',
                 pageOrientation: 'landscape',
-                pageMargins: [18, 18, 18, 30],
+                pageMargins: [17, 23, 23, 23],
                 content: [
                     {
                         table: {
@@ -9730,7 +9886,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                                 (SIN_NOMINA_LOGO ? { image: SIN_NOMINA_LOGO, width: 40, alignment: 'center' } : { text: '' }),
                                 {
                                     stack: [
-                                        { text: nombreEmpresaTxt.toUpperCase(), fontSize: 12, bold: true, alignment: 'center' },
+                                        { text: SIN_NOMINA_SIS + ' - ' + nombreEmpresaTxt.toUpperCase(), fontSize: 12, bold: true, alignment: 'center' },
                                         { text: tituloCabecera, fontSize: 12, bold: true, alignment: 'center', margin: [0, 2, 0, 0] }
                                     ]
                                 },
@@ -9747,16 +9903,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                         margin: [0, 0, 0, 6]
                     },
                     { text: filtrosLine, fontSize: 9, bold: true, margin: [0, 2, 0, 8] },
-                    {
-                        table: {
-                            headerRows: 1,
-                            widths: [22, 55, '*', 58, 58, 56, 68, 56, 62],
-                            body: body
-                        },
-                        layout: {
-                            fillColor: function(rowIndex) { return rowIndex === 0 ? '#004B87' : null; }
-                        }
-                    },
+                    tablasPDF,
                     { text: '', margin: [0, 14, 0, 0] },
                     {
                         columns: [
@@ -9794,11 +9941,19 @@ backdrop: 'rgba(0,0,0,0.6)'
                     tableHeader: { color: '#ffffff', bold: true }
                 },
                 footer: function(currentPage, pageCount) {
-                    return { text: 'Documento generado por el Sistema de Gestión de Nóminas - Usuario: ' + usuarioTxt + '   Página ' + currentPage + ' de ' + pageCount, fontSize: 7, color: '#666', alignment: 'center', margin: [0, 8, 0, 0] };
+                    return {
+                        columns: [
+                            { text: SIN_NOMINA_SIS + ' - ' + nombreEmpresaTxt, fontSize: 7, color: '#666', alignment: 'left', margin: [40, 0, 0, 0] },
+                            { text: 'Página ' + currentPage + ' de ' + pageCount, fontSize: 7, color: '#666', alignment: 'center' },
+                            { text: 'Impresión: ' + fechaHora, fontSize: 7, color: '#666', alignment: 'right', margin: [0, 0, 40, 0] }
+                        ],
+                        margin: [40, 8, 40, 0]
+                    };
                 }
             };
             if (typeof pdfMake !== 'undefined') {
                 pdfMake.createPdf(docDefinition).download(nombreArchivo);
+                snCerrarGen();
             } else {
                 Swal.fire({
                     icon: 'error', title: 'Error', text: 'La librería pdfMake no está disponible.',
@@ -9820,7 +9975,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                 lineas.push(['GENERADO POR', usuarioTxt].join(','));
                 lineas.push(['TOTAL DE TRABAJADORES', (d.registros || d.trabajadores.length)].join(','));
                 lineas.push('');
-                lineas.push(['No.', 'No CI.', 'Nombre y Apellidos', 'SALAR. BÁSICO', 'NOCT. H. EXT', 'VACAC.', 'AJUSTE Y/O LIQUID.', 'RENDIM.', 'TOTAL A PAGAR'].join(','));
+                lineas.push(['No.', 'No CI.', 'Nombre y Apellidos', 'SALAR.\nBÁSICO', 'NOCT.\nH. EXT', 'VACAC.', 'AJUSTE Y/O\nLIQUID.', 'RENDIM.', 'TOTAL A\nPAGAR'].map(sinCuentaCsvCell).join(','));
                 $.each(d.trabajadores, function(i, t) {
                     lineas.push([i + 1, t.ci, t.nombre, sinCuentaNum(t.salar_basico), sinCuentaNum(t.noct_h_ext), sinCuentaNum(t.vacac), sinCuentaNum(t.ajuste_liquid), sinCuentaNum(t.rendim), sinCuentaNum(t.total_a_pagar)].map(sinCuentaCsvCell).join(','));
                 });
@@ -9828,13 +9983,15 @@ backdrop: 'rgba(0,0,0,0.6)'
                     lineas.push(['TOTAL GENERAL', '', '', sinCuentaNum(d.totales.salar_basico), sinCuentaNum(d.totales.noct_h_ext), sinCuentaNum(d.totales.vacac), sinCuentaNum(d.totales.ajuste_liquid), sinCuentaNum(d.totales.rendim), sinCuentaNum(d.totales.total_a_pagar)].map(sinCuentaCsvCell).join(','));
                 }
                 sinCuentaDescargar(lineas.join('\r\n'), nombreArchivo, 'text/csv;charset=utf-8');
+                snCerrarGen();
             } else {
                 function padRightS(s, n) { s = String(s == null ? '' : s); return s.length >= n ? s : s + ' '.repeat(n - s.length); }
                 function padLeftS(s, n) { s = String(s == null ? '' : s); return s.length >= n ? s : ' '.repeat(n - s.length) + s; }
                 var tl = [];
-                tl.push('========================================================================');
+                var sepE = '='.repeat(183), sepG = '-'.repeat(183);
+                tl.push(sepE);
                 tl.push('                ' + titulo);
-                tl.push('========================================================================');
+                tl.push(sepE);
                 tl.push('Empresa: ' + nombreEmpresaTxt);
                 tl.push('Período: ' + (d.periodo_label || periodo));
                 tl.push('Estado: ' + (d.estado_label || estado));
@@ -9843,31 +10000,33 @@ backdrop: 'rgba(0,0,0,0.6)'
                 tl.push('Emisión: ' + fechaHora);
                 tl.push('Generado por: ' + usuarioTxt);
                 tl.push('Total de trabajadores: ' + (d.registros || d.trabajadores.length));
-                tl.push('------------------------------------------------------------------------');
-                tl.push(padRightS('No.', 5) + padRightS('No CI.', 12) + padRightS('Nombre y Apellidos', 30) + padLeftS('SALAR. BAS', 12) + padLeftS('NOCT. H. EXT', 12) + padLeftS('VACAC.', 10) + padLeftS('AJUSTE', 12) + padLeftS('RENDIM.', 10) + padLeftS('TOTAL', 12));
-                tl.push('------------------------------------------------------------------------');
+                tl.push(sepG);
+                tl.push(padRightS('No.', 11) + padRightS('No CI.', 18) + padRightS('', 50) + padLeftS('SALAR.', 18) + padLeftS('NOCT.', 18) + padLeftS('', 16) + padLeftS('AJUSTE Y/O', 18) + padLeftS('', 16) + padLeftS('TOTAL A', 18));
+                tl.push(padRightS('', 11) + padRightS('', 18) + padRightS('Nombre y Apellidos', 50) + padLeftS('BÁSICO', 18) + padLeftS('H. EXT', 18) + padLeftS('VACAC.', 16) + padLeftS('LIQUID.', 18) + padLeftS('RENDIM.', 16) + padLeftS('PAGAR', 18));
+                tl.push(sepG);
                 $.each(d.trabajadores, function(i, t) {
-                    tl.push(padRightS(i + 1, 5) + padRightS(t.ci || '', 12) + padRightS(t.nombre || '', 30) + padLeftS(sinCuentaNum(t.salar_basico), 12) + padLeftS(sinCuentaNum(t.noct_h_ext), 12) + padLeftS(sinCuentaNum(t.vacac), 10) + padLeftS(sinCuentaNum(t.ajuste_liquid), 12) + padLeftS(sinCuentaNum(t.rendim), 10) + padLeftS(sinCuentaNum(t.total_a_pagar), 12));
+                    tl.push(padRightS(i + 1, 11) + padRightS(t.ci || '', 18) + padRightS(t.nombre || '', 50) + padLeftS(sinCuentaNum(t.salar_basico), 18) + padLeftS(sinCuentaNum(t.noct_h_ext), 18) + padLeftS(sinCuentaNum(t.vacac), 16) + padLeftS(sinCuentaNum(t.ajuste_liquid), 18) + padLeftS(sinCuentaNum(t.rendim), 16) + padLeftS(sinCuentaNum(t.total_a_pagar), 18));
                 });
                 tl.push('------------------------------------------------------------------------');
                 if (d.totales) {
-                    tl.push(padRightS('TOTAL GENERAL', 47) + padLeftS(sinCuentaNum(d.totales.salar_basico), 12) + padLeftS(sinCuentaNum(d.totales.noct_h_ext), 12) + padLeftS(sinCuentaNum(d.totales.vacac), 10) + padLeftS(sinCuentaNum(d.totales.ajuste_liquid), 12) + padLeftS(sinCuentaNum(d.totales.rendim), 10) + padLeftS(sinCuentaNum(d.totales.total_a_pagar), 12));
+                    tl.push(padRightS('TOTAL GENERAL', 79) + padLeftS(sinCuentaNum(d.totales.salar_basico), 18) + padLeftS(sinCuentaNum(d.totales.noct_h_ext), 18) + padLeftS(sinCuentaNum(d.totales.vacac), 16) + padLeftS(sinCuentaNum(d.totales.ajuste_liquid), 18) + padLeftS(sinCuentaNum(d.totales.rendim), 16) + padLeftS(sinCuentaNum(d.totales.total_a_pagar), 18));
                 }
                 tl.push('========================================================================');
                 sinCuentaDescargar(tl.join('\r\n'), nombreArchivo, 'text/plain;charset=utf-8');
+                snCerrarGen();
             }
             return;
         }
 
-        var html = '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;">'
+        var html = '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;margin-left:auto;margin-right:auto;">'
             + '<tr><th colspan="9" style="font-size:0.875rem;text-align:center;">' + tituloCabecera + '</th></tr>'
-            + '<tr><td colspan="9" style="text-align:center;font-weight:bold;font-size:0.75rem;">' + escHtmlSC(nombreEmpresaTxt.toUpperCase()) + '</td></tr>'
+            + '<tr><td colspan="9" style="text-align:center;font-weight:bold;font-size:0.75rem;">' + escHtmlSC(SIN_NOMINA_SIS + ' - ' + nombreEmpresaTxt.toUpperCase()) + '</td></tr>'
             + '<tr><td colspan="9"><b>Período:</b> ' + escHtmlSC(d.periodo_label || periodo) + '</td></tr>'
             + '<tr><td colspan="9"><b>Estado:</b> ' + escHtmlSC(d.estado_label || estado) + ' | <b>Cuenta bancaria:</b> ' + escHtmlSC(d.cuenta_label || cuenta) + (d.trabajador_id && d.trabajador_label ? ' | <b>Trabajador:</b> ' + escHtmlSC(d.trabajador_label) : '') + '</td></tr>'
-            + '<tr><th>No.</th><th>No CI.</th><th>Nombre y Apellidos</th><th>SALAR. BÁSICO</th><th>NOCT. H. EXT</th><th>VACAC.</th><th>AJUSTE Y/O LIQUID.</th><th>RENDIM.</th><th>TOTAL A PAGAR</th></tr>';
+            + '<tr><th style="text-align:center;width:6%;">No.</th><th style="text-align:center;width:10%;">No CI.</th><th style="text-align:left;width:28%;">Nombre y Apellidos</th><th style="text-align:right;width:10%;">SALAR.<br>BÁSICO</th><th style="text-align:right;width:10%;">NOCT.<br>H. EXT</th><th style="text-align:right;width:9%;">VACAC.</th><th style="text-align:right;width:10%;">AJUSTE Y/O<br>LIQUID.</th><th style="text-align:right;width:9%;">RENDIM.</th><th style="text-align:right;width:10%;">TOTAL A<br>PAGAR</th></tr>';
 
         $.each(d.trabajadores, function(i, t) {
-            html += '<tr><td>' + (i + 1) + '</td><td>' + escHtmlSC(t.ci) + '</td><td>' + escHtmlSC(t.nombre) + '</td>'
+            html += '<tr><td style="text-align:center;">' + (i + 1) + '</td><td style="text-align:center;">' + escHtmlSC(t.ci) + '</td><td style="text-align:left;">' + escHtmlSC(t.nombre) + '</td>'
                 + '<td style="text-align:right;">' + sinCuentaNum(t.salar_basico) + '</td>'
                 + '<td style="text-align:right;">' + sinCuentaNum(t.noct_h_ext) + '</td>'
                 + '<td style="text-align:right;">' + sinCuentaNum(t.vacac) + '</td>'
@@ -9876,7 +10035,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                 + '<td style="text-align:right;">' + sinCuentaNum(t.total_a_pagar) + '</td></tr>';
         });
         if (d.totales) {
-            html += '<tr style="background:#eee;"><th colspan="3">TOTAL GENERAL</th>'
+            html += '<tr style="background:#eee;"><th colspan="3" style="text-align:left;">TOTAL GENERAL</th>'
                 + '<th style="text-align:right;">' + sinCuentaNum(d.totales.salar_basico) + '</th>'
                 + '<th style="text-align:right;">' + sinCuentaNum(d.totales.noct_h_ext) + '</th>'
                 + '<th style="text-align:right;">' + sinCuentaNum(d.totales.vacac) + '</th>'
@@ -9909,9 +10068,10 @@ backdrop: 'rgba(0,0,0,0.6)'
             wb.created = new Date();
             var nombreHoja = (cuenta === 'con') ? 'Resume_Con_Tarjeta' : ((cuenta === 'todos') ? 'Resume_Todos' : 'Resume_Sin_Tarjeta');
             var ws = wb.addWorksheet(nombreHoja, {
-                pageSetup: { orientation: 'landscape', fitToPage: true, margins: { left: 0.7, right: 0.7, top: 0.7, bottom: 0.7, header: 0.3, footer: 0.3 } }
+                pageSetup: { paperSize: 1, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, centerHorizontally: true, margins: { left: 0.31, right: 0.31, top: 0.24, bottom: 0.31, header: 0.2, footer: 0.2 } },
+                headerFooter: { oddFooter: '&L&"Arial"&7SisGesNom - ' + String(nombreEmpresaTxt || '') + '&C&"Arial"&7Página &P de &N&R&"Arial"&7Impresión: ' + fechaHora }
             });
-            var colW = [6, 13, 32, 13, 12, 10, 13, 11, 14];
+            var colW = [11, 15, 46, 13, 13, 12, 14, 12, 14];
             for (var cw = 0; cw < colW.length; cw++) { ws.getColumn(cw + 1).width = colW[cw]; }
             var filaExcel = 1;
             function scCelda(fila, col, valor, opts) {
@@ -9926,7 +10086,7 @@ backdrop: 'rgba(0,0,0,0.6)'
             scCelda(filaExcel, 1, tituloCabecera, { bold: true, size: 12, align: 'center' });
             ws.mergeCells(filaExcel, 1, filaExcel, 9);
             filaExcel++;
-            scCelda(filaExcel, 1, String(nombreEmpresaTxt).toUpperCase(), { bold: true, size: 10, align: 'center' });
+            scCelda(filaExcel, 1, SIN_NOMINA_SIS + ' - ' + String(nombreEmpresaTxt).toUpperCase(), { bold: true, size: 10, align: 'center' });
             ws.mergeCells(filaExcel, 1, filaExcel, 9);
             filaExcel++;
             scCelda(filaExcel, 1, 'Período: ' + (d.periodo_label || periodo), { bold: true, size: 10 });
@@ -9946,14 +10106,18 @@ backdrop: 'rgba(0,0,0,0.6)'
             filaExcel++;
             filaExcel++;
             var filaHeader = filaExcel;
-            var headers = ['No.', 'No CI.', 'Nombre y Apellidos', 'SALAR. BÁSICO', 'NOCT. H. EXT', 'VACAC.', 'AJUSTE Y/O LIQUID.', 'RENDIM.', 'TOTAL A PAGAR'];
+            var headers = ['No.', 'No CI.', 'Nombre y Apellidos', 'SALAR.\nBÁSICO', 'NOCT.\nH. EXT', 'VACAC.', 'AJUSTE Y/O\nLIQUID.', 'RENDIM.', 'TOTAL A\nPAGAR'];
+            var headAlign = ['center', 'center', 'left', 'right', 'right', 'right', 'right', 'right', 'right'];
             for (var hi = 0; hi < headers.length; hi++) {
-                var hc = scCelda(filaHeader, hi + 1, headers[hi], { bold: true, size: 10, align: 'center' });
+                var hc = scCelda(filaHeader, hi + 1, headers[hi], { bold: true, size: 10, align: headAlign[hi] });
+                hc.alignment = { horizontal: headAlign[hi], vertical: 'middle', wrapText: true };
                 hc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004B87' } };
                 hc.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
                 hc.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
             }
+            ws.getRow(filaHeader).height = 28;
             filaExcel++;
+            ws.pageSetup.printTitlesRow = filaHeader + ':' + filaHeader;
             $.each(d.trabajadores, function(i, t) {
                 scCelda(filaExcel, 1, i + 1, { align: 'center' });
                 scCelda(filaExcel, 2, String(t.ci || ''), { align: 'center' });
@@ -9995,10 +10159,18 @@ backdrop: 'rgba(0,0,0,0.6)'
                 a.click();
                 document.body.removeChild(a);
                 setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
+                snCerrarGen();
             });
         } else if (formato === 'word') {
-            var htmlWord = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>' + titulo + '</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--></head><body>' + html + '</body></html>';
+            var wordEmp = String(nombreEmpresaTxt || '').replace(/&/g, '&amp;');
+            var htmlWord = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>' + titulo + '</title>'
+                + '<!--[if gte mso 9]><xml>'
+                + '<w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument>'
+                + '</xml><![endif]-->'
+                + '<style>@page Section1 { size: 11in 8.5in; margin: 0.24in 0.31in 0.31in 0.31in; mso-footer: "&LSisGesNom - ' + wordEmp + '&CPágina &P de &N&RImpresión: ' + fechaHora.replace(/"/g, '') + ' "; } div.Section1 { page: Section1; } p { margin: 0; }</style>'
+                + '</head><body><div class="Section1">' + html + '</div></body></html>';
             sinCuentaDescargar(htmlWord, nombreArchivo, 'application/msword;charset=utf-8');
+            snCerrarGen();
         }
     }
 
@@ -10030,33 +10202,70 @@ backdrop: 'rgba(0,0,0,0.6)'
                     });
                     return;
                 }
-                var filas = '';
+                var filasArr = [];
                 $.each(data.trabajadores, function(i, t) {
-                    filas += '<tr>'
-                        + '<td class="text-right">' + (i + 1) + '</td>'
-                        + '<td>' + escHtmlSN(t.ci) + '</td>'
-                        + '<td>' + escHtmlSN(t.nombre) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(t.salar_basico) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(t.noct_h_ext) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(t.vacac) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(t.ajuste_liquid) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(t.rendim) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(t.total_a_pagar) + '</td>'
-                        + '</tr>';
+                    filasArr.push('<tr>'
+                        + '<td class="sn-c">' + (i + 1) + '</td>'
+                        + '<td class="sn-c">' + escHtmlSN(t.ci) + '</td>'
+                        + '<td class="sn-l">' + escHtmlSN(t.nombre) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(t.salar_basico) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(t.noct_h_ext) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(t.vacac) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(t.ajuste_liquid) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(t.rendim) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(t.total_a_pagar) + '</td>'
+                        + '</tr>');
                 });
                 var filaTotales = '';
                 if (data.totales) {
                     filaTotales = '<tr class="sn-total-fila">'
-                        + '<td colspan="3" class="text-right">TOTAL GENERAL</td>'
-                        + '<td class="text-right">' + formatMoneySC(data.totales.salar_basico) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(data.totales.noct_h_ext) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(data.totales.vacac) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(data.totales.ajuste_liquid) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(data.totales.rendim) + '</td>'
-                        + '<td class="text-right">' + formatMoneySC(data.totales.total_a_pagar) + '</td>'
+                        + '<td colspan="3" class="sn-l">TOTAL GENERAL</td>'
+                        + '<td class="sn-r">' + formatMoneySC(data.totales.salar_basico) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(data.totales.noct_h_ext) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(data.totales.vacac) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(data.totales.ajuste_liquid) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(data.totales.rendim) + '</td>'
+                        + '<td class="sn-r">' + formatMoneySC(data.totales.total_a_pagar) + '</td>'
                         + '</tr>';
                 }
                 var fechaHora = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                // Paginación por líneas (Carta horizontal): 1ª hoja 25, intermedias 31,
+                // última hoja (con firmas) hasta 20
+                var LIM_PRIMERA = 25, LIM_INTERMEDIA = 31, LIM_ULTIMA = 20;
+                var theadSN = '<thead><tr>'
+                    + '<th class="sn-c">No.</th><th class="sn-c">No CI.</th><th class="sn-l">Nombre y Apellidos</th><th class="sn-r">SALAR.<br>BÁSICO</th><th class="sn-r">NOCT.<br>H. EXT</th><th class="sn-r">VACAC.</th><th class="sn-r">AJUSTE Y/O<br>LIQUID.</th><th class="sn-r">RENDIM.</th><th class="sn-r">TOTAL A<br>PAGAR</th>'
+                    + '</tr></thead>';
+                var totalFilas = filasArr.length;
+                var paginas = [];
+                var idx = 0, restante = totalFilas;
+                var tomar = Math.min(LIM_PRIMERA, restante);
+                paginas.push(filasArr.slice(0, tomar));
+                idx = tomar; restante -= tomar;
+                while (restante > LIM_ULTIMA) {
+                    tomar = Math.min(LIM_INTERMEDIA, restante - LIM_ULTIMA);
+                    paginas.push(filasArr.slice(idx, idx + tomar));
+                    idx += tomar; restante -= tomar;
+                }
+                if (restante > 0) {
+                    paginas.push(filasArr.slice(idx));
+                }
+                var tablasHtml = '';
+                var totalPaginasSN = paginas.length;
+                $.each(paginas, function(nPag, hoja) {
+                    tablasHtml += '<table class="sn-tabla sn-tabla-c">'
+                        + '<colgroup><col style="width:11ch"><col style="width:18ch"><col style="width:50ch"><col style="width:18ch"><col style="width:18ch"><col style="width:16ch"><col style="width:18ch"><col style="width:16ch"><col style="width:18ch"></colgroup>'
+                        + theadSN + '<tbody>' + hoja.join('') + '</tbody>'
+                        + (nPag === paginas.length - 1 && filaTotales ? '<tfoot>' + filaTotales + '</tfoot>' : '')
+                        + '</table>'
+                        + '<div class="sn-pie">'
+                        + '<span>' + escHtmlSN(SIN_NOMINA_SIS) + ' - ' + escHtmlSN(SIN_NOMINA_EMPRESA) + '</span>'
+                        + '<span class="sn-pie-centro">Página ' + (nPag + 1) + ' de ' + totalPaginasSN + '</span>'
+                        + '<span>Impresión: ' + fechaHora + '</span>'
+                        + '</div>';
+                    if (nPag < paginas.length - 1) {
+                        tablasHtml += '<div class="page-break"></div>';
+                    }
+                });
                 var cuentaLbl = data.cuenta_label || 'Sin cuenta';
                 var tituloPrint = (cuenta === 'con') ? 'RESUMEN CON TARJETA' : ((cuenta === 'todos') ? 'RESUMEN DE TRABAJADORES' : 'RESUMEN SIN TARJETA');
                 var tituloPrintCabecera = tituloPrint + ' (' + escHtmlSN(data.periodo_label).toUpperCase().split(' ').join(' / ') + ')';
@@ -10066,7 +10275,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                         <tr>
                             <td class="sn-cabecera-logo">${SIN_NOMINA_LOGO ? '<img src="' + SIN_NOMINA_LOGO + '" alt="Logo">' : ''}</td>
                             <td class="sn-cabecera-titulo">
-                                <div class="sn-empresa">${escHtmlSN(SIN_NOMINA_EMPRESA)}</div>
+                                <div class="sn-empresa">${escHtmlSN(SIN_NOMINA_SIS)} - ${escHtmlSN(SIN_NOMINA_EMPRESA)}</div>
                                 <div class="sn-titulo">${tituloPrintCabecera}</div>
                                 <div class="sn-alcance">${filtrosPrint}</div>
                             </td>
@@ -10077,13 +10286,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                             </td>
                         </tr>
                     </table>
-                    <table class="sn-tabla">
-                        <thead><tr>
-                            <th>No.</th><th>No CI.</th><th>Nombre y Apellidos</th><th>SALAR. BÁSICO</th><th>NOCT. H. EXT</th><th>VACAC.</th><th>AJUSTE Y/O LIQUID.</th><th>RENDIM.</th><th>TOTAL A PAGAR</th>
-                        </tr></thead>
-                        <tbody>${filas}</tbody>
-                        ${filaTotales ? '<tfoot>' + filaTotales + '</tfoot>' : ''}
-                    </table>
+                    ${tablasHtml}
                     <div class="sn-firmas">
                         <table class="sn-firmas-tabla">
                             <tr>
