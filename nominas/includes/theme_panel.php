@@ -656,6 +656,16 @@ saveBtn.addEventListener('click',function(){
     s('transnubet_tooltips',tooltips);
     s('transnubet_sticky_header',sticky_header);
 
+    /* Sincroniza el estado del hamburger con la opción del tema para que no peleen:
+       compacto ON -> sidebar siempre colapsado; OFF -> arranca expandido. */
+    try{
+        if(sidebar_compact==='true'){
+            localStorage.setItem('winSidebarCollapsed','true');
+        }else{
+            localStorage.removeItem('winSidebarCollapsed');
+        }
+    }catch(e){}
+
     /* Apply all */
     applyTheme(theme);
     applyAccent(accent);
@@ -680,6 +690,7 @@ resetBtn.addEventListener('click',function(){
         });
     }catch(e){}
     try{localStorage.removeItem('transnubet_device_manual');}catch(e){}
+    try{localStorage.removeItem('winSidebarCollapsed');}catch(e){}
     window.location.reload();
 });
 

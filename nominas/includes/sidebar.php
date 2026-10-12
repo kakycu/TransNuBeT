@@ -1389,10 +1389,23 @@ html.focus-mode .fluid-container {
         <?php if (permiso_puede('reportes', 'ver') || permiso_puede('clasificadores', 'ver')): ?>
         <span class="nav-category">Análisis e Informes</span>
         <?php if (permiso_puede('reportes', 'ver')): ?>
-        <a href="<?php echo $base_prefix; ?>modules/reportes.php" class="nav-item <?php echo ($current_file == 'reportes.php') ? 'active' : ''; ?>" data-tooltip="Reportes y Estadísticas" data-tooltip-theme="primary">
-            <i class="fas fa-chart-bar"></i>
-            <span class="sidebar-text">Reportes</span>
-        </a>
+        <div class="nav-group <?php echo (in_array($current_file, ['reportes.php', 'consolidados.php'])) ? 'open' : ''; ?>" id="reportesNavGroup">
+            <a href="<?php echo $base_prefix; ?>modules/reportes.php" class="nav-item <?php echo ($current_file == 'reportes.php') ? 'active' : ''; ?>" data-tooltip="Reportes y Estadísticas" data-tooltip-theme="primary">
+                <i class="fas fa-chart-bar"></i>
+                <span class="sidebar-text">Reportes</span>
+                <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="reportesChevron"></i>
+            </a>
+            <div class="nav-submenu" id="reportesSubmenu">
+                <a href="<?php echo $base_prefix; ?>modules/reportes.php" class="nav-item <?php echo ($current_file == 'reportes.php') ? 'active' : ''; ?>" data-tooltip="Reportes y Estadísticas" data-tooltip-theme="primary">
+                    <i class="fas fa-chart-pie"></i>
+                    <span class="sidebar-text">Estadísticas</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/consolidados.php" class="nav-item <?php echo ($current_file == 'consolidados.php') ? 'active' : ''; ?>" data-tooltip="Consolidado de pagos por tipo de nómina (año y meses)" data-tooltip-theme="primary">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span class="sidebar-text">Consolidados</span>
+                </a>
+            </div>
+        </div>
         <?php endif; ?>
         <?php if (permiso_puede('clasificadores', 'ver')): ?>
         <span class="nav-category">Clasificadores</span>

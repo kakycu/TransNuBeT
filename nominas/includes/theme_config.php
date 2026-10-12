@@ -888,6 +888,7 @@ if(sidebarCompact==='true'){
     }
     if(sidebar){sidebar.classList.add('collapsed');sidebar.style.width='4.6875rem';}
     if(mainC)mainC.style.marginLeft='4.6875rem';
+    try{localStorage.setItem('winSidebarCollapsed','true');}catch(e){}
   }
   var compactTimer=null;
   window.addEventListener('resize',function(){
@@ -899,6 +900,10 @@ if(sidebarCompact==='true'){
   }else{
     applyCompact();
   }
+}else{
+  /* Compacto desactivado en el tema: limpia el estado heredado del hamburger
+     para que el sidebar no arranque siempre colapsado. */
+  try{localStorage.removeItem('winSidebarCollapsed');}catch(e){}
 }
 
 /* ===== RECARGA AL CAMBIAR DE DISPOSITIVO (solo modo automático) ===== */

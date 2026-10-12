@@ -3509,10 +3509,9 @@ function construirHtmlInformeGeneral(opts) {
                 }
 
                 .portada {
-                    border: 0.1875rem solid #004B87;
                     text-align: center;
                 }
-                .portada-inner { margin-top: 58mm; }
+                .portada-inner { margin: 48mm auto 0; border: 0.1875rem solid #004B87; padding: 2.5rem 3rem; display: block; width: fit-content; max-width: 82%; box-sizing: border-box; }
                 .portada-logo { margin: 0 auto 1.5625rem; }
                 .portada-logo img { max-height: 6.25rem; max-width: 6.25rem; object-fit: contain; }
                 .portada-titulo { font-size: 19pt; font-weight: bold; color: #004B87; text-transform: uppercase; margin-bottom: 1.5625rem; }
