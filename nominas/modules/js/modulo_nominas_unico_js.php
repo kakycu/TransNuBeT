@@ -4434,12 +4434,15 @@ function cargarModalEdicion($row) {
     if (esContabilizada) {
         $('#btnModalActualizar').hide();
         $('#btnModalReset').hide();
+        $('#btnModalEliminar').hide();
         $('#modalContabilizadaWarning').show();
     } else {
         $('#btnModalActualizar').show();
         $('#btnModalReset').show();
+        $('#btnModalEliminar').show();
         $('#modalContabilizadaWarning').hide();
     }
+    $('#modalEdicionRapida').data('editNombre', nombre);
     
     var html = '<div class="d-flex align-items-center mb-3">';
     if (fotoUrl && !fotoUrl.startsWith('data:image/svg')) {
@@ -6337,7 +6340,27 @@ $(document).on('closed.bs.alert', '#modalEdicionBody .alert', function () {
         // Notificación visual de restablecimiento exitoso
         mostrarToast('info', 'Valores restablecidos a su estado inicial');
     });
-	
+
+// ==========================================
+// ELIMINAR REGISTRO ACTIVO DESDE EL MODAL DE EDICIÓN
+// ==========================================
+    $('#btnModalEliminar').on('click', function() {
+        var id = window.editCurrentRowId;
+        var nombre = $('#modalEdicionRapida').data('editNombre') || '';
+        if (!id) {
+            Swal.fire({
+                title: 'Error',
+                text: 'No se pudo identificar el registro activo.',
+                icon: 'error',
+                background: '#1a1a2e',
+                color: '#ffffff',
+                confirmButtonText: '<i class="fas fa-check me-2"></i>Aceptar'
+            });
+            return;
+        }
+        eliminarTrabajadorPorId(id, nombre);
+    });
+
 	window.escapeHtml = function(str) {
 		if (str === null || str === undefined) return '';
 		var cadenaSegura = str.toString();
@@ -8645,7 +8668,13 @@ backdrop: 'rgba(0,0,0,0.6)'
             if ($('#sinCuentaAnio option[value="' + periodoDef.slice(0, 4) + '"]').length) {
                 $('#sinCuentaAnio').val(periodoDef.slice(0, 4));
             }
-            $('#sinCuentaMes').val(String(parseInt(periodoDef.slice(5), 10)));
+            var mesDefSc = parseInt(periodoDef.slice(5), 10);
+            $('#sinCuentaMes').val(String(mesDefSc));
+            // Si ese mes no tiene datos (no quedó selected), vacía el valor para que
+            // cargarMesesSinCuenta() caiga al último mes de la lista (más reciente con valores)
+            if (parseInt($('#sinCuentaMes').val(), 10) !== mesDefSc) {
+                $('#sinCuentaMes').val('');
+            }
         }
         modal.show();
         if (!sinCuentaBuscarIniciado) {
@@ -9623,13 +9652,20 @@ backdrop: 'rgba(0,0,0,0.6)'
             if (!meses.length) {
                 $sel.html('<option value="">(Sin datos)</option>');
             } else {
-                var html = '';
+                var html = '', mesEncontrado = false;
                 meses.forEach(function(m) {
                     var v = parseInt(m, 10);
+                    if (v === mesPrevio) mesEncontrado = true;
                     html += '<option value="' + v + '"' + (v === mesPrevio ? ' selected' : '') + '>' + (MESES_SN[v] || v) + '</option>';
                 });
                 $sel.html(html);
-                if (!$sel.val()) $sel.val(String(parseInt(meses[0], 10)));
+                // Si el mes previo no tiene datos (no quedó selected), selecciona el último mes
+                // de la lista (el más reciente con valores) en lugar del primero.
+                if (mesEncontrado) {
+                    $sel.val(String(mesPrevio));
+                } else {
+                    $sel.val(String(parseInt(meses[meses.length - 1], 10)));
+                }
             }
         })
         .always(function() {
@@ -11410,7 +11446,7 @@ $(document).on('click', '.guardar-fila', function() {
             html: `
                 <div class="text-center">
                     <i class="fas fa-user-slash fa-3x mb-3" style="color: #ef4444;"></i>
-                    <p>¿Está seguro que desea eliminar de la nómina A:</p>
+                    <p>¿Está seguro que desea eliminar de la nómina <strong>(${escapeHtml(typeof tipoNominaTexto !== 'undefined' ? tipoNominaTexto : '')})</strong> a:</p>
                     <p><strong>${nombre}?</strong></p>
                     <p class="text-muted small">Esta acción no se puede deshacer.</p>
                 </div>
@@ -12509,7 +12545,7 @@ function eliminarTrabajadorPorId(id, nombre) {
         html: `
             <div class="text-center">
                 <i class="fas fa-user-slash fa-3x mb-3" style="color: #ef4444;"></i>
-                <p>¿Está seguro que desea eliminar de la nómina a:</p>
+                <p>¿Está seguro que desea eliminar de la nómina <strong>(${escapeHtml(typeof tipoNominaTexto !== 'undefined' ? tipoNominaTexto : '')})</strong> a:</p>
                 <p><strong>${escapeHtml(nombre)}</strong>?</p>
                 <p class="text-muted small">Esta acción no se puede deshacer.</p>
             </div>
@@ -13182,6 +13218,15 @@ $('#extraTarifaLey, #extraTarifaConvenio').on('change', function() {
             var porcentaje = Math.min(Math.roundExcel((diasAcum / 24) * 100), 100);
             var barraColor = porcentaje >= 85 ? '#ef4444' : (porcentaje >= 70 ? '#f59e0b' : '#10b981');
 
+            var centroCostoTexto = 'Sin CC';
+            if (w.centro_costo_codigo && w.centro_costo_nombre) {
+                centroCostoTexto = w.centro_costo_codigo + ' - ' + w.centro_costo_nombre;
+            } else if (w.centro_costo_nombre) {
+                centroCostoTexto = w.centro_costo_nombre;
+            } else if (w.centro_costo_codigo) {
+                centroCostoTexto = w.centro_costo_codigo;
+            }
+
             // Resolución del path de la foto
             var workerFotoUrl = '';
             if (w.foto_ruta && w.foto_ruta.trim() !== '') {
@@ -13213,7 +13258,7 @@ $('#extraTarifaLey, #extraTarifaConvenio').on('change', function() {
                                 ${mensajeAlerta}
                             </div>
                             <div class="worker-detail">
-                                <i class="fas fa-briefcase me-1"></i> ${w.cargo || 'Sin cargo'} 
+                                <i class="fas fa-chart-pie me-1"></i> ${centroCostoTexto}
                                 <i class="fas fa-building ms-2 me-1"></i> ${w.nombre_area || 'Sin área'}
                             </div>
                             <div class="mt-1" style="width:100%;">
@@ -13225,6 +13270,7 @@ $('#extraTarifaLey, #extraTarifaConvenio').on('change', function() {
                                     <div style="width:${porcentaje}%; background: ${barraColor}; border-radius: 0.625rem; height:0.25rem;"></div>
                                 </div>
                             </div>
+                            ${disabledText ? `<div class="worker-detail text-danger mt-1"><i class="fas fa-info-circle me-1"></i>${disabledText}</div>` : ''}
                         </div>
                         <div class="worker-dias">
                             <div class="dias-num" style="color: ${badgeColor}; font-weight: bold; font-size:1rem;">
@@ -13234,7 +13280,6 @@ $('#extraTarifaLey, #extraTarifaConvenio').on('change', function() {
                                 <i class="fas fa-dollar-sign me-1"></i> ${parseFloat(w.valor_acumulado).toLocaleString('en-US', {minimumFractionDigits: 2})}
                             </div>
                         </div>
-                        ${disabledText ? `<div class="worker-detail text-danger ms-2"><i class="fas fa-info-circle me-1"></i>${disabledText}</div>` : ''}
                     </div>`;
         });
         $('#workerList').html(html || '<div class="p-3 text-white-50 text-center"><i class="fas fa-user-slash fa-2x mb-2 d-block"></i>No hay resultados</div>');

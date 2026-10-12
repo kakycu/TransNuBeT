@@ -2850,6 +2850,10 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
     --shadow:0 0.75rem 2.125rem rgba(76,29,149,0.12);
     --win-sidebar-bg:rgba(250,247,254,0.97);
     --win-sidebar-border:rgba(139,92,246,0.12);
+    --color-success:#047857;
+    --color-success-rgb:4, 120, 87;
+    --color-success-soft:#059669;
+    --color-success-soft-rgb:5, 150, 105;
 }
 [data-theme="orgullo"] .win11-bg { background: linear-gradient(135deg, #f2ebfa 0%, #ece2f8 50%, #f8f5fd 100%) !important; }
 [data-theme="orgullo"] .win11-bg::before {
@@ -2907,6 +2911,15 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
 [data-theme="orgullo"] .btn-win:not(.btn-win-primary) { border-color: rgba(139,92,246,0.35) !important; color: #6d28d9 !important; }
 [data-theme="orgullo"] .btn-win:hover:not(.btn-win-primary) { background: rgba(139,92,246,0.08) !important; border-color: var(--accent) !important; color: var(--accent-dark) !important; }
 [data-theme="orgullo"] .btn-win-sm:hover:not(.btn-win-primary) { background: rgba(139,92,246,0.08) !important; color: #6d28d9 !important; }
+[data-theme="orgullo"] .btn-win-danger,
+[data-theme="orgullo"] .btn-win.btn-win-danger { background: linear-gradient(135deg, #dc3545, #b91c1c) !important; border: none !important; color: #ffffff !important; }
+[data-theme="orgullo"] .btn-win-danger:hover,
+[data-theme="orgullo"] .btn-win.btn-win-danger:hover,
+[data-theme="orgullo"] #btnModalEliminar:hover { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: #ffffff !important; border: none !important; filter: brightness(1.1); box-shadow: 0 0.25rem 0.75rem rgba(220,38,38,0.4); }
+[data-theme="orgullo"] #btnModalEliminar,
+[data-theme="orgullo"] #btnModalEliminar i,
+[data-theme="orgullo"] .btn-win-danger i,
+[data-theme="orgullo"] .btn-win.btn-win-danger i { color: #ffffff !important; }
 [data-theme="orgullo"] .card-header-title { color: var(--accent-dark) !important; font-weight: 700 !important; }
 [data-theme="orgullo"] .card-collapse-title { color: var(--accent-dark) !important; font-weight: 700 !important; }
 [data-theme="orgullo"] .card-collapse-title:hover { color: var(--accent) !important; }
@@ -3188,7 +3201,7 @@ html[data-theme="orgullo"] .card-collapse-header[aria-expanded="true"] .card-col
 /* ===== ORGULLO: MODALES ===== */
 [data-theme="orgullo"] .modal-content, [data-theme="orgullo"] .modal-content-modern { background:#ffffff !important; color:#33264d !important; border:0.0625rem solid rgba(139,92,246,0.25) !important; }
 [data-theme="orgullo"] .modal-header { color:#2a1f42 !important; border-bottom-color:rgba(139,92,246,0.2) !important; }
-[data-theme="orgullo"] .modal-header h3, [data-theme="orgullo"] .modal-header h4, [data-theme="orgullo"] .modal-header h5 { color:#2a1f42 !important; }
+[data-theme="orgullo"] .modal-header h3:not(.text-white), [data-theme="orgullo"] .modal-header h4:not(.text-white), [data-theme="orgullo"] .modal-header h5:not(.text-white) { color:#2a1f42 !important; }
 [data-theme="orgullo"] .modal-footer { border-top-color:rgba(139,92,246,0.2) !important; }
 /* ===== ORGULLO: VENTANA CUADRE (nominas.php) ===== */
 [data-theme="orgullo"] .ventana-cuadre-overlay { background:rgba(46,16,101,0.4); }
@@ -3554,6 +3567,35 @@ html[data-theme="orgullo"] .table-snc td a { color:var(--accent-dark) !important
 [data-theme="orgullo"] .win-modal-footer { border-color:var(--border); color:var(--muted); }
 [data-theme="orgullo"] .permisos-leyenda { background:rgba(255,255,255,0.5) !important; border-color:rgba(51,38,77,0.2) !important; color:#33264d !important; }
 [data-theme="orgullo"] .filter-label { color:#33264d !important; }
+/* ===== ORGULLO: MODAL EDICIÓN RÁPIDA NÓMINA (tarjetas oscuras generadas por JS) ===== */
+[data-theme="orgullo"] #modalEdicionBody .card.bg-dark,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0,0,0,0.3)"],
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0, 0, 0, 0.3)"] {
+    background:#ffffff !important;
+    border:0.0625rem solid rgba(139,92,246,0.25) !important;
+    color:#33264d !important;
+}
+[data-theme="orgullo"] #modalEdicionBody .card.bg-dark *,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0,0,0,0.3)"] *,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0, 0, 0, 0.3)"] * {
+    color:#33264d !important;
+}
+[data-theme="orgullo"] #modalEdicionBody .card.bg-dark .text-white-50,
+[data-theme="orgullo"] #modalEdicionBody .card.bg-dark small,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0,0,0,0.3)"] .text-white-50,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0,0,0,0.3)"] small,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0, 0, 0, 0.3)"] .text-white-50,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0, 0, 0, 0.3)"] small {
+    color:#6d5b91 !important;
+}
+[data-theme="orgullo"] #modalEdicionBody .card.bg-dark .text-success,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0,0,0,0.3)"] .text-success,
+[data-theme="orgullo"] #modalEdicionBody .card[style*="rgba(0, 0, 0, 0.3)"] .text-success { color:#047857 !important; }
+/* ===== ORGULLO: TEXTOS VERDES INLINE CLAROS -> OSCUROS ===== */
+[data-theme="orgullo"] [style*="#34d399"],
+[data-theme="orgullo"] [style*="#4ade80"],
+[data-theme="orgullo"] [style*="#86efac"],
+[data-theme="orgullo"] [style*="#6ee7b7"] { color:#047857 !important; }
 /* ===== SIDEBAR: SIN BORDES EN REPOSO, SOLO AL HOVER (todos los temas) ===== */
 html .win-sidebar .nav-item,
 html .win-sidebar .nav-submenu .nav-item {

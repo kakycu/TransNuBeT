@@ -5937,13 +5937,13 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
 				$badge_tarifa_extra = '<i class="fas fa-handshake me-1"></i>Tarifa empleada: <strong style="color: inherit !important;">Convenio Colectivo Empleador - Empleado</strong>'
 					. ' ($' . number_format((float)$convenio_valor_he, 2) . '/h HE · $' . number_format((float)$convenio_valor_doble_turno, 2) . '/h DT'
 					. ' · $' . number_format((float)$convenio_valor_nocturnidad_temprana, 2) . '/h NtT · $' . number_format((float)$convenio_valor_nocturnidad_tardia, 2) . '/h NtD)';
-				$estilo_tarifa = 'background: rgba(16,185,129,0.12); border: 0.0625rem solid rgba(16,185,129,0.35); color: #6ee7b7 !important;';
+				$estilo_tarifa = 'background: rgba(16,185,129,0.12); border: 0.0625rem solid rgba(16,185,129,0.35); color: #6ee7b7;';
 			} elseif ($filas_ley > 0 && $filas_convenio === 0) {
 				$badge_tarifa_extra = '<i class="fas fa-landmark me-1"></i>Tarifa empleada: <strong style="color: inherit !important;">Ley 189/2026 «Código de Trabajo»</strong> (arts. 227 y 230)';
-				$estilo_tarifa = 'background: rgba(245,158,11,0.12); border: 0.0625rem solid rgba(245,158,11,0.35); color: #fcd34d !important;';
+				$estilo_tarifa = 'background: rgba(245,158,11,0.12); border: 0.0625rem solid rgba(245,158,11,0.35); color: #fcd34d;';
 			} elseif ($filas_ley > 0 && $filas_convenio > 0) {
 				$badge_tarifa_extra = '<i class="fas fa-scale-balanced me-1"></i>Tarifa empleada: <strong style="color: inherit !important;">Mixta</strong> (Ley 189/2026 + Convenio Colectivo)';
-				$estilo_tarifa = 'background: rgba(148,163,184,0.12); border: 0.0625rem solid rgba(148,163,184,0.35); color: #cbd5e1 !important;';
+				$estilo_tarifa = 'background: rgba(148,163,184,0.12); border: 0.0625rem solid rgba(148,163,184,0.35); color: #cbd5e1;';
 			}
 		}
 		?>
@@ -6930,7 +6930,7 @@ if ($existe_nomina) {
                     </div>
                     
                     <div class="row">
-						<div class="col-md-5">
+						<div class="col-md-6">
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
                                     <label class="form-label small">Filtrar por Área</label>
@@ -6958,7 +6958,7 @@ if ($existe_nomina) {
                             </div>
                             <div class="worker-list-container" id="workerList"></div>
                         </div>
-                        <div class="col-md-7">
+                        <div class="col-md-6">
                             <label class="form-label"><i class="fas fa-user-clock me-1"></i> Trabajadores seleccionados</label>
                             <div id="selectedWorkersList" class="selected-workers-container" style="min-height:12.5rem;">
                                 <em class="text-white-50"><i class="fas fa-users me-1"></i>Seleccione trabajadores de la lista izquierda</em>
@@ -7289,8 +7289,11 @@ if ($existe_nomina) {
                                 $meses_sc = $stmt_mes_sc->fetchAll(PDO::FETCH_COLUMN);
                             } catch (Exception $e_mes_sc) { $meses_sc = []; }
                             if (empty($meses_sc)) $meses_sc = [$mes_ref_sc];
+                            $meses_sc = array_map('intval', $meses_sc);
+                            // Si el mes por defecto no tiene datos, selecciona el último mes de la lista (más reciente con valores)
+                            $mes_sel_sc = in_array((int)$mes_ref_sc, $meses_sc, true) ? (int)$mes_ref_sc : (int)end($meses_sc);
                             foreach ($meses_sc as $mm): ?>
-                            <option value="<?php echo (int)$mm; ?>" <?php echo (int)$mm == $mes_ref_sc ? 'selected' : ''; ?>><?php echo ucfirst(nombreMesEspanol((int)$mm)); ?></option>
+                            <option value="<?php echo (int)$mm; ?>" <?php echo (int)$mm == $mes_sel_sc ? 'selected' : ''; ?>><?php echo ucfirst(nombreMesEspanol((int)$mm)); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -7693,6 +7696,9 @@ if ($existe_nomina) {
                         </span>
                     </div>
                     <button type="button" class="btn-win" id="btnModalReset" title="Restablecer cambios" data-tooltip="Restablecer cambios" data-tooltip-theme="warning" style="display: none;"><i class="fas fa-undo-alt me-2"></i>Restablecer</button>
+                    <?php if ($puede_eliminar_nomina): ?>
+                    <button type="button" class="btn-win btn-win-danger" id="btnModalEliminar" data-tooltip="Eliminar registro" data-tooltip-theme="danger" style="display: none;"><i class="fas fa-trash-alt"></i></button>
+                    <?php endif; ?>
                 </div>
                 <button type="button" class="btn-win" id="btnModalPrimero" title="Ir al primer registro" data-tooltip="Ir al primer registro" data-tooltip-theme="primary"><i class="fas fa-angle-double-left me-2"></i>Primero</button>
                 <button type="button" class="btn-win" id="btnModalAnterior" title="Ir al registro anterior" data-tooltip="Ir al registro anterior" data-tooltip-theme="primary"><i class="fas fa-chevron-left me-2"></i>Anterior</button>
