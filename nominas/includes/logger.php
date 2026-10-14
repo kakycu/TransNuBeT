@@ -64,6 +64,9 @@ if (!defined('LOG_ACCIONES')) {
         'reactivar_trabajador'        => 'Reactivar trabajador',
         'eliminar_trabajador'         => 'Eliminar trabajador',
         'exportar_anexo14'            => 'Exportar Anexo 14',
+        'ver_anexo14'                 => 'Vista previa del Anexo 14',
+        'generar_reporte_bajas'       => 'Generar reporte de bajas',
+        'generar_reporte_altas'       => 'Generar reporte de altas',
         // --- Nóminas ---
         'generar_nomina_automatica'   => 'Generar nómina automática',
         'regenerar_nomina'            => 'Regenerar nómina',

@@ -73,6 +73,8 @@ if (!function_exists('resumenCierresAnioNominas') && is_readable(__DIR__ . '/fun
 
 $stats_sidebar = [
     'empleados' => 0,
+    'altas_anio' => 0,
+    'bajas_anio' => 0,
     'nominas_anio' => 0,
     'cierres_anio' => [
         'anio'         => (int)date('Y'),
@@ -88,6 +90,12 @@ $stats_sidebar = [
 if (isset($pdo) && $pdo instanceof PDO) {
     try {
         $stats_sidebar['empleados'] = (int)$pdo->query("SELECT COUNT(*) FROM trabajadores WHERE activo = 1 AND (fecha_baja IS NULL OR fecha_baja > CURDATE())")->fetchColumn();
+    } catch (PDOException $e) {}
+    try {
+        $stats_sidebar['altas_anio'] = (int)$pdo->query("SELECT COUNT(*) FROM trabajadores WHERE fecha_alta IS NOT NULL AND YEAR(fecha_alta) = YEAR(CURDATE())")->fetchColumn();
+    } catch (PDOException $e) {}
+    try {
+        $stats_sidebar['bajas_anio'] = (int)$pdo->query("SELECT COUNT(*) FROM trabajadores WHERE fecha_baja IS NOT NULL AND YEAR(fecha_baja) = YEAR(CURDATE())")->fetchColumn();
     } catch (PDOException $e) {}
     try {
         $stats_sidebar['nominas_anio'] = (int)$pdo->query("SELECT COUNT(DISTINCT CONCAT(DATE_FORMAT(periodo_desde, '%Y-%m'), '-', tipo_nomina)) FROM nominas WHERE estado != 'borrador' AND periodo_desde >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)")->fetchColumn();
@@ -1271,6 +1279,17 @@ html.focus-mode .fluid-container {
                 <i class="fas fa-chevron-down nav-group-chevron sidebar-expand-only" id="empleadosChevron"></i>
             </a>
             <div class="nav-submenu" id="empleadosSubmenu">
+                <a href="<?php echo $base_prefix; ?>modules/empleados.php#reporte_bajas" class="nav-item" data-tooltip="Reporte de Trabajadores con Baja" data-tooltip-theme="primary">
+                    <i class="fas fa-user-minus"></i>
+                    <span class="sidebar-text">Reporte de Bajas</span>
+                    <span class="nav-badge sidebar-text"><?php echo $stats_sidebar['bajas_anio']; ?></span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/empleados.php#reporte_altas" class="nav-item" data-tooltip="Reporte de Trabajadores con Alta" data-tooltip-theme="primary">
+                    <i class="fas fa-user-plus"></i>
+                    <span class="sidebar-text">Reporte de Altas</span>
+                    <span class="nav-badge sidebar-text"><?php echo $stats_sidebar['altas_anio']; ?></span>
+                </a>
+				<!----
                 <a href="<?php echo $base_prefix; ?>modules/empleados.php#solapines_zip" class="nav-item" data-tooltip="Exportar Todos los Solapines (ZIP)" data-tooltip-theme="primary">
                     <i class="fas fa-file-archive"></i>
                     <span class="sidebar-text">Exportar Solapines (ZIP)</span>
@@ -1287,6 +1306,7 @@ html.focus-mode .fluid-container {
                     <i class="fas fa-calendar-day"></i>
                     <span class="sidebar-text">Cumpleaños 30 Días</span>
                 </a>
+				---->
                 <a href="<?php echo $base_prefix; ?>modules/snc225.php" class="nav-item <?php echo ($current_file == 'snc225.php') ? 'active' : ''; ?>" data-tooltip="Tarjeta SNC-225" data-tooltip-theme="primary">
                     <i class="fas fa-id-card"></i>
                     <span class="sidebar-text">SNC - 225</span>

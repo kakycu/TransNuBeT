@@ -49,9 +49,15 @@ $user_ci = $_SESSION['usuario_ci'] ?? $_SESSION['user_ci'] ?? '';
 $user_email = $_SESSION['usuario_email'] ?? $_SESSION['user_email'] ?? '';
 
 
-// Verificar si se solicita exportar Anexo 14
-if (isset($_GET['exportar_anexo14']) && $_GET['exportar_anexo14'] == '1') {
+// Verificar si se solicita exportar Anexo 14 (XLSX)
+if (isset($_GET['exportar_anexo14'])) {
     exportar_anexo_14($pdo);
+    exit;
+}
+
+// Verificar si se solicita la vista previa (visor) del Anexo 14
+if (isset($_GET['ver_anexo14'])) {
+    ver_anexo_14($pdo);
     exit;
 }
 
@@ -67,6 +73,830 @@ try {
         if ($row['parametro'] == 'especialista_gestionRRHH') $config_empresa['especialista_gestionRRHH'] = $row['valor'];
     }
 } catch (PDOException $e) {}
+
+// ============================================================
+// REPORTE DE BAJAS (?reporte=bajas) — listado imprimible/exportable
+// Salida temprana: se sirve solo el HTML del informe (patrón exportar_anexo14)
+// ============================================================
+if (isset($_GET['reporte']) && $_GET['reporte'] === 'bajas') {
+
+    $fmtFechaBaja = function ($f) {
+        $f = trim((string)$f);
+        if ($f === '' || strpos($f, '0000-00-00') === 0) return '-';
+        $p = explode('-', substr($f, 0, 10));
+        if (count($p) !== 3) return '-';
+        return $p[2] . '/' . $p[1] . '/' . $p[0];
+    };
+    $mesesNombre = array(1=>'Enero',2=>'Febrero',3=>'Marzo',4=>'Abril',5=>'Mayo',6=>'Junio',7=>'Julio',8=>'Agosto',9=>'Septiembre',10=>'Octubre',11=>'Noviembre',12=>'Diciembre');
+
+    $baja_fecha = isset($_GET['fecha']) ? trim((string)$_GET['fecha']) : '';
+    $baja_mes   = isset($_GET['mes'])   ? trim((string)$_GET['mes'])   : '';
+    $baja_anio  = isset($_GET['anio'])  ? trim((string)$_GET['anio'])  : '';
+
+    $where = ["t.fecha_baja IS NOT NULL", "t.fecha_baja <> '0000-00-00'"];
+    if ($baja_fecha !== '' && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $baja_fecha, $mbf)) {
+        $where[] = "t.fecha_baja = " . $pdo->quote($mbf[0]);
+        $alcance_periodo = 'Fecha de baja: ' . $fmtFechaBaja($mbf[0]);
+    } elseif ($baja_mes !== '' && $baja_anio !== '' && preg_match('/^\d{2}$/', $baja_mes) && preg_match('/^\d{4}$/', $baja_anio)) {
+        $where[] = "YEAR(t.fecha_baja) = " . (int)$baja_anio . " AND MONTH(t.fecha_baja) = " . (int)$baja_mes;
+        $alcance_periodo = 'Mes de baja: ' . ($mesesNombre[(int)$baja_mes] ?? $baja_mes) . ' de ' . $baja_anio;
+    } elseif ($baja_anio !== '' && preg_match('/^\d{4}$/', $baja_anio)) {
+        $where[] = "YEAR(t.fecha_baja) = " . (int)$baja_anio;
+        $alcance_periodo = 'Año de baja: ' . $baja_anio;
+    } else {
+        $alcance_periodo = 'Todas las bajas registradas';
+    }
+
+    // Resumen agrupado seleccionable (motivo por defecto)
+    $resumen_por = isset($_GET['resumen']) ? strtolower(trim((string)$_GET['resumen'])) : 'motivo';
+    $RESUMEN_ETIQUETAS = array(
+        'motivo'    => 'Motivo de baja',
+        'centro'    => 'Centro de Costo',
+        'area'      => 'Área',
+        'categoria' => 'Categoría Ocupacional',
+        'escala'    => 'Escala Salarial',
+        'fecha'     => 'Fecha de baja'
+    );
+    $RESUMEN_SLUG = array(
+        'motivo' => 'Motivo', 'centro' => 'CentroCosto', 'area' => 'Area',
+        'categoria' => 'CategoriaOcupacional', 'escala' => 'EscalaSalarial', 'fecha' => 'FechaBaja'
+    );
+    if (!isset($RESUMEN_ETIQUETAS[$resumen_por])) { $resumen_por = 'motivo'; }
+    $resumen_etiqueta = $RESUMEN_ETIQUETAS[$resumen_por];
+
+    // Nombre base de los archivos exportados, según el filtro de fecha de baja seleccionado
+    $archivo_base = 'ReporteBajas';
+    if ($baja_fecha !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $baja_fecha)) {
+        $archivo_base .= '_' . date('d-m-Y', strtotime($baja_fecha));
+    } elseif ($baja_mes !== '' && $baja_anio !== '') {
+        $archivo_base .= '_' . strtr($mesesNombre[(int)$baja_mes] ?? $baja_mes, array('á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','ñ'=>'n','Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N')) . '-' . $baja_anio;
+    } elseif ($baja_anio !== '') {
+        $archivo_base .= '_' . $baja_anio;
+    } else {
+        $archivo_base .= '_Todas';
+    }
+    if ($resumen_por !== 'motivo') {
+        $archivo_base .= '_por-' . $RESUMEN_SLUG[$resumen_por];
+    }
+
+    // Título con el nombre del sistema y la empresa configurada
+    $titulo_sistema = 'SisGesNom - ' . $config_empresa['nombre_empresa'];
+
+    $sql_bajas = "
+        SELECT t.id, t.codigo, t.ci, t.nombres, t.primer_apellido, t.segundo_apellido,
+               t.fecha_alta, t.fecha_baja, t.activo, t.tipo_contrato,
+               cp.nombre_cargo,
+               a.nombre_area,
+               cc.nombre AS centro_costo_nombre, cc.codigo AS centro_costo_codigo,
+               mb.categoria AS motivo_categoria, mb.nombre AS motivo_nombre, mb.base_legal AS motivo_base_legal,
+               co.nombre AS categoria_ocupacional, co.codigo AS categoria_ocupacional_codigo,
+               es.escala_numero, es.descripcion AS escala_descripcion,
+               CASE WHEN t.fecha_alta IS NOT NULL AND t.fecha_baja IS NOT NULL THEN DATEDIFF(t.fecha_baja, t.fecha_alta) ELSE NULL END AS dias_servicio
+        FROM trabajadores t
+        LEFT JOIN cargos_plantilla cp ON t.cargo_id = cp.id
+        LEFT JOIN areas a ON t.area_id = a.id
+        LEFT JOIN centros_costo cc ON t.centro_costo_id = cc.id
+        LEFT JOIN motivos_baja mb ON mb.codigo = t.motivo_baja
+        LEFT JOIN categorias_ocupacionales co ON t.categoria_ocupacional_id = co.id
+        LEFT JOIN escalas_salariales es ON t.escala_salarial_id = es.id
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY t.fecha_baja DESC, t.primer_apellido ASC, t.nombres ASC";
+    $bajas_rows = $pdo->query($sql_bajas)->fetchAll();
+
+    logAction(
+        'generar_reporte_bajas',
+        'empleados',
+        'Generación del reporte de bajas',
+        ['filtro' => ($baja_fecha !== '' ? 'fecha=' . $baja_fecha : (($baja_anio !== '' || $baja_mes !== '') ? 'anio=' . $baja_anio . '&mes=' . $baja_mes : 'general')), 'registros' => count($bajas_rows)],
+        null,
+        'success',
+        null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
+
+    // Datos planos para los exports (CSV/TXT/Excel/PDF)
+    $filas_bajas = array();
+    $num_baja = 0;
+    foreach ($bajas_rows as $br) {
+        $num_baja++;
+        $nombre = trim($br['nombres'] . ' ' . $br['primer_apellido'] . ' ' . $br['segundo_apellido']);
+        $cc_texto = trim(($br['centro_costo_codigo'] ?? '') . ' - ' . ($br['centro_costo_nombre'] ?? ''), ' -');
+        $cat_ocup = trim((string)($br['categoria_ocupacional'] ?? ''));
+        if ($cat_ocup === '') { $cat_ocup = trim((string)($br['categoria_ocupacional_codigo'] ?? '')); }
+        $escala = (isset($br['escala_numero']) && $br['escala_numero'] !== null && $br['escala_numero'] !== '')
+            ? 'Escala ' . $br['escala_numero']
+            : 'Sin escala asignada';
+        $filas_bajas[] = array(
+            'no'        => $num_baja,
+            'expediente' => (string)($br['codigo'] ?? ''),
+            'ci'         => (string)($br['ci'] ?? ''),
+            'nombre'     => $nombre,
+            'cargo'      => (string)($br['nombre_cargo'] ?? '-'),
+            'area'       => (string)($br['nombre_area'] ?? '-'),
+            'centro'     => $cc_texto !== '' ? $cc_texto : 'Sin asignar',
+            'fecha_alta' => $fmtFechaBaja($br['fecha_alta'] ?? ''),
+            'fecha_baja' => $fmtFechaBaja($br['fecha_baja'] ?? ''),
+            'dias'       => ($br['dias_servicio'] !== null && $br['dias_servicio'] !== '') ? (string)$br['dias_servicio'] : '-',
+            'motivo'     => (string)($br['motivo_nombre'] ?? 'Sin motivo registrado'),
+            'categoria'  => (string)($br['motivo_categoria'] ?? ''),
+            'categoria_ocup' => $cat_ocup !== '' ? $cat_ocup : 'Sin categoría',
+            'escala'     => $escala
+        );
+    }
+
+    // Resumen agrupado según lo seleccionado (motivo por defecto)
+    $resumen_agrupado = array();
+    foreach ($filas_bajas as $fb) {
+        switch ($resumen_por) {
+            case 'centro':
+                $clave = (string)$fb['centro'];
+                $sub = '';
+                break;
+            case 'area':
+                $clave = ($fb['area'] !== '' && $fb['area'] !== '-') ? (string)$fb['area'] : 'Sin área asignada';
+                $sub = '';
+                break;
+            case 'categoria':
+                $clave = (string)$fb['categoria_ocup'];
+                $sub = '';
+                break;
+            case 'escala':
+                $clave = (string)$fb['escala'];
+                $sub = '';
+                break;
+            case 'fecha':
+                $clave = ($fb['fecha_baja'] !== '' && $fb['fecha_baja'] !== '-') ? (string)$fb['fecha_baja'] : 'Sin fecha';
+                $sub = '';
+                break;
+            default: // motivo
+                $clave = (string)$fb['motivo'];
+                $sub = (string)$fb['categoria'];
+                break;
+        }
+        if (!isset($resumen_agrupado[$clave])) {
+            $resumen_agrupado[$clave] = array('grupo' => $clave, 'sub' => $sub, 'cantidad' => 0);
+        }
+        $resumen_agrupado[$clave]['cantidad']++;
+    }
+    if ($resumen_por === 'fecha') {
+        // Las fechas vienen como dd/mm/yyyy: ordenar de más reciente a más antigua
+        uasort($resumen_agrupado, function ($a, $b) {
+            $ta = strtotime(implode('/', array_reverse(explode('/', (string)$a['grupo']))));
+            $tb = strtotime(implode('/', array_reverse(explode('/', (string)$b['grupo']))));
+            if ($ta === $tb) { return strcmp((string)$a['grupo'], (string)$b['grupo']); }
+            return ($tb ?: 0) <=> ($ta ?: 0);
+        });
+    } else {
+        uasort($resumen_agrupado, function ($a, $b) {
+            if ($b['cantidad'] !== $a['cantidad']) { return $b['cantidad'] <=> $a['cantidad']; }
+            return strcmp((string)$a['grupo'], (string)$b['grupo']);
+        });
+    }
+
+    $bajas_datos = array(
+        'empresa'  => (string)$config_empresa['nombre_empresa'],
+        'sistema'  => $titulo_sistema,
+        'usuario'  => (string)$user_nombre_completo,
+        'alcance'  => $alcance_periodo,
+        'emision'  => date('d/m/Y - h:i:s A'),
+        'total'    => count($filas_bajas),
+        'archivo'  => $archivo_base,
+        'resumen_por' => $resumen_etiqueta,
+        'filas'    => $filas_bajas,
+        'resumen'  => array_values($resumen_agrupado)
+    );
+
+    $h = function ($t) { return htmlspecialchars((string)$t, ENT_QUOTES, 'UTF-8'); };
+
+    // Hojas de detalle (solo registros) + una hoja final aparte con resumen y firmas
+    $FILAS_POR_PAGINA = 14;
+    $paginasDetalle = (int)ceil(count($filas_bajas) / $FILAS_POR_PAGINA);
+    if ($paginasDetalle < 1) { $paginasDetalle = 1; }
+    $totalPaginas = $paginasDetalle + 1; // detalle + hoja de resumen
+
+    $cabeceraHtml = function ($numPagina) use ($h, $titulo_sistema, $user_nombre_completo, $alcance_periodo, $logo_base64, $totalPaginas, $filas_bajas) {
+        return '<table class="cabecera"><tr>'
+            . '<td class="logo">' . ($logo_base64 ? '<img src="' . $h($logo_base64) . '" alt="Logo">' : '') . '</td>'
+            . '<td class="titulos"><div class="empresa">' . $h($titulo_sistema) . '</div>'
+            . '  <div class="titulo">REPORTE DE TRABAJADORES CON BAJA</div>'
+            . '  <div class="alcance"><strong>Alcance:</strong> ' . $h($alcance_periodo) . '</div></td>'
+            . '<td class="datos"><strong>Emisión:</strong> ' . $h(date('d/m/Y - h:i:s A')) . '<br>'
+            . '  <strong>Generado por:</strong> ' . $h($user_nombre_completo) . '<br>'
+            . '  <strong>Total de bajas:</strong> <span class="resaltado">' . count($filas_bajas) . '</span></td>'
+            . '</tr></table>';
+    };
+    $pieHtml = function ($numPagina) use ($h, $config_empresa, $totalPaginas) {
+        return '<div class="pie"><div>REPORTE DE BAJAS - ' . $h($config_empresa['nombre_empresa']) . '</div>'
+            . '<div class="pie-c">Página ' . $numPagina . ' de ' . $totalPaginas . '</div>'
+            . '<div class="pie-d">Impresión: ' . $h(date('d/m/Y - h:i:s A')) . '</div></div>';
+    };
+
+    // ---- Hojas de detalle: solo registros (no llegan al pie) ----
+    $html_paginas = '';
+    for ($p = 0; $p < $paginasDetalle; $p++) {
+        $slice = array_slice($filas_bajas, $p * $FILAS_POR_PAGINA, $FILAS_POR_PAGINA);
+        $tr = '';
+        foreach ($slice as $fb) {
+            $tr .= '<tr>'
+                . '<td class="c">' . (int)$fb['no'] . '</td>'
+                . '<td class="c">' . $h($fb['expediente']) . '</td>'
+                . '<td class="c">' . $h($fb['ci']) . '</td>'
+                . '<td>' . $h($fb['nombre']) . '</td>'
+                . '<td>' . $h($fb['cargo']) . '</td>'
+                . '<td>' . $h($fb['area']) . '</td>'
+                . '<td>' . $h($fb['centro']) . '</td>'
+                . '<td class="c">' . $h($fb['fecha_alta']) . '</td>'
+                . '<td class="c">' . $h($fb['fecha_baja']) . '</td>'
+                . '<td class="c">' . $h($fb['dias']) . '</td>'
+                . '<td>' . $h($fb['motivo']) . ($fb['categoria'] !== '' ? '<br><span class="cat">' . $h($fb['categoria']) . '</span>' : '') . '</td>'
+                . '</tr>';
+        }
+        $html_paginas .= ''
+        . '<div class="page-sheet">'
+        . $cabeceraHtml($p + 1)
+        . '  <table class="tabla"><thead><tr>'
+        . '    <th class="c">No.</th><th>Exp.</th><th>CI</th><th>Nombre Completo</th><th>Cargo</th><th>Área</th><th>Centro de Costo</th>'
+        . '    <th>Fecha Alta</th><th>Fecha Baja</th><th>Días Serv.</th><th>Motivo de Baja</th>'
+        . '  </tr></thead><tbody>' . $tr . '</tbody></table>'
+        . $pieHtml($p + 1)
+        . '</div>';
+    }
+
+    // ---- Hoja final: resumen agrupado + firmas (solo eso) ----
+    $esMotivo = ($resumen_por === 'motivo');
+    $resumen_html = '<div class="resumen"><div class="sec-title">Resumen agrupado por: ' . $h($resumen_etiqueta) . ' · Total de bajas: <span>' . count($filas_bajas) . '</span></div><table class="tbl-resumen"><thead><tr><th>' . $h($resumen_etiqueta) . '</th>' . ($esMotivo ? '<th>Categoría</th>' : '') . '<th class="c">Cantidad</th></tr></thead><tbody>';
+    foreach ($resumen_agrupado as $rm) {
+        $resumen_html .= '<tr><td>' . $h($rm['grupo']) . '</td>' . ($esMotivo ? '<td>' . $h($rm['sub']) . '</td>' : '') . '<td class="c">' . (int)$rm['cantidad'] . '</td></tr>';
+    }
+    $resumen_html .= '<tr class="tot"><td>TOTAL DE BAJAS</td>' . ($esMotivo ? '<td></td>' : '') . '<td class="c">' . count($filas_bajas) . '</td></tr></tbody></table></div>';
+
+    $html_paginas .= ''
+    . '<div class="page-sheet last">'
+    . $cabeceraHtml($totalPaginas)
+    . $resumen_html
+    . '  <div class="firmas">'
+    . '    <div class="firma-col"><p class="fl">Elaborado por:</p><p class="flin"></p><p class="fc">' . $h($config_empresa['especialista_gestionRRHH'] ?: $user_nombre_completo) . '</p><p class="fs">Especialista de Recursos Humanos</p></div>'
+    . '    <div class="firma-col"><p class="fl">Aprobado por:</p><p class="flin"></p><p class="fc">' . $h($config_empresa['jefe_proyecto']) . '</p><p class="fs">Director de Proyecto</p></div>'
+    . '  </div>'
+    . $pieHtml($totalPaginas)
+    . '</div>';
+
+    $toolbar = ''
+        . '<div id="tb-bajas" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:0.625rem 1.25rem;display:flex;justify-content:center;align-items:center;gap:0.6rem;flex-wrap:wrap;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;border-bottom:0.1875rem solid #1e40af;">'
+        . '<span style="color:#e0e7ff;font-weight:bold;font-size:0.8125rem;">REPORTES DE BAJAS</span>'
+        . '<button onclick="window.print()" style="padding:0.5rem 1rem;background:#22c55e;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">🖨️ Imprimir</button>'
+        . '<button onclick="exportarBajasPDF()" style="padding:0.5rem 1rem;background:#ef4444;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">📄 PDF</button>'
+        . '<button onclick="exportarBajasExcel()" style="padding:0.5rem 1rem;background:#16a34a;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">📊 Excel</button>'
+        . '<button onclick="exportarBajasCSV()" style="padding:0.5rem 1rem;background:#0ea5e9;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">📄 CSV</button>'
+        . '<button onclick="exportarBajasTXT()" style="padding:0.5rem 1rem;background:#64748b;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">📝 TXT</button>'
+        . '<button onclick="window.close()" style="padding:0.5rem 1rem;background:#ef4444;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">✖ Cerrar</button>'
+        . '</div><div style="height:3.5rem;"></div>';
+
+    $css_bajas = '
+        @page { size: letter landscape; margin: 0; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; background: #e5e7eb; margin: 0; padding: 0; }
+        .page-sheet { width: 279.4mm; height: 215.9mm; padding: 10mm 12mm 18mm 12mm; margin: 8px auto; background: #fff; position: relative; display: flex; flex-direction: column; page-break-after: always; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+        .page-sheet.last { page-break-after: auto; }
+        table.cabecera { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        table.cabecera td { border: none; vertical-align: middle; padding: 0; }
+        table.cabecera td.logo { width: 90px; padding-right: 10px; }
+        table.cabecera td.logo img { width: 2.1cm; height: 2.1cm; }
+        table.cabecera td.titulos { border-bottom: 2px solid #004B87; padding-bottom: 6px; }
+        table.cabecera td.datos { width: 210px; text-align: right; font-size: 7.5pt; color: #333; line-height: 1.5; border-bottom: 2px solid #004B87; padding-bottom: 6px; }
+        .empresa { font-size: 12.5pt; font-weight: bold; color: #004B87; text-transform: uppercase; }
+        .titulo { font-size: 10.5pt; font-weight: bold; color: #333; text-transform: uppercase; }
+        .alcance { font-size: 7.5pt; color: #444; margin-top: 2px; }
+        .resaltado { color: #004B87; font-weight: bold; }
+        table.tabla { width: 100%; border-collapse: collapse; }
+        table.tabla thead { display: table-header-group; }
+        table.tabla th { background: #004B87; color: #fff; font-size: 7pt; padding: 4px 3px; border: 1px solid #003766; text-transform: uppercase; }
+        table.tabla td { border: 1px solid #cbd5e1; padding: 3px; font-size: 7.5pt; vertical-align: top; }
+        table.tabla tr:nth-child(even) td { background: #f1f5f9; }
+        table.tabla td.c { text-align: center; white-space: nowrap; }
+        span.cat { font-size: 6.5pt; color: #64748b; }
+        .resumen { margin-top: 10px; }
+        .sec-title { font-size: 9pt; font-weight: bold; color: #004B87; text-transform: uppercase; border-bottom: 1px solid #004B87; padding-bottom: 2px; margin-bottom: 5px; }
+        .sec-title span { color: #000; }
+        table.tbl-resumen { width: 70%; border-collapse: collapse; }
+        table.tbl-resumen th { background: #e2e8f0; border: 1px solid #cbd5e1; padding: 3px; font-size: 7.5pt; text-align: left; }
+        table.tbl-resumen td { border: 1px solid #cbd5e1; padding: 3px; font-size: 7.5pt; }
+        table.tbl-resumen td.c { text-align: center; }
+        table.tbl-resumen tr.tot td { font-weight: bold; background: #eef2f7; }
+        .firmas { display: flex; justify-content: space-evenly; margin-top: auto; padding-top: 18px; }
+        .firmas .firma-col { width: 38%; text-align: center; }
+        .firmas .fl { font-size: 7.5pt; color: #333; margin: 0 0 2px; }
+        .firmas .flin { border-top: 1px solid #000; margin: 16px 0 3px; }
+        .firmas .fc { font-size: 8pt; font-weight: bold; margin: 0; }
+        .firmas .fs { font-size: 7pt; color: #555; margin: 1px 0 0; }
+        .pie { position: absolute; bottom: 6mm; left: 12mm; right: 12mm; display: flex; justify-content: space-between; font-size: 7pt; color: #555; border-top: 1px solid #cbd5e1; padding-top: 3px; }
+        .pie-c { text-align: center; }
+        @media print {
+            body { background: #fff; }
+            .page-sheet { margin: 0; box-shadow: none; }
+            #tb-bajas { display: none !important; }
+            .no-print { display: none !important; }
+        }';
+
+    $js_bajas = '
+        window.bajasData = ' . json_encode($bajas_datos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+        function nombreBajas(ext){ return (window.bajasData.archivo || "ReporteBajas") + "." + ext; }
+        function bajarBlobBajas(blob, nombre){ var url=URL.createObjectURL(blob); var a=document.createElement("a"); a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(url);},1500); }
+        function alertaBajas(titulo, texto, icono){ if(window.Swal){ Swal.fire({icon:icono||"info", title:titulo, text:texto}); } else { alert(titulo + "\\n" + texto); } }
+        function exportarBajasCSV(){
+            var d = window.bajasData; if(!d || !d.filas.length){ alertaBajas("Sin datos","No hay bajas para exportar.","warning"); return; }
+            var sep = ",";
+            var q = function(c){ return "\"" + String(c).replace(/\"/g,"\"\"") + "\""; };
+            var lineas = [["No.","Expediente","CI","Nombre Completo","Cargo","Area","Centro de Costo","Fecha Alta","Fecha Baja","Dias de Servicio","Motivo de Baja","Categoria"].join(sep)];
+            d.filas.forEach(function(f){ lineas.push([f.no,f.expediente,f.ci,f.nombre,f.cargo,f.area,f.centro,f.fecha_alta,f.fecha_baja,f.dias,f.motivo,f.categoria].map(q).join(sep)); });
+            lineas.push([]);
+            lineas.push(["Resumen agrupado por: " + (d.resumen_por || "Motivo de baja")].join(sep));
+            d.resumen.forEach(function(r){ lineas.push([r.grupo, r.sub, String(r.cantidad)].map(q).join(sep)); });
+            bajarBlobBajas(new Blob(["\\ufeff", lineas.join("\\r\\n")], {type:"text/csv;charset=utf-8;"}), nombreBajas("csv"));
+        }
+        function exportarBajasTXT(){
+            var d = window.bajasData; if(!d || !d.filas.length){ alertaBajas("Sin datos","No hay bajas para exportar.","warning"); return; }
+            var L = [];
+            L.push((d.sistema || d.empresa || "").toUpperCase());
+            L.push("REPORTE DE TRABAJADORES CON BAJA");
+            L.push("Alcance: " + d.alcance);
+            L.push("Emision: " + d.emision + "   Generado por: " + d.usuario);
+            L.push("Total de bajas: " + d.total);
+            L.push(Array(121).join("="));
+            var cab = ["No".padEnd(5),"Exp".padEnd(7),"CI".padEnd(11),"NOMBRE".padEnd(38),"CARGO".padEnd(20),"AREA".padEnd(18),"CENTRO".padEnd(22),"F.Alta".padEnd(11),"F.Baja".padEnd(11),"Dias".padEnd(6),"MOTIVO".padEnd(42)];
+            L.push(cab.join(" "));
+            d.filas.forEach(function(f){
+                L.push([String(f.no).padEnd(5),String(f.expediente).padEnd(7),String(f.ci).padEnd(11),String(f.nombre).padEnd(38),String(f.cargo).padEnd(20),String(f.area).padEnd(18),String(f.centro).padEnd(22),String(f.fecha_alta).padEnd(11),String(f.fecha_baja).padEnd(11),String(f.dias).padEnd(6),String(f.motivo).padEnd(42)].join(" "));
+            });
+            L.push(Array(121).join("="));
+            L.push(("RESUMEN AGRUPADO POR: " + (d.resumen_por || "Motivo de baja")).toUpperCase());
+            d.resumen.forEach(function(r){ L.push(String(r.grupo).padEnd(60) + String(r.sub || "").padEnd(35) + String(r.cantidad).padStart(5)); });
+            L.push("TOTAL DE BAJAS".padEnd(95) + String(d.total).padStart(5));
+            bajarBlobBajas(new Blob(["\\ufeff", L.join("\\r\\n")], {type:"text/plain;charset=utf-8;"}), nombreBajas("txt"));
+        }
+        function exportarBajasExcel(){
+            var d = window.bajasData; if(!d || !d.filas.length){ alertaBajas("Sin datos","No hay bajas para exportar.","warning"); return; }
+            if(typeof XLSX === "undefined"){ alertaBajas("Error","La librería de Excel no cargó.","error"); return; }
+            var wb = XLSX.utils.book_new();
+            var ws = XLSX.utils.aoa_to_sheet([
+                ["REPORTE DE TRABAJADORES CON BAJA", d.sistema || d.empresa],
+                ["Generado", d.emision],
+                ["Alcance", d.alcance],
+                ["Total de bajas", d.total],
+                [],
+                ["No.","Expediente","CI","Nombre Completo","Cargo","Area","Centro de Costo","Fecha Alta","Fecha Baja","Dias de Servicio","Motivo de Baja","Categoria"]
+            ].concat(d.filas.map(function(f){ return [f.no,f.expediente,f.ci,f.nombre,f.cargo,f.area,f.centro,f.fecha_alta,f.fecha_baja, (f.dias === "-" ? "" : Number(f.dias)), f.motivo,f.categoria]; })));
+            ws["!cols"] = [{wch:6},{wch:10},{wch:12},{wch:34},{wch:22},{wch:20},{wch:24},{wch:12},{wch:12},{wch:12},{wch:44},{wch:26}];
+            XLSX.utils.book_append_sheet(wb, ws, "Bajas");
+            var ws2 = XLSX.utils.aoa_to_sheet([
+                [("RESUMEN AGRUPADO POR: " + (d.resumen_por || "Motivo de baja")).toUpperCase()],
+                [],
+                [(d.resumen_por || "Motivo de baja"), (d.resumen_por === "Motivo de baja" ? "Categoria" : "Detalle"), "Cantidad"]
+            ].concat(d.resumen.map(function(r){ return [r.grupo, r.sub, r.cantidad]; }))
+              .concat([["TOTAL DE BAJAS","", d.total]]));
+            ws2["!cols"] = [{wch:48},{wch:30},{wch:12}];
+            XLSX.utils.book_append_sheet(wb, ws2, "Resumen");
+            XLSX.writeFile(wb, nombreBajas("xlsx"));
+        }
+        async function exportarBajasPDF(){
+            var d = window.bajasData; if(!d || !d.filas.length){ alertaBajas("Sin datos","No hay bajas para exportar.","warning"); return; }
+            if(typeof window.jspdf === "undefined" || typeof window.html2canvas === "undefined"){ alertaBajas("Error","Las librerías de PDF no están disponibles.","error"); return; }
+            var botones = document.getElementById("tb-bajas");
+            if(botones) botones.style.display = "none";
+            try {
+                var paginas = document.querySelectorAll(".page-sheet");
+                var jsPDF = window.jspdf.jsPDF;
+                var pdf = new jsPDF({orientation:"landscape", unit:"px", format:[1056, 816], compress:true});
+                for(var i=0;i<paginas.length;i++){
+                    var canvas = await window.html2canvas(paginas[i], {scale:2, backgroundColor:"#ffffff", useCORS:true, logging:false, windowWidth:1100, windowHeight:850});
+                    var img = canvas.toDataURL("image/jpeg", 0.95);
+                    if(i>0) pdf.addPage([1056,816], "landscape");
+                    pdf.addImage(img, "JPEG", 0, 0, 1056, 816);
+                }
+                pdf.save(nombreBajas("pdf"));
+            } catch(err){
+                alertaBajas("Error","No se pudo generar el PDF: " + err.message, "error");
+            } finally {
+                if(botones) botones.style.display = "flex";
+            }
+        }';
+
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>' . $h($titulo_sistema) . ' · Reporte de Bajas</title>'
+        . '<script src="../js/html2canvas.min.js"></script>'
+        . '<script src="../js/jspdf.umd.min.js"></script>'
+        . '<script src="../js/xlsx.full.min.js"></script>'
+        . '<script src="../js/sweetalert2.all.min.js"></script>'
+        . '<style>' . $css_bajas . '</style></head><body>'
+        . $toolbar . $html_paginas . '<script>' . $js_bajas . '</script></body></html>';
+    exit;
+}
+
+// ============================================================
+// REPORTE DE ALTAS (?reporte=altas) — listado imprimible/exportable
+// Misma lógica que el de bajas, adaptado a la fecha de alta
+// ============================================================
+if (isset($_GET['reporte']) && $_GET['reporte'] === 'altas') {
+
+    $fmtFechaAlta = function ($f) {
+        $f = trim((string)$f);
+        if ($f === '' || strpos($f, '0000-00-00') === 0) return '-';
+        $p = explode('-', substr($f, 0, 10));
+        if (count($p) !== 3) return '-';
+        return $p[2] . '/' . $p[1] . '/' . $p[0];
+    };
+    $mesesNombre = array(1=>'Enero',2=>'Febrero',3=>'Marzo',4=>'Abril',5=>'Mayo',6=>'Junio',7=>'Julio',8=>'Agosto',9=>'Septiembre',10=>'Octubre',11=>'Noviembre',12=>'Diciembre');
+
+    $alta_fecha = isset($_GET['fecha']) ? trim((string)$_GET['fecha']) : '';
+    $alta_mes   = isset($_GET['mes'])   ? trim((string)$_GET['mes'])   : '';
+    $alta_anio  = isset($_GET['anio'])  ? trim((string)$_GET['anio'])  : '';
+
+    $where = ["t.fecha_alta IS NOT NULL", "t.fecha_alta <> '0000-00-00'"];
+    if ($alta_fecha !== '' && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $alta_fecha, $maf)) {
+        $where[] = "t.fecha_alta = " . $pdo->quote($maf[0]);
+        $alcance_periodo = 'Fecha de alta: ' . $fmtFechaAlta($maf[0]);
+    } elseif ($alta_mes !== '' && $alta_anio !== '' && preg_match('/^\d{2}$/', $alta_mes) && preg_match('/^\d{4}$/', $alta_anio)) {
+        $where[] = "YEAR(t.fecha_alta) = " . (int)$alta_anio . " AND MONTH(t.fecha_alta) = " . (int)$alta_mes;
+        $alcance_periodo = 'Mes de alta: ' . ($mesesNombre[(int)$alta_mes] ?? $alta_mes) . ' de ' . $alta_anio;
+    } elseif ($alta_anio !== '' && preg_match('/^\d{4}$/', $alta_anio)) {
+        $where[] = "YEAR(t.fecha_alta) = " . (int)$alta_anio;
+        $alcance_periodo = 'Año de alta: ' . $alta_anio;
+    } else {
+        $alcance_periodo = 'Todas las altas registradas';
+    }
+
+    // Resumen agrupado seleccionable (área por defecto)
+    $resumen_por = isset($_GET['resumen']) ? strtolower(trim((string)$_GET['resumen'])) : 'area';
+    $RESUMEN_ETIQUETAS = array(
+        'area'      => 'Área',
+        'centro'    => 'Centro de Costo',
+        'cargo'     => 'Cargo',
+        'categoria' => 'Categoría Ocupacional',
+        'escala'    => 'Escala Salarial',
+        'fecha'     => 'Fecha de alta'
+    );
+    $RESUMEN_SLUG = array(
+        'area' => 'Area', 'centro' => 'CentroCosto', 'cargo' => 'Cargo',
+        'categoria' => 'CategoriaOcupacional', 'escala' => 'EscalaSalarial', 'fecha' => 'FechaAlta'
+    );
+    if (!isset($RESUMEN_ETIQUETAS[$resumen_por])) { $resumen_por = 'area'; }
+    $resumen_etiqueta = $RESUMEN_ETIQUETAS[$resumen_por];
+
+    // Nombre base de los archivos exportados, según el filtro de fecha de alta seleccionado
+    $archivo_base = 'ReporteAltas';
+    if ($alta_fecha !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $alta_fecha)) {
+        $archivo_base .= '_' . date('d-m-Y', strtotime($alta_fecha));
+    } elseif ($alta_mes !== '' && $alta_anio !== '') {
+        $archivo_base .= '_' . strtr($mesesNombre[(int)$alta_mes] ?? $alta_mes, array('á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','ñ'=>'n','Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N')) . '-' . $alta_anio;
+    } elseif ($alta_anio !== '') {
+        $archivo_base .= '_' . $alta_anio;
+    } else {
+        $archivo_base .= '_Todas';
+    }
+    if ($resumen_por !== 'area') {
+        $archivo_base .= '_por-' . $RESUMEN_SLUG[$resumen_por];
+    }
+
+    // Título con el nombre del sistema y la empresa configurada
+    $titulo_sistema = 'SisGesNom - ' . $config_empresa['nombre_empresa'];
+
+    $sql_altas = "
+        SELECT t.id, t.codigo, t.ci, t.nombres, t.primer_apellido, t.segundo_apellido,
+               t.fecha_alta, t.activo, t.tipo_contrato,
+               cp.nombre_cargo,
+               a.nombre_area,
+               cc.nombre AS centro_costo_nombre, cc.codigo AS centro_costo_codigo,
+               co.nombre AS categoria_ocupacional, co.codigo AS categoria_ocupacional_codigo,
+               es.escala_numero, es.descripcion AS escala_descripcion
+        FROM trabajadores t
+        LEFT JOIN cargos_plantilla cp ON t.cargo_id = cp.id
+        LEFT JOIN areas a ON t.area_id = a.id
+        LEFT JOIN centros_costo cc ON t.centro_costo_id = cc.id
+        LEFT JOIN categorias_ocupacionales co ON t.categoria_ocupacional_id = co.id
+        LEFT JOIN escalas_salariales es ON t.escala_salarial_id = es.id
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY t.fecha_alta DESC, t.primer_apellido ASC, t.nombres ASC";
+    $altas_rows = $pdo->query($sql_altas)->fetchAll();
+
+    logAction(
+        'generar_reporte_altas',
+        'empleados',
+        'Generación del reporte de altas',
+        ['filtro' => ($alta_fecha !== '' ? 'fecha=' . $alta_fecha : (($alta_anio !== '' || $alta_mes !== '') ? 'anio=' . $alta_anio . '&mes=' . $alta_mes : 'general')), 'registros' => count($altas_rows)],
+        null,
+        'success',
+        null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
+
+    // Datos planos para los exports (CSV/TXT/Excel/PDF)
+    $filas_altas = array();
+    $num_alta = 0;
+    foreach ($altas_rows as $ar) {
+        $num_alta++;
+        $nombre = trim($ar['nombres'] . ' ' . $ar['primer_apellido'] . ' ' . $ar['segundo_apellido']);
+        $cc_texto = trim(($ar['centro_costo_codigo'] ?? '') . ' - ' . ($ar['centro_costo_nombre'] ?? ''), ' -');
+        $cat_ocup = trim((string)($ar['categoria_ocupacional'] ?? ''));
+        if ($cat_ocup === '') { $cat_ocup = trim((string)($ar['categoria_ocupacional_codigo'] ?? '')); }
+        $escala = (isset($ar['escala_numero']) && $ar['escala_numero'] !== null && $ar['escala_numero'] !== '')
+            ? 'Escala ' . $ar['escala_numero']
+            : 'Sin escala asignada';
+        $filas_altas[] = array(
+            'no'         => $num_alta,
+            'expediente' => (string)($ar['codigo'] ?? ''),
+            'ci'         => (string)($ar['ci'] ?? ''),
+            'nombre'     => $nombre,
+            'cargo'      => (string)($ar['nombre_cargo'] ?? '-'),
+            'area'       => (string)($ar['nombre_area'] ?? '-'),
+            'centro'     => $cc_texto !== '' ? $cc_texto : 'Sin asignar',
+            'fecha_alta' => $fmtFechaAlta($ar['fecha_alta'] ?? ''),
+            'categoria_ocup' => $cat_ocup !== '' ? $cat_ocup : 'Sin categoría',
+            'escala'     => $escala
+        );
+    }
+
+    // Resumen agrupado según lo seleccionado (área por defecto)
+    $resumen_agrupado = array();
+    foreach ($filas_altas as $fa) {
+        switch ($resumen_por) {
+            case 'centro':
+                $clave = (string)$fa['centro'];
+                break;
+            case 'cargo':
+                $clave = ($fa['cargo'] !== '' && $fa['cargo'] !== '-') ? (string)$fa['cargo'] : 'Sin cargo asignado';
+                break;
+            case 'categoria':
+                $clave = (string)$fa['categoria_ocup'];
+                break;
+            case 'escala':
+                $clave = (string)$fa['escala'];
+                break;
+            case 'fecha':
+                $clave = ($fa['fecha_alta'] !== '' && $fa['fecha_alta'] !== '-') ? (string)$fa['fecha_alta'] : 'Sin fecha';
+                break;
+            default: // area
+                $clave = ($fa['area'] !== '' && $fa['area'] !== '-') ? (string)$fa['area'] : 'Sin área asignada';
+                break;
+        }
+        if (!isset($resumen_agrupado[$clave])) {
+            $resumen_agrupado[$clave] = array('grupo' => $clave, 'sub' => '', 'cantidad' => 0);
+        }
+        $resumen_agrupado[$clave]['cantidad']++;
+    }
+    if ($resumen_por === 'fecha') {
+        // Las fechas vienen como dd/mm/yyyy: ordenar de más reciente a más antigua
+        uasort($resumen_agrupado, function ($a, $b) {
+            $ta = strtotime(implode('/', array_reverse(explode('/', (string)$a['grupo']))));
+            $tb = strtotime(implode('/', array_reverse(explode('/', (string)$b['grupo']))));
+            if ($ta === $tb) { return strcmp((string)$a['grupo'], (string)$b['grupo']); }
+            return ($tb ?: 0) <=> ($ta ?: 0);
+        });
+    } else {
+        uasort($resumen_agrupado, function ($a, $b) {
+            if ($b['cantidad'] !== $a['cantidad']) { return $b['cantidad'] <=> $a['cantidad']; }
+            return strcmp((string)$a['grupo'], (string)$b['grupo']);
+        });
+    }
+
+    $altas_datos = array(
+        'empresa'  => (string)$config_empresa['nombre_empresa'],
+        'sistema'  => $titulo_sistema,
+        'usuario'  => (string)$user_nombre_completo,
+        'alcance'  => $alcance_periodo,
+        'emision'  => date('d/m/Y - h:i:s A'),
+        'total'    => count($filas_altas),
+        'archivo'  => $archivo_base,
+        'resumen_por' => $resumen_etiqueta,
+        'filas'    => $filas_altas,
+        'resumen'  => array_values($resumen_agrupado)
+    );
+
+    $h = function ($t) { return htmlspecialchars((string)$t, ENT_QUOTES, 'UTF-8'); };
+
+    // Hojas de detalle (solo registros) + una hoja final aparte con resumen y firmas
+    $FILAS_POR_PAGINA = 14;
+    $paginasDetalle = (int)ceil(count($filas_altas) / $FILAS_POR_PAGINA);
+    if ($paginasDetalle < 1) { $paginasDetalle = 1; }
+    $totalPaginas = $paginasDetalle + 1; // detalle + hoja de resumen
+
+    $cabeceraHtml = function ($numPagina) use ($h, $titulo_sistema, $user_nombre_completo, $alcance_periodo, $logo_base64, $totalPaginas, $filas_altas) {
+        return '<table class="cabecera"><tr>'
+            . '<td class="logo">' . ($logo_base64 ? '<img src="' . $h($logo_base64) . '" alt="Logo">' : '') . '</td>'
+            . '<td class="titulos"><div class="empresa">' . $h($titulo_sistema) . '</div>'
+            . '  <div class="titulo">REPORTE DE TRABAJADORES CON ALTA</div>'
+            . '  <div class="alcance"><strong>Alcance:</strong> ' . $h($alcance_periodo) . '</div></td>'
+            . '<td class="datos"><strong>Emisión:</strong> ' . $h(date('d/m/Y - h:i:s A')) . '<br>'
+            . '  <strong>Generado por:</strong> ' . $h($user_nombre_completo) . '<br>'
+            . '  <strong>Total de altas:</strong> <span class="resaltado">' . count($filas_altas) . '</span></td>'
+            . '</tr></table>';
+    };
+    $pieHtml = function ($numPagina) use ($h, $config_empresa, $totalPaginas) {
+        return '<div class="pie"><div>REPORTE DE ALTAS - ' . $h($config_empresa['nombre_empresa']) . '</div>'
+            . '<div class="pie-c">Página ' . $numPagina . ' de ' . $totalPaginas . '</div>'
+            . '<div class="pie-d">Impresión: ' . $h(date('d/m/Y - h:i:s A')) . '</div></div>';
+    };
+
+    // ---- Hojas de detalle: solo registros (no llegan al pie) ----
+    $html_paginas = '';
+    for ($p = 0; $p < $paginasDetalle; $p++) {
+        $slice = array_slice($filas_altas, $p * $FILAS_POR_PAGINA, $FILAS_POR_PAGINA);
+        $tr = '';
+        foreach ($slice as $fa) {
+            $tr .= '<tr>'
+                . '<td class="c">' . (int)$fa['no'] . '</td>'
+                . '<td class="c">' . $h($fa['expediente']) . '</td>'
+                . '<td class="c">' . $h($fa['ci']) . '</td>'
+                . '<td>' . $h($fa['nombre']) . '</td>'
+                . '<td>' . $h($fa['cargo']) . '</td>'
+                . '<td>' . $h($fa['area']) . '</td>'
+                . '<td>' . $h($fa['centro']) . '</td>'
+                . '<td class="c">' . $h($fa['fecha_alta']) . '</td>'
+                . '<td>' . $h($fa['categoria_ocup']) . '</td>'
+                . '<td class="c">' . $h($fa['escala']) . '</td>'
+                . '</tr>';
+        }
+        $html_paginas .= ''
+        . '<div class="page-sheet">'
+        . $cabeceraHtml($p + 1)
+        . '  <table class="tabla"><thead><tr>'
+        . '    <th class="c">No.</th><th>Exp.</th><th>CI</th><th>Nombre Completo</th><th>Cargo</th><th>Área</th><th>Centro de Costo</th>'
+        . '    <th>Fecha Alta</th><th>Categoría Ocupacional</th><th>Escala Salarial</th>'
+        . '  </tr></thead><tbody>' . $tr . '</tbody></table>'
+        . $pieHtml($p + 1)
+        . '</div>';
+    }
+
+    // ---- Hoja final: resumen agrupado + firmas (solo eso) ----
+    $resumen_html = '<div class="resumen"><div class="sec-title">Resumen agrupado por: ' . $h($resumen_etiqueta) . ' · Total de altas: <span>' . count($filas_altas) . '</span></div><table class="tbl-resumen"><thead><tr><th>' . $h($resumen_etiqueta) . '</th><th class="c">Cantidad</th></tr></thead><tbody>';
+    foreach ($resumen_agrupado as $rm) {
+        $resumen_html .= '<tr><td>' . $h($rm['grupo']) . '</td><td class="c">' . (int)$rm['cantidad'] . '</td></tr>';
+    }
+    $resumen_html .= '<tr class="tot"><td>TOTAL DE ALTAS</td><td class="c">' . count($filas_altas) . '</td></tr></tbody></table></div>';
+
+    $html_paginas .= ''
+    . '<div class="page-sheet last">'
+    . $cabeceraHtml($totalPaginas)
+    . $resumen_html
+    . '  <div class="firmas">'
+    . '    <div class="firma-col"><p class="fl">Elaborado por:</p><p class="flin"></p><p class="fc">' . $h($config_empresa['especialista_gestionRRHH'] ?: $user_nombre_completo) . '</p><p class="fs">Especialista de Recursos Humanos</p></div>'
+    . '    <div class="firma-col"><p class="fl">Aprobado por:</p><p class="flin"></p><p class="fc">' . $h($config_empresa['jefe_proyecto']) . '</p><p class="fs">Director de Proyecto</p></div>'
+    . '  </div>'
+    . $pieHtml($totalPaginas)
+    . '</div>';
+
+    $toolbar = ''
+        . '<div id="tb-altas" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:0.625rem 1.25rem;display:flex;justify-content:center;align-items:center;gap:0.6rem;flex-wrap:wrap;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;border-bottom:0.1875rem solid #1e40af;">'
+        . '<span style="color:#e0e7ff;font-weight:bold;font-size:0.8125rem;">REPORTES DE ALTAS</span>'
+        . '<button onclick="window.print()" style="padding:0.5rem 1rem;background:#22c55e;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">🖨️ Imprimir</button>'
+        . '<button onclick="exportarAltasPDF()" style="padding:0.5rem 1rem;background:#ef4444;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">📄 PDF</button>'
+        . '<button onclick="exportarAltasExcel()" style="padding:0.5rem 1rem;background:#16a34a;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">📊 Excel</button>'
+        . '<button onclick="exportarAltasCSV()" style="padding:0.5rem 1rem;background:#0ea5e9;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">📄 CSV</button>'
+        . '<button onclick="exportarAltasTXT()" style="padding:0.5rem 1rem;background:#64748b;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">📝 TXT</button>'
+        . '<button onclick="window.close()" style="padding:0.5rem 1rem;background:#ef4444;color:#fff;border:none;border-radius:0.375rem;font-size:0.75rem;font-weight:bold;cursor:pointer;">✖ Cerrar</button>'
+        . '</div><div style="height:3.5rem;"></div>';
+
+    $css_altas = '
+        @page { size: letter landscape; margin: 0; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 8.5pt; color: #000; background: #e5e7eb; margin: 0; padding: 0; }
+        .page-sheet { width: 279.4mm; height: 215.9mm; padding: 10mm 12mm 18mm 12mm; margin: 8px auto; background: #fff; position: relative; display: flex; flex-direction: column; page-break-after: always; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+        .page-sheet.last { page-break-after: auto; }
+        table.cabecera { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        table.cabecera td { border: none; vertical-align: middle; padding: 0; }
+        table.cabecera td.logo { width: 90px; padding-right: 10px; }
+        table.cabecera td.logo img { width: 2.1cm; height: 2.1cm; }
+        table.cabecera td.titulos { border-bottom: 2px solid #004B87; padding-bottom: 6px; }
+        table.cabecera td.datos { width: 210px; text-align: right; font-size: 7.5pt; color: #333; line-height: 1.5; border-bottom: 2px solid #004B87; padding-bottom: 6px; }
+        .empresa { font-size: 12.5pt; font-weight: bold; color: #004B87; text-transform: uppercase; }
+        .titulo { font-size: 10.5pt; font-weight: bold; color: #333; text-transform: uppercase; }
+        .alcance { font-size: 7.5pt; color: #444; margin-top: 2px; }
+        .resaltado { color: #004B87; font-weight: bold; }
+        table.tabla { width: 100%; border-collapse: collapse; }
+        table.tabla thead { display: table-header-group; }
+        table.tabla th { background: #004B87; color: #fff; font-size: 7pt; padding: 4px 3px; border: 1px solid #003766; text-transform: uppercase; }
+        table.tabla td { border: 1px solid #cbd5e1; padding: 3px; font-size: 7.5pt; vertical-align: top; }
+        table.tabla tr:nth-child(even) td { background: #f1f5f9; }
+        table.tabla td.c { text-align: center; white-space: nowrap; }
+        .resumen { margin-top: 10px; }
+        .sec-title { font-size: 9pt; font-weight: bold; color: #004B87; text-transform: uppercase; border-bottom: 1px solid #004B87; padding-bottom: 2px; margin-bottom: 5px; }
+        .sec-title span { color: #000; }
+        table.tbl-resumen { width: 70%; border-collapse: collapse; }
+        table.tbl-resumen th { background: #e2e8f0; border: 1px solid #cbd5e1; padding: 3px; font-size: 7.5pt; text-align: left; }
+        table.tbl-resumen td { border: 1px solid #cbd5e1; padding: 3px; font-size: 7.5pt; }
+        table.tbl-resumen td.c { text-align: center; }
+        table.tbl-resumen tr.tot td { font-weight: bold; background: #eef2f7; }
+        .firmas { display: flex; justify-content: space-evenly; margin-top: auto; padding-top: 18px; }
+        .firmas .firma-col { width: 38%; text-align: center; }
+        .firmas .fl { font-size: 7.5pt; color: #333; margin: 0 0 2px; }
+        .firmas .flin { border-top: 1px solid #000; margin: 16px 0 3px; }
+        .firmas .fc { font-size: 8pt; font-weight: bold; margin: 0; }
+        .firmas .fs { font-size: 7pt; color: #555; margin: 1px 0 0; }
+        .pie { position: absolute; bottom: 6mm; left: 12mm; right: 12mm; display: flex; justify-content: space-between; font-size: 7pt; color: #555; border-top: 1px solid #cbd5e1; padding-top: 3px; }
+        .pie-c { text-align: center; }
+        @media print {
+            body { background: #fff; }
+            .page-sheet { margin: 0; box-shadow: none; }
+            #tb-altas { display: none !important; }
+            .no-print { display: none !important; }
+        }';
+
+    $js_altas = '
+        window.altasData = ' . json_encode($altas_datos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+        function nombreAltas(ext){ return (window.altasData.archivo || "ReporteAltas") + "." + ext; }
+        function bajarBlobAltas(blob, nombre){ var url=URL.createObjectURL(blob); var a=document.createElement("a"); a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(url);},1500); }
+        function alertaAltas(titulo, texto, icono){ if(window.Swal){ Swal.fire({icon:icono||"info", title:titulo, text:texto}); } else { alert(titulo + "\\n" + texto); } }
+        function exportarAltasCSV(){
+            var d = window.altasData; if(!d || !d.filas.length){ alertaAltas("Sin datos","No hay altas para exportar.","warning"); return; }
+            var sep = ",";
+            var q = function(c){ return "\\"" + String(c).replace(/\\"/g,"\\"\\"") + "\\""; };
+            var lineas = [["No.","Expediente","CI","Nombre Completo","Cargo","Area","Centro de Costo","Fecha Alta","Categoria Ocupacional","Escala Salarial"].join(sep)];
+            d.filas.forEach(function(f){ lineas.push([f.no,f.expediente,f.ci,f.nombre,f.cargo,f.area,f.centro,f.fecha_alta,f.categoria_ocup,f.escala].map(q).join(sep)); });
+            lineas.push([]);
+            lineas.push(["Resumen agrupado por: " + (d.resumen_por || "Área")].join(sep));
+            d.resumen.forEach(function(r){ lineas.push([r.grupo, "", String(r.cantidad)].map(q).join(sep)); });
+            bajarBlobAltas(new Blob(["\\ufeff", lineas.join("\\r\\n")], {type:"text/csv;charset=utf-8;"}), nombreAltas("csv"));
+        }
+        function exportarAltasTXT(){
+            var d = window.altasData; if(!d || !d.filas.length){ alertaAltas("Sin datos","No hay altas para exportar.","warning"); return; }
+            var L = [];
+            L.push((d.sistema || d.empresa || "").toUpperCase());
+            L.push("REPORTE DE TRABAJADORES CON ALTA");
+            L.push("Alcance: " + d.alcance);
+            L.push("Emision: " + d.emision + "   Generado por: " + d.usuario);
+            L.push("Total de altas: " + d.total);
+            L.push(Array(121).join("="));
+            var cab = ["No".padEnd(5),"Exp".padEnd(7),"CI".padEnd(11),"NOMBRE".padEnd(38),"CARGO".padEnd(22),"AREA".padEnd(20),"CENTRO".padEnd(24),"F.Alta".padEnd(11),"CATEGORIA".padEnd(30),"ESCALA".padEnd(20)];
+            L.push(cab.join(" "));
+            d.filas.forEach(function(f){
+                L.push([String(f.no).padEnd(5),String(f.expediente).padEnd(7),String(f.ci).padEnd(11),String(f.nombre).padEnd(38),String(f.cargo).padEnd(22),String(f.area).padEnd(20),String(f.centro).padEnd(24),String(f.fecha_alta).padEnd(11),String(f.categoria_ocup).padEnd(30),String(f.escala).padEnd(20)].join(" "));
+            });
+            L.push(Array(121).join("="));
+            L.push(("RESUMEN AGRUPADO POR: " + (d.resumen_por || "Área")).toUpperCase());
+            d.resumen.forEach(function(r){ L.push(String(r.grupo).padEnd(95) + String(r.cantidad).padStart(5)); });
+            L.push("TOTAL DE ALTAS".padEnd(95) + String(d.total).padStart(5));
+            bajarBlobAltas(new Blob(["\\ufeff", L.join("\\r\\n")], {type:"text/plain;charset=utf-8;"}), nombreAltas("txt"));
+        }
+        function exportarAltasExcel(){
+            var d = window.altasData; if(!d || !d.filas.length){ alertaAltas("Sin datos","No hay altas para exportar.","warning"); return; }
+            if(typeof XLSX === "undefined"){ alertaAltas("Error","La librería de Excel no cargó.","error"); return; }
+            var wb = XLSX.utils.book_new();
+            var ws = XLSX.utils.aoa_to_sheet([
+                ["REPORTE DE TRABAJADORES CON ALTA", d.sistema || d.empresa],
+                ["Generado", d.emision],
+                ["Alcance", d.alcance],
+                ["Total de altas", d.total],
+                [],
+                ["No.","Expediente","CI","Nombre Completo","Cargo","Area","Centro de Costo","Fecha Alta","Categoria Ocupacional","Escala Salarial"]
+            ].concat(d.filas.map(function(f){ return [f.no,f.expediente,f.ci,f.nombre,f.cargo,f.area,f.centro,f.fecha_alta,f.categoria_ocup,f.escala]; })));
+            ws["!cols"] = [{wch:6},{wch:10},{wch:12},{wch:34},{wch:24},{wch:22},{wch:26},{wch:12},{wch:30},{wch:20}];
+            XLSX.utils.book_append_sheet(wb, ws, "Altas");
+            var ws2 = XLSX.utils.aoa_to_sheet([
+                [("RESUMEN AGRUPADO POR: " + (d.resumen_por || "Área")).toUpperCase()],
+                [],
+                [(d.resumen_por || "Área"), "Cantidad"]
+            ].concat(d.resumen.map(function(r){ return [r.grupo, r.cantidad]; }))
+              .concat([["TOTAL DE ALTAS", d.total]]));
+            ws2["!cols"] = [{wch:48},{wch:12}];
+            XLSX.utils.book_append_sheet(wb, ws2, "Resumen");
+            XLSX.writeFile(wb, nombreAltas("xlsx"));
+        }
+        async function exportarAltasPDF(){
+            var d = window.altasData; if(!d || !d.filas.length){ alertaAltas("Sin datos","No hay altas para exportar.","warning"); return; }
+            if(typeof window.jspdf === "undefined" || typeof window.html2canvas === "undefined"){ alertaAltas("Error","Las librerías de PDF no están disponibles.","error"); return; }
+            var botones = document.getElementById("tb-altas");
+            if(botones) botones.style.display = "none";
+            try {
+                var paginas = document.querySelectorAll(".page-sheet");
+                var jsPDF = window.jspdf.jsPDF;
+                var pdf = new jsPDF({orientation:"landscape", unit:"px", format:[1056, 816], compress:true});
+                for(var i=0;i<paginas.length;i++){
+                    var canvas = await window.html2canvas(paginas[i], {scale:2, backgroundColor:"#ffffff", useCORS:true, logging:false, windowWidth:1100, windowHeight:850});
+                    var img = canvas.toDataURL("image/jpeg", 0.95);
+                    if(i>0) pdf.addPage([1056,816], "landscape");
+                    pdf.addImage(img, "JPEG", 0, 0, 1056, 816);
+                }
+                pdf.save(nombreAltas("pdf"));
+            } catch(err){
+                alertaAltas("Error","No se pudo generar el PDF: " + err.message, "error");
+            } finally {
+                if(botones) botones.style.display = "flex";
+            }
+        }';
+
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>' . $h($titulo_sistema) . ' · Reporte de Altas</title>'
+        . '<script src="../js/html2canvas.min.js"></script>'
+        . '<script src="../js/jspdf.umd.min.js"></script>'
+        . '<script src="../js/xlsx.full.min.js"></script>'
+        . '<script src="../js/sweetalert2.all.min.js"></script>'
+        . '<style>' . $css_altas . '</style></head><body>'
+        . $toolbar . $html_paginas . '<script>' . $js_altas . '</script></body></html>';
+    exit;
+}
 
 // Obtener días laborables mensuales desde configuración
 $stmt = $pdo->query("SELECT valor FROM configuracion_general WHERE parametro = 'param_dias_mensuales'");
@@ -109,7 +939,7 @@ function procesarFotoArchivoDesdeBase64($base64Data, $id_trabajador = null, $rut
  * Exporta la plantilla Anexo 14
  */
 
-function exportar_anexo_14($pdo) {
+function anexo14_construir($pdo) {
     $vendorPath = __DIR__ . '/../vendor/autoload.php';
     if (!file_exists($vendorPath)) {
         header('Content-Type: text/html; charset=utf-8');
@@ -183,6 +1013,14 @@ function exportar_anexo_14($pdo) {
         'alignment' => ['horizontal' => 'center']
     ]);
 
+    // Fila 3: Nombre de la empresa (combinada de ancho completo)
+    $sheet->setCellValue('A3', $nombre_empresa);
+    $sheet->mergeCells('A3:G3');
+    $sheet->getStyle('A3')->applyFromArray([
+        'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => '002060']],
+        'alignment' => ['horizontal' => 'center']
+    ]);
+
     // Fila 4: Propuesto por
     $sheet->setCellValue('A4', 'Propuesto por Director de Proyecto:');
     $sheet->setCellValue('B4', $jefe_proyecto);
@@ -204,7 +1042,7 @@ function exportar_anexo_14($pdo) {
     $sheet->getStyle('A7:G7')->getFont()->setBold(true);
 
     // Fila 8: Fecha
-	$fecha_cliente = isset($_GET['fecha_cliente']) ? $_GET['fecha_cliente'] : date('d/m/Y-h:iA');
+	$fecha_cliente = date('d/m/Y-h:iA');
 	$sheet->setCellValue('D8', 'Fecha: ' . $fecha_cliente);
     $sheet->getStyle('D8')->getFont()->setBold(true);
 
@@ -349,16 +1187,102 @@ function exportar_anexo_14($pdo) {
     $sheet->getStyle('C' . $fila)->getAlignment()->setHorizontal('center');
     $sheet->getStyle('F' . $fila . ':G' . $fila)->getNumberFormat()->setFormatCode('#,##0.00');
 
+    return $spreadsheet;
+}
+
+// Exporta el Anexo 14 como archivo XLSX (descarga directa)
+function exportar_anexo_14($pdo) {
+    $vendorPath = __DIR__ . '/../vendor/autoload.php';
+    if (!file_exists($vendorPath)) {
+        header('Content-Type: text/html; charset=utf-8');
+        die('Error: No se encontró la librería PhpSpreadsheet.');
+    }
+    require_once $vendorPath;
+
+    $spreadsheet = anexo14_construir($pdo);
+
     // Salida
     $filename = 'ANEXO_14_' . date('Ymd_His') . '.xlsx';
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment;filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
-    
+
     logAction('exportar_anexo14', 'empleados', 'Exportación del Anexo 14 (XLSX)', ['archivo' => $filename], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
-    
+
     $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
     $writer->save('php://output');
+    exit;
+}
+
+// Vista previa del Anexo 14 en el navegador (visor con botón Exportar)
+function ver_anexo_14($pdo) {
+    $vendorPath = __DIR__ . '/../vendor/autoload.php';
+    if (!file_exists($vendorPath)) {
+        header('Content-Type: text/html; charset=utf-8');
+        die('Error: No se encontró la librería PhpSpreadsheet.');
+    }
+    require_once $vendorPath;
+
+    $spreadsheet = anexo14_construir($pdo);
+
+    // Mismo contenido que se exporta, renderizado como tabla HTML
+    $writerHtml = new \PhpOffice\PhpSpreadsheet\Writer\Html($spreadsheet);
+    $writerHtml->setDataFormula(false); // mostrar valores calculados, no fórmulas
+    $writerHtml->setGenerateSheetNavigationBlock(false);
+    $estilos = '<style>' . $writerHtml->generateStyles(false) . '</style>';
+    $tabla = $writerHtml->generateSheetData();
+    if (trim((string)$tabla) === '') {
+        $tabla = '<p style="text-align:center;">No se pudo generar la vista previa.</p>';
+    }
+
+    $h = function ($t) { return htmlspecialchars((string)$t, ENT_QUOTES, 'UTF-8'); };
+    $empresa = defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom';
+    $sistema = 'SisGesNom - ' . $empresa;
+    $enlaceExportar = 'empleados.php?exportar_anexo14';
+
+    logAction('ver_anexo14', 'empleados', 'Vista previa del Anexo 14', [], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+
+    $css = '
+        @page { size: letter portrait; margin: 0; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: #e5e7eb; font-family: Arial, sans-serif; }
+        #tb-anexo { position: fixed; top: 0; left: 0; right: 0; z-index: 99999; background: linear-gradient(135deg,#1e3a8a,#2563eb); padding: 0.625rem 1.25rem; display: flex; justify-content: center; align-items: center; gap: 0.6rem; flex-wrap: wrap; box-shadow: 0 0.25rem 1rem rgba(0,0,0,0.35); border-bottom: 0.1875rem solid #1e40af; }
+        #tb-anexo .etiqueta { color: #e0e7ff; font-weight: bold; font-size: 0.8125rem; }
+        #tb-anexo button, #tb-anexo a { padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; font-size: 0.75rem; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; color: #fff; }
+        #btnExportar { background: #16a34a; }
+        #btnExportar:hover { background: #15803d; }
+        #btnImprimir { background: #22c55e; }
+        #btnImprimir:hover { background: #16a34a; }
+        #btnCerrar { background: #ef4444; }
+        #btnCerrar:hover { background: #dc2626; }
+        .anexo-wrap { padding: 4.5rem 1rem 2rem; overflow-x: auto; }
+        .anexo-wrap table { margin: 0 auto; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+        /* Encabezado (filas 1-9): sin bordes de celda, como en el Excel (filas 3/6/9 limpias y combinadas visibles) */
+        .anexo-wrap tr:nth-child(-n+9) td { border: none !important; background: transparent !important; }
+        .anexo-wrap tr:nth-child(-n+2) td { font-weight: bold; text-align: center; }
+        @media print {
+            body { background: #fff; }
+            #tb-anexo { display: none !important; }
+            .anexo-wrap { padding: 0; overflow: visible; break-before: auto !important; page-break-before: auto !important; }
+            .anexo-wrap table { box-shadow: none; }
+        }';
+
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>' . $h($sistema) . ' · Anexo 14 (Vista previa)</title>'
+        . $estilos
+        . '<style>' . $css . '</style></head><body>'
+        . '<div id="tb-anexo">'
+        . '<span class="etiqueta">ANEXO 14 — VISTA PREVIA</span>'
+        . '<a id="btnExportar" href="' . $h($enlaceExportar) . '">📊 Exportar Excel</a>'
+        . '<button id="btnImprimir" onclick="window.print()">🖨️ Imprimir</button>'
+        . '<button id="btnCerrar" onclick="window.close()">✖ Cerrar</button>'
+        . '</div>'
+        . '<div class="anexo-wrap">'
+        . $tabla
+        . '</div>'
+        . '</body></html>';
     exit;
 }
 
@@ -2624,25 +3548,37 @@ html[data-theme="orgullo"] {
             <i class="fas fa-cog me-1"></i> Opciones <i class="fas fa-chevron-down ms-2" style="color: rgba(255,255,255,0.6);"></i>
         </button>
         <ul class="dropdown-menu dropdown-menu-win dropdown-menu-end">
-            <li><h6 class="dropdown-header text-light px-3 py-1">Personalizar Vista</h6></li>
             <li><a class="dropdown-item" href="#" id="menuColumnas"><i class="fas fa-columns me-2" style="color: #60a5fa;"></i> Mostrar/Ocultar Columnas</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><h6 class="dropdown-header text-light px-3 py-1">Credenciales y Cumpleaños</h6></li>
-            <li><a class="dropdown-item" href="#" id="menuExportTodosSolapines"><i class="fas fa-file-archive text-info me-2"></i> Exportar Todos los Solapines (ZIP)</a></li>
-            <li><a class="dropdown-item" href="#" id="menuImprimirTodosSolapines"><i class="fas fa-print text-danger me-2"></i> Imprimir Todos los Solapines (Lote)</a></li>
+            <li class="dropdown-submenu">
+                <a class="dropdown-item" href="#"><i class="fas fa-caret-left me-1" style="font-size:0.7rem;"></i><i class="fas fa-id-card text-info me-2"></i> Credenciales</a>
+                <ul class="dropdown-menu dropdown-menu-win dropdown-submenu-menu">
+                    <li><a class="dropdown-item" href="#" id="menuExportTodosSolapines"><i class="fas fa-file-archive text-info me-2"></i> Exportar Todos los Solapines (ZIP)</a></li>
+                    <li><a class="dropdown-item" href="#" id="menuImprimirTodosSolapines"><i class="fas fa-print text-danger me-2"></i> Imprimir Todos los Solapines (Lote)</a></li>
+                </ul>
+            </li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="#" id="menuExportCumpleCompleto"><i class="fas fa-birthday-cake text-warning me-2"></i> Exportar Listado Completo de Cumpleaños</a></li>
-            <li><a class="dropdown-item" href="#" id="menuExportCumple30"><i class="fas fa-calendar-day text-success me-2"></i> Exportar Cumpleaños Próximos 30 días</a></li>
+            <li class="dropdown-submenu">
+                <a class="dropdown-item" href="#"><i class="fas fa-caret-left me-1" style="font-size:0.7rem;"></i><i class="fas fa-birthday-cake text-warning me-2"></i> Cumpleaños</a>
+                <ul class="dropdown-menu dropdown-menu-win dropdown-submenu-menu">
+                    <li><a class="dropdown-item" href="#" id="menuExportCumpleCompleto"><i class="fas fa-list text-warning me-2"></i> Exportar Listado Completo</a></li>
+                    <li><a class="dropdown-item" href="#" id="menuExportCumple30"><i class="fas fa-calendar-day text-success me-2"></i> Exportar Cumpleaños Próx. 30 días</a></li>
+                </ul>
+            </li>
             <li><hr class="dropdown-divider"></li>
-            <li><h6 class="dropdown-header text-light px-3 py-1">Exportar y Reportes</h6></li>
-            <li><a class="dropdown-item" href="#" id="menuExportPrint"><i class="fas fa-print text-warning me-2"></i> Imprimir Reporte</a></li>
-            <li><a class="dropdown-item" href="#" id="menuExportPDF"><i class="fas fa-file-pdf text-danger me-2"></i> Exportar a PDF</a></li>
-            <li><a class="dropdown-item" href="#" id="menuExportWord"><i class="fas fa-file-word text-primary me-2"></i> Exportar a Word</a></li>
-            <li><a class="dropdown-item" href="#" id="menuExportExcel"><i class="fas fa-file-excel text-success me-2"></i> Exportar a Excel</a></li>
-            <li><a class="dropdown-item" href="#" id="menuExportCSV"><i class="fas fa-file-csv text-info me-2"></i> Exportar a CSV</a></li>
-            <li><a class="dropdown-item" href="#" id="menuExportTXT"><i class="fas fa-file-alt text-secondary me-2"></i> Exportar a TXT</a></li>
+            <li class="dropdown-submenu">
+                <a class="dropdown-item" href="#"><i class="fas fa-caret-left me-1" style="font-size:0.7rem;"></i><i class="fas fa-print text-success me-2"></i> Impresión y Exportado</a>
+                <ul class="dropdown-menu dropdown-menu-win dropdown-submenu-menu">
+                    <li><a class="dropdown-item" href="#" id="menuExportPrint"><i class="fas fa-print text-warning me-2"></i> Imprimir Reporte</a></li>
+                    <li><a class="dropdown-item" href="#" id="menuExportPDF"><i class="fas fa-file-pdf text-danger me-2"></i> Exportar a PDF</a></li>
+                    <li><a class="dropdown-item" href="#" id="menuExportWord"><i class="fas fa-file-word text-primary me-2"></i> Exportar a Word</a></li>
+                    <li><a class="dropdown-item" href="#" id="menuExportExcel"><i class="fas fa-file-excel text-success me-2"></i> Exportar a Excel</a></li>
+                    <li><a class="dropdown-item" href="#" id="menuExportCSV"><i class="fas fa-file-csv text-info me-2"></i> Exportar a CSV</a></li>
+                    <li><a class="dropdown-item" href="#" id="menuExportTXT"><i class="fas fa-file-alt text-secondary me-2"></i> Exportar a TXT</a></li>
+                </ul>
+            </li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="#" id="menuExportAnexo14"><i class="fas fa-file-excel text-success me-2"></i> Exportar Anexo 14</a></li>
+            <li><a class="dropdown-item" href="#" id="menuExportAnexo14"><i class="fas fa-eye text-info me-2"></i> Anexo 14</a></li>
         </ul>
     </div>
     
@@ -4009,6 +4945,122 @@ function exportarRangosEdadPNG() {
             </div>
             <div class="modal-footer modal-footer-win">
                 <button type="button" class="btn-win btn-win-sm" data-bs-dismiss="modal" data-tooltip="Cancelar" data-tooltip-theme="danger"><i class="fas fa-times me-1"></i> Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: REPORTE DE BAJAS -->
+<div class="modal fade" id="modalReporteBajas" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content modal-content-win">
+            <div class="modal-header modal-header-win">
+                <h5 class="modal-title"><i class="fas fa-user-minus me-2" style="color:#f87171;"></i> Reporte de Trabajadores con Baja</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-light small mb-3">Seleccione el período de la <strong>fecha de baja</strong> y genere el informe listo para imprimir y exportar.</p>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-calendar-year text-muted me-1"></i> Año de baja</label>
+                        <select id="bajaFiltAnio" class="form-select form-select-sm" data-ph="Año">
+                            <option value="">Año</option>
+                            <?php foreach ($jsBaja['anios'] as $ba) { echo '<option value="' . (int)$ba . '">' . (int)$ba . '</option>'; } ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-calendar-days text-muted me-1"></i> Mes de baja</label>
+                        <select id="bajaFiltMes" class="form-select form-select-sm" data-ph="Mes">
+                            <option value="">Mes</option>
+                            <?php foreach ($jsBaja['meses'] as $bm) { $bmKey = str_pad($bm, 2, '0', STR_PAD_LEFT); echo '<option value="' . $bmKey . '">' . ($nombres_meses[$bm] ?? $bmKey) . '</option>'; } ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-calendar-check text-muted me-1"></i> Fecha específica</label>
+                        <input type="date" id="bajaFiltFecha" class="form-control form-control-sm" title="Si se indica, tiene prioridad sobre mes y año" data-tooltip="Si se indica, tiene prioridad sobre mes y año" data-tooltip-theme="info">
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn-win btn-win-sm w-100 justify-content-center" id="btnBajaEsteMes" title="Preselecciona el mes de operaciones en curso" data-tooltip="Preselecciona el mes de operaciones en curso" data-tooltip-theme="info">
+                            <i class="fas fa-calendar-day me-1"></i> 🗓️ Este mes (operaciones)
+                        </button>
+                        <div class="text-muted small mt-1" id="bajaPeriodoOpsInfo"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-win d-block">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <label class="form-label mb-0 text-light small" for="bajaAgruparPor"><i class="fas fa-layer-group me-1"></i> Resumen agrupado por:</label>
+                    <select id="bajaAgruparPor" class="form-select form-select-sm" title="Agrupación del resumen final del informe" data-tooltip="Agrupación del resumen final del informe" data-tooltip-theme="info">
+                        <option value="motivo">Motivo de baja</option>
+                        <option value="centro">Centro de Costo</option>
+                        <option value="area">Área</option>
+                        <option value="categoria">Categoría Ocupacional</option>
+                        <option value="escala">Escala Salarial</option>
+                        <option value="fecha">Fecha de baja</option>
+                    </select>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn-win btn-win-sm" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> Cancelar</button>
+                    <button type="button" class="btn-win btn-win-primary btn-win-sm" id="btnGenerarBajas"><i class="fas fa-print me-1"></i> Generar Reporte</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: REPORTE DE ALTAS -->
+<div class="modal fade" id="modalReporteAltas" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content modal-content-win">
+            <div class="modal-header modal-header-win">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2" style="color:#4ade80;"></i> Reporte de Trabajadores con Alta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-light small mb-3">Seleccione el período de la <strong>fecha de alta</strong> y genere el informe listo para imprimir y exportar.</p>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-calendar-year text-muted me-1"></i> Año de alta</label>
+                        <select id="altaFiltAnio" class="form-select form-select-sm" data-ph="Año">
+                            <option value="">Año</option>
+                            <?php foreach ($jsAlta['anios'] as $aa) { echo '<option value="' . (int)$aa . '">' . (int)$aa . '</option>'; } ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-calendar-days text-muted me-1"></i> Mes de alta</label>
+                        <select id="altaFiltMes" class="form-select form-select-sm" data-ph="Mes">
+                            <option value="">Mes</option>
+                            <?php foreach ($jsAlta['meses'] as $am) { $amKey = str_pad($am, 2, '0', STR_PAD_LEFT); echo '<option value="' . $amKey . '">' . ($nombres_meses[$am] ?? $amKey) . '</option>'; } ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><i class="fas fa-calendar-check text-muted me-1"></i> Fecha específica</label>
+                        <input type="date" id="altaFiltFecha" class="form-control form-control-sm" title="Si se indica, tiene prioridad sobre mes y año" data-tooltip="Si se indica, tiene prioridad sobre mes y año" data-tooltip-theme="info">
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn-win btn-win-sm w-100 justify-content-center" id="btnAltaEsteMes" title="Preselecciona el mes de operaciones en curso" data-tooltip="Preselecciona el mes de operaciones en curso" data-tooltip-theme="info">
+                            <i class="fas fa-calendar-day me-1"></i> 🗓️ Este mes (operaciones)
+                        </button>
+                        <div class="text-muted small mt-1" id="altaPeriodoOpsInfo"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-win d-block">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <label class="form-label mb-0 text-light small" for="altaAgruparPor"><i class="fas fa-layer-group me-1"></i> Resumen agrupado por:</label>
+                    <select id="altaAgruparPor" class="form-select form-select-sm" title="Agrupación del resumen final del informe" data-tooltip="Agrupación del resumen final del informe" data-tooltip-theme="info">
+                        <option value="area">Área</option>
+                        <option value="centro">Centro de Costo</option>
+                        <option value="cargo">Cargo</option>
+                        <option value="categoria">Categoría Ocupacional</option>
+                        <option value="escala">Escala Salarial</option>
+                        <option value="fecha">Fecha de alta</option>
+                    </select>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn-win btn-win-sm" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> Cancelar</button>
+                    <button type="button" class="btn-win btn-win-primary btn-win-sm" id="btnGenerarAltas"><i class="fas fa-print me-1"></i> Generar Reporte</button>
+                </div>
             </div>
         </div>
     </div>
@@ -6917,7 +7969,9 @@ $('#btnLimpiarFiltros').on('click', function() {
 	// ==========================================
 	// DISPARADOR POR HASH (submenú del sidebar)
 	// ==========================================
-	var hashAccionesEmpleados = {
+ var hashAccionesEmpleados = {
+ 'reporte_bajas':      function() { $('#modalReporteBajas').modal('show'); },
+ 'reporte_altas':      function() { $('#modalReporteAltas').modal('show'); },
 	    'solapines_zip':     '#menuExportTodosSolapines',
 	    'solapines_lote':    '#menuImprimirTodosSolapines',
 	    'cumple_completo':   '#menuExportCumpleCompleto',
@@ -6926,7 +7980,14 @@ $('#btnLimpiarFiltros').on('click', function() {
 	function dispararAccionHashEmpleados() {
 	    var h = window.location.hash ? window.location.hash.substring(1) : '';
 	    if (!h || !hashAccionesEmpleados.hasOwnProperty(h)) return;
-	    var el = document.querySelector(hashAccionesEmpleados[h]);
+	    var accion = hashAccionesEmpleados[h];
+	    if (typeof accion === 'function') {
+	        accion();
+	        // Quitar el hash para que volver a pulsar el enlace del sidebar vuelva a abrirlo
+	        history.replaceState(null, '', window.location.pathname + window.location.search);
+	        return;
+	    }
+	    var el = document.querySelector(accion);
 	    if (el) el.click();
 	}
 	dispararAccionHashEmpleados();
@@ -8646,18 +9707,8 @@ $('#menuImprimirTodosSolapines').on('click', function(e) {
 });
 $('#menuExportAnexo14').on('click', function(e) {
     e.preventDefault();
-    
-    var ahora = new Date();
-    var dia = String(ahora.getDate()).padStart(2, '0');
-    var mes = String(ahora.getMonth() + 1).padStart(2, '0');
-    var anio = ahora.getFullYear();
-    var horas = String(ahora.getHours() % 12 || 12).padStart(2, '0');
-    var minutos = String(ahora.getMinutes()).padStart(2, '0');
-    var ampm = ahora.getHours() >= 12 ? 'PM' : 'AM';
-    
-    var fechaCliente = dia + '/' + mes + '/' + anio + '-' + horas + ':' + minutos + ampm;
-    
-    window.location.href = 'empleados.php?exportar_anexo14=1&fecha_cliente=' + encodeURIComponent(fechaCliente);
+    // Abre el visor (vista previa) del Anexo 14; desde allí se exporta el Excel
+    window.open('empleados.php?ver_anexo14', '_blank');
 });
 
 // Manejador para exportar todos los solapines en formato ZIP
@@ -9017,6 +10068,261 @@ $(document).ready(function() {
     btnBottom.addEventListener('click', function () { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }); });
     window.addEventListener('scroll', actualizarVisibilidad);
     actualizarVisibilidad();
+})();
+</script>
+
+<script>
+// ==================== REPORTE DE BAJAS (modal + generación) ====================
+var BAJAS_FECHAS = <?php echo json_encode($jsBaja); ?>;
+var BAJAS_PERIODO_OPS = <?php echo json_encode(periodoNominasEnCurso($pdo)); ?>;
+(function() {
+    var $modal = $('#modalReporteBajas');
+    if (!$modal.length) return;
+
+    // MESES_NOMBRES vive dentro de $(document).ready(...) y no es global
+    var BAJAS_MESES = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
+
+    // Etiqueta informativa del mes de operaciones en curso
+    var opsMes = BAJAS_MESES[String(BAJAS_PERIODO_OPS.mes).padStart(2, '0')] || BAJAS_PERIODO_OPS.mes;
+    $('#bajaPeriodoOpsInfo').html(
+        'Período de operaciones en curso: <strong>' + opsMes + ' ' + BAJAS_PERIODO_OPS.anio + '</strong>'
+        + ' <span class="opacity-75">(mes abierto de nómina)</span>'
+    );
+
+    // Dependencia mes <-> año (solo meses/años con bajas reales)
+    function aniosDeBajaMes(m) {
+        if (!m) return BAJAS_FECHAS.anios || [];
+        var mapa = BAJAS_FECHAS.aniosPorMes || {};
+        var plano = String(parseInt(m, 10));
+        return mapa[m] || mapa[plano] || mapa[String(plano).padStart(2, '0')] || [];
+    }
+    function mesesDeBajaAnio(a) {
+        if (!a) return BAJAS_FECHAS.meses || [];
+        var mapa = BAJAS_FECHAS.mesesPorAnio || {};
+        return mapa[a] || mapa[String(parseInt(a, 10))] || [];
+    }
+
+    var $mesSel = $('#bajaFiltMes'), $anioSel = $('#bajaFiltAnio'), $fechaSel = $('#bajaFiltFecha'), $resumenSel = $('#bajaAgruparPor');
+
+    // Siempre que se abre el modal: estado limpio (fecha vacía, mes/año restaurados, resumen en "motivo")
+    $modal.on('show.bs.modal', function() {
+        $fechaSel.val('');
+        $mesSel.empty().append('<option value="">Mes</option>');
+        (BAJAS_FECHAS.meses || []).forEach(function(m) {
+            var k = String(m).padStart(2, '0');
+            $mesSel.append('<option value="' + k + '">' + (BAJAS_MESES[k] || k) + '</option>');
+        });
+        $mesSel.prop('disabled', false).val('');
+        $anioSel.empty().append('<option value="">Año</option>');
+        (BAJAS_FECHAS.anios || []).forEach(function(a) {
+            $anioSel.append('<option value="' + a + '">' + a + '</option>');
+        });
+        $anioSel.prop('disabled', false).val('');
+        if ($resumenSel.length) $resumenSel.val('motivo');
+    });
+
+    $mesSel.on('change', function() {
+        var m = this.value;
+        $anioSel.empty().append('<option value="">Año</option>');
+        (aniosDeBajaMes(m) || []).forEach(function(a) {
+            $anioSel.append('<option value="' + a + '">' + a + '</option>');
+        });
+    });
+
+    $anioSel.on('change', function() {
+        var a = this.value;
+        var previo = $mesSel.val();
+        var meses = mesesDeBajaAnio(a);
+        $mesSel.empty().append('<option value="">Mes</option>');
+        meses.forEach(function(m) {
+            var k = String(m).padStart(2, '0');
+            $mesSel.append('<option value="' + k + '">' + (BAJAS_MESES[k] || k) + '</option>');
+        });
+        if (previo && meses.indexOf(parseInt(previo, 10)) !== -1) $mesSel.val(previo);
+    });
+
+    // Fecha específica: si tiene valor, manda sobre mes/año
+    function refrescarEstadoFecha() {
+        var hayFecha = String($fechaSel.val() || '') !== '';
+        $mesSel.prop('disabled', hayFecha);
+        $anioSel.prop('disabled', hayFecha);
+        if (hayFecha) { $mesSel.val(''); $anioSel.empty().append('<option value="">Mes</option>'); }
+    }
+    $fechaSel.on('change', refrescarEstadoFecha);
+
+    // Botón "Este mes (operaciones)": lee el mes de la fecha de operaciones en curso
+    $('#btnBajaEsteMes').on('click', function() {
+        $fechaSel.val('');
+        refrescarEstadoFecha();
+        var anio = String(BAJAS_PERIODO_OPS.anio);
+        var mes = String(BAJAS_PERIODO_OPS.mes).padStart(2, '0');
+
+        // El año/mes solo aparecen si hay bajas registradas en ese período
+        var aniosDisponibles = (BAJAS_FECHAS.anios || []).map(String);
+        if (aniosDisponibles.indexOf(anio) === -1) {
+            Swal.fire(Object.assign({
+                icon: 'info',
+                title: 'Sin bajas en el mes de operaciones',
+                html: 'No hay bajas registradas en <strong>' + opsMes + ' de ' + anio + '</strong>.',
+                confirmButtonText: 'Entendido'
+            }, (typeof swalDark !== 'undefined' ? swalDark : {})));
+            return;
+        }
+        $mesSel.val(mes);
+        $mesSel.trigger('change');
+        $anioSel.val(anio);
+    });
+
+    // Generar: abre la ventana con el informe del endpoint ?reporte=bajas
+    $('#btnGenerarBajas').on('click', function() {
+        var params = ['reporte=bajas'];
+        var fecha = String($fechaSel.val() || '');
+        if (fecha) {
+            params.push('fecha=' + encodeURIComponent(fecha));
+        } else {
+            var anio = String($anioSel.val() || '');
+            var mes = String($mesSel.val() || '');
+            if (anio) params.push('anio=' + encodeURIComponent(anio));
+            if (mes) params.push('mes=' + encodeURIComponent(mes));
+        }
+        params.push('resumen=' + encodeURIComponent(String($resumenSel.val() || 'motivo')));
+
+        var win = window.open('empleados.php?' + params.join('&'), '_blank');
+        if (!win) {
+            Swal.fire(Object.assign({
+                icon: 'warning',
+                title: 'Ventana bloqueada',
+                html: 'El navegador bloqueó la ventana de impresión.<br>Permita las ventanas emergentes para este sitio.',
+                confirmButtonText: 'Entendido'
+            }, (typeof swalDark !== 'undefined' ? swalDark : {})));
+            return;
+        }
+    });
+})();
+
+// ==================== REPORTE DE ALTAS (modal + generación) ====================
+var ALTAS_FECHAS = <?php echo json_encode($jsAlta); ?>;
+var ALTAS_PERIODO_OPS = <?php echo json_encode(periodoNominasEnCurso($pdo)); ?>;
+
+(function() {
+    var $modal = $('#modalReporteAltas');
+    if (!$modal.length) return;
+
+    var ALTAS_MESES = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
+
+    var opsMes = ALTAS_MESES[String(ALTAS_PERIODO_OPS.mes).padStart(2, '0')] || ALTAS_PERIODO_OPS.mes;
+    $('#altaPeriodoOpsInfo').html(
+        'Período de operaciones en curso: <strong>' + opsMes + ' ' + ALTAS_PERIODO_OPS.anio + '</strong>'
+        + ' <span class="opacity-75">(mes abierto de nómina)</span>'
+    );
+
+    function aniosDeAltaMes(m) {
+        if (!m) return ALTAS_FECHAS.anios || [];
+        var mapa = ALTAS_FECHAS.aniosPorMes || {};
+        var plano = String(parseInt(m, 10));
+        return mapa[m] || mapa[plano] || mapa[String(plano).padStart(2, '0')] || [];
+    }
+    function mesesDeAltaAnio(a) {
+        if (!a) return ALTAS_FECHAS.meses || [];
+        var mapa = ALTAS_FECHAS.mesesPorAnio || {};
+        return mapa[a] || mapa[String(parseInt(a, 10))] || [];
+    }
+
+    var $mesSel = $('#altaFiltMes'), $anioSel = $('#altaFiltAnio'), $fechaSel = $('#altaFiltFecha'), $resumenSel = $('#altaAgruparPor');
+
+    // Siempre que se abre el modal: estado limpio (fecha vacía, mes/año restaurados, resumen en "área")
+    $modal.on('show.bs.modal', function() {
+        $fechaSel.val('');
+        $mesSel.empty().append('<option value="">Mes</option>');
+        (ALTAS_FECHAS.meses || []).forEach(function(m) {
+            var k = String(m).padStart(2, '0');
+            $mesSel.append('<option value="' + k + '">' + (ALTAS_MESES[k] || k) + '</option>');
+        });
+        $mesSel.prop('disabled', false).val('');
+        $anioSel.empty().append('<option value="">Año</option>');
+        (ALTAS_FECHAS.anios || []).forEach(function(a) {
+            $anioSel.append('<option value="' + a + '">' + a + '</option>');
+        });
+        $anioSel.prop('disabled', false).val('');
+        if ($resumenSel.length) $resumenSel.val('area');
+    });
+
+    $mesSel.on('change', function() {
+        var m = this.value;
+        $anioSel.empty().append('<option value="">Año</option>');
+        (aniosDeAltaMes(m) || []).forEach(function(a) {
+            $anioSel.append('<option value="' + a + '">' + a + '</option>');
+        });
+    });
+
+    $anioSel.on('change', function() {
+        var a = this.value;
+        var previo = $mesSel.val();
+        var meses = mesesDeAltaAnio(a);
+        $mesSel.empty().append('<option value="">Mes</option>');
+        meses.forEach(function(m) {
+            var k = String(m).padStart(2, '0');
+            $mesSel.append('<option value="' + k + '">' + (ALTAS_MESES[k] || k) + '</option>');
+        });
+        if (previo && meses.indexOf(parseInt(previo, 10)) !== -1) $mesSel.val(previo);
+    });
+
+    // Fecha específica: si tiene valor, manda sobre mes/año
+    function refrescarEstadoFecha() {
+        var hayFecha = String($fechaSel.val() || '') !== '';
+        $mesSel.prop('disabled', hayFecha);
+        $anioSel.prop('disabled', hayFecha);
+        if (hayFecha) { $mesSel.val(''); $anioSel.empty().append('<option value="">Año</option>'); }
+    }
+    $fechaSel.on('change', refrescarEstadoFecha);
+
+    // Botón "Este mes (operaciones)": lee el mes de la fecha de operaciones en curso
+    $('#btnAltaEsteMes').on('click', function() {
+        $fechaSel.val('');
+        refrescarEstadoFecha();
+        var anio = String(ALTAS_PERIODO_OPS.anio);
+        var mes = String(ALTAS_PERIODO_OPS.mes).padStart(2, '0');
+
+        var aniosDisponibles = (ALTAS_FECHAS.anios || []).map(String);
+        if (aniosDisponibles.indexOf(anio) === -1) {
+            Swal.fire(Object.assign({
+                icon: 'info',
+                title: 'Sin altas en el mes de operaciones',
+                html: 'No hay altas registradas en <strong>' + opsMes + ' de ' + anio + '</strong>.',
+                confirmButtonText: 'Entendido'
+            }, (typeof swalDark !== 'undefined' ? swalDark : {})));
+            return;
+        }
+        $mesSel.val(mes);
+        $mesSel.trigger('change');
+        $anioSel.val(anio);
+    });
+
+    // Generar: abre la ventana con el informe del endpoint ?reporte=altas
+    $('#btnGenerarAltas').on('click', function() {
+        var params = ['reporte=altas'];
+        var fecha = String($fechaSel.val() || '');
+        if (fecha) {
+            params.push('fecha=' + encodeURIComponent(fecha));
+        } else {
+            var anio = String($anioSel.val() || '');
+            var mes = String($mesSel.val() || '');
+            if (anio) params.push('anio=' + encodeURIComponent(anio));
+            if (mes) params.push('mes=' + encodeURIComponent(mes));
+        }
+        params.push('resumen=' + encodeURIComponent(String($resumenSel.val() || 'area')));
+
+        var win = window.open('empleados.php?' + params.join('&'), '_blank');
+        if (!win) {
+            Swal.fire(Object.assign({
+                icon: 'warning',
+                title: 'Ventana bloqueada',
+                html: 'El navegador bloqueó la ventana de impresión.<br>Permita las ventanas emergentes para este sitio.',
+                confirmButtonText: 'Entendido'
+            }, (typeof swalDark !== 'undefined' ? swalDark : {})));
+            return;
+        }
+    });
 })();
 </script>
 

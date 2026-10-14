@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // includes/functions.php
 
 
@@ -2573,10 +2573,3 @@ function horasTrabajoExtraordinarioTotales($pdo, $trabajador_id, $anio, $excluir
     }
 }
 }
-?>
-
-
-
-
-
-
