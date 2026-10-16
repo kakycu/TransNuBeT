@@ -1257,7 +1257,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
                 <div class="custom-dropdown-menu" id="dropdownMenu">
                     <div class="dropdown-title">Servicios Generales</div>
                     <button class="dropdown-item" data-servicio="salarios">
-                        <i class="fas fa-money-bill-wave"></i> Consultar Salario
+                        <i class="fas fa-money-bill-wave"></i> Consultar Salario o Vacaciones
                     </button>
                     <button class="dropdown-item" data-servicio="charangon">
                         <i class="fas fa-calculator"></i> Ficha Costo Charangón

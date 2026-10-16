@@ -9,8 +9,17 @@
 
 require_once '../config/database.php';
 
+// Si por un envío nativo del navegador la clave quedó en la URL
+// (method=get legado o enlace guardado), se limpia de inmediato:
+// nunca se lee ni se refleja nada de $_GET['clave'].
+if (isset($_GET['clave']) || isset($_POST['clave'])) {
+    header('Location: index.php');
+    exit;
+}
+
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $su_autorizado = !empty($_SESSION['su_acceso']);
+$su_tipo = ($su_autorizado && (($_SESSION['su_tipo'] ?? 'usuario') === 'trabajador')) ? 'trabajador' : 'usuario';
 
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -349,6 +358,32 @@ header('Expires: 0');
         tfoot tr td:first-child { text-align: left; color: #fff; }
         .sin-datos { text-align: center; color: var(--mar-texto-suave); padding: 1rem 0; }
 
+        /* ===== Paginación de resultados (vista en pantalla del modal) ===== */
+        .su-paginador {
+            display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+            margin-top: 0.75rem; padding: 0.5rem 0.75rem;
+            background: rgba(18, 35, 63, 0.6); border: 0.0625rem solid var(--mar-borde);
+            border-radius: 0.5rem; font-size: 0.78rem; color: var(--mar-texto-suave);
+        }
+        .su-paginador b { color: #fff; }
+        .su-pag-info { white-space: nowrap; }
+        .su-pag-controles { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .su-pag-select {
+            background: #0d1a30; color: #dfe9f7; border: 0.0625rem solid var(--mar-borde);
+            border-radius: 0.375rem; padding: 0.28rem 0.4rem; font-size: 0.75rem;
+        }
+        .su-pag-texto { font-size: 0.72rem; }
+        .su-pag-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 1.9rem; height: 1.9rem; border-radius: 0.375rem;
+            background: rgba(var(--accent-rgb), 0.15); color: var(--accent-light);
+            border: 0.0625rem solid rgba(var(--accent-rgb), 0.4); cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .su-pag-btn:hover:not(:disabled) { background: rgba(var(--accent-rgb), 0.3); }
+        .su-pag-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .su-pag-actual { color: #fff; font-weight: 600; min-width: 6.5rem; text-align: center; white-space: nowrap; }
+
         /* ===================== FOOTER CORPORATIVO FIJO ===================== */
         .su-corp-footer {
             --corp-bg: rgba(10, 16, 30, 0.92);
@@ -548,6 +583,61 @@ header('Expires: 0');
         .gate-btn[disabled] { opacity: 0.65; cursor: wait; }
         .gate-nota { margin-top: 1.1rem; font-size: 0.78rem; color: #ffffff; opacity: 1; line-height: 1.55; }
         .gate-nota i { color: var(--accent-light); margin-right: 0.25rem; }
+
+        /* ===== Pestañas de modo de acceso: Usuario / Trabajador ===== */
+        .gate-tabs { display: flex; gap: 0.5rem; margin: 0 0 1rem; }
+        .gate-tab {
+            flex: 1; padding: 0.55rem 0.5rem; font-size: 0.85rem; font-weight: 700;
+            color: rgba(180,210,255,0.7); cursor: pointer; text-align: center;
+            background: rgba(10, 20, 40, 0.6); border: 0.0625rem solid rgba(130, 190, 255, 0.25);
+            border-radius: 0.5rem; transition: all 0.2s ease; font-family: inherit;
+        }
+        .gate-tab i { margin-right: 0.35rem; }
+        .gate-tab:hover { color: var(--accent-light); border-color: rgba(var(--accent-rgb), 0.5); }
+        .gate-tab.activa {
+            color: #fff;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            border-color: transparent;
+            box-shadow: 0 0.3rem 0.9rem rgba(var(--accent-rgb), 0.35);
+        }
+        .gate-campo input.gate-input-limpio { letter-spacing: 0.04em; }
+        .gate-campo input.sin-ojo { padding-right: 0.75rem; }
+
+        /* ===== Aviso de modo Trabajador (consulta limitada) ===== */
+        .su-aviso-trabajador {
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 0.85rem; padding: 0.55rem 0.8rem;
+            font-size: 0.8rem; color: var(--accent-light);
+            background: rgba(var(--accent-rgb), 0.1);
+            border: 0.0625rem solid rgba(var(--accent-rgb), 0.35);
+            border-radius: 0.5rem;
+        }
+
+        /* ===== Vistas internas (Salario / Vacaciones) ===== */
+        .su-side-nav a.activa {
+            background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.28), rgba(var(--accent-rgb), 0.10));
+            border-color: rgba(var(--accent-rgb), 0.5);
+            color: #fff;
+            box-shadow: 0 0 0.6rem rgba(var(--accent-rgb), 0.15);
+        }
+        .su-side-nav a.activa i { color: #fff; }
+        .su-saldo-cero { color: var(--mar-texto-suave); }
+        .su-saldo-positivo { color: var(--exito); font-weight: 700; }
+        .su-saldo-negativo { color: #f87171; font-weight: 700; }
+        table.su-tabla tfoot td {
+            font-weight: 700; color: #fff;
+            background: rgba(10, 20, 40, 0.7);
+            border-top: 0.125rem solid rgba(var(--accent-rgb), 0.4);
+            border-bottom: 0;
+        }
+        .su-listado-vacio {
+            margin-top: 1.1rem; padding: 2.2rem 1rem;
+            text-align: center; color: var(--mar-texto-suave); font-size: 0.88rem;
+            background: var(--mar-tarjeta);
+            border: 0.0625rem dashed var(--mar-borde);
+            border-radius: 0.8rem;
+        }
+        .su-listado-vacio i { color: var(--accent-light); margin-right: 0.4rem; }
 
         /* ===================== RESPONSIVE (PC / TABLETA / MÓVIL) ===================== */
         /* Botón hamburguesa y fondo oscuro del menú móvil */
@@ -840,6 +930,63 @@ html, body { overflow-x: hidden; }
     .su-btn-x, .gate-ojo, .corp-min-btn { min-width: 2rem; min-height: 2rem; }
     .su-side-nav a { padding: 0.65rem 0.75rem; }
 }
+
+/* ---------- Filtros de vacaciones (réplica del módulo submayor_vacaciones) ---------- */
+.su-filtros-card {
+    border: 0.0625rem solid var(--mar-borde); border-radius: 0.75rem;
+    background: rgba(10, 20, 40, 0.45); overflow: hidden;
+}
+.su-filtros-cab {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    background: rgba(var(--accent-rgb), 0.12);
+    border-bottom: 0.0625rem solid var(--mar-borde);
+}
+.su-filtros-titulo { font-size: 0.85rem; font-weight: 700; color: var(--accent-light); }
+.su-filtros-titulo i { margin-right: 0.35rem; }
+.su-filtros-acciones { display: flex; gap: 0.4rem; }
+.su-btn-suave {
+    display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;
+    padding: 0.32rem 0.6rem; font-size: 0.78rem; font-weight: 600; color: var(--mar-texto);
+    background: rgba(130,190,255,0.1); border: 0.0625rem solid rgba(130,190,255,0.3);
+    border-radius: 0.4rem;
+}
+.su-btn-suave:hover { background: var(--mar-hover); border-color: var(--accent); color: var(--accent-light); }
+.su-filtros-cuerpo { padding: 0.85rem; }
+.su-filtros-cuerpo.colapsado { display: none; }
+.su-filtros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: 0.7rem; }
+.su-filtros-grid .su-campo { min-width: 0; }
+.su-filtros-conmutadores { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; }
+.su-filtros-conmutadores label {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.8rem; color: rgba(220,232,255,0.85); cursor: pointer;
+}
+.su-filtros-conmutadores input[type="checkbox"] { accent-color: var(--accent); width: 0.95rem; height: 0.95rem; cursor: pointer; }
+.su-filtros-pie { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.85rem; }
+
+/* Ordenamiento de columnas del submayor */
+table.su-tabla thead th.su-ordenable { cursor: pointer; user-select: none; }
+table.su-tabla thead th.su-ordenable:hover { color: #fff; background: rgba(var(--accent-rgb), 0.16); }
+table.su-tabla thead th .su-orden { margin-left: 0.3rem; font-size: 0.7rem; opacity: 0.55; }
+table.su-tabla thead th.orden-activo .su-orden { opacity: 1; color: #fff; }
+
+/* Filas y badges del submayor */
+table.su-tabla tbody tr.vac-excedida td { background: rgba(239,68,68,0.10); }
+table.su-tabla tbody tr.vac-excedida td:first-child { border-left: 0.1875rem solid #ef4444; }
+table.su-tabla tbody tr.vac-excedida .vac-saldo-total { color: #fca5a5 !important; }
+.su-badge-estado {
+    display: inline-block; padding: 0.1rem 0.45rem; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em;
+}
+.su-badge-estado.baja { background: rgba(239,68,68,0.18); border: 0.0625rem solid rgba(239,68,68,0.45); color: #fca5a5; }
+.su-badge-estado.activo { background: rgba(34,197,94,0.16); border: 0.0625rem solid rgba(34,197,94,0.4); color: #86efac; }
+.su-badge-estado.excedida { background: rgba(245,158,11,0.16); border: 0.0625rem solid rgba(245,158,11,0.45); color: #fcd34d; margin-left: 0.25rem; }
+.vac-saldo-total { color: #a78bfa; font-weight: 700; }
+
+/* thead de 2 filas del modal: fila 1 fija arriba, fila 2 debajo */
+table.su-tabla #vacRepCabecera tr:nth-child(2) th { top: 1.95rem; z-index: 2; }
+table.su-tabla #vacRepCabecera tr:first-child th { top: 0; z-index: 3; }
+table.su-tabla #vacRepCabecera tr:nth-child(2) th { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.25); }
     </style>
 
 </head>
@@ -855,15 +1002,19 @@ html, body { overflow-x: hidden; }
     <div class="su-side-marca"><?php echo htmlspecialchars(COMPANY_NAME, ENT_QUOTES, 'UTF-8'); ?></div>
     <div class="su-side-cat">Navegación</div>
     <nav class="su-side-nav">
-        <a href="../index.php" data-tooltip-theme="info"><i class="fas fa-right-to-bracket"></i> Logearse en el sistema</a>
+        <?php if ($su_autorizado && $su_tipo === 'usuario'): ?>
+        <a href="/nominas/dashboard.php" data-tooltip-theme="info" data-ir-dashboard="1" title="Ir al Dashboard del sistema"><i class="fas fa-gauge-high"></i> Ir al Dashboard</a>
+        <?php else: ?>
+        <a href="/nominas/index.php" data-tooltip-theme="info"><i class="fas fa-right-to-bracket"></i> Logearse en el Sistema</a>
+        <?php endif; ?>
         <a href="../../index.php"><i class="fas fa-house"></i> Inicio</a>
-        <a href="../../fcostoCharangon/index.php"><i class="fas fa-calculator"></i> Cálculo de la Ficha de Costo del Charangón</a>
-		<a href="../../fcostoCharangon/index.php"><i class="fas fa-calculator"></i> Cálculo de la Ficha de Costo Papel Adhesivo Transparente A4</a>
+        <a href="index.php" id="navSalario" class="activa" data-vista-interna="1" title="Listado de salarios devengados"><i class="fas fa-money-bill-trend-up"></i> Consultar Salario</a>
+        <a href="index.php" id="navVacaciones" data-vista-interna="1" title="Submayor de vacaciones"><i class="fas fa-umbrella-beach"></i> Consultar SubMayor Vacaciones</a>
         <div class="su-side-sep"></div>
         <button type="button" class="su-side-salir" id="suBtnSalir" title="Cerrar sesión y regresar al inicio"><i class="fas fa-right-from-bracket"></i> Salir / Cerrar</button>
     </nav>
     <div class="su-side-pie">
-        <i class="fas fa-shield-halved"></i> Consulta pública<br>sin registro
+        <i class="fas fa-shield-halved"></i> Acceso con usuario y contraseña<br>o expediente y carné
     </div>
 </aside>
 
@@ -874,10 +1025,10 @@ html, body { overflow-x: hidden; }
         <div class="su-cabecera">
             <div class="su-cabecera-icono"><i class="fas fa-user-tie fa-lg" style="color:#fff;"></i></div>
             <div>
-                <h1>Listado de Salarios Devengados por Trabajador</h1>
+                <h1 id="cabTitulo">Listado de Salarios Devengados por Trabajador</h1>
                 <p class="su-cabecera-empresa"><?php echo htmlspecialchars(COMPANY_NAME, ENT_QUOTES, 'UTF-8'); ?></p>
                 <p class="su-cabecera-slogan"><?php echo htmlspecialchars(SLOGAN, ENT_QUOTES, 'UTF-8'); ?></p>
-                <p>Busque un trabajador y seleccione el mes o "Todos" para sumar el total del año por tipo de nómina</p>
+                <p id="cabDesc">Busque un trabajador y seleccione el mes o "Todos" para sumar el total del año por tipo de nómina</p>
             </div>
             <!-- Reloj analógico plano + hora digital + fecha -->
             <div class="su-reloj">
@@ -896,7 +1047,10 @@ html, body { overflow-x: hidden; }
             </div>
         </div>
 
-        <div class="su-tarjeta">
+        <div class="su-tarjeta" id="vistaSalario">
+            <div class="su-aviso-trabajador" id="suAvisoTrabajador" style="display:none;">
+                <i class="fas fa-user-lock"></i> <strong>Modo Trabajador:</strong> su acceso está limitado a la consulta de su propia información.
+            </div>
             <div class="su-fila">
                 <!-- Búsqueda del trabajador -->
                 <div class="su-campo" style="flex:2 1 18rem;">
@@ -950,8 +1104,170 @@ html, body { overflow-x: hidden; }
             </div>
         </div>
 
+        <!-- ===================== VISTA: SUBMAYOR DE VACACIONES ===================== -->
+        <div class="su-tarjeta" id="vistaVacaciones" style="display:none;">
+            <div class="su-aviso-trabajador" id="vacAvisoTrabajador" style="display:none;">
+                <i class="fas fa-user-lock"></i> <strong>Modo Trabajador:</strong> su acceso está limitado a la consulta de su propia información.
+            </div>
+            <!-- Modo trabajador: solo Año y Mes -->
+            <div class="su-fila" id="vacFilaSimple">
+                <!-- Año -->
+                <div class="su-campo" style="flex:0 1 7.5rem;">
+                    <label for="vacAnioTrab"><i class="fas fa-calendar-alt"></i> Año</label>
+                    <select id="vacAnioTrab" class="su-select">
+                        <option value="">-- Años --</option>
+                    </select>
+                </div>
+                <!-- Mes -->
+                <div class="su-campo" style="flex:0 1 8.5rem;">
+                    <label for="vacMesTrab"><i class="fas fa-calendar-day"></i> Mes</label>
+                    <select id="vacMesTrab" class="su-select">
+                        <option value="0">Todos</option>
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+                <button type="button" id="vacBtnGenerarTrab" class="su-btn-generar" disabled title="Generar reporte de vacaciones">
+                    <i class="fas fa-umbrella-beach"></i><span>Generar Reporte</span>
+                </button>
+            </div>
+            <!-- Modo usuario: card completo de filtros (réplica del módulo) -->
+            <div class="su-filtros-card" id="vacCardFiltros" style="display:none;">
+                <div class="su-filtros-cab">
+                    <span class="su-filtros-titulo"><i class="fas fa-filter"></i> Filtros de Búsqueda</span>
+                    <div class="su-filtros-acciones">
+                        <button type="button" id="vacBtnLimpiar" class="su-btn-suave" title="Limpiar todos los filtros"><i class="fas fa-eraser"></i> Limpiar</button>
+                        <button type="button" id="vacBtnToggleFiltros" class="su-btn-suave" title="Contraer o expandir los filtros"><i class="fas fa-chevron-up" id="vacChevronFiltros"></i></button>
+                    </div>
+                </div>
+                <div class="su-filtros-cuerpo" id="vacFiltrosCuerpo">
+                    <div class="su-filtros-grid">
+                        <!-- Año -->
+                        <div class="su-campo">
+                            <label for="vacAnio"><i class="fas fa-calendar-alt"></i> Año</label>
+                            <select id="vacAnio" class="su-select">
+                                <option value="">-- Años --</option>
+                            </select>
+                        </div>
+                        <!-- Mes -->
+                        <div class="su-campo">
+                            <label for="vacMes"><i class="fas fa-calendar-day"></i> Mes</label>
+                            <select id="vacMes" class="su-select">
+                                <option value="0">Todos</option>
+                                <option value="1">Enero</option>
+                                <option value="2">Febrero</option>
+                                <option value="3">Marzo</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Mayo</option>
+                                <option value="6">Junio</option>
+                                <option value="7">Julio</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <!-- Desde -->
+                        <div class="su-campo">
+                            <label for="vacDesde"><i class="fas fa-calendar-plus"></i> Desde</label>
+                            <input type="date" id="vacDesde" class="su-input" title="Fecha inicial del período (si no hay año seleccionado)">
+                        </div>
+                        <!-- Hasta -->
+                        <div class="su-campo">
+                            <label for="vacHasta"><i class="fas fa-calendar-minus"></i> Hasta</label>
+                            <input type="date" id="vacHasta" class="su-input" title="Fecha final del período (si no hay año seleccionado)">
+                        </div>
+                        <!-- Trabajador -->
+                        <div class="su-campo">
+                            <label for="vacTrabajador"><i class="fas fa-user"></i> Trabajador</label>
+                            <select id="vacTrabajador" class="su-select">
+                                <option value="">Todos los trabajadores</option>
+                            </select>
+                        </div>
+                        <!-- Área -->
+                        <div class="su-campo">
+                            <label for="vacArea"><i class="fas fa-building"></i> Área</label>
+                            <select id="vacArea" class="su-select">
+                                <option value="">Todas las áreas</option>
+                            </select>
+                        </div>
+                        <!-- Centro de Costo -->
+                        <div class="su-campo">
+                            <label for="vacCentroCosto"><i class="fas fa-coins"></i> Centro de Costo</label>
+                            <select id="vacCentroCosto" class="su-select">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <!-- Movimiento -->
+                        <div class="su-campo">
+                            <label for="vacTipoMov"><i class="fas fa-arrow-right-arrow-left"></i> Movimiento</label>
+                            <select id="vacTipoMov" class="su-select">
+                                <option value="">Todos</option>
+                                <option value="acumulacion">Acumulación</option>
+                                <option value="disfrute">Disfrute</option>
+                                <option value="liquidac">Liquidación</option>
+                                <option value="ajuste">Ajuste</option>
+                            </select>
+                        </div>
+                        <!-- Vacaciones > 20 días -->
+                        <div class="su-campo">
+                            <label for="vacExcedidas"><i class="fas fa-triangle-exclamation"></i> Vacaciones &gt; 20 días</label>
+                            <select id="vacExcedidas" class="su-select">
+                                <option value="">Todas</option>
+                                <option value="mayor20">Solo excedidas (&gt; 20 días)</option>
+                            </select>
+                        </div>
+                        <!-- Estado laboral -->
+                        <div class="su-campo">
+                            <label for="vacEstado"><i class="fas fa-circle-info"></i> Estado laboral</label>
+                            <select id="vacEstado" class="su-select">
+                                <option value="">Todos</option>
+                                <option value="activo">Activos</option>
+                                <option value="baja">Bajas</option>
+                            </select>
+                        </div>
+                        <!-- Saldos -->
+                        <div class="su-campo">
+                            <label for="vacSaldoFiltro"><i class="fas fa-hourglass-half"></i> Saldos</label>
+                            <select id="vacSaldoFiltro" class="su-select">
+                                <option value="">Todos</option>
+                                <option value="menor1">Menores de 1 día</option>
+                                <option value="mayor1">1 día o más</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="su-filtros-conmutadores">
+                        <label for="vacOcultarCero"><input type="checkbox" id="vacOcultarCero"> Ocultar saldo en cero</label>
+                        <label for="vacSoloBajas"><input type="checkbox" id="vacSoloBajas"> Solo bajas</label>
+                    </div>
+                    <div class="su-filtros-pie">
+                        <button type="button" id="vacBtnGenerar" class="su-btn-generar" disabled title="Aplicar los filtros y generar el reporte">
+                            <i class="fas fa-umbrella-beach"></i><span>Aplicar filtros</span>
+                        </button>
+                        <button type="button" id="vacBtnVerTodos" class="su-btn-suave" title="Limpiar los filtros y ver todos los trabajadores">
+                            <i class="fas fa-list"></i> Ver todos
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="su-listado-vacio" id="vacVacio">
+                <i class="fas fa-umbrella-beach"></i> Seleccione el año (y opcionalmente el mes) para ver los saldos de vacaciones.
+            </div>
+        </div>
+
         <p style="text-align:center; color:rgba(180,210,255,0.45); font-size:0.78rem; margin-top:1rem;">
-            <i class="fas fa-shield-halved"></i> Consulta pública de salario — no requiere usuario ni contraseña.
+            <i class="fas fa-shield-halved"></i> Acceso con usuario y contraseña registrados en el sistema o con expediente y carné de identidad del trabajador.
         </p>
 
         <!-- Logo sigesnom grande -->
@@ -1034,26 +1350,49 @@ html, body { overflow-x: hidden; }
     </div>
 </footer>
 
-<!-- ===================== PORTAL DE ACCESO POR CLAVE (delante de la página) ===================== -->
+<!-- ===================== PORTAL DE ACCESO (USUARIO / TRABAJADOR) ===================== -->
 <div class="su-gate-overlay<?php echo $su_autorizado ? '' : ' abierta'; ?>" id="suGateOverlay">
     <div class="gate-caja">
         <div class="gate-icono"><i class="fas fa-lock"></i></div>
         <h1>Registro y Control de Salarios</h1>
         <h2><?php echo htmlspecialchars(COMPANY_NAME, ENT_QUOTES, 'UTF-8'); ?></h2>
         <p class="gate-slogan"><?php echo htmlspecialchars(SLOGAN, ENT_QUOTES, 'UTF-8'); ?></p>
-        <p class="gate-alerta">Debe ser un usuario registrado en el sistema para poder acceder</p>
-        <form id="formAcceso" autocomplete="off" novalidate>
+
+        <div class="gate-tabs" role="tablist" aria-label="Modo de acceso">
+            <button type="button" class="gate-tab activa" id="gateTabUsuario" data-modo="usuario" role="tab" aria-selected="true"><i class="fas fa-user-shield"></i> Usuario</button>
+            <button type="button" class="gate-tab" id="gateTabTrabajador" data-modo="trabajador" role="tab" aria-selected="false"><i class="fas fa-hard-hat"></i> Trabajador</button>
+        </div>
+
+        <p class="gate-alerta" id="gateAlerta">Introduzca su usuario y contraseña registrados en el sistema</p>
+
+        <form id="formAcceso" method="post" autocomplete="off" novalidate>
             <div class="gate-campo">
-                <label for="gateClave"><i class="fas fa-key"></i> Clave de acceso</label>
-                <input type="password" id="gateClave" name="clave" placeholder="••••••••••" required maxlength="255" autocomplete="current-password">
-                <button type="button" class="gate-ojo" id="gateOjo" title="Mostrar / ocultar clave"><i class="fas fa-eye"></i></button>
+                <label for="gateUsuario"><i class="fas fa-user"></i> Usuario</label>
+                <input type="text" id="gateUsuario" name="usuario" class="gate-input-limpio sin-ojo" placeholder="Su nombre de usuario" required maxlength="50" autocomplete="username">
             </div>
-            <div class="gate-botones">
-                <button type="submit" class="gate-btn" id="gateBtn" title="Verificar clave y acceder"><i class="fas fa-unlock"></i> Consultar</button>
-                <button type="button" class="gate-btn gate-btn-inicio" id="gateBtnInicio" title="Ir a la página principal"><i class="fas fa-house"></i> Regresar Inicio</button>
+            <div class="gate-campo">
+                <label for="gateClave"><i class="fas fa-lock"></i> Contraseña</label>
+                <input type="password" id="gateClave" name="clave" placeholder="••••••••••" required maxlength="255" autocomplete="current-password">
+                <button type="button" class="gate-ojo" id="gateOjo" title="Mostrar / ocultar contraseña"><i class="fas fa-eye"></i></button>
             </div>
         </form>
-        <p class="gate-nota"><i class="fas fa-shield-halved"></i> Esta consulta es privada.<br>Se requiere una clave registrada en el sistema para continuar.</p>
+
+        <form id="formAccesoTrabajador" method="post" autocomplete="off" novalidate style="display:none;">
+            <div class="gate-campo">
+                <label for="gateExpediente"><i class="fas fa-id-badge"></i> Número de Expediente</label>
+                <input type="text" id="gateExpediente" name="expediente" class="gate-input-limpio" placeholder="Ej.: 016525" required maxlength="50" autocomplete="off">
+            </div>
+            <div class="gate-campo">
+                <label for="gateCI"><i class="fas fa-id-card"></i> Carné de Identidad</label>
+                <input type="text" id="gateCI" name="ci" class="gate-input-limpio" placeholder="Ej.: 81103016525" required maxlength="30" autocomplete="off">
+            </div>
+        </form>
+
+        <div class="gate-botones">
+            <button type="button" class="gate-btn" id="gateBtn" title="Verificar credenciales y acceder"><i class="fas fa-unlock"></i> Consultar</button>
+            <button type="button" class="gate-btn gate-btn-inicio" id="gateBtnInicio" title="Ir a la página principal"><i class="fas fa-house"></i> Regresar Inicio</button>
+        </div>
+        <p class="gate-nota"><i class="fas fa-shield-halved"></i> Esta consulta es privada.<br>Se requiere un usuario y contraseña registrados en el sistema o su expediente y carné de identidad para continuar.</p>
     </div>
 </div>
 
@@ -1083,10 +1422,10 @@ html, body { overflow-x: hidden; }
     <div class="su-ventana" id="suVentana" role="dialog" aria-modal="true">
         <div class="su-barra-titulos" id="suBarraTitulos">
             <button type="button" class="su-btn-x" id="suBtnX" title="Cerrar"><i class="fas fa-times"></i></button>
-            <div class="su-titulo-icono"><i class="fas fa-user-tie"></i></div>
+            <div class="su-titulo-icono" id="ventanaIcono"><i class="fas fa-user-tie"></i></div>
             <div class="su-titulos">
-                <h5>Listado Total Salario Devengado por Trabajador</h5>
-                <p>Reporte generado para el período seleccionado</p>
+                <h5 id="ventanaTitulo">Listado Total Salario Devengado por Trabajador</h5>
+                <p id="ventanaSub">Reporte generado para el período seleccionado</p>
             </div>
         </div>
 
@@ -1112,7 +1451,7 @@ html, body { overflow-x: hidden; }
                                 <th>SAL. NETO</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
+                        <tbody>                        </tbody>
                         <tfoot>
                             <tr>
                                 <td>TOTAL GENERAL</td>
@@ -1125,12 +1464,31 @@ html, body { overflow-x: hidden; }
                         </tfoot>
                     </table>
                 </div>
+                <div class="su-paginador" id="pagListado"></div>
+            </div>
+            <div id="printAreaVacaciones" style="display:none;">
+                <div class="su-centrado">
+                    <h4>SUBMAYOR DE VACACIONES</h4>
+                    <p class="empresa">Empresa: <?php echo htmlspecialchars(COMPANY_NAME, ENT_QUOTES, 'UTF-8'); ?></p>
+                    <div class="su-meta">
+                        <span style="color:var(--accent-light);"><strong>PERÍODO:</strong> <span id="vacPeriodoTexto"></span></span>
+                        <span style="color:var(--exito);"><strong>TRABAJADOR:</strong> <span id="vacTrabajadorTexto"></span></span>
+                    </div>
+                </div>
+                <div class="su-tabla-scroll">
+                    <table class="su-tabla" id="tablaVacReporte">
+                        <thead id="vacRepCabecera"></thead>
+                        <tbody></tbody>
+                        <tfoot id="vacRepPie"></tfoot>
+                    </table>
+                </div>
+                <div class="su-paginador" id="pagVac"></div>
             </div>
         </div>
 
         <div class="su-pie">
             <button type="button" class="su-btn" id="btnCerrarVentana" title="Cerrar"><i class="fas fa-times"></i>Cerrar</button>
-            <div class="su-pie-grupo">
+            <div class="su-pie-grupo" id="pieListado">
                 <button type="button" class="su-btn su-btn-primario" id="btnImprimirListadoDevengado" disabled title="Imprimir reporte de devengado"><i class="fas fa-print"></i> Imprimir Reporte</button>
                 <div class="su-dropdown">
                     <button type="button" class="su-btn su-btn-exito" id="btnExportarListadoDevengado" disabled title="Exportar reporte de devengado"><i class="fas fa-file-export"></i> Exportar <i class="fas fa-caret-up"></i></button>
@@ -1140,6 +1498,19 @@ html, body { overflow-x: hidden; }
                         <a href="#" data-export-listado="pdf" title="Descargar reporte en formato PDF"><i class="fas fa-file-pdf" style="color:#f40f02;"></i> Exportar a PDF</a>
                         <a href="#" data-export-listado="txt" title="Descargar reporte en texto plano"><i class="fas fa-file-alt" style="color:#cbd5e1;"></i> Exportar a TXT</a>
                         <a href="#" data-export-listado="csv" title="Descargar reporte en formato CSV"><i class="fas fa-file-csv" style="color:#22d3ee;"></i> Exportar a CSV</a>
+                    </div>
+                </div>
+            </div>
+            <div class="su-pie-grupo" id="pieVac" style="display:none;">
+                <button type="button" class="su-btn su-btn-primario" id="btnImprimirVac" disabled title="Imprimir submayor de vacaciones"><i class="fas fa-print"></i> Imprimir Reporte</button>
+                <div class="su-dropdown">
+                    <button type="button" class="su-btn su-btn-exito" id="btnExportarVac" disabled title="Exportar submayor de vacaciones"><i class="fas fa-file-export"></i> Exportar <i class="fas fa-caret-up"></i></button>
+                    <div class="su-dropdown-menu" id="vacMenuExportar">
+                        <a href="#" data-export-vac="xls" title="Descargar reporte en formato Excel"><i class="fas fa-file-excel" style="color:#21a366;"></i> Exportar a Excel (.xls)</a>
+                        <a href="#" data-export-vac="docx" title="Descargar reporte en formato Word"><i class="fas fa-file-word" style="color:#60a5fa;"></i> Exportar a Word (.doc)</a>
+                        <a href="#" data-export-vac="pdf" title="Descargar reporte en formato PDF"><i class="fas fa-file-pdf" style="color:#f40f02;"></i> Exportar a PDF</a>
+                        <a href="#" data-export-vac="txt" title="Descargar reporte en texto plano"><i class="fas fa-file-alt" style="color:#cbd5e1;"></i> Exportar a TXT</a>
+                        <a href="#" data-export-vac="csv" title="Descargar reporte en formato CSV"><i class="fas fa-file-csv" style="color:#22d3ee;"></i> Exportar a CSV</a>
                     </div>
                 </div>
             </div>
@@ -1158,7 +1529,13 @@ html, body { overflow-x: hidden; }
     window.SU_AUTORIZADO = <?php echo $su_autorizado ? 'true' : 'false'; ?>;
     var INICIAL = <?php
         if ($su_autorizado) {
-            $inicial_trabajadores = $pdo->query("SELECT id, codigo, ci, nombre_completo, activo FROM trabajadores ORDER BY nombre_completo")->fetchAll(PDO::FETCH_ASSOC);
+            if ($su_tipo === 'trabajador') {
+                $st_ini = $pdo->prepare("SELECT id, codigo, ci, nombre_completo, activo FROM trabajadores WHERE id = ?");
+                $st_ini->execute([(int)($_SESSION['su_trabajador_id'] ?? 0)]);
+                $inicial_trabajadores = $st_ini->fetchAll(PDO::FETCH_ASSOC);
+            } else {
+                $inicial_trabajadores = $pdo->query("SELECT id, codigo, ci, nombre_completo, activo FROM trabajadores ORDER BY nombre_completo")->fetchAll(PDO::FETCH_ASSOC);
+            }
             $inicial_anios = array_map('intval', $pdo->query("SELECT DISTINCT YEAR(periodo_desde) AS anio FROM nominas ORDER BY anio DESC")->fetchAll(PDO::FETCH_COLUMN));
             $inicial_ruta_logo = __DIR__ . '/../../images/LogoTN.png';
             $inicial_logo_b64 = '';
@@ -1170,16 +1547,18 @@ html, body { overflow-x: hidden; }
             $inicial_anios = [];
             $inicial_logo_b64 = '';
         }
+        $inicial_usuario = ($su_autorizado && !empty($_SESSION['su_nombre'])) ? $_SESSION['su_nombre'] : 'Consulta Pública';
         echo json_encode([
             'trabajadores' => $inicial_trabajadores,
             'anios' => $inicial_anios,
+            'suTipo' => $su_tipo,
             'nombreEmpresa' => COMPANY_NAME,
             'reeup' => REEUP_EMPRESA,
             'nitEmpresa' => NIT,
             'jefeProyecto' => JEFE_PROYECTO,
             'especialistaGestion' => ESPECIALISTA,
             'especialistaNominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : '',
-            'usuarioNombre' => 'Consulta Pública',
+            'usuarioNombre' => $inicial_usuario,
             'logoBase64' => $inicial_logo_b64,
         ], JSON_UNESCAPED_UNICODE);
     ?>;
@@ -1199,6 +1578,57 @@ html, body { overflow-x: hidden; }
 
     // ============ Estado global ============
     var datosActual = null;
+    var pagCfgListado = { pag: 1, por: 5 };
+
+    function pagCalc(cfg, total) {
+        var por = cfg.por > 0 ? cfg.por : Math.max(total, 1);
+        var totalPag = Math.max(1, Math.ceil(total / por));
+        if (cfg.pag > totalPag) cfg.pag = totalPag;
+        if (cfg.pag < 1) cfg.pag = 1;
+        return {
+            por: por,
+            totalPag: totalPag,
+            desde: total === 0 ? 0 : (cfg.pag - 1) * por + 1,
+            hasta: Math.min(total, cfg.pag * por),
+            total: total
+        };
+    }
+
+    function paginadorHtml(cfg, total) {
+        var i = pagCalc(cfg, total);
+        var opciones = [5, 10, 25, 50, 100, 0];
+        var sel = '<select class="su-pag-select" data-pg-select title="Filas por página">'
+            + opciones.map(function (o) {
+                return '<option value="' + o + '"' + (cfg.por === o ? ' selected' : '') + '>'
+                    + (o === 0 ? 'Todas' : o) + '</option>';
+            }).join('') + '</select>';
+        return '<div class="su-pag-info">Mostrando <b>' + i.desde + '\u2013' + i.hasta
+            + '</b> de <b>' + i.total + '</b> filas</div>'
+            + '<div class="su-pag-controles">' + sel + '<span class="su-pag-texto">por página</span>'
+            + '<button type="button" class="su-pag-btn" data-pg="anterior" title="Página anterior"'
+            + (cfg.pag <= 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left"></i></button>'
+            + '<span class="su-pag-actual">Página ' + cfg.pag + ' de ' + i.totalPag + '</span>'
+            + '<button type="button" class="su-pag-btn" data-pg="siguiente" title="Página siguiente"'
+            + (cfg.pag >= i.totalPag ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button>'
+            + '</div>';
+    }
+
+    function paginarBind(id, cfg, volverARenderizar) {
+        var cont = document.getElementById(id);
+        if (!cont) return;
+        cont.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-pg]');
+            if (!b || b.disabled) return;
+            cfg.pag += (b.getAttribute('data-pg') === 'siguiente') ? 1 : -1;
+            volverARenderizar();
+        });
+        cont.addEventListener('change', function (e) {
+            if (!e.target.matches('[data-pg-select]')) return;
+            cfg.por = parseInt(e.target.value, 10) || 0;
+            cfg.pag = 1;
+            volverARenderizar();
+        });
+    }
     var trabajadorActual = null;
     var anioActual = 0;
     var mesActual = 0;
@@ -1384,6 +1814,8 @@ html, body { overflow-x: hidden; }
                 return;
             }
             datosActual = r;
+            pagCfgListado.pag = 1;
+            pagCfgListado.por = 5;
             trabajadorActual = r.trabajador;
             anioActual = anio;
             mesActual = mes;
@@ -1412,41 +1844,42 @@ html, body { overflow-x: hidden; }
         var tbody = $('#tablaListadoDevengado tbody');
         if (!datosActual.filas.length) {
             tbody.innerHTML = '<tr><td colspan="' + (esCompleto ? 5 : 6) + '" class="sin-datos"><i class="fas fa-info-circle"></i> No hay nóminas registradas para este trabajador en el período seleccionado.</td></tr>';
-        } else if (esCompleto) {
+            $('#pagListado').innerHTML = '';
+        } else {
+            var colspanSep = esCompleto ? 5 : 6;
             var tipoActual = '';
-            var html = '';
-            datosActual.filas.forEach(function(f) {
+            var items = [];
+            datosActual.filas.forEach(function (f) {
+                var cabecera = '';
                 if (f.tipo_nomina !== tipoActual) {
                     tipoActual = f.tipo_nomina;
-                    html += '<tr class="su-sep-tipo"><td colspan="5">' + listadoTipoNominaBadge(f.tipo_nomina) + '</td></tr>';
+                    cabecera = '<tr class="su-sep-tipo"><td colspan="' + colspanSep + '">' + listadoTipoNominaBadge(f.tipo_nomina) + '</td></tr>';
                 }
-                html += '<tr>'
-                    + '<td style="padding-left:1.5rem;font-style:italic;color:rgba(220,232,255,0.7);">' + MESES_ESP[f.mes_num] + '</td>'
-                    + '<td>' + listadoMoneda(f.devengado) + '</td>'
-                    + '<td>' + listadoMoneda(f.deducciones) + '</td>'
-                    + '<td>' + listadoMoneda(f.cess) + '</td>'
-                    + '<td class="su-neto">' + listadoMoneda(f.neto) + '</td>'
-                    + '</tr>';
-            });
-            tbody.innerHTML = html;
-        } else {
-            var tipoActual2 = '';
-            var html2 = '';
-            datosActual.filas.forEach(function(f) {
-                if (f.tipo_nomina !== tipoActual2) {
-                    tipoActual2 = f.tipo_nomina;
-                    html2 += '<tr class="su-sep-tipo"><td colspan="6">' + listadoTipoNominaBadge(f.tipo_nomina) + '</td></tr>';
+                var fila;
+                if (esCompleto) {
+                    fila = '<tr>'
+                        + '<td style="padding-left:1.5rem;font-style:italic;color:rgba(220,232,255,0.7);">' + MESES_ESP[f.mes_num] + '</td>'
+                        + '<td>' + listadoMoneda(f.devengado) + '</td>'
+                        + '<td>' + listadoMoneda(f.deducciones) + '</td>'
+                        + '<td>' + listadoMoneda(f.cess) + '</td>'
+                        + '<td class="su-neto">' + listadoMoneda(f.neto) + '</td>'
+                        + '</tr>';
+                } else {
+                    fila = '<tr>'
+                        + '<td></td>'
+                        + '<td style="text-align:center;">' + f.cantidad + '</td>'
+                        + '<td>' + listadoMoneda(f.devengado) + '</td>'
+                        + '<td>' + listadoMoneda(f.deducciones) + '</td>'
+                        + '<td>' + listadoMoneda(f.cess) + '</td>'
+                        + '<td class="su-neto">' + listadoMoneda(f.neto) + '</td>'
+                        + '</tr>';
                 }
-                html2 += '<tr>'
-                    + '<td></td>'
-                    + '<td style="text-align:center;">' + f.cantidad + '</td>'
-                    + '<td>' + listadoMoneda(f.devengado) + '</td>'
-                    + '<td>' + listadoMoneda(f.deducciones) + '</td>'
-                    + '<td>' + listadoMoneda(f.cess) + '</td>'
-                    + '<td class="su-neto">' + listadoMoneda(f.neto) + '</td>'
-                    + '</tr>';
+                items.push(cabecera + fila);
             });
-            tbody.innerHTML = html2;
+            var pag = pagCalc(pagCfgListado, items.length);
+            var inicioPag = (pagCfgListado.pag - 1) * pag.por;
+            tbody.innerHTML = items.slice(inicioPag, inicioPag + pag.por).join('');
+            $('#pagListado').innerHTML = paginadorHtml(pagCfgListado, items.length);
         }
         var tc = $('#listadoTotalCantidad');
         tc.textContent = datosActual.totales.cantidad;
@@ -1463,17 +1896,39 @@ html, body { overflow-x: hidden; }
     // Ventana-modal (barra de títulos + X a la izquierda)
     // ----------------------------------------------------------
     var arrastrando = null;
+    var ventanaTipo = 'salario';
 
-    function abrirVentana() {
-        var overlay = $('#suOverlay');
-        overlay.classList.add('abierta');
+    function abrirVentana(tipo) {
+        ventanaTipo = tipo || 'salario';
+        var esVac = (ventanaTipo === 'vacaciones');
+        $('#ventanaIcono').innerHTML = esVac
+            ? '<i class="fas fa-umbrella-beach"></i>'
+            : '<i class="fas fa-user-tie"></i>';
+        $('#ventanaTitulo').textContent = esVac
+            ? 'Submayor de Vacaciones'
+            : 'Listado Total Salario Devengado por Trabajador';
+        $('#ventanaSub').textContent = esVac
+            ? 'Reporte de saldos de vacaciones del período seleccionado'
+            : 'Reporte generado para el período seleccionado';
+        $('#printAreaListadoDevengado').style.display = esVac ? 'none' : '';
+        $('#printAreaVacaciones').style.display = esVac ? '' : 'none';
+        $('#pieListado').style.display = esVac ? 'none' : '';
+        $('#pieVac').style.display = esVac ? '' : 'none';
+        $('#suOverlay').classList.add('abierta');
         var v = $('#suVentana');
         v.style.left = '50%'; v.style.top = '50%'; v.style.transform = 'translate(-50%, -50%)';
         $('.su-ventana-cuerpo').scrollTop = 0;
     }
     function cerrarVentana() {
-        // Mismo reinicio que hidden.bs.modal en nominas.php
         $('#suOverlay').classList.remove('abierta');
+        if (ventanaTipo === 'vacaciones') {
+            $('#printAreaVacaciones').style.display = 'none';
+            $('#btnImprimirVac').disabled = true;
+            $('#btnExportarVac').disabled = true;
+            ventanaTipo = 'salario';
+            return;
+        }
+        // Mismo reinicio que hidden.bs.modal en nominas.php
         datosActual = null;
         trabajadorActual = null;
         $('#listadoTrabajadorId').value = '';
@@ -1491,6 +1946,11 @@ html, body { overflow-x: hidden; }
         $('#btnImprimirListadoDevengado').disabled = true;
         $('#btnExportarListadoDevengado').disabled = true;
         listadoCargarAnios();
+        // En modo trabajador el acceso es limitado a su propia información:
+        // se restaura automáticamente su registro al cerrar el reporte.
+        if (INICIAL.suTipo === 'trabajador' && trabajadoresTodos.length) {
+            listadoSeleccionarTrabajador(trabajadoresTodos[0]);
+        }
     }
 
     // Arrastre de la ventana por la barra de títulos
@@ -1594,6 +2054,156 @@ html, body { overflow-x: hidden; }
         + '</div><div style="height:3.4375rem;"></div>'
         + '<script>(function(){var tb=document.getElementById("auto-hide-toolbar");if(!tb)return;var lastY=window.scrollY||0;window.addEventListener("scroll",function(){var y=window.scrollY||0;if(y>lastY+4&&y>60){tb.classList.add("hidden")}else if(y<lastY-4){tb.classList.remove("hidden")}lastY=y},{passive:true});})();<\/script>';
 
+    // ---------- Pie de página del reporte impreso: 3 secciones ----------
+    // Izquierda: empresa - reporte | Centro: documento/usuario | Derecha: Página X de Y
+    function makeFooterImpresion(doc, n, total, cfg) {
+        var footer = doc.createElement('div');
+        footer.className = 'print-footer';
+        var l = doc.createElement('div');
+        l.className = 'pf-left';
+        l.textContent = cfg.footerLeft || '';
+        var c = doc.createElement('div');
+        c.className = 'pf-center';
+        c.textContent = cfg.footerCenter || '';
+        var r = doc.createElement('div');
+        r.className = 'pf-right';
+        r.textContent = 'Página ' + n + ' de ' + total;
+        footer.appendChild(l);
+        footer.appendChild(c);
+        footer.appendChild(r);
+        return footer;
+    }
+
+    // ---------- Paginación por medición real (hojas .page-sheet) ----------
+    // Portado de modules/submayor_vacaciones.php: divide la tabla en hojas
+    // Carta verticales repitiendo encabezado y cierra con el pie de 3 secciones.
+    function paginarImpresion(doc, cfg) {
+        if (!doc || !cfg) return;
+        var MM = 25.4 / 96;
+        var SHEET_H = cfg.sheetH || 215.9;
+        var PAD_TOP = (typeof cfg.padTop === 'number') ? cfg.padTop : 12;
+        var PAD_BOT = (typeof cfg.padBot === 'number') ? cfg.padBot : 16;
+        var FOOT_H = (typeof cfg.footH === 'number') ? cfg.footH : 0;
+        var SAFETY = (typeof cfg.safety === 'number') ? cfg.safety : 6;
+        var tableTop = cfg.tableTop || 0;
+        var tableBottom = cfg.tableBottom || 0;
+
+        var headerEl = cfg.headerSel ? doc.querySelector(cfg.headerSel) : null;
+        var tableEl = doc.querySelector(cfg.tableSel);
+        var sigEl = cfg.sigSel ? doc.querySelector(cfg.sigSel) : null;
+        var root = (cfg.rootSel && doc.querySelector(cfg.rootSel)) || doc.body;
+        if (!tableEl || !root) { if (root) root.setAttribute('data-pg-ret', 'no-table'); return; }
+
+        var thead = tableEl.querySelector('thead');
+        var tbody = tableEl.querySelector('tbody');
+        var tfoot = tableEl.querySelector('tfoot');
+        if (!tbody) { root.setAttribute('data-pg-ret', 'no-tbody'); return; }
+        var rows = Array.prototype.slice.call(tbody.children);
+
+        if (rows.length && rows[0].cells && rows[0].cells.length) {
+            var widths = [], totalW = 0;
+            Array.prototype.forEach.call(rows[0].cells, function (td) {
+                var w = td.offsetWidth || 0;
+                widths.push(w);
+                totalW += w;
+            });
+            tableEl.style.tableLayout = 'fixed';
+            if (totalW > 0) {
+                var colgroup = doc.createElement('colgroup');
+                widths.forEach(function (w) {
+                    var col = doc.createElement('col');
+                    col.style.width = (w / totalW * 100).toFixed(4) + '%';
+                    colgroup.appendChild(col);
+                });
+                tableEl.insertBefore(colgroup, tableEl.firstChild);
+            }
+        }
+
+        var headerH = headerEl ? headerEl.offsetHeight : 0;
+        var theadH = thead ? thead.offsetHeight : 0;
+        var rowHs = [], maxRow = 0;
+        rows.forEach(function (r) {
+            var h = r.offsetHeight || 0;
+            rowHs.push(h);
+            if (h > maxRow) maxRow = h;
+        });
+        var tfootH = tfoot ? tfoot.offsetHeight : 0;
+        var sigH = sigEl ? sigEl.offsetHeight : 0;
+        var contentPx = (SHEET_H - PAD_TOP - PAD_BOT - FOOT_H - SAFETY) / MM;
+        var budgetPx = contentPx - tableTop - tableBottom;
+
+        if (rows.length === 0) {
+            var emptySheet = doc.createElement('div');
+            emptySheet.className = 'page-sheet last';
+            if (headerEl) emptySheet.appendChild(headerEl);
+            emptySheet.appendChild(tableEl);
+            if (sigEl) emptySheet.appendChild(sigEl);
+            emptySheet.appendChild(makeFooterImpresion(doc, 1, 1, cfg));
+            root.innerHTML = '';
+            root.appendChild(emptySheet);
+            return;
+        }
+
+        if (maxRow === 0) { root.setAttribute('data-pg-ret', 'maxRow0-hdr' + headerH + '-thead' + theadH + '-rows' + rows.length); return; }
+
+        root.removeAttribute('data-pg-ret');
+
+        var lastBudget = budgetPx - sigH - tfootH;
+        if (lastBudget < theadH + headerH + maxRow) lastBudget = budgetPx;
+
+        var pagesIdx = [];
+        var i = rows.length - 1;
+        var lastRows = [];
+        var used = headerH + theadH;
+        while (i >= 0) {
+            var h = rowHs[i];
+            if (lastRows.length > 0 && used + h > lastBudget) break;
+            lastRows.push(i);
+            used += h;
+            i--;
+        }
+        if (lastRows.length === 0 && i >= 0) { lastRows.push(i); i--; }
+
+        var cur = [];
+        used = headerH + theadH;
+        while (i >= 0) {
+            var h2 = rowHs[i];
+            if (cur.length > 0 && used + h2 > budgetPx) {
+                pagesIdx.push(cur);
+                cur = [];
+                used = headerH + theadH;
+            }
+            cur.push(i);
+            used += h2;
+            i--;
+        }
+        if (cur.length > 0) pagesIdx.push(cur);
+
+        pagesIdx.reverse();
+        pagesIdx.forEach(function (p) { p.reverse(); });
+        lastRows.reverse();
+        pagesIdx.push(lastRows);
+
+        root.innerHTML = '';
+        var total = pagesIdx.length;
+        for (var p = 0; p < total; p++) {
+            var isLast = (p === total - 1);
+            var sheet = doc.createElement('div');
+            sheet.className = 'page-sheet' + (isLast ? ' last' : '');
+            if (headerEl) sheet.appendChild(headerEl.cloneNode(true));
+            var tbl = doc.createElement('table');
+            if (thead) tbl.appendChild(thead.cloneNode(true));
+            var tb = doc.createElement('tbody');
+            pagesIdx[p].forEach(function (idx) { tb.appendChild(rows[idx].cloneNode(true)); });
+            tbl.appendChild(tb);
+            if (isLast && tfoot) tbl.appendChild(tfoot.cloneNode(true));
+            sheet.appendChild(tbl);
+            if (isLast && sigEl) sheet.appendChild(sigEl.cloneNode(true));
+            sheet.appendChild(makeFooterImpresion(doc, p + 1, total, cfg));
+            root.appendChild(sheet);
+        }
+    }
+
     function listadoImprimir() {
         if (!datosActual) { listadoSwalError('Primero genere el reporte.'); return; }
         var now = new Date();
@@ -1606,26 +2216,34 @@ html, body { overflow-x: hidden; }
             '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
             + '<title>Listado Total Salario Devengado</title>'
             + '<style>'
-            + '@page { size: portrait; margin:12mm; }'
+            + '@page { size: letter landscape; margin:0; }'
             + 'body { font-family: Arial, sans-serif; font-size:10pt; color: #000; margin:0; padding:0; }'
-            + '.header-container { width:100%; border: 0.0625rem solid #000; border-collapse: collapse; margin-bottom:1.125rem; }'
-            + '.header-container td { border: 0.0625rem solid #000; padding:0.5rem; vertical-align: middle; }'
+            + '.header-container { width:100%; border: 0.0625rem solid #000; border-collapse: collapse; margin-bottom:0.5rem; }'
+            + '.header-container td { border: 0.0625rem solid #000; padding:0.35rem 0.5rem; vertical-align: middle; }'
             + '.logo-cell { width:3.75rem; text-align: center; }'
             + '.title-cell { text-align: center; font-weight: bold; font-size:12pt; }'
             + '.meta-cell { font-size:8pt; width:11.875rem; }'
-            + '.main-table { border-collapse: collapse; margin-top:0.5rem; table-layout: auto; width:auto; margin-left:auto; margin-right:auto; }'
-            + '.main-table th { background-color: #0891b2; color: #ffffff; font-weight: bold; padding:0.5rem; border: 0.0625rem solid #000; text-align: right; -webkit-print-color-adjust: exact; }'
+            + '.main-table { border-collapse: collapse; margin-top:0.375rem; table-layout: auto; width:100%; }'
+            + '.main-table th { background-color: #0891b2; color: #ffffff; font-weight: bold; padding:0.3rem 0.5rem; border: 0.0625rem solid #000; text-align: right; -webkit-print-color-adjust: exact; }'
             + '.main-table th:first-child { text-align: left; }'
-            + '.main-table td { border: 0.0625rem solid #000; padding:0.375rem 0.625rem; text-align: right; }'
+            + '.main-table td { border: 0.0625rem solid #000; padding:0.2rem 0.5rem; text-align: right; }'
             + '.main-table td:first-child { text-align: left; }'
             + '.total-row { background-color: #f0f4f8; font-weight: bold; }'
             + '.total-row td { border-top: 0.125rem solid #000; color: #0e7490; }'
-            + '.info-line { text-align: center; margin:0.25rem 0; }'
-            + '.sig-line { border-top: 0.0625rem solid #000; width:90%; margin:2.8125rem auto 0.3125rem auto; }'
+            + '.info-line { text-align: center; margin:0.1rem 0; }'
+            + '.sig-line { border-top: 0.0625rem solid #000; width:90%; margin:2rem auto 0.3125rem auto; }'
             + '.footer-info { margin-top:0.9375rem; font-size:8pt; color: #666; text-align: center; border-top: 0.5pt solid #eee; padding-top:0.3125rem; }'
-            + '.filtro-info { background-color: #f8f9fa; font-weight: bold; color: #0e7490; padding:0.25rem 0.625rem; border-radius: 0.25rem; display: inline-block; }'
-            + '@media print { .no-print { display: none !important; } }'
+            + '.filtro-info { background-color: #f8f9fa; font-weight: bold; color: #0e7490; padding: 0.25rem 0.625rem; border-radius: 0.1875rem; display: inline-block; }'
+            + '.page-sheet { width:279.4mm; height:215.9mm; padding:10mm 10mm 16mm 10mm; box-sizing:border-box; position:relative; overflow:hidden; background:#fff; page-break-after:always; break-after:page; margin:0.5rem auto; box-shadow:0 2px 8px rgba(0,0,0,0.18); }'
+            + '.page-sheet.last { page-break-after:auto; break-after:auto; }'
+            + '.page-sheet .main-table { width:100%; }'
+            + '.print-footer { position:absolute; bottom:5mm; left:10mm; right:10mm; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; border-top:0.0625rem solid #bbb; padding-top:0.25rem; font-size:7.5pt; color:#555; }'
+            + '.print-footer .pf-center { flex:1; text-align:center; }'
+            + '.print-footer .pf-right { text-align:right; white-space:nowrap; font-weight:bold; }'
+            + '@media print { .no-print { display: none !important; } .page-sheet { margin:0 !important; box-shadow:none !important; height:100vh; } }'
             + '</style></head><body>' + PRINT_TOOLBAR_HTML
+            + '<div id="pgRoot" style="width:279.4mm;padding:10mm 10mm 16mm 10mm;box-sizing:border-box;">'
+            + '<div id="pgHeader">'
             + '<table class="header-container"><tr>'
             + '<td class="logo-cell">' + (logoBase64 ? '<img src="' + logoBase64 + '" width="50">' : '') + '</td>'
             + '<td class="title-cell">LISTADO TOTAL SALARIO DEVENGADO<br><span style="font-size:10pt;">' + listadoEscapeHtml((nombreEmpresa || '').toUpperCase()) + '</span></td>'
@@ -1634,12 +2252,22 @@ html, body { overflow-x: hidden; }
             + '<div style="text-align:center; margin-bottom:0.375rem;"><span class="filtro-info">ESTADO: ' + estadoSeleccionadoTxt() + '</span> &nbsp; <span class="filtro-info">MODO: ' + (datosActual.modo === 'completo' ? 'COMPLETO (POR MES)' : 'CONSOLIDADO') + '</span></div>'
             + '<div class="info-line"><strong>MES:</strong> ' + listadoEscapeHtml(mesTextoActual) + '</div>'
             + '<div class="info-line"><strong>NOMBRE DEL TRABAJADOR:</strong> ' + listadoEscapeHtml(trabajadorActual.nombre_completo) + '</div>'
-            + '<table class="main-table">' + tablaHtml + '</table>'
-            + '<div style="margin-top:3.4375rem;">' + firmasHtml('<div class="sig-line"></div>') + '</div>'
-            + '<div class="footer-info">' + pieDocumento() + '</div>'
+            + '</div>'
+            + '<table class="main-table" id="pgTable">' + tablaHtml + '</table>'
+            + '<div id="pgSig" style="margin-top:2.5rem;">' + firmasHtml('<div class="sig-line"></div>') + '</div>'
+            + '</div>'
             + '</body></html>'
         );
         win.document.close();
+        paginarImpresion(win.document, {
+            rootSel: '#pgRoot',
+            headerSel: '#pgHeader',
+            tableSel: '#pgTable',
+            sigSel: '#pgSig',
+            footerLeft: (nombreEmpresa || '').toUpperCase() + ' - LISTADO TOTAL SALARIO DEVENGADO',
+            footerCenter: pieDocumento(),
+            padTop: 10, padBot: 14, footH: 0, safety: 3, tableTop: 4, tableBottom: 4
+        });
     }
 
     // ----------------------------------------------------------
@@ -1800,7 +2428,7 @@ html, body { overflow-x: hidden; }
         var esCompleto = (datosActual.modo === 'completo');
         var numCols = esCompleto ? 5 : 6;
 
-        var contenido = '<div class="WordSection1">'
+        var contenido = '<div class="WordSection1 Section1">'
             + '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;">'
             + '<tr>'
             + '<td style="width:3.75rem;text-align:center;">' + (logoBase64 ? '<img src="' + logoBase64 + '" width="34" height="41" style="width:0.9cm;height:1.08cm;">' : '') + '</td>'
@@ -1839,7 +2467,7 @@ html, body { overflow-x: hidden; }
             + '<p style="font-size:8pt;color:#666;text-align:center;margin-top:0.9375rem;">' + pieDocumento() + '</p>'
             + '</div>';
 
-        var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Listado Total Salario Devengado</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--><style>img { width:0.9cm !important; height:1.08cm !important; }</style></head><body>' + contenido + '</body></html>';
+        var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Listado Total Salario Devengado</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--><style>@page Section1 { size:11in 8.5in; margin:0.5in; mso-header-margin:0.5in; mso-footer-margin:0.5in; } div.Section1 { page:Section1; } img { width:0.9cm !important; height:1.08cm !important; }</style></head><body>' + contenido + '</body></html>';
         listadoDescargar(html, listadoNombreArchivo('doc'), 'application/msword;charset=utf-8');
     }
 
@@ -1916,7 +2544,7 @@ html, body { overflow-x: hidden; }
 
         var docDefinition = {
             pageSize: 'LETTER',
-            pageOrientation: 'portrait',
+            pageOrientation: 'landscape',
             pageMargins: [30, 30, 30, 40],
             content: [
                 {
@@ -2019,6 +2647,7 @@ html, body { overflow-x: hidden; }
         // Cerrar menú de exportación al hacer clic fuera
         if (!e.target.closest('.su-dropdown')) {
             $('#suMenuExportar').classList.remove('abierto');
+            if ($('#vacMenuExportar')) $('#vacMenuExportar').classList.remove('abierto');
         }
     });
 
@@ -2048,8 +2677,945 @@ html, body { overflow-x: hidden; }
         });
     });
 
+    // ===========================================================
+    // VISTA: SUBMAYOR DE VACACIONES (misma página, mismo acceso)
+    // ===========================================================
+    var vacFilas = [];
+    var vacDatos = null;
+    var pagCfgVac = { pag: 1, por: 5 };
+    var vacVisibles = [];
+    var vacInicialListo = false;
+    var vacEsTrabajador = (INICIAL.suTipo === 'trabajador');
+    var vacOrden = { col: '', dir: 1 };
+    var vacVacioTexto = '<i class="fas fa-umbrella-beach"></i> Seleccione el año (y opcionalmente el mes) para ver los saldos de vacaciones.';
+
+    function vacFmt(n) {
+        return Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function vacClaseSaldo(n) {
+        if (n > 0) return 'su-saldo-positivo';
+        if (n < 0) return 'su-saldo-negativo';
+        return 'su-saldo-cero';
+    }
+    function vacAnioActivo() {
+        var sel = vacEsTrabajador ? $('#vacAnioTrab') : $('#vacAnio');
+        return sel ? sel.value : '';
+    }
+    function vacMesActivo() {
+        var sel = vacEsTrabajador ? $('#vacMesTrab') : $('#vacMes');
+        return sel ? (sel.value || '0') : '0';
+    }
+    function vacActualizarBotones() {
+        var btnT = $('#vacBtnGenerarTrab');
+        if (btnT) btnT.disabled = !$('#vacAnioTrab').value;
+        var btnU = $('#vacBtnGenerar');
+        if (btnU) btnU.disabled = !($('#vacAnio').value || ($('#vacDesde').value && $('#vacHasta').value));
+    }
+    function vacPoblarAnios(anios) {
+        ['vacAnio', 'vacAnioTrab'].forEach(function (id) {
+            var sel = document.getElementById(id);
+            if (!sel) return;
+            anios.forEach(function (a) {
+                var o = document.createElement('option');
+                o.value = a;
+                o.textContent = a;
+                sel.appendChild(o);
+            });
+            var anioActual = new Date().getFullYear();
+            if (anios.indexOf(anioActual) !== -1) sel.value = String(anioActual);
+        });
+        vacActualizarBotones();
+    }
+
+    function mostrarVista(nombre) {
+        var esVac = (nombre === 'vacaciones');
+        $('#vistaSalario').style.display = esVac ? 'none' : '';
+        $('#vistaVacaciones').style.display = esVac ? '' : 'none';
+        $('#navSalario').classList.toggle('activa', !esVac);
+        $('#navVacaciones').classList.toggle('activa', esVac);
+        $('#cabTitulo').innerHTML = esVac
+            ? '<i class="fas fa-umbrella-beach"></i> Consulta del Submayor de Vacaciones'
+            : '<i class="fas fa-user-tie"></i> Listado de Salarios Devengados por Trabajador';
+        $('#cabDesc').textContent = esVac
+            ? 'Saldo de vacaciones por trabajador según el año y mes seleccionados'
+            : 'Busque un trabajador y seleccione el mes o "Todos" para sumar el total del año por tipo de nómina';
+        if (esVac && !vacInicialListo) {
+            fetch('api.php?accion=inicial_vac')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d || !d.success) return;
+                    vacPoblarAnios(d.anios || []);
+                    if (!vacEsTrabajador) {
+                        var selT = $('#vacTrabajador');
+                        trabajadoresTodos.forEach(function (t) {
+                            var o = document.createElement('option');
+                            o.value = t.id;
+                            o.textContent = (t.codigo ? t.codigo + ' · ' : '') + t.nombre_completo;
+                            selT.appendChild(o);
+                        });
+                        (d.areas || []).forEach(function (a) {
+                            var o = document.createElement('option');
+                            o.value = a.id;
+                            o.textContent = a.nombre;
+                            $('#vacArea').appendChild(o);
+                        });
+                        (d.centrosCosto || []).forEach(function (c) {
+                            var o = document.createElement('option');
+                            o.value = c.id;
+                            o.textContent = (c.codigo ? c.codigo + ' · ' : '') + c.nombre;
+                            $('#vacCentroCosto').appendChild(o);
+                        });
+                    }
+                    vacInicialListo = true;
+                    if (!d.hayMov) {
+                        $('#vacVacio').innerHTML = '<i class="fas fa-circle-info"></i> Aún no hay movimientos de vacaciones registrados en el submayor.';
+                    }
+                })
+                .catch(function () { /* sin red: se queda en estado vacío */ });
+        }
+    }
+
+    $('#navSalario').addEventListener('click', function (e) { e.preventDefault(); mostrarVista('salario'); });
+    $('#navVacaciones').addEventListener('click', function (e) { e.preventDefault(); mostrarVista('vacaciones'); });
+
+    function vacGenerar() {
+        var anio = vacAnioActivo();
+        var mes = vacMesActivo();
+        var desde = vacEsTrabajador ? '' : $('#vacDesde').value;
+        var hasta = vacEsTrabajador ? '' : $('#vacHasta').value;
+
+        if (!anio && !(desde && hasta)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Año o fechas requeridas',
+                html: 'Seleccione el año (o las fechas "Desde" y "Hasta") del reporte para continuar.',
+                confirmButtonText: '<i class="fas fa-check"></i> Entendido'
+            });
+            (vacEsTrabajador ? $('#vacAnioTrab') : $('#vacAnio')).focus();
+            return;
+        }
+        if (desde && hasta && desde > hasta) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Rango de fechas inválido',
+                html: 'La fecha "Desde" no puede ser posterior a la fecha "Hasta".',
+                confirmButtonText: '<i class="fas fa-check"></i> Entendido'
+            });
+            return;
+        }
+
+        var btn = vacEsTrabajador ? $('#vacBtnGenerarTrab') : $('#vacBtnGenerar');
+        var textoBtn = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Generando...</span>';
+        $('#vacVacio').innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Consultando el submayor de vacaciones...';
+        $('#vacVacio').style.display = '';
+
+        var cuerpo = new URLSearchParams();
+        cuerpo.append('anio', anio || '');
+        cuerpo.append('mes', mes);
+        cuerpo.append('desde', desde);
+        cuerpo.append('hasta', hasta);
+        if (!vacEsTrabajador) {
+            cuerpo.append('trabajador_id', $('#vacTrabajador').value || '0');
+            cuerpo.append('area_id', $('#vacArea').value || '0');
+            cuerpo.append('centro_costo_id', $('#vacCentroCosto').value || '0');
+            cuerpo.append('tipo_mov', $('#vacTipoMov').value || '');
+            cuerpo.append('ocultar_cero', $('#vacOcultarCero').checked ? '1' : '0');
+        }
+
+        fetch('api.php?accion=reporte_vac', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: cuerpo.toString()
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            btn.disabled = false;
+            btn.innerHTML = textoBtn;
+            if (!d || !d.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No se pudo generar',
+                    html: listadoEscapeHtml(d && d.error) || 'Error al consultar el submayor de vacaciones.',
+                    confirmButtonText: '<i class="fas fa-check"></i> Entendido'
+                });
+                $('#vacVacio').innerHTML = vacVacioTexto;
+                return;
+            }
+            vacDatos = d;
+            pagCfgVac.pag = 1;
+            pagCfgVac.por = 5;
+            vacFilas = d.filas || [];
+            vacOrden = { col: '', dir: 1 };
+            vacPintar();
+            if (vacVisibles.length) {
+                vacRender();
+                abrirVentana('vacaciones');
+            }
+        })
+        .catch(function () {
+            btn.disabled = false;
+            btn.innerHTML = textoBtn;
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de conexión',
+                html: 'No se pudo contactar con el servidor. Intente nuevamente.',
+                confirmButtonText: '<i class="fas fa-rotate-right"></i> Reintentar'
+            });
+            $('#vacVacio').innerHTML = vacVacioTexto;
+        });
+    }
+
+    function vacLimpiarFiltros() {
+        $('#vacAnio').value = '';
+        $('#vacMes').value = '0';
+        $('#vacDesde').value = '';
+        $('#vacHasta').value = '';
+        $('#vacTrabajador').value = '';
+        $('#vacArea').value = '';
+        $('#vacCentroCosto').value = '';
+        $('#vacTipoMov').value = '';
+        $('#vacExcedidas').value = '';
+        $('#vacEstado').value = '';
+        $('#vacSaldoFiltro').value = '';
+        $('#vacOcultarCero').checked = false;
+        $('#vacSoloBajas').checked = false;
+        vacOrden = { col: '', dir: 1 };
+        vacActualizarBotones();
+    }
+
+    function vacFiltrar() {
+        if (!vacDatos || vacDatos.modo === 'mensual') return vacFilas.slice();
+        var soloBajas = $('#vacSoloBajas').checked;
+        var estado = $('#vacEstado').value;
+        var excedidas = $('#vacExcedidas').value;
+        var saldoF = $('#vacSaldoFiltro').value;
+        return vacFilas.filter(function (f) {
+            var est = f.activo ? 'activo' : 'baja';
+            if (soloBajas && est !== 'baja') return false;
+            if (estado && est !== estado) return false;
+            if (excedidas === 'mayor20' && !f.excedida) return false;
+            var s = Number(f.saldo_final || 0);
+            if (saldoF === 'menor1' && !(s < 1)) return false;
+            if (saldoF === 'mayor1' && !(s >= 1)) return false;
+            return true;
+        });
+    }
+
+    function vacOrdenar(filas) {
+        if (!vacOrden.col) return filas;
+        var col = vacOrden.col;
+        var dir = vacOrden.dir;
+        return filas.slice().sort(function (a, b) {
+            var va = a[col];
+            var vb = b[col];
+            if (col === 'mes') return (Number(va || 0) - Number(vb || 0)) * dir;
+            if (typeof va === 'number' || typeof vb === 'number') {
+                return (Number(va || 0) - Number(vb || 0)) * dir;
+            }
+            return String(va == null ? '' : va).localeCompare(String(vb == null ? '' : vb), 'es') * dir;
+        });
+    }
+
+    function vacTh(texto, clave, opts) {
+        opts = opts || {};
+        var activo = (vacOrden.col === clave);
+        var estilo = [];
+        if (opts.left) estilo.push('text-align:left');
+        if (opts.right) estilo.push('text-align:right');
+        return '<th class="su-ordenable' + (activo ? ' orden-activo' : '') + '" data-key="' + clave + '"'
+            + (opts.rs ? ' rowspan="2"' : '')
+            + (estilo.length ? ' style="' + estilo.join(';') + '"' : '')
+            + ' title="Ordenar por ' + listadoEscapeHtml(texto) + '">'
+            + listadoEscapeHtml(texto)
+            + '<span class="su-orden">' + (activo ? (vacOrden.dir === 1 ? '\u25B2' : '\u25BC') : '\u25B5\u25BD') + '</span></th>';
+    }
+
+    function vacCabeceraHtml(conOrden) {
+        var mensual = (vacDatos && vacDatos.modo === 'mensual');
+        var th = conOrden
+            ? vacTh
+            : function (texto, clave, opts) {
+                opts = opts || {};
+                var estilo = '';
+                if (opts.left) estilo = ' style="text-align:left"';
+                if (opts.right) estilo = ' style="text-align:right"';
+                return '<th' + (opts.rs ? ' rowspan="2"' : '') + estilo + '>' + listadoEscapeHtml(texto) + '</th>';
+            };
+        if (mensual) {
+            return '<tr>'
+                + th('MES', 'mes', { rs: true, left: true })
+                + th('ACUMULADAS', 'acumuladas', { rs: true, right: true })
+                + th('DISFRUTADAS', 'disfrutadas', { rs: true, right: true })
+                + '<th colspan="2" style="text-align:center;">LIQUIDACION</th>'
+                + th('AJUSTES', 'ajustes', { rs: true, right: true })
+                + '<th colspan="2" style="text-align:center;">SALDO TOTAL</th>'
+                + '</tr><tr>'
+                + th('Días', 'liquidadas', { right: true })
+                + th('Importe', 'importe_liquidadas', { right: true })
+                + th('Días', 'saldo_dias', { right: true })
+                + th('Importe', 'importe', { right: true })
+                + '</tr>';
+        }
+        return '<tr>'
+            + th('No. Exp.', 'codigo', { rs: true, left: true })
+            + th('NOMBRE DEL TRABAJADOR', 'nombre_completo', { rs: true, left: true })
+            + th('CARNÉ', 'ci', { rs: true, left: true })
+            + th('SALDO INICIAL', 'saldo_inicial', { rs: true, right: true })
+            + th('ACUMULADAS', 'acumuladas', { rs: true, right: true })
+            + th('DISFRUTADAS', 'disfrutadas', { rs: true, right: true })
+            + '<th colspan="2" style="text-align:center;">LIQUIDACION</th>'
+            + th('AJUSTES', 'ajustes', { rs: true, right: true })
+            + '<th colspan="2" style="text-align:center;">SALDO TOTAL</th>'
+            + '</tr><tr>'
+            + th('Días', 'liquidadas', { right: true })
+            + th('Importe', 'importe_liquidadas', { right: true })
+            + th('Días', 'saldo_final', { right: true })
+            + th('Importe', 'importe', { right: true })
+            + '</tr>';
+    }
+
+    function vacFilaHtml(f) {
+        if (vacDatos && vacDatos.modo === 'mensual') {
+            return '<tr>'
+                + '<td style="text-align:left;"><strong>' + listadoEscapeHtml(f.mes_nombre || (MESES_ESP[f.mes] || '')) + '</strong></td>'
+                + '<td>' + vacFmt(f.acumuladas) + '</td>'
+                + '<td>' + vacFmt(f.disfrutadas) + '</td>'
+                + '<td>' + vacFmt(f.liquidadas) + '</td>'
+                + '<td>' + listadoMoneda(f.importe_liquidadas) + '</td>'
+                + '<td>' + vacFmt(f.ajustes) + '</td>'
+                + '<td class="vac-saldo-total ' + vacClaseSaldo(f.saldo_dias) + '">' + vacFmt(f.saldo_dias) + '</td>'
+                + '<td>' + listadoMoneda(f.importe) + '</td>'
+                + '</tr>';
+        }
+        var clase = f.excedida ? ' class="vac-excedida"' : '';
+        var badges = '';
+        if (!f.activo) badges += ' <span class="su-badge-estado baja" title="Trabajador dado de baja"><i class="fas fa-user-slash"></i> Baja</span>';
+        if (f.excedida) badges += ' <span class="su-badge-estado excedida" title="Saldo total en el submayor mayor de 20 días">&gt;20</span>';
+        return '<tr' + clase + '>'
+            + '<td style="text-align:left;">' + listadoEscapeHtml(f.codigo || 'S/C') + '</td>'
+            + '<td style="text-align:left;"><strong>' + listadoEscapeHtml(f.nombre_completo) + '</strong>' + badges + '</td>'
+            + '<td style="text-align:left;">' + listadoEscapeHtml(f.ci || 'S/CI') + '</td>'
+            + '<td>' + vacFmt(f.saldo_inicial) + '</td>'
+            + '<td>' + vacFmt(f.acumuladas) + '</td>'
+            + '<td>' + vacFmt(f.disfrutadas) + '</td>'
+            + '<td>' + vacFmt(f.liquidadas) + '</td>'
+            + '<td>' + listadoMoneda(f.importe_liquidadas) + '</td>'
+            + '<td>' + vacFmt(f.ajustes) + '</td>'
+            + '<td class="vac-saldo-total ' + vacClaseSaldo(f.saldo_final) + '">' + vacFmt(f.saldo_final) + '</td>'
+            + '<td>' + listadoMoneda(f.importe) + '</td>'
+            + '</tr>';
+    }
+
+    function vacTotales() {
+        if (vacDatos && vacDatos.modo === 'mensual' && vacDatos.totales) {
+            var t = vacDatos.totales;
+            return {
+                ini: 0, acum: t.acumuladas, disf: t.disfrutadas,
+                liq: t.liquidadas, impLiq: t.importe_liquidadas,
+                ajus: t.ajustes, fin: t.saldo_dias, imp: t.importe,
+                etiqueta: 'TOTAL DEL AÑO'
+            };
+        }
+        var r = { ini: 0, acum: 0, disf: 0, liq: 0, impLiq: 0, ajus: 0, fin: 0, imp: 0, etiqueta: 'TOTALES (' + vacVisibles.length + ' trabajadores)' };
+        vacVisibles.forEach(function (f) {
+            r.ini += Number(f.saldo_inicial || 0);
+            r.acum += Number(f.acumuladas || 0);
+            r.disf += Number(f.disfrutadas || 0);
+            r.liq += Number(f.liquidadas || 0);
+            r.impLiq += Number(f.importe_liquidadas || 0);
+            r.ajus += Number(f.ajustes || 0);
+            r.fin += Number(f.saldo_final || 0);
+            r.imp += Number(f.importe || 0);
+        });
+        return r;
+    }
+
+    function vacPieCeldas(bold) {
+        var t = vacTotales();
+        var b0 = bold ? '<b>' : '';
+        var b1 = bold ? '</b>' : '';
+        var etiqueta = b0 + t.etiqueta + b1;
+        if (vacDatos && vacDatos.modo === 'mensual') {
+            return '<td style="text-align:left;">' + etiqueta + '</td>'
+                + '<td>' + b0 + vacFmt(t.acum) + b1 + '</td>'
+                + '<td>' + b0 + vacFmt(t.disf) + b1 + '</td>'
+                + '<td>' + b0 + vacFmt(t.liq) + b1 + '</td>'
+                + '<td>' + b0 + listadoMoneda(t.impLiq) + b1 + '</td>'
+                + '<td>' + b0 + vacFmt(t.ajus) + b1 + '</td>'
+                + '<td class="vac-saldo-total">' + b0 + vacFmt(t.fin) + b1 + '</td>'
+                + '<td>' + b0 + listadoMoneda(t.imp) + b1 + '</td>';
+        }
+        return '<td colspan="3" style="text-align:left;">' + etiqueta + '</td>'
+            + '<td>' + b0 + vacFmt(t.ini) + b1 + '</td>'
+            + '<td>' + b0 + vacFmt(t.acum) + b1 + '</td>'
+            + '<td>' + b0 + vacFmt(t.disf) + b1 + '</td>'
+            + '<td>' + b0 + vacFmt(t.liq) + b1 + '</td>'
+            + '<td>' + b0 + listadoMoneda(t.impLiq) + b1 + '</td>'
+            + '<td>' + b0 + vacFmt(t.ajus) + b1 + '</td>'
+            + '<td class="vac-saldo-total">' + b0 + vacFmt(t.fin) + b1 + '</td>'
+            + '<td>' + b0 + listadoMoneda(t.imp) + b1 + '</td>';
+    }
+
+    function vacPieMostrar() {
+        return !!(vacDatos && (vacVisibles.length > 1 || vacDatos.modo === 'mensual'));
+    }
+
+    function vacPintar() {
+        vacVisibles = vacOrdenar(vacFiltrar());
+        if (!vacDatos || !vacVisibles.length) {
+            $('#vacVacio').innerHTML = vacDatos
+                ? '<i class="fas fa-filter"></i> No hay trabajadores que coincidan con los filtros seleccionados.'
+                : vacVacioTexto;
+            $('#vacVacio').style.display = '';
+            return false;
+        }
+        $('#vacVacio').innerHTML = '<i class="fas fa-circle-check"></i> Reporte listo: ' + vacVisibles.length
+            + (vacDatos.modo === 'mensual' ? ' meses' : ' trabajadores') + ' para mostrar en la ventana del reporte.';
+        $('#vacVacio').style.display = '';
+        return true;
+    }
+
+    function vacPeriodoTexto() {
+        if (!vacDatos) return '';
+        if (vacDatos.modo === 'mensual') {
+            var anioTrab = $('#vacAnioTrab').value;
+            return anioTrab ? ('AÑO ' + anioTrab + ' (MES A MES)') : '';
+        }
+        var d1 = vacDatos.desde || '';
+        var d2 = vacDatos.hasta || '';
+        if (!d1 || !d2) return '';
+        var a1 = d1.slice(0, 4);
+        var a2 = d2.slice(0, 4);
+        var m1 = parseInt(d1.slice(5, 7), 10);
+        var m2 = parseInt(d2.slice(5, 7), 10);
+        if (d1.slice(5) === '01-01' && d2.slice(5) === '12-31') {
+            return (a1 === a2) ? a1 : (a1 + ' al ' + a2);
+        }
+        var ultimoDia = String(new Date(parseInt(a2, 10), m2, 0).getDate()).padStart(2, '0');
+        if (a1 === a2 && d1.slice(8) === '01' && d2.slice(8) === ultimoDia) {
+            return (MESES_ESP[m1] + ' ' + a1).toUpperCase();
+        }
+        return d1.split('-').reverse().join('/') + ' al ' + d2.split('-').reverse().join('/');
+    }
+
+    function vacTrabajadorTexto() {
+        if (!vacDatos) return '';
+        if (vacDatos.modo === 'mensual') {
+            var tm = vacDatos.trabajador || {};
+            return (tm.nombre_completo || '') + (tm.ci ? ' (CI: ' + tm.ci + ')' : '');
+        }
+        var selId = $('#vacTrabajador').value;
+        if (selId) {
+            var nom = '';
+            trabajadoresTodos.forEach(function (t) { if (String(t.id) === String(selId)) nom = t.nombre_completo; });
+            if (nom) return nom;
+        }
+        if (vacVisibles.length === 1) return vacVisibles[0].nombre_completo;
+        return 'TODOS LOS TRABAJADORES (' + vacVisibles.length + ')';
+    }
+
+    function vacFiltrosTexto() {
+        if (vacEsTrabajador) return '';
+        var partes = [];
+        var area = $('#vacArea');
+        var cc = $('#vacCentroCosto');
+        var tm = $('#vacTipoMov');
+        if (area.value) partes.push('ÁREA: ' + area.options[area.selectedIndex].text);
+        if (cc.value) partes.push('CENTRO DE COSTO: ' + cc.options[cc.selectedIndex].text);
+        if (tm.value) partes.push('MOVIMIENTO: ' + tm.options[tm.selectedIndex].text);
+        if ($('#vacExcedidas').value) partes.push('SOLO EXCEDIDAS (> 20 DÍAS)');
+        if ($('#vacEstado').value) partes.push('ESTADO: ' + $('#vacEstado').options[$('#vacEstado').selectedIndex].text.toUpperCase());
+        if ($('#vacSaldoFiltro').value) partes.push('SALDOS: ' + $('#vacSaldoFiltro').options[$('#vacSaldoFiltro').selectedIndex].text.toUpperCase());
+        if ($('#vacOcultarCero').checked) partes.push('OCULTAR SALDO EN CERO');
+        if ($('#vacSoloBajas').checked) partes.push('SOLO BAJAS');
+        return partes.join(' · ');
+    }
+
+    function vacRender() {
+        if (!vacDatos || !vacVisibles.length) {
+            var pagVacVacio = $('#pagVac');
+            if (pagVacVacio) pagVacVacio.innerHTML = '';
+            return;
+        }
+        $('#vacRepCabecera').innerHTML = vacCabeceraHtml(true);
+        var pag = pagCalc(pagCfgVac, vacVisibles.length);
+        var inicioPag = (pagCfgVac.pag - 1) * pag.por;
+        $('#tablaVacReporte').querySelector('tbody').innerHTML =
+            vacVisibles.slice(inicioPag, inicioPag + pag.por).map(vacFilaHtml).join('');
+        $('#vacRepPie').innerHTML = vacPieMostrar() ? '<tr class="total-row">' + vacPieCeldas(true) + '</tr>' : '';
+        $('#pagVac').innerHTML = paginadorHtml(pagCfgVac, vacVisibles.length);
+        $('#vacPeriodoTexto').textContent = vacPeriodoTexto();
+        $('#vacTrabajadorTexto').textContent = vacTrabajadorTexto();
+        $('#btnImprimirVac').disabled = false;
+        $('#btnExportarVac').disabled = false;
+    }
+
+    function vacTablaReporteHtml() {
+        return '<thead>' + vacCabeceraHtml(false) + '</thead>'
+            + '<tbody>' + vacVisibles.map(vacFilaHtml).join('') + '</tbody>'
+            + (vacPieMostrar() ? '<tfoot><tr class="total-row">' + vacPieCeldas(true) + '</tr></tfoot>' : '');
+    }
+
+    function vacImprimir() {
+        if (!vacDatos || !vacVisibles.length) { listadoSwalError('Primero genere el reporte.'); return; }
+        vacRender();
+        var now = new Date();
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        var win = window.open('', '_blank');
+        if (!win) { listadoSwalError('No se pudo abrir la ventana de impresión.'); return; }
+        var esMensual = (vacDatos.modo === 'mensual');
+        var cssExtra = esMensual ? '' : '.main-table td:nth-child(2), .main-table td:nth-child(3) { text-align:left; }';
+        var filtros = vacFiltrosTexto();
+        win.document.write(
+            '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+            + '<title>Submayor de Vacaciones</title>'
+            + '<style>'
+            + '@page { size: letter landscape; margin:0; }'
+            + 'body { font-family: Arial, sans-serif; font-size:9pt; color: #000; margin:0; padding:0; }'
+            + '.header-container { width:100%; border: 0.0625rem solid #000; border-collapse: collapse; margin-bottom:0.5rem; }'
+            + '.header-container td { border: 0.0625rem solid #000; padding:0.35rem 0.5rem; vertical-align: middle; }'
+            + '.logo-cell { width:3.75rem; text-align: center; }'
+            + '.title-cell { text-align: center; font-weight: bold; font-size:12pt; }'
+            + '.meta-cell { font-size:8pt; width:11.875rem; }'
+            + '.main-table { border-collapse: collapse; margin-top:0.375rem; table-layout: auto; width:100%; font-size:8pt; }'
+            + '.main-table th { background-color: #0891b2; color: #ffffff; font-weight: bold; padding:0.22rem 0.25rem; border: 0.0625rem solid #000; text-align: right; -webkit-print-color-adjust: exact; }'
+            + '.main-table th[colspan] { text-align: center; }'
+            + '.main-table td { border: 0.0625rem solid #000; padding:0.15rem 0.3rem; text-align: right; }'
+            + '.main-table td:first-child { text-align: left; }'
+            + cssExtra
+            + '.total-row { background-color: #f0f4f8; font-weight: bold; }'
+            + '.total-row td { border-top: 0.125rem solid #000; color: #0e7490; }'
+            + '.info-line { text-align: center; margin:0.1rem 0; }'
+            + '.sig-line { border-top: 0.0625rem solid #000; width:90%; margin:2rem auto 0.3125rem auto; }'
+            + '.footer-info { margin-top:0.9375rem; font-size:8pt; color: #666; text-align: center; border-top: 0.5pt solid #eee; padding-top:0.3125rem; }'
+            + '.filtro-info { background-color: #f8f9fa; font-weight: bold; color: #0e7490; padding:0.25rem 0.625rem; border-radius: 0.1875rem; display: inline-block; }'
+            + '.page-sheet { width:279.4mm; height:215.9mm; padding:8mm 8mm 16mm 8mm; box-sizing:border-box; position:relative; overflow:hidden; background:#fff; page-break-after:always; break-after:page; margin:0.5rem auto; box-shadow:0 2px 8px rgba(0,0,0,0.18); }'
+            + '.page-sheet.last { page-break-after:auto; break-after:auto; }'
+            + '.page-sheet .main-table { width:100%; }'
+            + '.print-footer { position:absolute; bottom:5mm; left:8mm; right:8mm; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; border-top:0.0625rem solid #bbb; padding-top:0.25rem; font-size:7.5pt; color:#555; }'
+            + '.print-footer .pf-center { flex:1; text-align:center; }'
+            + '.print-footer .pf-right { text-align:right; white-space:nowrap; font-weight:bold; }'
+            + '@media print { .no-print { display: none !important; } .page-sheet { margin:0 !important; box-shadow:none !important; height:100vh; } }'
+            + '</style></head><body>' + PRINT_TOOLBAR_HTML
+            + '<div id="pgRoot" style="width:279.4mm;padding:8mm 8mm 16mm 8mm;box-sizing:border-box;">'
+            + '<div id="pgHeader">'
+            + '<table class="header-container"><tr>'
+            + '<td class="logo-cell">' + (logoBase64 ? '<img src="' + logoBase64 + '" width="50">' : '') + '</td>'
+            + '<td class="title-cell">SUBMAYOR DE VACACIONES<br><span style="font-size:10pt;">' + listadoEscapeHtml((nombreEmpresa || '').toUpperCase()) + '</span></td>'
+            + '<td class="meta-cell"><strong>Emisión:</strong> ' + fechaHora + '<br><strong>REEUP:</strong> ' + listadoEscapeHtml(reeup) + '<br><strong>NIT:</strong> ' + listadoEscapeHtml(nitEmpresa) + '</td>'
+            + '</tr></table>'
+            + '<div class="info-line"><span class="filtro-info">PERÍODO: ' + listadoEscapeHtml(vacPeriodoTexto()) + '</span> &nbsp; <span class="filtro-info">TRABAJADOR: ' + listadoEscapeHtml(vacTrabajadorTexto()) + '</span></div>'
+            + (filtros ? '<div class="info-line"><span class="filtro-info">' + listadoEscapeHtml(filtros) + '</span></div>' : '')
+            + '</div>'
+            + '<table class="main-table" id="pgTable">' + vacTablaReporteHtml() + '</table>'
+            + '<div id="pgSig" style="margin-top:2.5rem;">' + firmasHtml('<div class="sig-line"></div>') + '</div>'
+            + '</div>'
+            + '</body></html>'
+        );
+        win.document.close();
+        paginarImpresion(win.document, {
+            rootSel: '#pgRoot',
+            headerSel: '#pgHeader',
+            tableSel: '#pgTable',
+            sigSel: '#pgSig',
+            footerLeft: (nombreEmpresa || '').toUpperCase() + ' - SUBMAYOR DE VACACIONES',
+            footerCenter: pieDocumento(),
+            padTop: 8, padBot: 14, footH: 0, safety: 3, tableTop: 4, tableBottom: 4
+        });
+    }
+
+    function vacNombreArchivo(extension) {
+        var anio = vacAnioActivo() || 'rango';
+        var sufijo = anio + (Number(vacMesActivo()) > 0 ? '-' + String(vacMesActivo()).padStart(2, '0') : '_TODOS');
+        var quien = 'Todos';
+        if (vacDatos && vacDatos.modo === 'mensual' && vacDatos.trabajador) {
+            quien = vacDatos.trabajador.nombre_completo;
+        } else if (vacVisibles.length === 1) {
+            quien = vacVisibles[0].nombre_completo;
+        }
+        return 'Submayor_Vacaciones_' + String(quien || 'Todos').replace(/[^A-Za-z0-9]+/g, '_') + '_' + sufijo + '.' + extension;
+    }
+
+    function vacExportarXls() {
+        var now = new Date();
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        var numCols = (vacDatos.modo === 'mensual') ? 8 : 11;
+        var filtros = vacFiltrosTexto();
+        var tabla = '<table border="1">';
+        tabla += '<tr><th colspan="' + numCols + '" style="text-align:center;font-size:0.875rem;">SUBMAYOR DE VACACIONES</th></tr>'
+            + '<tr><td colspan="' + numCols + '" style="text-align:center;font-weight:bold;font-size:0.75rem;">' + listadoEscapeHtml((nombreEmpresa || '').toUpperCase()) + '</td></tr>'
+            + '<tr><td colspan="' + numCols + '"><b>REEUP:</b> ' + listadoEscapeHtml(reeup) + '</td></tr>'
+            + '<tr><td colspan="' + numCols + '"><b>NIT:</b> ' + listadoEscapeHtml(nitEmpresa) + '</td></tr>'
+            + '<tr><td colspan="' + numCols + '"><b>Emisión:</b> ' + fechaHora + '</td></tr>'
+            + '<tr><td colspan="' + numCols + '"><b>PERÍODO:</b> ' + listadoEscapeHtml(vacPeriodoTexto()) + '</td></tr>'
+            + '<tr><td colspan="' + numCols + '"><b>TRABAJADOR:</b> ' + listadoEscapeHtml(vacTrabajadorTexto()) + '</td></tr>';
+        if (filtros) tabla += '<tr><td colspan="' + numCols + '"><b>FILTROS:</b> ' + listadoEscapeHtml(filtros) + '</td></tr>';
+        tabla += '<thead>' + vacCabeceraHtml(false) + '</thead>'
+            + '<tbody>' + vacVisibles.map(vacFilaHtml).join('') + '</tbody>'
+            + (vacPieMostrar() ? '<tfoot><tr>' + vacPieCeldas(true) + '</tr></tfoot>' : '')
+            + '</table>';
+        tabla += firmasHtml('<br><br><br><br>_____________________________________')
+            + '<p style="font-size:8pt;color:#666;text-align:center;margin-top:0.9375rem;">' + pieDocumento() + '</p>';
+        listadoDescargar(tabla, vacNombreArchivo('xls'), 'application/vnd.ms-excel;charset=utf-8');
+    }
+
+    function vacExportarCsv() {
+        var num = function (v) { return parseFloat(v || 0).toFixed(2); };
+        var filas = [];
+        filas.push('SUBMAYOR DE VACACIONES');
+        filas.push('EMPRESA,' + '"' + (nombreEmpresa || '') + '"');
+        filas.push('REEUP,' + '"' + (reeup || '') + '"');
+        filas.push('NIT,' + '"' + (nitEmpresa || '') + '"');
+        filas.push('PERÍODO,' + '"' + vacPeriodoTexto() + '"');
+        filas.push('TRABAJADOR,' + '"' + vacTrabajadorTexto() + '"');
+        var filtros = vacFiltrosTexto();
+        if (filtros) filas.push('FILTROS,' + '"' + filtros + '"');
+        filas.push('');
+        var t = vacTotales();
+        if (vacDatos.modo === 'mensual') {
+            filas.push('MES,ACUMULADAS,DISFRUTADAS,LIQUIDACION DIAS,LIQUIDACION IMPORTE,AJUSTES,SALDO TOTAL DIAS,SALDO TOTAL IMPORTE');
+            vacVisibles.forEach(function (f) {
+                filas.push('"' + (f.mes_nombre || '') + '",' + num(f.acumuladas) + ',' + num(f.disfrutadas) + ','
+                    + num(f.liquidadas) + ',' + num(f.importe_liquidadas) + ','
+                    + num(f.ajustes) + ',' + num(f.saldo_dias) + ',' + num(f.importe));
+            });
+            filas.push('"TOTAL DEL AÑO",' + num(t.acum) + ',' + num(t.disf) + ',' + num(t.liq) + ',' + num(t.impLiq) + ','
+                + num(t.ajus) + ',' + num(t.fin) + ',' + num(t.imp));
+        } else {
+            filas.push('NO. EXP.,NOMBRE,CARNE,SALDO INICIAL,ACUMULADAS,DISFRUTADAS,LIQUIDACION DIAS,LIQUIDACION IMPORTE,AJUSTES,SALDO TOTAL DIAS,SALDO TOTAL IMPORTE');
+            vacVisibles.forEach(function (f) {
+                filas.push('"' + (f.codigo || '') + '","' + (f.nombre_completo || '') + '","' + (f.ci || '') + '",'
+                    + num(f.saldo_inicial) + ',' + num(f.acumuladas) + ',' + num(f.disfrutadas) + ','
+                    + num(f.liquidadas) + ',' + num(f.importe_liquidadas) + ','
+                    + num(f.ajustes) + ',' + num(f.saldo_final) + ',' + num(f.importe));
+            });
+            filas.push('"TOTAL GENERAL",,,' + num(t.ini) + ',' + num(t.acum) + ',' + num(t.disf) + ','
+                + num(t.liq) + ',' + num(t.impLiq) + ','
+                + num(t.ajus) + ',' + num(t.fin) + ',' + num(t.imp));
+        }
+        listadoDescargar(filas.join('\r\n'), vacNombreArchivo('csv'), 'text/csv;charset=utf-8');
+    }
+
+    function vacExportarTxt() {
+        function padRight(s, n) { s = String(s || ''); return s.length >= n ? s : s + ' '.repeat(n - s.length); }
+        function padLeft(s, n) { s = String(s || ''); return s.length >= n ? s : ' '.repeat(n - s.length) + s; }
+        var lineas = [];
+        lineas.push('====================================================================================================');
+        lineas.push('                                       SUBMAYOR DE VACACIONES');
+        lineas.push('====================================================================================================');
+        lineas.push('Empresa: ' + nombreEmpresa);
+        lineas.push('PERÍODO: ' + vacPeriodoTexto());
+        lineas.push('TRABAJADOR: ' + vacTrabajadorTexto());
+        var filtros = vacFiltrosTexto();
+        if (filtros) lineas.push('FILTROS: ' + filtros);
+        lineas.push('----------------------------------------------------------------------------------------------------');
+        var t = vacTotales();
+        if (vacDatos.modo === 'mensual') {
+            lineas.push(padRight('MES', 16) + padLeft('ACUMULADAS', 13) + padLeft('DISFRUTADAS', 13)
+                + padLeft('LIQ. DIAS', 11) + padLeft('LIQ. IMPORTE', 15)
+                + padLeft('AJUSTES', 11) + padLeft('SALDO TOTAL', 13) + padLeft('IMPORTE', 15));
+            lineas.push('----------------------------------------------------------------------------------------------------');
+            vacVisibles.forEach(function (f) {
+                lineas.push(padRight(f.mes_nombre || '', 16) + padLeft(listadoFormatoNumero(f.acumuladas), 13) + padLeft(listadoFormatoNumero(f.disfrutadas), 13)
+                    + padLeft(listadoFormatoNumero(f.liquidadas), 11) + padLeft(listadoFormatoNumero(f.importe_liquidadas), 15)
+                    + padLeft(listadoFormatoNumero(f.ajustes), 11) + padLeft(listadoFormatoNumero(f.saldo_dias), 13) + padLeft(listadoFormatoNumero(f.importe), 15));
+            });
+            lineas.push('----------------------------------------------------------------------------------------------------');
+            lineas.push(padRight('TOTAL DEL AÑO', 16) + padLeft(listadoFormatoNumero(t.acum), 13) + padLeft(listadoFormatoNumero(t.disf), 13)
+                + padLeft(listadoFormatoNumero(t.liq), 11) + padLeft(listadoFormatoNumero(t.impLiq), 15)
+                + padLeft(listadoFormatoNumero(t.ajus), 11) + padLeft(listadoFormatoNumero(t.fin), 13) + padLeft(listadoFormatoNumero(t.imp), 15));
+        } else {
+            lineas.push(padRight('No. Exp.', 9) + padRight('NOMBRE DEL TRABAJADOR', 30) + padRight('CARNÉ', 11)
+                + padLeft('SALDO INI', 11) + padLeft('ACUMULADAS', 11) + padLeft('DISFRUTADAS', 11)
+                + padLeft('LIQ. DIAS', 10) + padLeft('LIQ. IMPORTE', 13)
+                + padLeft('AJUSTES', 10) + padLeft('SALDO TOTAL', 12) + padLeft('IMPORTE', 14));
+            lineas.push('----------------------------------------------------------------------------------------------------');
+            vacVisibles.forEach(function (f) {
+                lineas.push(padRight(f.codigo || 'S/C', 9) + padRight(f.nombre_completo, 30) + padRight(f.ci || 'S/CI', 11)
+                    + padLeft(listadoFormatoNumero(f.saldo_inicial), 11) + padLeft(listadoFormatoNumero(f.acumuladas), 11)
+                    + padLeft(listadoFormatoNumero(f.disfrutadas), 11)
+                    + padLeft(listadoFormatoNumero(f.liquidadas), 10) + padLeft(listadoFormatoNumero(f.importe_liquidadas), 13)
+                    + padLeft(listadoFormatoNumero(f.ajustes), 10) + padLeft(listadoFormatoNumero(f.saldo_final), 12)
+                    + padLeft(listadoFormatoNumero(f.importe), 14));
+            });
+            lineas.push('----------------------------------------------------------------------------------------------------');
+            lineas.push(padRight('TOTALES', 9) + padRight('(' + vacVisibles.length + ' trabajadores)', 30) + padRight('', 11)
+                + padLeft(listadoFormatoNumero(t.ini), 11) + padLeft(listadoFormatoNumero(t.acum), 11)
+                + padLeft(listadoFormatoNumero(t.disf), 11)
+                + padLeft(listadoFormatoNumero(t.liq), 10) + padLeft(listadoFormatoNumero(t.impLiq), 13)
+                + padLeft(listadoFormatoNumero(t.ajus), 10) + padLeft(listadoFormatoNumero(t.fin), 12)
+                + padLeft(listadoFormatoNumero(t.imp), 14));
+        }
+        lineas.push('====================================================================================================');
+        listadoDescargar(lineas.join('\r\n'), vacNombreArchivo('txt'), 'text/plain;charset=utf-8');
+    }
+
+    function vacExportarDocx() {
+        var now = new Date();
+        var fechaHora = now.toLocaleDateString('es-ES') + ' - ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        var filtros = vacFiltrosTexto();
+        var contenido = '<div class="WordSection1 Section1">'
+            + '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;">'
+            + '<tr>'
+            + '<td style="width:3.75rem;text-align:center;">' + (logoBase64 ? '<img src="' + logoBase64 + '" width="34" height="41" style="width:0.9cm;height:1.08cm;">' : '') + '</td>'
+            + '<td style="text-align:center;font-weight:bold;font-size:0.875rem;">SUBMAYOR DE VACACIONES<br><span style="font-size:0.6875rem;font-weight:normal;">' + listadoEscapeHtml((nombreEmpresa || '').toUpperCase()) + '</span></td>'
+            + '<td style="width:11.875rem;font-size:8pt;"><b>Emisión:</b> ' + fechaHora + '<br><b>REEUP:</b> ' + listadoEscapeHtml(reeup) + '<br><b>NIT:</b> ' + listadoEscapeHtml(nitEmpresa) + '</td>'
+            + '</tr></table>'
+            + '<p style="text-align:center;"><b>PERÍODO:</b> ' + listadoEscapeHtml(vacPeriodoTexto()) + '</p>'
+            + '<p><b>TRABAJADOR:</b> ' + listadoEscapeHtml(vacTrabajadorTexto()) + '</p>'
+            + (filtros ? '<p><b>FILTROS:</b> ' + listadoEscapeHtml(filtros) + '</p>' : '')
+            + '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:auto;margin:0 auto;">'
+            + '<thead>' + vacCabeceraHtml(false) + '</thead>'
+            + '<tbody>' + vacVisibles.map(vacFilaHtml).join('') + '</tbody>'
+            + (vacPieMostrar() ? '<tfoot><tr style="background:#eee;">' + vacPieCeldas(true) + '</tr></tfoot>' : '')
+            + '</table>';
+        contenido += firmasHtml('<p style="margin-top:2.5rem;border-top:0.0625rem solid #000;width:90%;margin-left:auto;margin-right:auto;"></p>')
+            + '<p style="font-size:8pt;color:#666;text-align:center;margin-top:0.9375rem;">' + pieDocumento() + '</p>'
+            + '</div>';
+        var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Submayor de Vacaciones</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--><style>@page Section1 { size:11in 8.5in; margin:0.5in; mso-header-margin:0.5in; mso-footer-margin:0.5in; } div.Section1 { page:Section1; } img { width:0.9cm !important; height:1.08cm !important; }</style></head><body>' + contenido + '</body></html>';
+        listadoDescargar(html, vacNombreArchivo('doc'), 'application/msword;charset=utf-8');
+    }
+
+    function vacExportarPdf() {
+        var esMensual = (vacDatos.modo === 'mensual');
+        var numCols = esMensual ? 8 : 11;
+        var filtros = vacFiltrosTexto();
+        var body = [];
+        if (esMensual) {
+            body.push([
+                { text: 'MES', style: 'tableHeader' },
+                { text: 'ACUMULADAS', style: 'tableHeader', alignment: 'right' },
+                { text: 'DISFRUTADAS', style: 'tableHeader', alignment: 'right' },
+                { text: 'LIQUIDACIÓN (DÍAS)', style: 'tableHeader', alignment: 'right' },
+                { text: 'LIQUIDACIÓN (IMPORTE)', style: 'tableHeader', alignment: 'right' },
+                { text: 'AJUSTES', style: 'tableHeader', alignment: 'right' },
+                { text: 'SALDO TOTAL (DÍAS)', style: 'tableHeader', alignment: 'right' },
+                { text: 'SALDO TOTAL (IMPORTE)', style: 'tableHeader', alignment: 'right' }
+            ]);
+            vacVisibles.forEach(function (f) {
+                body.push([
+                    { text: f.mes_nombre || '' },
+                    { text: listadoFormatoNumero(f.acumuladas), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.disfrutadas), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.liquidadas), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.importe_liquidadas), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.ajustes), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.saldo_dias), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.importe), alignment: 'right' }
+                ]);
+            });
+        } else {
+            body.push([
+                { text: 'No. Exp.', style: 'tableHeader' },
+                { text: 'NOMBRE DEL TRABAJADOR', style: 'tableHeader' },
+                { text: 'CARNÉ', style: 'tableHeader' },
+                { text: 'SALDO INICIAL', style: 'tableHeader', alignment: 'right' },
+                { text: 'ACUMULADAS', style: 'tableHeader', alignment: 'right' },
+                { text: 'DISFRUTADAS', style: 'tableHeader', alignment: 'right' },
+                { text: 'LIQUIDACIÓN (DÍAS)', style: 'tableHeader', alignment: 'right' },
+                { text: 'LIQUIDACIÓN (IMPORTE)', style: 'tableHeader', alignment: 'right' },
+                { text: 'AJUSTES', style: 'tableHeader', alignment: 'right' },
+                { text: 'SALDO TOTAL (DÍAS)', style: 'tableHeader', alignment: 'right' },
+                { text: 'SALDO TOTAL (IMPORTE)', style: 'tableHeader', alignment: 'right' }
+            ]);
+            vacVisibles.forEach(function (f) {
+                body.push([
+                    { text: f.codigo || 'S/C' },
+                    { text: f.nombre_completo || '' },
+                    { text: f.ci || 'S/CI' },
+                    { text: listadoFormatoNumero(f.saldo_inicial), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.acumuladas), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.disfrutadas), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.liquidadas), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.importe_liquidadas), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.ajustes), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.saldo_final), alignment: 'right' },
+                    { text: listadoFormatoNumero(f.importe), alignment: 'right' }
+                ]);
+            });
+        }
+        if (vacPieMostrar()) {
+            var t = vacTotales();
+            var filaTotal = [{ text: t.etiqueta, bold: true, fillColor: '#f0f4f8' }];
+            if (esMensual) {
+                filaTotal.push(
+                    { text: listadoFormatoNumero(t.acum), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.disf), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.liq), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.impLiq), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.ajus), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.fin), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.imp), bold: true, alignment: 'right', fillColor: '#f0f4f8' }
+                );
+            } else {
+                filaTotal.push(
+                    { text: '', fillColor: '#f0f4f8' },
+                    { text: '', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.ini), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.acum), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.disf), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.liq), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.impLiq), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.ajus), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.fin), bold: true, alignment: 'right', fillColor: '#f0f4f8' },
+                    { text: listadoFormatoNumero(t.imp), bold: true, alignment: 'right', fillColor: '#f0f4f8' }
+                );
+            }
+            body.push(filaTotal);
+        }
+
+        var docDefinition = {
+            pageSize: 'LETTER',
+            pageOrientation: 'landscape',
+            pageMargins: [30, 30, 30, 40],
+            content: [
+                {
+                    table: {
+                        widths: [50, '*', 160],
+                        body: [[
+                            logoBase64 ? { image: logoBase64, width: 40, alignment: 'center' } : { text: '' },
+                            { stack: [
+                                { text: 'SUBMAYOR DE VACACIONES', fontSize: 12, bold: true, alignment: 'center' },
+                                { text: (nombreEmpresa || '').toUpperCase(), fontSize: 9, alignment: 'center', margin: [0, 2, 0, 0] }
+                            ]},
+                            { stack: [
+                                { text: 'Emisión: ' + new Date().toLocaleDateString('es-ES') + ' - ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }), fontSize: 8, alignment: 'right' },
+                                { text: 'REEUP: ' + (reeup || ''), fontSize: 8, alignment: 'right' },
+                                { text: 'NIT: ' + (nitEmpresa || ''), fontSize: 8, alignment: 'right' }
+                            ]}
+                        ]]
+                    },
+                    layout: 'noBorders',
+                    margin: [0, 0, 0, 10]
+                },
+                { text: 'PERÍODO: ' + vacPeriodoTexto(), fontSize: 10, bold: true, margin: [0, 4, 0, 2] },
+                { text: 'TRABAJADOR: ' + vacTrabajadorTexto(), fontSize: 10, bold: true, margin: [0, 0, 0, 2] }
+            ].concat(filtros ? [{ text: 'FILTROS: ' + filtros, fontSize: 9, margin: [0, 0, 0, 8] }] : [{ text: '', margin: [0, 0, 0, 8] }]).concat([
+                {
+                    columns: [
+                        { width: '*', text: '' },
+                        {
+                            width: 'auto',
+                            table: {
+                                headerRows: 1,
+                                widths: Array.apply(null, Array(numCols)).map(function () { return '*'; }),
+                                body: body
+                            },
+                            layout: { fillColor: function (rowIndex) { return rowIndex === 0 ? '#0891b2' : null; } }
+                        },
+                        { width: '*', text: '' }
+                    ]
+                },
+                { text: '', margin: [0, 22, 0, 0] },
+                {
+                    columns: [
+                        { width: '*', stack: [ { text: 'Elaborado por:', bold: true, fontSize: 9 }, { text: (especialistaNominas || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Especialista de Nóminas', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] },
+                        { width: '*', stack: [ { text: 'Revisado por:', bold: true, fontSize: 9 }, { text: (especialistaGestion || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Especialista en Gestión Económica', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] },
+                        { width: '*', stack: [ { text: 'Aprobado por:', bold: true, fontSize: 9 }, { text: (jefeProyecto || '').toUpperCase(), bold: true, fontSize: 8, margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Director de Proyecto', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] },
+                        { width: '*', stack: [ { text: 'Contabilizado por:', bold: true, fontSize: 9 }, { text: '', margin: [0, 30, 0, 0] }, { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 130, y2: 0, lineWidth: 0.7 }] }, { text: 'Área Contable y Financiera', fontSize: 7.5, color: '#444444', margin: [0, 2, 0, 0] } ] }
+                    ]
+                }
+            ]),
+            styles: { tableHeader: { color: '#ffffff', bold: true } },
+            footer: function (currentPage, pageCount) {
+                return { text: pieDocumento() + '   Página ' + currentPage + ' de ' + pageCount, fontSize: 7, color: '#666', alignment: 'center', margin: [0, 10, 0, 0] };
+            }
+        };
+        pdfMake.createPdf(docDefinition).download(vacNombreArchivo('pdf'));
+    }
+
+    function vacExportar(tipo) {
+        if (!vacDatos || !vacVisibles.length) { listadoSwalError('Primero genere el reporte.'); return; }
+        if (tipo === 'xls') vacExportarXls();
+        else if (tipo === 'csv') vacExportarCsv();
+        else if (tipo === 'txt') vacExportarTxt();
+        else if (tipo === 'docx') vacExportarDocx();
+        else if (tipo === 'pdf') vacExportarPdf();
+    }
+
+    // ----------------------------------------------------------
+    // Eventos de la vista de Vacaciones
+    // ----------------------------------------------------------
+    $('#vacBtnGenerar').addEventListener('click', function () { vacGenerar(); });
+    $('#vacBtnGenerarTrab').addEventListener('click', function () { vacGenerar(); });
+    $('#vacBtnLimpiar').addEventListener('click', function () { vacLimpiarFiltros(); });
+    $('#vacBtnVerTodos').addEventListener('click', function () {
+        vacLimpiarFiltros();
+        var actual = String(new Date().getFullYear());
+        var sel = $('#vacAnio');
+        if (sel.querySelector('option[value="' + actual + '"]')) sel.value = actual;
+        vacActualizarBotones();
+        vacGenerar();
+    });
+    $('#vacBtnToggleFiltros').addEventListener('click', function () {
+        var cuerpo = $('#vacFiltrosCuerpo');
+        cuerpo.classList.toggle('colapsado');
+        $('#vacChevronFiltros').className = cuerpo.classList.contains('colapsado') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+    });
+    ['vacAnio', 'vacAnioTrab', 'vacDesde', 'vacHasta'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', vacActualizarBotones);
+    });
+    ['vacExcedidas', 'vacEstado', 'vacSaldoFiltro', 'vacSoloBajas'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', function () {
+            if (!vacDatos) return;
+            vacPintar();
+            if (vacVisibles.length) vacRender();
+        });
+    });
+    $('#vacRepCabecera').addEventListener('click', function (e) {
+        var th = e.target.closest('th[data-key]');
+        if (!th) return;
+        var clave = th.getAttribute('data-key');
+        if (vacOrden.col === clave) vacOrden.dir = -vacOrden.dir;
+        else { vacOrden.col = clave; vacOrden.dir = 1; }
+        if (!vacDatos) return;
+        vacPintar();
+        if (vacVisibles.length) vacRender();
+    });
+    $('#btnImprimirVac').addEventListener('click', function (e) { e.preventDefault(); vacImprimir(); });
+    $('#btnExportarVac').addEventListener('click', function (e) {
+        e.preventDefault();
+        $('#vacMenuExportar').classList.toggle('abierto');
+    });
+    document.querySelectorAll('[data-export-vac]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+            e.preventDefault();
+            $('#vacMenuExportar').classList.remove('abierto');
+            vacExportar(a.getAttribute('data-export-vac'));
+        });
+    });
+
+    // Paginación de los resultados en pantalla (la impresión/exports usan los datos completos)
+    paginarBind('pagListado', pagCfgListado, function () { if (datosActual) listadoRender(); });
+    paginarBind('pagVac', pagCfgVac, function () { if (vacDatos && vacVisibles.length) vacRender(); });
+
     // Inicio
     listadoCargarAnios();
+
+    if (INICIAL.suTipo === 'trabajador' && trabajadoresTodos.length) {
+        listadoSeleccionarTrabajador(trabajadoresTodos[0]);
+        var inpBuscar = $('#listadoBuscarTrabajador');
+        inpBuscar.readOnly = true;
+        inpBuscar.style.opacity = 0.85;
+        var btnLista = $('#listadoBtnLista');
+        if (btnLista) btnLista.style.display = 'none';
+        var btnLimpiar = $('#listadoLimpiarTrabajador');
+        if (btnLimpiar) btnLimpiar.style.display = 'none';
+        var avisoTrabajador = document.getElementById('suAvisoTrabajador');
+        if (avisoTrabajador) avisoTrabajador.style.display = 'flex';
+        // Misma lógica en la vista de Vacaciones: solo su propio registro.
+        var vacAviso = $('#vacAvisoTrabajador');
+        if (vacAviso) vacAviso.style.display = 'flex';
+        $('#vacFilaSimple').style.display = '';
+        $('#vacCardFiltros').style.display = 'none';
+    } else {
+        $('#vacFilaSimple').style.display = 'none';
+        $('#vacCardFiltros').style.display = '';
+        var vacAviso2 = $('#vacAvisoTrabajador');
+        if (vacAviso2) vacAviso2.style.display = 'none';
+    }
 })();
 </script>
 
@@ -2194,12 +3760,65 @@ document.addEventListener('keydown', function (e) {
     }
 
     var input = document.getElementById('gateClave');
+    var inputUsuario = document.getElementById('gateUsuario');
     var btn = document.getElementById('gateBtn');
+    var modoAcceso = 'usuario';
 
-    // Foco inicial en el campo de clave
+    // ---------- Pestañas Usuario / Trabajador ----------
+    var gateAlerta = document.getElementById('gateAlerta');
+    var gateAlertaHtml = {
+        'usuario': 'Introduzca su usuario y contraseña registrados en el sistema',
+        'trabajador': 'Introduzca su número de expediente y su carné de identidad para poder acceder'
+    };
+    document.querySelectorAll('.gate-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            modoAcceso = this.getAttribute('data-modo');
+            document.querySelectorAll('.gate-tab').forEach(function (t) {
+                var act = (t === tab);
+                t.classList.toggle('activa', act);
+                t.setAttribute('aria-selected', act ? 'true' : 'false');
+            });
+            document.getElementById('formAcceso').style.display = (modoAcceso === 'usuario') ? '' : 'none';
+            document.getElementById('formAccesoTrabajador').style.display = (modoAcceso === 'trabajador') ? '' : 'none';
+            gateAlerta.innerHTML = '<i class="fas ' + (modoAcceso === 'usuario' ? 'fa-user-shield' : 'fa-hard-hat') + '"></i> ' + gateAlertaHtml[modoAcceso];
+            document.body.style.overflow = 'hidden';
+            setTimeout(function () {
+                (modoAcceso === 'trabajador'
+                    ? document.getElementById('gateExpediente')
+                    : inputUsuario).focus();
+            }, 60);
+        });
+    });
+
+    // Foco inicial en el campo de usuario
     if (!window.SU_AUTORIZADO) {
-        setTimeout(function () { input.focus(); }, 150);
+        setTimeout(function () { inputUsuario.focus(); }, 150);
     }
+
+    // Enter en el formulario de usuario (dos campos, sin botón submit nativo)
+    document.getElementById('formAcceso').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (this.requestSubmit) this.requestSubmit();
+            else this.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+    });
+
+    // Botón Consultar: envía el formulario del modo activo
+    btn.addEventListener('click', function () {
+        var form = (modoAcceso === 'trabajador')
+            ? document.getElementById('formAccesoTrabajador')
+            : document.getElementById('formAcceso');
+        if (form.requestSubmit) form.requestSubmit();
+        else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    });
+    document.getElementById('formAccesoTrabajador').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (this.requestSubmit) this.requestSubmit();
+            else this.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+    });
 
     document.getElementById('gateOjo').addEventListener('click', function () {
         var esPass = input.type === 'password';
@@ -2214,15 +3833,16 @@ document.addEventListener('keydown', function (e) {
 
     document.getElementById('formAcceso').addEventListener('submit', function (e) {
         e.preventDefault();
+        var usuario = inputUsuario.value.trim();
         var clave = input.value;
-        if (!clave) {
+        if (!usuario || !clave) {
             Swal.fire({
                 icon: 'warning',
-                title: 'Clave requerida',
-                html: 'Debe introducir su clave de acceso para continuar.',
+                title: 'Campos requeridos',
+                html: 'Debe introducir su <strong>usuario</strong> y su <strong>contraseña</strong> para continuar.',
                 confirmButtonText: '<i class="fas fa-check"></i> Entendido'
             });
-            input.focus();
+            (usuario ? input : inputUsuario).focus();
             return;
         }
         btn.disabled = true;
@@ -2230,17 +3850,17 @@ document.addEventListener('keydown', function (e) {
         fetch('api.php?accion=verificar_clave', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'clave=' + encodeURIComponent(clave)
+            body: 'usuario=' + encodeURIComponent(usuario) + '&clave=' + encodeURIComponent(clave)
         })
         .then(function (r) { return r.json(); })
         .then(function (d) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-unlock"></i> Verificar acceso';
+            btn.innerHTML = '<i class="fas fa-unlock"></i> Consultar';
             if (d && d.success) {
                 Swal.fire({
                     icon: 'success',
                     title: '¡Bienvenido!',
-                    html: 'Bienvenido <strong>' + escapar(d.nombre) + '</strong>, va ha acceder al Registro y control de salarios de trabajadores de:<br><strong>' + escapar(EMPRESA) + '</strong>.',
+                    html: 'Bienvenido <strong style="color:#67e8f9; font-weight:800; letter-spacing:0.02em;">' + escapar(d.nombre) + '</strong>, va a acceder al Registro y control de salarios de trabajadores de:<br><strong>' + escapar(EMPRESA) + '</strong>.',
                     confirmButtonText: '<i class="fas fa-arrow-right"></i> Continuar',
                     allowOutsideClick: false,
                     allowEscapeKey: false
@@ -2249,14 +3869,84 @@ document.addEventListener('keydown', function (e) {
                 Swal.fire({
                     icon: 'error',
                     title: d && d.bloqueado ? 'Acceso bloqueado temporalmente' : 'No tiene acceso',
-                    html: escapar(d && d.error) || 'La clave no existe dentro del sistema.',
+                    html: escapar(d && d.error) || 'El usuario o la contraseña no son correctos.',
                     confirmButtonText: '<i class="fas fa-check"></i> Entendido'
                 }).then(function () { input.value = ''; input.focus(); });
             }
         })
         .catch(function () {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-unlock"></i> Verificar acceso';
+            btn.innerHTML = '<i class="fas fa-unlock"></i> Consultar';
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de conexión',
+                html: 'No se pudo contactar con el servidor. Intente nuevamente.',
+                confirmButtonText: '<i class="fas fa-rotate-right"></i> Reintentar'
+            });
+        });
+    });
+
+    // ---------- Acceso por TRABAJADOR (expediente + carné de identidad) ----------
+    var inputExp = document.getElementById('gateExpediente');
+    var inputCI = document.getElementById('gateCI');
+
+    document.getElementById('formAccesoTrabajador').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var expediente = inputExp.value.trim();
+        var ci = inputCI.value.trim();
+        if (!expediente || !ci) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Datos requeridos',
+                html: 'Debe introducir su número de expediente y su carné de identidad para continuar.',
+                confirmButtonText: '<i class="fas fa-check"></i> Entendido'
+            });
+            (!expediente ? inputExp : inputCI).focus();
+            return;
+        }
+        var ciNorm = ci.replace(/[^0-9]/g, '');
+        if (!/^\d{11}$/.test(ciNorm)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Carné inválido',
+                html: 'El número de carné de identidad debe contener exactamente 11 dígitos numéricos.',
+                confirmButtonText: '<i class="fas fa-check"></i> Entendido'
+            });
+            inputCI.focus();
+            return;
+        }
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        fetch('api.php?accion=verificar_trabajador', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'expediente=' + encodeURIComponent(expediente) + '&ci=' + encodeURIComponent(ciNorm)
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-unlock"></i> Consultar';
+            if (d && d.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Bienvenido!',
+                    html: 'Bienvenido <strong style="color:#67e8f9; font-weight:800; letter-spacing:0.02em;">' + escapar(d.nombre) + '</strong>, va a acceder al Registro y control de salarios (solo su información) de:<br><strong>' + escapar(EMPRESA) + '</strong>.',
+                    confirmButtonText: '<i class="fas fa-arrow-right"></i> Continuar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(function () { window.location.reload(); });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'No tiene acceso',
+                    html: escapar(d && d.error) || 'El expediente o el carné de identidad no coinciden con ningún trabajador registrado.',
+                    confirmButtonText: '<i class="fas fa-check"></i> Entendido'
+                }).then(function () { inputExp.value = ''; inputCI.value = ''; inputExp.focus(); });
+            }
+        })
+        .catch(function () {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-unlock"></i> Consultar';
             Swal.fire({
                 icon: 'error',
                 title: 'Error de conexión',
@@ -2301,8 +3991,38 @@ document.addEventListener('keydown', function (e) {
         });
     });
 
-    // ---------- Opciones del menú lateral: cerrar acceso SIN modal y luego navegar ----------
+    // ---------- Opciones del menú lateral ----------
+    // Las vistas internas (Salario / Vacaciones) usan data-vista-interna:
+    // cambian de vista dentro de la misma página y NO deben cerrar la sesión.
+    // "Ir al Dashboard" usa data-ir-dashboard: el servidor cierra la sesión
+    // del portal y abre la del sistema con el mismo usuario (api ir_dashboard),
+    // de modo que el dashboard queda ya con sesión iniciada.
     document.querySelectorAll('.su-side-nav a').forEach(function (enlace) {
+        if (enlace.hasAttribute('data-vista-interna')) return;
+        if (enlace.hasAttribute('data-ir-dashboard')) {
+            enlace.addEventListener('click', function (e) {
+                e.preventDefault();
+                var destino = this.href;
+                fetch('api.php?accion=ir_dashboard', { method: 'POST' })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        if (res.ok && res.j && res.j.success) {
+                            window.location.href = res.j.url || destino;
+                        } else if (res.j && res.j.bloqueo && res.j.error) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Acceso no disponible',
+                                text: res.j.error,
+                                confirmButtonText: '<i class="fas fa-check"></i> Entendido'
+                            });
+                        } else {
+                            window.location.href = destino;
+                        }
+                    })
+                    ['catch'](function () { window.location.href = destino; });
+            });
+            return;
+        }
         enlace.addEventListener('click', function (e) {
             e.preventDefault();
             var destino = this.href;
