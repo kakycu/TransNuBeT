@@ -6608,7 +6608,7 @@ function ajustarColumnasPorTipoDescuento(apiInstance) {
             '<button id="btnWordErrores">&#128196; Descargar Word</button>' +
             '<button id="btnCerrarReporte">&#10006; Cerrar</button>' +
             '</div>' +
-            '<div class="pie">Documento generado autom&aacute;ticamente por SisGesNom&reg; · ' + fecha + '</div>' +
+            '<div class="pie">Documento generado autom&aacute;ticamente por SiGesNom&reg; · ' + fecha + '</div>' +
             '<scr' + 'ipt>' +
             'document.getElementById("btnWordErrores").addEventListener("click", function(){' +
             '  var cuerpo = document.getElementById("cuerpoDocumento").innerHTML;' +
@@ -8716,7 +8716,7 @@ backdrop: 'rgba(0,0,0,0.6)'
 
     // ==================== TRABAJADORES SIN NÓMINA ====================
     var SIN_NOMINA_LOGO = <?php echo json_encode($logo_base64); ?>;
-    var SIN_NOMINA_SIS = 'SisGesNom';
+    var SIN_NOMINA_SIS = 'SiGesNom';
     var SIN_NOMINA_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? COMPANY_NAME); ?>;
     var SIN_NOMINA_USUARIO = <?php echo json_encode($user_nombre_completo ?? 'Usuario'); ?>;
     var SIN_NOMINA_JEFE = <?php echo json_encode($config_empresa['jefe_proyecto'] ?? JEFE_PROYECTO); ?>;
@@ -10105,7 +10105,7 @@ backdrop: 'rgba(0,0,0,0.6)'
             var nombreHoja = (cuenta === 'con') ? 'Resume_Con_Tarjeta' : ((cuenta === 'todos') ? 'Resume_Todos' : 'Resume_Sin_Tarjeta');
             var ws = wb.addWorksheet(nombreHoja, {
                 pageSetup: { paperSize: 1, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, centerHorizontally: true, margins: { left: 0.31, right: 0.31, top: 0.24, bottom: 0.31, header: 0.2, footer: 0.2 } },
-                headerFooter: { oddFooter: '&L&"Arial"&7SisGesNom - ' + String(nombreEmpresaTxt || '') + '&C&"Arial"&7Página &P de &N&R&"Arial"&7Impresión: ' + fechaHora }
+                headerFooter: { oddFooter: '&L&"Arial"&7SiGesNom - ' + String(nombreEmpresaTxt || '') + '&C&"Arial"&7Página &P de &N&R&"Arial"&7Impresión: ' + fechaHora }
             });
             var colW = [11, 15, 46, 13, 13, 12, 14, 12, 14];
             for (var cw = 0; cw < colW.length; cw++) { ws.getColumn(cw + 1).width = colW[cw]; }
@@ -10203,7 +10203,7 @@ backdrop: 'rgba(0,0,0,0.6)'
                 + '<!--[if gte mso 9]><xml>'
                 + '<w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument>'
                 + '</xml><![endif]-->'
-                + '<style>@page Section1 { size: 11in 8.5in; margin: 0.24in 0.31in 0.31in 0.31in; mso-footer: "&LSisGesNom - ' + wordEmp + '&CPágina &P de &N&RImpresión: ' + fechaHora.replace(/"/g, '') + ' "; } div.Section1 { page: Section1; } p { margin: 0; }</style>'
+                + '<style>@page Section1 { size: 11in 8.5in; margin: 0.24in 0.31in 0.31in 0.31in; mso-footer: "&LSiGesNom - ' + wordEmp + '&CPágina &P de &N&RImpresión: ' + fechaHora.replace(/"/g, '') + ' "; } div.Section1 { page: Section1; } p { margin: 0; }</style>'
                 + '</head><body><div class="Section1">' + html + '</div></body></html>';
             sinCuentaDescargar(htmlWord, nombreArchivo, 'application/msword;charset=utf-8');
             snCerrarGen();

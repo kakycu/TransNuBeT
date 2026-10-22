@@ -30,7 +30,7 @@ if (is_file(__DIR__ . '/nominas/config.php')) {
         }
     } catch (Throwable $e) { /* sin BD se usa el respaldo */ }
 }
-if ($nombreEmpresa === '') $nombreEmpresa = 'SisGesNom';
+if ($nombreEmpresa === '') $nombreEmpresa = 'SiGesNom';
 
 $soporte_whatsapp = preg_replace('/[^0-9]/', '', $soporte_whatsapp_raw);
 
@@ -705,7 +705,7 @@ footer {
                         </div>
                         <div class="faq-answer">
                             <div class="faq-answer-inner">
-                                SisGesNom Sistema de Gesti&oacute;n de N&oacute;minas requiere conexi&oacute;n activa
+                                SiGesNom Sistema de Gesti&oacute;n de N&oacute;minas requiere conexi&oacute;n activa
                                 para sincronizar los datos con el servidor central, aunque permite la visualizaci&oacute;n de datos consultados previamente.
                             </div>
                         </div>
@@ -785,7 +785,7 @@ footer {
             return;
         }
 
-        const msg = `*🚀 SISGESNOM SOPORTE*\n*ID:* ${ticket}\n*Usuario:* ${nombre}\n*Email:* ${email}\n*Categoría:* ${cat}\n*Problema:* ${desc}`;
+        const msg = `*🚀 SiGesNom SOPORTE*\n*ID:* ${ticket}\n*Usuario:* ${nombre}\n*Email:* ${email}\n*Categoría:* ${cat}\n*Problema:* ${desc}`;
         window.open(`https://wa.me/<?php echo $soporte_whatsapp; ?>?text=${encodeURIComponent(msg)}`, '_blank');
     }
 

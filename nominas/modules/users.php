@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_inactividad']
 // Configuración de empresa (consistente con el resto de módulos)
 if (!isset($config_empresa)) {
     $config_empresa = [
-        'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom',
+        'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom',
         'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director',
         'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab y Finanzas'
     ];
@@ -258,7 +258,7 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-    <title><?php echo defined('SITE_NAME') ? htmlspecialchars(SITE_NAME) : 'SisGesNom'; ?> | Perfil de Usuario</title>
+    <title><?php echo defined('SITE_NAME') ? htmlspecialchars(SITE_NAME) : 'SiGesNom'; ?> | Perfil de Usuario</title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
 
     <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
@@ -2591,7 +2591,7 @@ function eliminarFotoUsuario() {
     });
 }
 
-var SISGESNOM_NOMBRE_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom')); ?>;
+var SIGESNOM_NOMBRE_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom')); ?>;
 
 function construirContenidoReset(nombre, usuario, password) {
     const d = new Date();
@@ -2607,9 +2607,9 @@ function construirContenidoReset(nombre, usuario, password) {
     const ampm = hh24 >= 12 ? 'pm' : 'am';
     const marca = dia + mes + anio + '-' + hh + mm + ss + ampm;
     const fecha = dia + '/' + mes + '/' + anio + ' ' + hh + ':' + mm + ':' + ss + ' ' + ampm;
-    const empresa = typeof SISGESNOM_NOMBRE_EMPRESA !== 'undefined' ? String(SISGESNOM_NOMBRE_EMPRESA) : '';
+    const empresa = typeof SIGESNOM_NOMBRE_EMPRESA !== 'undefined' ? String(SIGESNOM_NOMBRE_EMPRESA) : '';
     const texto =
-        'SISTEMA DE GESTION DE NOMINAS - SISGESNOM\r\n' +
+        'SISTEMA DE GESTION DE NOMINAS - SIGESNOM\r\n' +
         'EMPRESA: ' + empresa + '\r\n' +
         'CONTRASENA RESETEADA\r\n' +
         '\r\n' +
@@ -2621,7 +2621,7 @@ function construirContenidoReset(nombre, usuario, password) {
         '========================================================\r\n' +
         'Guarde este archivo en un lugar seguro.\r\n' +
         '\r\n' +
-        'Equipo de SisGesNom®\r\n';
+        'Equipo de SiGesNom®\r\n';
     return { texto: texto, marca: marca };
 }
 
@@ -2647,7 +2647,7 @@ function imprimirPasswordReset(nombre, usuario, password) {
     if (!w) return;
     w.document.write(
         '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">' +
-        '<title>Contraseña reseteada - SisGesNom</title>' +
+        '<title>Contraseña reseteada - SiGesNom</title>' +
         '<style>body{font-family:"Cascadia Code",Consolas,monospace;margin:2rem;color:#111;}pre{white-space:pre;font-family:inherit;font-size:.9rem;}</style>' +
         '</head><body onload="window.print()"><pre>' + esc(r.texto) + '</pre></body></html>'
     );

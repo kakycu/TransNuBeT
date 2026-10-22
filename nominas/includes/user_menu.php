@@ -4234,7 +4234,7 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
         
         <li>
             <a class="dropdown-item" href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">
-                <i class="fas fa-key me-2" style="color:#f87171;"></i> Revocar acceso SisGesNom
+                <i class="fas fa-key me-2" style="color:#f87171;"></i> Revocar acceso SiGesNom
             </a>
         </li>
         <li>
@@ -4388,7 +4388,7 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 // Matriz de permisos por rol (generada en PHP)
 var PERMISOS_MATRIZ = <?php echo $matriz_permisos_json ?: '{}'; ?>;
 var ROL_ACTUAL = <?php echo json_encode($user_rol_codigo ?: ''); ?>;
-var PERMISOS_EMPRESA = <?php echo json_encode(defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom'); ?>;
+var PERMISOS_EMPRESA = <?php echo json_encode(defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom'); ?>;
 var PERMISOS_USUARIO = <?php echo json_encode($user_nombre_completo ?: 'Usuario'); ?>;
 var PUEDE_RESTAURAR = <?php echo $puede_restaurar ? 'true' : 'false'; ?>;
 var AJAX_PREFIX = '<?php echo $base_prefix; ?>';
@@ -8160,7 +8160,7 @@ function exportarLicenciaTxt() {
     if (typeof LIC_INFO_TXT !== 'string' || !LIC_INFO_TXT) return;
     var nombre = (typeof LIC_INFO_NOMBRE === 'string' ? LIC_INFO_NOMBRE : '').trim() || 'Registro';
     var safe = nombre.replace(/[\\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-    var fname = 'LicenciaSISGESNOM_' + safe + '.txt';
+    var fname = 'LicenciaSiGesNom_' + safe + '.txt';
     var blob = new Blob([LIC_INFO_TXT], { type: 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -8235,7 +8235,7 @@ $licInfoRegistro_txt = '';
 if ($licHasRegistro) {
     $_mirVenceTxt = licencia_vencimiento($licInfoRegistro);
     $licInfoRegistro_txt =
-        "SISGESNOM - REGISTRO DE LICENCIA\n"
+        "SiGesNom - REGISTRO DE LICENCIA\n"
         . "=================================\n"
         . "Registro efectuado el día: " . date('d/m/Y h:i:s A', $licInfoRegistro['fecha_activacion']) . "\n"
         . "A nombre de            : " . $licInfoRegistro['registro'] . "\n"

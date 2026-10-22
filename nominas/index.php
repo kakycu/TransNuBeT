@@ -69,7 +69,7 @@ $server_status = [
     'mysql_error' => null
 ];
 
-$COMPANY_NAME = defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom';
+$COMPANY_NAME = defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom';
 $SITE_VERSION = defined('SITE_VERSION') ? SITE_VERSION : 'v2.0.1';
 $SITE_NAME = $COMPANY_NAME . ' - Sistema de Nóminas';
 

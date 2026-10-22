@@ -80,7 +80,7 @@ $totalGeneral = count($lista);
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title><?php echo defined('SITE_NAME') ? htmlspecialchars(SITE_NAME) : 'SisGesNom'; ?> | Domiciliacion de Tarjetas</title>
+    <title><?php echo defined('SITE_NAME') ? htmlspecialchars(SITE_NAME) : 'SiGesNom'; ?> | Domiciliacion de Tarjetas</title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
 
     <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">

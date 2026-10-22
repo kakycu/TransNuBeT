@@ -820,7 +820,7 @@ function licencia_descripcion_instalada() {
  * @return array
  */
 function licencia_test() {
-    $nombre  = 'SISGESNOM';
+    $nombre  = 'SiGesNom';
     $usuario = 'admin';
     $resultados = array(
         'backend'     => licencia_backend(),

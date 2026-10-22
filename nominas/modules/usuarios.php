@@ -35,7 +35,7 @@ if ($editar_usuario_id > 0 && !permiso_puede('usuarios', 'editar') && $editar_us
 }
 
 // Configuración empresa
-$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas'];
+$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas'];
 try {
     $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion')");
     while ($row = $stmt->fetch()) {
@@ -2362,7 +2362,7 @@ function toggleEstadoUsuario(id, estadoActual, nombre) {
     });
 }
 
-var SISGESNOM_NOMBRE_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom')); ?>;
+var SIGESNOM_NOMBRE_EMPRESA = <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom')); ?>;
 
 function construirContenidoReset(nombre, usuario, password) {
     const d = new Date();
@@ -2378,9 +2378,9 @@ function construirContenidoReset(nombre, usuario, password) {
     const ampm = hh24 >= 12 ? 'pm' : 'am';
     const marca = dia + mes + anio + '-' + hh + mm + ss + ampm;
     const fecha = dia + '/' + mes + '/' + anio + ' ' + hh + ':' + mm + ':' + ss + ' ' + ampm;
-    const empresa = typeof SISGESNOM_NOMBRE_EMPRESA !== 'undefined' ? String(SISGESNOM_NOMBRE_EMPRESA) : '';
+    const empresa = typeof SIGESNOM_NOMBRE_EMPRESA !== 'undefined' ? String(SIGESNOM_NOMBRE_EMPRESA) : '';
     const texto =
-        'SISTEMA DE GESTION DE NOMINAS - SISGESNOM\r\n' +
+        'SISTEMA DE GESTION DE NOMINAS - SIGESNOM\r\n' +
         'EMPRESA: ' + empresa + '\r\n' +
         'CONTRASENA RESETEADA\r\n' +
         '\r\n' +
@@ -2392,7 +2392,7 @@ function construirContenidoReset(nombre, usuario, password) {
         '========================================================\r\n' +
         'Guarde este archivo en un lugar seguro.\r\n' +
         '\r\n' +
-        'Equipo de SisGesNom®\r\n';
+        'Equipo de SiGesNom®\r\n';
     return { texto: texto, marca: marca };
 }
 
@@ -2418,7 +2418,7 @@ function imprimirPasswordReset(nombre, usuario, password) {
     if (!w) return;
     w.document.write(
         '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">' +
-        '<title>Contraseña reseteada - SisGesNom</title>' +
+        '<title>Contraseña reseteada - SiGesNom</title>' +
         '<style>body{font-family:"Cascadia Code",Consolas,monospace;margin:2rem;color:#111;}pre{white-space:pre;font-family:inherit;font-size:.9rem;}</style>' +
         '</head><body onload="window.print()"><pre>' + esc(r.texto) + '</pre></body></html>'
     );

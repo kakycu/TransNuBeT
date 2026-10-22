@@ -80,7 +80,7 @@ try {
         if ($base === '' || $base === '.') $base = '';
         $enlace = $esquema . '://' . $host . $base . '/login.php?reset_token=' . $token;
 
-        $empresa = defined('SITE_NAME') ? SITE_NAME : 'SisGesNom - Nóminas';
+        $empresa = defined('SITE_NAME') ? SITE_NAME : 'SiGesNom - Nóminas';
         $subject = 'Su contraseña fue restablecida - ' . $empresa;
         $anio = date('Y');
 
@@ -216,7 +216,7 @@ try {
             <div class="header-top">
                 <div class="header-icon">
                     <div class="icon-circle">🔑</div>
-                    <div class="app-name">SisGesNom <span>· Nóminas</span></div>
+                    <div class="app-name">SiGesNom <span>· Nóminas</span></div>
                 </div>
                 <div class="header-badge">🔒 Seguro</div>
             </div>

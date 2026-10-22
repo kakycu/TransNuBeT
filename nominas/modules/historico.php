@@ -1151,8 +1151,8 @@ $filtros_resumen = empty($filtros_resumen)
 window.HIST_EXPORT = {
     endpoint: 'exportar_historico.php',
     titulo: 'Histórico de Operaciones',
-    sistema: 'Sistema SisGesNom®',
-    empresa: <?php echo json_encode(defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', JSON_UNESCAPED_UNICODE); ?>,
+    sistema: 'Sistema SiGesNom®',
+    empresa: <?php echo json_encode(defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom', JSON_UNESCAPED_UNICODE); ?>,
     operador: <?php echo json_encode($usuario_operador, JSON_UNESCAPED_UNICODE); ?>,
     filtros: <?php echo json_encode($filtros_resumen, JSON_UNESCAPED_UNICODE); ?>
 };
@@ -1492,7 +1492,7 @@ document.addEventListener('keydown', function (e) {
 
 function _detTexto() {
     var d = _detActual || {};
-    var sistema = (window.HIST_EXPORT && window.HIST_EXPORT.sistema) || 'Sistema SisGesNom®';
+    var sistema = (window.HIST_EXPORT && window.HIST_EXPORT.sistema) || 'Sistema SiGesNom®';
     var info = document.getElementById('detInfo');
     return 'DETALLES DEL REGISTRO HISTÓRICO\n' +
         '=====================================\n' +

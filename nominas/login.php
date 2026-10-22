@@ -126,7 +126,7 @@ if ($db_ok) {
 }
 
 // Nombre del sistema, para mostrar "Sistema version - Empresa"
-$nombre_sistema = 'SisGesNom';
+$nombre_sistema = 'SiGesNom';
 
 // Estado del subsistema de Nóminas (codigo 0001). Si está deshabilitado se bloquea el acceso.
 $subsistema_activo = 1;
@@ -706,7 +706,7 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             $enlace = $esquema . '://' . $host . $base . '/login.php?reset_token=' . $token;
 
             $nombre = trim(($user['nombre'] ?? '') . ' ' . ($user['apellidos'] ?? ''));
-            $empresa = defined('SITE_NAME') ? SITE_NAME : 'SisGesNom - Nóminas';
+            $empresa = defined('SITE_NAME') ? SITE_NAME : 'SiGesNom - Nóminas';
             $subject = 'Restablecimiento de contraseña - ' . $empresa;
             $anio = date('Y');
 
@@ -994,7 +994,7 @@ if ((isset($_GET['action']) || isset($_GET['ajax'])) && $db_ok) {
             <div class="header-top">
                 <div class="header-icon">
                     <div class="icon-circle">🔐</div>
-                    <div class="app-name">SisGesNom <span>· Nóminas</span></div>
+                    <div class="app-name">SiGesNom <span>· Nóminas</span></div>
                 </div>
                 <div class="header-badge">🔒 Seguro</div>
             </div>
@@ -1585,6 +1585,115 @@ body::after {
     background: rgba(239, 68, 68, 0.25);
     border-color: rgba(239, 68, 68, 0.4);
     color: #fff;
+}
+
+/* ===== DROPDOWN: OTROS SERVICIOS (en la barra de título) ===== */
+.titlebar-login .custom-dropdown {
+    position: relative;
+    display: inline-block;
+    margin-right: 0.375rem;
+}
+
+.titlebar-login .custom-dropdown-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(59, 130, 246, 0.12);
+    border: 0.0625rem solid rgba(59, 130, 246, 0.3);
+    color: #cbd5e1;
+    padding: 0.3rem 0.8rem;
+    border-radius: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.titlebar-login .custom-dropdown-btn:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #fff;
+}
+
+.titlebar-login .custom-dropdown-btn i {
+    font-size: 0.7rem;
+    transition: transform 0.3s ease;
+}
+
+.titlebar-login .custom-dropdown-btn.active i:last-child {
+    transform: rotate(180deg);
+}
+
+/* El menú se posiciona con JS (fixed en body); aquí solo estilos visuales */
+.custom-dropdown-menu {
+    min-width: 280px;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+    padding: 8px 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.98);
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    overflow: visible;
+    pointer-events: none;
+}
+
+.custom-dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.custom-dropdown-menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 20px;
+    color: #e2e8f0;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+
+.custom-dropdown-menu .dropdown-item:hover {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    padding-left: 24px;
+}
+
+.custom-dropdown-menu .dropdown-item i {
+    width: 22px;
+    text-align: center;
+    font-size: 1rem;
+    color: #3b82f6;
+}
+
+.custom-dropdown-menu .dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 6px 16px;
+}
+
+.custom-dropdown-menu .dropdown-title {
+    padding: 8px 20px 4px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #64748b;
+    font-weight: 700;
 }
 
 .login-card.collapsed {
@@ -2640,9 +2749,28 @@ body::after {
     <div class="login-card" id="loginCard">
         <div class="titlebar-login" id="loginTitlebar">
             <div class="titlebar-title">
-                <i class="fas fa-sign-in-alt"></i> Inicio de Sesión en SigesNom®
+                <i class="fas fa-sign-in-alt"></i> Inicio de Sesión en SiGesNom®
             </div>
             <div class="titlebar-buttons">
+                <div class="custom-dropdown" id="otrosServiciosDropdown">
+                    <button type="button" class="custom-dropdown-btn" id="dropdownToggleLogin">
+                        <i class="fas fa-ellipsis-h"></i> OTROS SERVICIOS
+                        <i class="fas fa-chevron-down" id="dropdownArrowLogin"></i>
+                    </button>
+                    <div class="custom-dropdown-menu" id="dropdownMenuLogin">
+                        <div class="dropdown-title">Servicios Generales</div>
+                        <button type="button" class="dropdown-item" data-servicio="salarios">
+                            <i class="fas fa-money-bill-wave"></i> Consultar Salario o Vacaciones
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button type="button" class="dropdown-item" data-servicio="contacto">
+                            <i class="fas fa-headset"></i> Contactar Soporte
+                        </button>
+                        <button type="button" class="dropdown-item" data-servicio="sobre-autor">
+                            <i class="fas fa-user"></i> Sobre el Autor
+                        </button>
+                    </div>
+                </div>
                 <button type="button" class="titlebar-btn tb-collapse" id="btnCollapseLogin" title="Colapsar / Expandir" data-tooltip="Colapsar / Expandir" data-tooltip-theme="info">
                     <i class="fas fa-chevron-down" id="collapseIcon"></i>
                 </button>
@@ -2660,7 +2788,7 @@ body::after {
                 </div>
             </div>
             <div class="logo-center">
-                <h1>SISGESNOM · <?php echo $SITE_VERSION; ?></h1>
+                <h1>SiGesNom · <?php echo $SITE_VERSION; ?></h1>
                 <div class="subtitle">Sistema de Gestión de Nóminas y Trabajadores</div>
                 <h3 style="color:white;"><?php echo htmlspecialchars($COMPANY_NAME); ?></h3>
                 <h4 class="anim-credenciales" style="margin:0.625rem 0 0.3125rem;">TECLEE SUS CREDENCIALES DE ACCESO</h4>
@@ -5477,7 +5605,7 @@ function checkDatabaseStatus() {
     // Doble click en la barra de título para colapsar/expandir
     if (titlebar) {
         titlebar.addEventListener('dblclick', function (e) {
-            if (e.target.closest('.titlebar-btn')) return;
+            if (e.target.closest('.titlebar-btn, .custom-dropdown')) return;
             var collapsed = card.classList.toggle('collapsed');
             if (collapseIcon) {
                 collapseIcon.className = collapsed ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
@@ -5496,7 +5624,7 @@ function checkDatabaseStatus() {
         var startX = 0, startY = 0, origL = 0, origT = 0, dragging = false;
 
         titlebar.addEventListener('mousedown', function (e) {
-            if (e.target.closest('.titlebar-btn')) return;
+            if (e.target.closest('.titlebar-btn, .custom-dropdown')) return;
             e.preventDefault();
             // Posición actual real del contenedor (relativa al viewport)
             var r = container.getBoundingClientRect();
@@ -5539,6 +5667,103 @@ function checkDatabaseStatus() {
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
         });
+    }
+})();
+</script>
+<script>
+// ============ DROPDOWN: OTROS SERVICIOS (barra de título del login) ============
+(function () {
+    function initDropdownServicios() {
+        var dropdownToggle = document.getElementById('dropdownToggleLogin');
+        var dropdownMenu = document.getElementById('dropdownMenuLogin');
+        var dropdownArrow = document.getElementById('dropdownArrowLogin');
+        var isOpen = false;
+
+        if (!dropdownToggle || !dropdownMenu) return;
+
+        // Mover el menú al final del body (fixed) para evitar recortes/stacking contexts
+        document.body.appendChild(dropdownMenu);
+        dropdownMenu.style.position = 'fixed';
+        dropdownMenu.style.zIndex = '9999999';
+        dropdownMenu.style.overflow = 'visible';
+        dropdownMenu.style.pointerEvents = 'none';
+        dropdownMenu.style.maxWidth = '90vw';
+
+        function positionMenu() {
+            var rect = dropdownToggle.getBoundingClientRect();
+            var menuWidth = dropdownMenu.offsetWidth || 280;
+            var menuHeight = dropdownMenu.scrollHeight || 300;
+            var windowWidth = window.innerWidth;
+            var windowHeight = window.innerHeight;
+
+            var left = rect.right - menuWidth;
+            if (left < 10) left = 10;
+            if (left + menuWidth > windowWidth - 10) {
+                left = windowWidth - menuWidth - 10;
+            }
+
+            var top = rect.bottom + 10;
+            if (top + menuHeight + 20 > windowHeight) {
+                top = rect.top - menuHeight - 10;
+                if (top < 10) top = 10;
+            }
+
+            dropdownMenu.style.top = top + 'px';
+            dropdownMenu.style.left = left + 'px';
+        }
+
+        function openMenu() {
+            isOpen = true;
+            dropdownMenu.classList.add('show');
+            dropdownMenu.style.pointerEvents = 'auto';
+            dropdownToggle.classList.add('active');
+            if (dropdownArrow) dropdownArrow.style.transform = 'rotate(180deg)';
+            positionMenu();
+        }
+
+        function closeMenu() {
+            isOpen = false;
+            dropdownMenu.classList.remove('show');
+            dropdownMenu.style.pointerEvents = 'none';
+            dropdownToggle.classList.remove('active');
+            if (dropdownArrow) dropdownArrow.style.transform = 'rotate(0deg)';
+        }
+
+        dropdownToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (isOpen) closeMenu(); else openMenu();
+        });
+
+        document.addEventListener('click', function (e) {
+            if (isOpen && !dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                closeMenu();
+            }
+        });
+
+        window.addEventListener('scroll', function () { if (isOpen) positionMenu(); });
+        window.addEventListener('resize', function () { if (isOpen) positionMenu(); });
+
+        dropdownMenu.querySelectorAll('.dropdown-item').forEach(function (item) {
+            item.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var servicio = this.dataset.servicio;
+                closeMenu();
+
+                if (servicio === 'salarios') {
+                    window.open('/nominas/solic_userinfo/', '_blank');
+                } else if (servicio === 'contacto') {
+                    window.open('/contacto.php', '_blank');
+                } else if (servicio === 'sobre-autor') {
+                    window.open('/explorer.php', '_blank');
+                }
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDropdownServicios);
+    } else {
+        initDropdownServicios();
     }
 })();
 </script>

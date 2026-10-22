@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 
 // Obtener nombre del sistema desde config/database.php
-$SITE_NAME = defined('SITE_NAME') ? SITE_NAME : 'SisGesNom';
+$SITE_NAME = defined('SITE_NAME') ? SITE_NAME : 'SiGesNom';
 
 
 // Capturar datos del usuario ANTES de destruir la sesión

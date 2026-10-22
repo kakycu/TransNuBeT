@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Configuración por defecto (desde constantes centrales con fallback)
 if (!isset($config_empresa)) {
     $config_empresa = [
-        'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom',
+        'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom',
         'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director',
         'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab y Finanzas'
     ];

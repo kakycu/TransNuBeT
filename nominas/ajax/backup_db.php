@@ -133,8 +133,8 @@ try {
     $content .= "-- Versión del servidor: " . $serverVersion . "\n";
     $content .= "-- Versión de PHP: " . $phpVersion . "\n\n";
     
-    $content .= "-- Exportaciones Nóminas " . (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom') . " --\n";
-    $content .= "-- Salva SQL de las Bases de Datos del Sistema de Nóminas " . (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom') . "\n";
+    $content .= "-- Exportaciones Nóminas " . (defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom') . " --\n";
+    $content .= "-- Salva SQL de las Bases de Datos del Sistema de Nóminas " . (defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom') . "\n";
     $content .= "-- Webmaster: Franklin Ramos Lamadrid (kaky°)®\n";
     $content .= "-- Email: kakycu@gmail.com\n";
     $content .= "-- Copyright © 2025 - " . date('Y') . ".\n";

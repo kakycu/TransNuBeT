@@ -22,7 +22,7 @@ $puede_exportar_assp = permiso_puede('nominas', 'exportar') || permiso_puede('no
 
 // Configuración empresa
 $config_empresa = [
-    'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom',
+    'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom',
     'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director',
     'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas',
     'especialista_nominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : ''
@@ -762,7 +762,7 @@ $nombre_mes_actual = nombreMesEspanol($mes);
 // DATOS PARA EXPORTACIÓN (desde PHP)
 // ============================================
 const ASSP_DATA = {
-    sistema:        'Sistema SisGesNom®',
+    sistema:        'Sistema SiGesNom®',
     empresa:        <?php echo json_encode($config_empresa['nombre_empresa']); ?>,
     jefe:           <?php echo json_encode($config_empresa['jefe_proyecto']); ?>,
     especialista:   <?php echo json_encode($config_empresa['especialista_gestion']); ?>,

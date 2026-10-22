@@ -140,7 +140,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'probar_mail') {
     }
 
     $to = !empty($cfg['usuario']) ? $cfg['usuario'] : $cfg['from'];
-    $empresa = defined('SITE_NAME') ? SITE_NAME : 'SisGesNom';
+    $empresa = defined('SITE_NAME') ? SITE_NAME : 'SiGesNom';
 
     $etiquetaCifrado = ['tls' => 'STARTTLS', 'ssl' => 'SSL/TLS', 'none' => 'Sin cifrado'][$cfg['encryption']] ?? strtoupper($cfg['encryption']);
     $servidor = !empty($cfg['host']) ? htmlspecialchars($cfg['host']) : '—';
@@ -235,7 +235,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'probar_mail') {
 
 
 // Configuración empresa
-$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas', 'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH', 'especialista_nominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : ''];
+$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas', 'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH', 'especialista_nominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : ''];
 try {
     $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_gestionRRHH', 'especialista_nominas')");
     while ($row = $stmt->fetch()) {
@@ -3244,7 +3244,7 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Nombre del remitente</label>
-                                <input type="text" class="form-control" name="mail_from_name" id="mail_from_name" value="<?php echo htmlspecialchars($config_mail['from_name']); ?>" placeholder="<?php echo defined('COMPANY_NAME') ? htmlspecialchars(COMPANY_NAME) : 'SisGesNom'; ?>">
+                                <input type="text" class="form-control" name="mail_from_name" id="mail_from_name" value="<?php echo htmlspecialchars($config_mail['from_name']); ?>" placeholder="<?php echo defined('COMPANY_NAME') ? htmlspecialchars(COMPANY_NAME) : 'SiGesNom'; ?>">
                             </div>
                         </div>
                         <div class="d-flex gap-2 flex-wrap">
@@ -3579,8 +3579,8 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
 window.CONFIG_EXPORT = {
     endpoint: 'exportar_configuracion.php',
     titulo: 'Configuración del Sistema',
-    sistema: 'Sistema SisGesNom®',
-    empresa: <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom'), JSON_UNESCAPED_UNICODE); ?>
+    sistema: 'Sistema SiGesNom®',
+    empresa: <?php echo json_encode($config_empresa['nombre_empresa'] ?? (defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom'), JSON_UNESCAPED_UNICODE); ?>
 };
 </script>
 <script>

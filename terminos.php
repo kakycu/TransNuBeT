@@ -1,7 +1,7 @@
 <?php
 // terminos.php
 session_start();
-$COMPANY_NAME = 'SisGesNom®';
+$COMPANY_NAME = 'SiGesNom®';
 $SITE_NAME = $COMPANY_NAME . ' - Términos y Condiciones';
 ?>
 <!DOCTYPE html>
@@ -385,7 +385,7 @@ footer {
     </div>
 
     <footer>
-        <b>SisGesNom - Sistema de Gesti&oacute;n de N&oacute;minas</b><br>
+        <b>SiGesNom - Sistema de Gesti&oacute;n de N&oacute;minas</b><br>
         T&eacute;rminos y Condiciones | Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;
     </footer>
 </div>

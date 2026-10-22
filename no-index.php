@@ -1,6 +1,6 @@
 <?php
 http_response_code(403);
-$page_title = "Sin Página de Inicio | SisGesNom";
+$page_title = "Sin Página de Inicio | SiGesNom";
 $current_directory = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
 $incident_id = strtoupper(substr(md5(time() . rand()), 0, 8));
 $client_ip = $_SERVER['REMOTE_ADDR'] ?? 'Desconocida';
@@ -371,7 +371,7 @@ footer {
     </div>
 
     <footer>
-        <b>SisGesNom - Sistema de Gesti&oacute;n de N&oacute;minas</b><br>
+        <b>SiGesNom - Sistema de Gesti&oacute;n de N&oacute;minas</b><br>
         Portal principal | Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;
     </footer>
 </div>

@@ -178,7 +178,7 @@ function notificarPasswordCambiada($pdo, $id) {
     }
 
     $nombre_completo = trim(($usr['nombre'] ?? '') . ' ' . ($usr['apellidos'] ?? ''));
-    $empresa = defined('SITE_NAME') ? SITE_NAME : 'SisGesNom - Nóminas';
+    $empresa = defined('SITE_NAME') ? SITE_NAME : 'SiGesNom - Nóminas';
     $subject = 'Su contraseña ha sido cambiada - ' . $empresa;
     $anio = date('Y');
 
@@ -286,7 +286,7 @@ function notificarPasswordCambiada($pdo, $id) {
             <div class="header-top">
                 <div class="header-icon">
                     <div class="icon-circle">🔐</div>
-                    <div class="app-name">SisGesNom <span>· Nóminas</span></div>
+                    <div class="app-name">SiGesNom <span>· Nóminas</span></div>
                 </div>
                 <div class="header-badge">🔒 Seguro</div>
             </div>
@@ -394,7 +394,7 @@ function enviarCorreoConConfig($cfg, $to, $toName, $subject, $html, $text) {
         if (strtolower(trim($fromEmail)) !== strtolower(trim($cfg['usuario']))) {
             $fromEmail = $cfg['usuario'];
         }
-        $mail->setFrom($fromEmail, !empty($cfg['from_name']) ? $cfg['from_name'] : 'SisGesNom');
+        $mail->setFrom($fromEmail, !empty($cfg['from_name']) ? $cfg['from_name'] : 'SiGesNom');
         $mail->addAddress($to, $toName);
 
         $mail->isHTML(true);

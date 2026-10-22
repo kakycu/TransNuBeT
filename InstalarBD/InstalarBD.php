@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-// InstalarBD_SisgesNom.php
+// InstalarBD_SiGesNom.php
 // ------------------------------------------------------------
 // Instalador web del Sistema de Gestión de Nóminas
 // Crea la base de datos, importa el esquema embebido y actualiza
@@ -22,8 +22,8 @@ if (session_status() === PHP_SESSION_NONE) {
 // ---------- Constantes del instalador ----------
 define('INSTALLER_VERSION', '1.0.2');
 define('SYS_NAME', 'Sistema de Gestión de Nóminas');
-define('SYS_NAME_SHORT', 'SisGesNom');
-define('SYS_DBNAME', 'SisGesNominas');
+define('SYS_NAME_SHORT', 'SiGesNom');
+define('SYS_DBNAME', 'SiGesNominas');
 define('APP_DIR', dirname(__DIR__) . '/nominas');
 define('SYS_CONFIG_FILE', APP_DIR . '/config.php');
 define('INSTALLER_SELF', basename(__FILE__));
@@ -72,7 +72,7 @@ if (empty($_SESSION['deploy_started'])) {
 }
 
 // ---------- Esquema embebido de la base de datos ----------
-$sqlSisGesNom = <<<'SQL'
+$sqlSiGesNom = <<<'SQL'
 -- phpMyAdmin SQL Dump
 -- https://www.phpmyadmin.net/
 --
@@ -80,15 +80,15 @@ $sqlSisGesNom = <<<'SQL'
 -- Versión del servidor: 5.7.37
 -- Versión de PHP: 8.1.7
 
--- Exportaciones Nóminas SisGesNom --
--- Salva SQL de las Bases de Datos del Sistema de Nóminas SisGesNom
+-- Exportaciones Nóminas SiGesNom --
+-- Salva SQL de las Bases de Datos del Sistema de Nóminas SiGesNom
 -- Webmaster: Franklin Ramos Lamadrid (kaky°)®
 -- Email: kakycu@gmail.com
 -- Copyright © 2025 - 2026.
 -- ------------------------------------------------------------------------------
 -- phpMyAdmin Volcado de Datos SQL.
 -- version cliente: mysqlnd 8.1.7
--- https://www.unicornio.com/sisgesnom/
+-- https://www.unicornio.com/SiGesNom/
 -- https://nominas.unicornio.cu/
 -- ------------------------------------------------------------------------------
 -- Nombre del Servidor: localhost
@@ -101,7 +101,7 @@ SET time_zone = "+00:00";
 
 
 --
--- Base de datos: `SisGesNom_nomina`
+-- Base de datos: `SiGesNom_nomina`
 --
 
 -- --------------------------------------------------------
@@ -1703,7 +1703,7 @@ function ensureConfigFile(): string {
 // CONFIGURACIÓN DE BASE DE DATOS
 // ============================================
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'SisGesNom_nomina');
+define('DB_NAME', 'SiGesNom_nomina');
 define('DB_USER', 'root');
 define('DB_PASS', '');          // Contraseña de MySQL (puede estar vacía)
 define('DB_CHARSET', 'utf8mb4');
@@ -1785,10 +1785,10 @@ function createDatabaseHandler(): void {
     $m->set_charset('utf8mb4');
 
     logMessage('Importando esquema (tablas y datos iniciales)...');
-    global $sqlSisGesNom;
+    global $sqlSiGesNom;
     $queries = 0;
     $m->query('SET FOREIGN_KEY_CHECKS=0');
-    if ($m->multi_query($sqlSisGesNom)) {
+    if ($m->multi_query($sqlSiGesNom)) {
         do {
             if ($res = $m->store_result()) {
                 $res->free();
@@ -2334,7 +2334,7 @@ function saveConfigHandler(): void {
 
 function deleteInstallerHandler(): void {
     $self = realpath(__FILE__) ?: __FILE__;
-    $backup = __DIR__ . '/InstalarBD_SisGesNom.instalado.php';
+    $backup = __DIR__ . '/InstalarBD_SiGesNom.instalado.php';
     if (is_file($backup)) {
         @unlink($backup);
     }
@@ -3196,7 +3196,7 @@ html, body { overflow-x: hidden; }
 <div class="bg bg3"></div>
 <div class="container" style="display:none">
     <header class="top">
-        <div class="logo" id="logoEmpresa">PDL <span>SisGesNom</span>&reg;</div>
+        <div class="logo" id="logoEmpresa">PDL <span>SiGesNom</span>&reg;</div>
         <div class="headline">
             <div class="sub"><b>Sistema de Gestión de Nóminas</b> - Asistente de Instalación</div>
             <div class="badges">
@@ -3221,13 +3221,13 @@ html, body { overflow-x: hidden; }
         </div>
     </div>
 
-    <footer id="footerEmpresa"><b class="fn">SisGesNom - Sistema de Gestión de Nóminas</b><br>Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;</footer>
+    <footer id="footerEmpresa"><b class="fn">SiGesNom - Sistema de Gestión de Nóminas</b><br>Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;</footer>
 </div>
 
 <div class="modal-overlay" id="empresaModal" style="display:none">
     <div class="modal-heading">
         <div class="hh">DESPLIEGUE Y <span>CONFIGURACIONES</span></div>
-        <div class="ss">SisgesNom - Sistema de Gestión de Nóminas</div>
+        <div class="ss">SiGesNom - Sistema de Gestión de Nóminas</div>
         <div class="ss-copyright">Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;</div>
         <img src="../images/sigesnom.png" alt="SisGesNom" class="modal-logo">
     </div>
@@ -3239,10 +3239,10 @@ html, body { overflow-x: hidden; }
         </div>
         <div class="modal-body">
             <div class="welcome-block">
-                <div class="welcome-title">Bienvenido al Asistente de Instalaci&oacute;n de la Base de Datos de SisGesNom</div>
+                <div class="welcome-title">Bienvenido al Asistente de Instalaci&oacute;n de la Base de Datos de SiGesNom</div>
                 <div class="welcome-sub">Este asistente te guiar&aacute; a trav&eacute;s del proceso de instalaci&oacute;n del Sistema de N&oacute;minas y Control de Trabajadores para tu instituci&oacute;n.</div>
             </div>
-            <h3>&iquest;Para qui&eacute;n se configurar&aacute; SisGesNom°?</h3>
+            <h3>&iquest;Para qui&eacute;n se configurar&aacute; SiGesNom°?</h3>
             <p>Escriba el nombre de la empresa, entidad, Mypyme, PDL, TCP. Si pulsa Cancelar se usar&aacute; &laquo;Sin Nombre&raquo;.</p>
             <input class="form-control" id="empresaInput" placeholder="Nombre de la empresa" maxlength="120">
             <div class="actions">
@@ -3257,7 +3257,7 @@ html, body { overflow-x: hidden; }
 <div class="modal-overlay" id="adminModal" style="display:none">
     <div class="modal-heading">
         <div class="hh">DESPLIEGUE Y <span>CONFIGURACIONES</span></div>
-        <div class="ss">SisgesNom - Sistema de Gestión de Nóminas</div>
+        <div class="ss">SiGesNom - Sistema de Gestión de Nóminas</div>
         <div class="ss-copyright">Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;</div>
         <img src="../images/sigesnom.png" alt="SisGesNom" class="modal-logo">
     </div>
@@ -3302,7 +3302,7 @@ html, body { overflow-x: hidden; }
 <div class="modal-overlay" id="licenciaModal" style="display:none">
     <div class="modal-heading">
         <div class="hh">REGISTRO DE <span>LICENCIA</span></div>
-        <div class="ss">SisGesNom - Sistema de Gestión de Nóminas</div>
+        <div class="ss">SiGesNom - Sistema de Gestión de Nóminas</div>
         <div class="ss-copyright">Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;</div>
         <img src="../images/sigesnom.png" alt="SisGesNom" class="modal-logo">
     </div>
@@ -4225,7 +4225,7 @@ function renderConfig(el, actions) {
         '<div class="form-group"><label>Usuario</label><input class="form-control" id="mail_usuario" value="usuario@nauta.cu"></div>' +
         '<div class="form-group"><label>Contraseña / App Password</label><div class="password-wrapper"><input class="form-control" type="password" id="mail_password" value="12345">' +
         '<button type="button" class="password-toggle" onclick="togglePass(\'mail_password\', this)" tabindex="-1"><i class="fa-solid fa-eye"></i></button></div></div>' +
-        '<div class="form-group"><label>Correo remitente</label><input class="form-control" id="mail_from" value="noreply_SisGesNom@gmail.com"></div>' +
+        '<div class="form-group"><label>Correo remitente</label><input class="form-control" id="mail_from" value="noreply_SiGesNom@gmail.com"></div>' +
         '<div class="form-group"><label>Nombre del remitente</label><input class="form-control" id="mail_from_name" value="Soporte ' + esc(state.empresa) + '"></div>' +
         '</div>' +
         '<div class="actions" style="margin-top:18px;border-top:none;padding-top:0">' +
@@ -4449,7 +4449,7 @@ function renderComplete(el, actions) {
         'Recomendamos cambiarla en su primer acceso desde la opción "Cambiar contraseña".</div>' +
         (state.licenciaActivada ? '' :
             '<div class="lic-warning-card">' +
-            '<div class="lic-warning-text">Usted no registro su licencia de uso de SisGesNom</div>' +
+            '<div class="lic-warning-text">Usted no registro su licencia de uso de SiGesNom</div>' +
             '<button class="btn btn-danger" onclick="solicitarLicencia(function() { renderComplete(document.getElementById(\'stepContent\'), document.querySelector(\'#wizardContent > .actions\')); })"><i class="fa-solid fa-key"></i>&nbsp;Introducir Licencia Operativa</button>' +
             '</div>') +
         '<div class="section-title">Acceso</div>' +
@@ -4543,7 +4543,7 @@ function doDeleteInstaller() {
         if (res.success) {
             document.body.innerHTML = '<div class="container" style="background:#fff;border-radius:12px;padding:40px;text-align:center;margin-top:60px">' +
                 '<h2 style="color:#166534">Instalación finalizada</h2>' +
-                '<p class="small mt">El instalador fue eliminado correctamente. Se conservó una copia de seguridad en <b>InstalarBD_SisGesNom.instalado.php</b>.</p>' +
+                '<p class="small mt">El instalador fue eliminado correctamente. Se conservó una copia de seguridad en <b>InstalarBD_SiGesNom.instalado.php</b>.</p>' +
                 '<p class="center mt"><a class="btn btn-success" href="' + esc(appUrl('index.php')) + '" target="_blank"><i class="fa-solid fa-rocket"></i>&nbsp;Ir al Sistema</a>' +
                 ' <button class="btn btn-outline" onclick="cerrarVentana()"><i class="fa-solid fa-xmark"></i>&nbsp;Cerrar</button></p>' +
                 '<div class="log-toggle" id="logToggle" onclick="toggleLog()" style="margin-top:14px"><i class="fa-solid fa-chevron-right chev"></i>&nbsp;Registro de actividad<button type="button" class="btn-log-clear" onclick="event.stopPropagation();clearLog()" title="Limpiar registro"><i class="fa-solid fa-trash-can"></i></button></div>' +
@@ -4561,7 +4561,7 @@ function applyEmpresaName() {
     var logo = document.getElementById('logoEmpresa');
     if (logo) { logo.innerHTML = esc(name); }
     var foot = document.getElementById('footerEmpresa');
-    if (foot) { foot.innerHTML = '<b class="fn">SisGesNom - Sistema de Gestión de Nóminas</b><br>Instalador del módulo de nóminas ' + esc(name) + ' | Copyright &copy; 2000 - ' + new Date().getFullYear() + '. All Right Reserved to UnicornioSoftware&reg;'; }
+    if (foot) { foot.innerHTML = '<b class="fn">SiGesNom - Sistema de Gestión de Nóminas</b><br>Instalador del módulo de nóminas ' + esc(name) + ' | Copyright &copy; 2000 - ' + new Date().getFullYear() + '. All Right Reserved to UnicornioSoftware&reg;'; }
 }
 
 function askEmpresa(onDone) {

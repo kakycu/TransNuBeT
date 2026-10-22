@@ -94,7 +94,7 @@ $server_status = [
 ];
 
 $sub_estados = [];     // estados de los subsistemas (código => 0/1)
-$COMPANY_NAME = defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom';
+$COMPANY_NAME = defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom';
 $SITE_VERSION = defined('SITE_VERSION') ? SITE_VERSION : 'v2.0.1';
 $SITE_NAME = $COMPANY_NAME . ' - Centro de Control.';
 $SITE_EMAIL = defined('EMAIL_EMPRESA') ? EMAIL_EMPRESA : 'kakycu@gmail.com';
@@ -195,16 +195,16 @@ if (!isset($MYSQL_VERSION_REAL) || $MYSQL_VERSION_REAL === '') {
 // Marca del sistema. La version viene de config.php (SITE_VERSION) y la
 // empresa es la que tiene el sistema instalado, leida de configuracion_general.
 // Se arma despues de la consulta para que siempre use el nombre de la base.
-$MARCA_PRODUCTO   = 'SisGesNom';
+$MARCA_PRODUCTO   = 'SiGesNom';
 $VERSION_PRODUCTO = trim((string) $SITE_VERSION);
 if ($VERSION_PRODUCTO === '') {
     $VERSION_PRODUCTO = 'v0.0.0';
 } elseif ($VERSION_PRODUCTO[0] !== 'v') {
     $VERSION_PRODUCTO = 'v' . $VERSION_PRODUCTO;
 }
-// "SisGesNom® v2.0.1"
+// "SiGesNom® v2.0.1"
 $MARCA_SISTEMA = $MARCA_PRODUCTO . '&reg; ' . $VERSION_PRODUCTO;
-// "SisGesNom® v2.0.1 - PDL TransNuBeT®"
+// "SiGesNom® v2.0.1 - PDL TransNuBeT®"
 $LICENCIA_MARCA = $MARCA_SISTEMA . ' - ' . $COMPANY_NAME;
 
 if (!isset($mantenimiento_activo)) {
@@ -444,6 +444,47 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             border: 1px solid rgba(59, 130, 246, 0.3);
             text-align: center;
             animation: fadeInUp 0.8s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .estado-verificacion {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: rgba(15, 23, 42, 0.82);
+            backdrop-filter: blur(6px);
+            border-radius: 30px;
+            color: #e2e8f0;
+            text-align: center;
+            padding: 12px 20px 18px;
+        }
+        .estado-verificacion[hidden] { display: none; }
+        .estado-verificacion-texto {
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+        .estado-verificacion-texto i { color: #60a5fa; margin-right: 6px; }
+        .estado-verificacion-barra {
+            width: min(420px, 85%);
+            height: 3px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.25);
+            overflow: hidden;
+        }
+        .estado-verificacion-progreso {
+            width: 0%;
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd);
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.7);
+            transition: width 0.45s ease;
         }
 
         @keyframes fadeInUp {
@@ -1311,6 +1352,14 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
                 </div>
             </div>
         </div>
+        <div class="estado-verificacion" id="estadoVerificacion" hidden>
+            <div class="estado-verificacion-texto">
+                <i class="fas fa-circle-notch fa-spin"></i><span id="estadoVerificacionPaso">Verificando estado...</span>
+            </div>
+            <div class="estado-verificacion-barra">
+                <div class="estado-verificacion-progreso" id="estadoVerificacionBarra"></div>
+            </div>
+        </div>
     </div>
 
     <div class="subsystems-grid">
@@ -1779,46 +1828,40 @@ document.querySelectorAll('.access-badge').forEach(badge => {
 });
 
 // ============ FUNCIONES DE VERIFICACIÓN DE ESTADO ============
-function verificarEstadoConLoading() {
-    Swal.fire({
-        title: '🔄 Verificando estado...',
-        html: `
-            <div style="text-align: center;">
-                <div class="loading-spinner-small"></div>
-                <p style="margin-top: 15px;">Comprobando conexión con el servidor...</p>
-                <p style="font-size: 0.8rem; color: #94a3b8;">Verificando PHP y MySQL</p>
-            </div>
-        `,
-        background: '#0f172a',
-        color: '#e2e8f0',
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-            if (!document.querySelector('#spinner-style')) {
-                const style = document.createElement('style');
-                style.id = 'spinner-style';
-                style.textContent = `
-                    .loading-spinner-small {
-                        width: 50px;
-                        height: 50px;
-                        border: 3px solid rgba(59, 130, 246, 0.2);
-                        border-top-color: #3b82f6;
-                        border-radius: 50%;
-                        animation: spinSmall 0.8s linear infinite;
-                        margin: 0 auto;
-                    }
-                    @keyframes spinSmall {
-                        to { transform: rotate(360deg); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-        }
+const PASOS_VERIFICACION = [
+    { texto: 'Verificando estado...', progreso: 15, en: 0 },
+    { texto: 'Comprobando conexión con el servidor...', progreso: 50, en: 450 },
+    { texto: 'Verificando PHP y MySQL...', progreso: 80, en: 900 },
+    { texto: 'Verificación completada.', progreso: 100, en: 1350 }
+];
+
+function ejecutarVerificacionEnBanner(alFinalizar, omitirSecuencia) {
+    if (omitirSecuencia) { if (alFinalizar) alFinalizar(); return; }
+    const capa = document.getElementById('estadoVerificacion');
+    const paso = document.getElementById('estadoVerificacionPaso');
+    const barra = document.getElementById('estadoVerificacionBarra');
+    if (!capa || !paso || !barra) { if (alFinalizar) alFinalizar(); return; }
+    capa.hidden = false;
+    const banner = document.querySelector('.welcome-banner');
+    if (banner) banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    PASOS_VERIFICACION.forEach(function (p) {
+        setTimeout(function () {
+            paso.textContent = p.texto;
+            barra.style.width = p.progreso + '%';
+        }, p.en);
     });
-    
-    setTimeout(() => {
+    setTimeout(function () {
+        capa.hidden = true;
+        barra.style.width = '0%';
+        if (alFinalizar) alFinalizar();
+    }, 1750);
+}
+
+function verificarEstadoConLoading() {
+    sessionStorage.setItem('verificacionManual', '1');
+    ejecutarVerificacionEnBanner(function () {
         location.reload();
-    }, 1500);
+    });
 }
 
 const serverStatusDot = document.getElementById('serverStatusDot');
@@ -2178,80 +2221,18 @@ document.addEventListener('DOMContentLoaded', () => {
     hideLoading();
     updateServerStatusUI();
     
-    // Mostrar verificación al iniciar
-    Swal.fire({
-        title: '🔄 Verificando estado...',
-        html: `
-            <div style="text-align: center;">
-                <div class="loading-spinner-small"></div>
-                <p style="margin-top: 15px;">Comprobando conexión con el servidor...</p>
-                <p style="font-size: 0.8rem; color: #94a3b8;">Verificando PHP y MySQL</p>
-            </div>
-        `,
-        background: '#0f172a',
-        color: '#e2e8f0',
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-            if (!document.querySelector('#spinner-style')) {
-                const style = document.createElement('style');
-                style.id = 'spinner-style';
-                style.textContent = `
-                    .loading-spinner-small {
-                        width: 50px;
-                        height: 50px;
-                        border: 3px solid rgba(59, 130, 246, 0.2);
-                        border-top-color: #3b82f6;
-                        border-radius: 50%;
-                        animation: spinSmall 0.8s linear infinite;
-                        margin: 0 auto;
-                    }
-                    @keyframes spinSmall {
-                        to { transform: rotate(360deg); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-        }
-    });
-    
-    setTimeout(() => {
-        Swal.close();
-        
+    // Verificación en línea sobre el banner "Ecosistema Financiero" (sin modal).
+    // Tras un "Verificar Estado" manual ya se mostró la secuencia: no repetir tras el reload.
+    const verificacionManual = sessionStorage.getItem('verificacionManual') === '1';
+    if (verificacionManual) sessionStorage.removeItem('verificacionManual');
+    ejecutarVerificacionEnBanner(() => {
         setTimeout(() => {
             if (serverStatus.php && serverStatus.mysql) {
-                Swal.fire({
-                    title: '✅ Servidor Conectado',
-                    html: `
-                        <div style="text-align: left;">
-                            <p><strong>PHP:</strong> <span style="color: #22c55e;">✓ Activo</span></p>
-                            <p><strong>MySQL:</strong> <span style="color: #22c55e;">✓ Conectado</span></p>
-                            <p><strong>Base de datos:</strong> <?php echo htmlspecialchars(DB_NAME); ?></p>
-                            <p><strong>Usted ya puede:</strong> Comenzar a Trabajar.</p>
-                        </div>
-                    `,
-                    icon: 'success',
-                    background: '#0f172a',
-                    color: '#e2e8f0',
-                    confirmButtonColor: '#3b82f6',
-                    confirmButtonText: '<i class="fas fa-check"></i> Continuar',
-                    timer: 2000,
-                    timerProgressBar: true,
-                    didOpen: () => {
-                        const progressBar = document.querySelector('.swal2-timer-progress-bar');
-                        if (progressBar) {
-                            progressBar.style.background = 'linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd)';
-                            progressBar.style.height = '4px';
-                            progressBar.style.boxShadow = '0 0 8px rgba(59, 130, 246, 0.5)';
-                        }
-                    }
-                }).then(() => {
-                    if (licenciaRaiz.vencida || !licenciaRaiz.tiene) {
-                        abrirModalIndex('licencia_alerta');
-                    } else {
-                        mostrarBienvenida();
-                    }
-                });
+                if (licenciaRaiz.vencida || !licenciaRaiz.tiene) {
+                    abrirModalIndex('licencia_alerta');
+                } else {
+                    mostrarBienvenida();
+                }
             } else {
                 Swal.fire({
                     title: '⚠️ Error de Conexión',
@@ -2283,7 +2264,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }, 200);
-    }, 2000);
+    }, verificacionManual);
 });
 
 window.addEventListener('beforeunload', () => {
@@ -2580,7 +2561,7 @@ function abrirModalIndex(tipo, htmlOverride, licOverride) {
     document.getElementById('modalIdxTitulo').textContent = cfg.titulo;
     document.getElementById('modalIdxSub').textContent = cfg.sub;
     // Todos los modales muestran el rotulo completo del sistema:
-    // SisGesNom® v<version config.php> - <empresa que lo tiene instalado>.
+    // SiGesNom® v<version config.php> - <empresa que lo tiene instalado>.
     var isoEmpresa = document.querySelector('#modalIndex .iso-empresa');
     if (isoEmpresa) {
         isoEmpresa.innerHTML = '<i class="fas fa-building"></i>'

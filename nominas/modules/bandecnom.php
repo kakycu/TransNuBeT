@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion_ajax']) && $_P
 
 // Configuración empresa 
 $config_empresa = [
-    'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', 
+    'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom', 
     'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 
     'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. COntab. y Finanzas',
     'especialista_nominas' => defined('ESPECIALISTA_NOMINAS') ? ESPECIALISTA_NOMINAS : ''
@@ -2589,7 +2589,7 @@ async function imprimirPreview() {
     const periodoSelect = document.getElementById('periodoSelect');
     const periodoTexto = periodoSelect?.options[periodoSelect.selectedIndex]?.text || 'No especificado';
     const formato = window.formatoSeleccionado ? window.formatoSeleccionado.toUpperCase() : 'No seleccionado';
-    const empresa = nombreEmpresa || '<?php echo defined('COMPANY_NAME') ? addslashes(COMPANY_NAME) : 'SisGesNom'; ?>';
+    const empresa = nombreEmpresa || '<?php echo defined('COMPANY_NAME') ? addslashes(COMPANY_NAME) : 'SiGesNom'; ?>';
     const especialista = especialistaGestion || 'No especificado';
     const jefe = jefeProyecto || 'No especificado';
     const logo = logoBase64 || '';

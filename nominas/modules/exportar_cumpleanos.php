@@ -120,7 +120,7 @@ if (empty($cumpleaneros)) {
 $carpeta = __DIR__ . '/exports/';
 if (!is_dir($carpeta)) mkdir($carpeta, 0777, true);
 
-$nombreEmpresa = defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom';
+$nombreEmpresa = defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom';
 $titulo = ($tipo === '30') ? 'CUMPLEAÑOS PRÓXIMOS 30 DÍAS' : 'LISTADO COMPLETO DE CUMPLEAÑOS';
 $subtitulo = $nombreEmpresa . ' - Generado el ' . date('d/m/Y H:i') . ' - Total: ' . count($cumpleaneros) . ' trabajador(es)';
 

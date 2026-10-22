@@ -160,7 +160,7 @@ elseif (!empty($ua)) { $ua_txt = substr($ua, 0, 60) . '...'; }
 // ============================================================
 // MARCAS (footer y modal)
 // ============================================================
-$bloqueo_brand    = 'SISGESNOM';
+$bloqueo_brand    = 'SiGesNom';
 $bloqueo_version  = defined('SITE_VERSION') ? SITE_VERSION : 'v2.0.1';
 $bloqueo_company  = defined('COMPANY_NAME') ? COMPANY_NAME : 'PDL TransNuBeT®';
 

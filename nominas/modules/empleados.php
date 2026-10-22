@@ -63,7 +63,7 @@ if (isset($_GET['ver_anexo14'])) {
 
 
 // Configuración empresa
-$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas', 'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH'];
+$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas', 'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH'];
 try {
     $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion', 'especialista_gestionRRHH')");
     while ($row = $stmt->fetch()) {
@@ -140,7 +140,7 @@ if (isset($_GET['reporte']) && $_GET['reporte'] === 'bajas') {
     }
 
     // Título con el nombre del sistema y la empresa configurada
-    $titulo_sistema = 'SisGesNom - ' . $config_empresa['nombre_empresa'];
+    $titulo_sistema = 'SiGesNom - ' . $config_empresa['nombre_empresa'];
 
     $sql_bajas = "
         SELECT t.id, t.codigo, t.ci, t.nombres, t.primer_apellido, t.segundo_apellido,
@@ -560,7 +560,7 @@ if (isset($_GET['reporte']) && $_GET['reporte'] === 'altas') {
     }
 
     // Título con el nombre del sistema y la empresa configurada
-    $titulo_sistema = 'SisGesNom - ' . $config_empresa['nombre_empresa'];
+    $titulo_sistema = 'SiGesNom - ' . $config_empresa['nombre_empresa'];
 
     $sql_altas = "
         SELECT t.id, t.codigo, t.ci, t.nombres, t.primer_apellido, t.segundo_apellido,
@@ -1236,8 +1236,8 @@ function ver_anexo_14($pdo) {
     }
 
     $h = function ($t) { return htmlspecialchars((string)$t, ENT_QUOTES, 'UTF-8'); };
-    $empresa = defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom';
-    $sistema = 'SisGesNom - ' . $empresa;
+    $empresa = defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom';
+    $sistema = 'SiGesNom - ' . $empresa;
     $enlaceExportar = 'empleados.php?exportar_anexo14';
 
     logAction('ver_anexo14', 'empleados', 'Vista previa del Anexo 14', [], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
@@ -9629,7 +9629,7 @@ $('#menuImprimirTodosSolapines').on('click', function(e) {
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>Impresión Masiva de Solapines - SisGesNom</title>
+                    <title>Impresión Masiva de Solapines - SiGesNom</title>
                     <style>
                         @page {
                             size: letter portrait;

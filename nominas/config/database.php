@@ -469,9 +469,9 @@ $configs = loadAllConfigs($pdo);
 // ============================================
 
 // Constantes del sistema (con fallback a valores por defecto)
-if (!defined('SITE_NAME'))     define('SITE_NAME', $configs['nombre_empresa'] ?? 'SisGesNom');
+if (!defined('SITE_NAME'))     define('SITE_NAME', $configs['nombre_empresa'] ?? 'SiGesNom');
 if (!defined('SITE_VERSION'))  define('SITE_VERSION', 'v2.0.1');
-if (!defined('COMPANY_NAME'))  define('COMPANY_NAME', $configs['nombre_empresa'] ?? 'SisGesNom');
+if (!defined('COMPANY_NAME'))  define('COMPANY_NAME', $configs['nombre_empresa'] ?? 'SiGesNom');
 if (!defined('COMPANY_ADDRESS')) define('COMPANY_ADDRESS', $configs['direccion_empresa'] ?? 'S/D');
 if (!defined('NIT'))           define('NIT', $configs['nit_empresa'] ?? '319-1-02264');
 if (!defined('JEFE_PROYECTO')) define('JEFE_PROYECTO', $configs['jefe_proyecto'] ?? 'Nombre Director');

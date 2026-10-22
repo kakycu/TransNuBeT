@@ -15,8 +15,8 @@
     var CFG = window.CONFIG_EXPORT || {};
     var ENDPOINT = CFG.endpoint || 'exportar_configuracion.php';
     var TITULO = CFG.titulo || 'Configuración del Sistema';
-    var SISTEMA = CFG.sistema || 'Sistema SisGesNom®';
-    var EMPRESA = CFG.empresa || 'SisGesNom';
+    var SISTEMA = CFG.sistema || 'Sistema SiGesNom®';
+    var EMPRESA = CFG.empresa || 'SiGesNom';
 
     /* Anchos por columna (índice dependiente de cada sección) */
     var ANCHOS_POR_SECCION = {

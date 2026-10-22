@@ -8,7 +8,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Acceso Restringido - <?php echo 'SisGesNom'; ?></title>
+<title>Acceso Restringido - <?php echo 'SiGesNom'; ?></title>
 <link rel="icon" type="image/png" href="../images/favicon.png">
 <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
 <style>
@@ -312,7 +312,7 @@ footer {
             <div class="sub">Sistema de Gestión de Nóminas - Instalador</div>
             <div class="badges">
                 <span>Versión del sistema <?php echo '1.0.2'; ?></span>
-                <span>Base de datos: <?php echo 'SisGesNominas'; ?></span>
+                <span>Base de datos: <?php echo 'SiGesNominas'; ?></span>
                 <span>Acceso restringido</span>
             </div>
         </div>
@@ -366,7 +366,7 @@ footer {
     </div>
 
     <footer>
-        <b>SisGesNom - Sistema de Gestión de Nóminas</b><br>
+        <b>SiGesNom - Sistema de Gestión de Nóminas</b><br>
         Instalador del m&oacute;dulo de n&oacute;minas | Copyright &copy; 2000 - <?php echo date('Y'); ?>. All Right Reserved to UnicornioSoftware&reg;
     </footer>
 </div>

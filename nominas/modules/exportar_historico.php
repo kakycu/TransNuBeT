@@ -41,8 +41,8 @@ $exportador_rol = trim((string)($_SESSION['rol_codigo'] ?? $_SESSION['usuario_ro
 $exportado_por  = $exportador_nombre . ($exportador_rol !== '' ? ' (' . $exportador_rol . ')' : '');
 
 // Encabezado común de los documentos/archivos exportados
-$sistema_nombre = 'Sistema SisGesNom®';
-$empresa_nombre = defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom';
+$sistema_nombre = 'Sistema SiGesNom®';
+$empresa_nombre = defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom';
 
 if (!in_array($rol_actual, $roles_permitidos, true)) {
     logAction(

@@ -651,7 +651,7 @@ function verificarDependencias($pdo, $tabla, $id) {
 
 // Configuración general de visualización (desde constantes centrales con fallback)
 $config_empresa = [
-    'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom',
+    'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom',
     'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director',
     'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas'
 ];

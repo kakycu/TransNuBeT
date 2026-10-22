@@ -265,7 +265,7 @@ if (isset($_REQUEST['solicitar_licencia']) && (string)$_REQUEST['solicitar_licen
     licencia_responder_json(array(
         'ok'      => false,
         'mensaje' => 'No se pudo enviar la solicitud.<br>' . $motivo . '<br>'
-            . 'Contacte al Proveedor de SisGesNom ' . $version . ': ' . $ayuda . '<br>'
+            . 'Contacte al Proveedor de SiGesNom ' . $version . ': ' . $ayuda . '<br>'
             . 'Puede intentar utilizar la opción "Enviar con mi Correo".',
     ));
 }
@@ -455,7 +455,7 @@ if ($guardado_ok) {
     ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>SISGESNOM· Registro de Licencia</title>
+    <title>SiGesNom· Registro de Licencia</title>
     <link rel="icon" type="image/x-icon" href="../images/favicons/nominas.ico">
     <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/sweetalert2.min.css">
@@ -1099,7 +1099,7 @@ if ($guardado_ok) {
         <div class="lic-card">
             <div class="lic-layout">
             <div class="lic-rail">
-                <img src="../images/favicon1.png" alt="SISGESNOM" class="lic-logo-img">
+                <img src="../images/favicon1.png" alt="SiGesNom" class="lic-logo-img">
             </div>
 
             <div class="lic-head">
@@ -1133,7 +1133,7 @@ if ($guardado_ok) {
 
             <div class="logo-area">
                 <div class="lic-logo-txt">
-                    <h1>SISGESNOM&reg; <span class="subtitle">- Sistema de Gesti&oacute;n de N&oacute;minas y Trabajadores</span></h1>
+                    <h1>SiGesNom&reg; <span class="subtitle">- Sistema de Gesti&oacute;n de N&oacute;minas y Trabajadores</span></h1>
                     <?php if ($lic_guardada !== null && licencia_vencida($lic_guardada)): ?>
                         <div class="badge-lic" style="background:rgba(248,113,113,0.15); color:#f87171; border-color:rgba(248,113,113,0.4);">
                             <i class="fas fa-triangle-exclamation"></i> LICENCIA VENCIDA &mdash; INGRESE UNA NUEVA
@@ -2188,7 +2188,7 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
                 var resCI   = validarCI(d.ci);
                 var sexo    = (resCI && resCI.valido && resCI.genero) ? resCI.genero : '';
                 var cuerpo  = [
-                    'SOLICITUD DE LICENCIA SisGesNom',
+                    'SOLICITUD DE LICENCIA SiGesNom',
                     linea,
                     '',
                     'Nombre:             ' + d.nombre,

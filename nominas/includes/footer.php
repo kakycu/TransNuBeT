@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Configuración por defecto si no existe la variable global de empresa
 if (!isset($config_empresa)) {
     $config_empresa = [
-        'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom',
+        'nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom',
         'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director',
         'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab y Finanzas'
     ];
@@ -530,7 +530,7 @@ $base_prefix = $is_in_modules ? '../' : '';
         <div class="d-flex flex-wrap justify-content-center justify-content-md-between align-items-center gap-3">
             <div class="copyright-logo">
                 <img src="<?php echo $base_prefix; ?>../images/Unicorn.png" alt="Unicornio" width="20" height="20" class="corporate-logo-img" onerror="this.style.display='none';">
-                <span>Copyright © <strong>SisGesnom</strong> <?php echo date('Y'); ?> &bull; <strong><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></strong> · Todos los derechos reservados</span>
+                <span>Copyright © <strong>SiGesNom</strong> <?php echo date('Y'); ?> &bull; <strong><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></strong> · Todos los derechos reservados</span>
             </div>
             <div class="copyright-links">
                 <a href="<?php echo $base_prefix; ?>../../terminos.php"  target="_blank" class="copyright-link" data-tooltip="Términos y Condiciones" data-tooltip-theme="secondary"><i class="fas fa-file-contract"></i> Términos</a>

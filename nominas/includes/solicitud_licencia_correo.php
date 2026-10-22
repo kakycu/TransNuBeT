@@ -391,7 +391,7 @@ if (!function_exists('solicitud_licencia_html')) {
         }
 
         $anio = date('Y');
-        $app  = 'SisGesNom';
+        $app  = 'SiGesNom';
 
         $filas_html = '';
         foreach ($filas as $etiqueta => $valor) {

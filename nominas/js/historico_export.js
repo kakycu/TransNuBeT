@@ -16,8 +16,8 @@
     var CFG = window.HIST_EXPORT || {};
     var ENDPOINT = CFG.endpoint || 'exportar_historico.php';
     var TITULO = CFG.titulo || 'Histórico de Operaciones';
-    var SISTEMA = CFG.sistema || 'Sistema SisGesNom®';
-    var EMPRESA = CFG.empresa || 'SisGesNom';
+    var SISTEMA = CFG.sistema || 'Sistema SiGesNom®';
+    var EMPRESA = CFG.empresa || 'SiGesNom';
 
     /* Líneas de cabecera de todos los documentos */
     function titulo1() { return TITULO.toUpperCase() + ' - ' + SISTEMA; }

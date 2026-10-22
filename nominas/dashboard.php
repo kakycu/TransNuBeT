@@ -104,7 +104,7 @@ if (strlen($ci_logueado) >= 6) {
 }
 
 // Configuración empresa (desde constantes centrales con fallback)
-$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SisGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director/Jefe', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Conatb. Finanzas'];
+$config_empresa = ['nombre_empresa' => defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom', 'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director/Jefe', 'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Conatb. Finanzas'];
 try {
     $stmt = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'jefe_proyecto', 'especialista_gestion')");
     while ($row = $stmt->fetch()) {
