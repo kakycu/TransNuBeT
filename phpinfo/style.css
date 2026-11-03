@@ -1,0 +1,660 @@
+/* ============================================================
+   USBWebserver · Tema adaptable (Dark / Light)
+   El tema se controla con data-bs-theme en <html>
+   ============================================================ */
+
+/* ---------- Tokens: modo oscuro (por defecto) ---------- */
+:root,
+[data-bs-theme="dark"] {
+    color-scheme: dark;
+
+    --app-bg: #0d1117;
+    --app-surface: #161b22;
+    --app-surface-alt: #1b2129;
+    --app-border: #30363d;
+    --app-text: #e6edf3;
+    --app-muted: #8b949e;
+    --app-accent: #3b82f6;
+    --app-accent-soft: rgba(59, 130, 246, 0.15);
+    --app-accent-border: rgba(59, 130, 246, 0.40);
+    --app-navbar-bg: rgba(13, 17, 23, 0.85);
+    --app-header-bg: rgba(255, 255, 255, 0.02);
+    --app-tile-bg: rgba(255, 255, 255, 0.02);
+    --app-box-bg: rgba(255, 255, 255, 0.03);
+    --app-hover-text: #ffffff;
+    --app-code-bg: #0b0f14;
+    --app-card-shadow: none;
+    --app-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.25);
+    --app-glow-1: rgba(59, 130, 246, 0.15);
+    --app-glow-2: rgba(139, 92, 246, 0.10);
+    --app-footer-bg: rgba(15, 20, 27, 0.94);
+    --app-switch-bg: rgba(255, 255, 255, 0.08);
+    --app-switch-border: #3a424c;
+    --app-switch-thumb: #232c38;
+    --app-switch-thumb-border: #46505e;
+    --app-switch-sun: #8b949e;
+    --app-switch-moon: #60a5fa;
+    --app-toggler-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(230,237,243,0.85)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* ---------- Tokens: modo claro ---------- */
+[data-bs-theme="light"] {
+    color-scheme: light;
+
+    --app-bg: #e9eef6;
+    --app-surface: #ffffff;
+    --app-surface-alt: #f7f9fc;
+    --app-border: #cfd7e4;
+    --app-text: #1f2937;
+    --app-muted: #55637a;
+    --app-accent: #2563eb;
+    --app-accent-soft: rgba(37, 99, 235, 0.10);
+    --app-accent-border: rgba(37, 99, 235, 0.35);
+    --app-navbar-bg: rgba(255, 255, 255, 0.92);
+    --app-header-bg: #f2f6fc;
+    --app-tile-bg: #f3f6fb;
+    --app-box-bg: #f3f6fb;
+    --app-hover-text: #0b1220;
+    --app-code-bg: #f1f5f9;
+    --app-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 10px 24px -14px rgba(16, 24, 40, 0.35);
+    --app-shadow: 0 16px 38px -16px rgba(37, 99, 235, 0.45);
+    --app-glow-1: rgba(37, 99, 235, 0.12);
+    --app-glow-2: rgba(139, 92, 246, 0.09);
+    --app-footer-bg: rgba(255, 255, 255, 0.95);
+    --app-switch-bg: #e2e8f2;
+    --app-switch-border: #cfd7e4;
+    --app-switch-thumb: #ffffff;
+    --app-switch-thumb-border: #cfd7e4;
+    --app-switch-sun: #f59e0b;
+    --app-switch-moon: #94a3b8;
+    --app-toggler-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(31,41,55,0.85)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--app-bg);
+    color: var(--app-text);
+    font-family: "Segoe UI", system-ui, -apple-system, "Inter", Roboto, Arial, sans-serif;
+    scroll-behavior: smooth;
+}
+
+body {
+    background-image:
+        radial-gradient(1200px 600px at 80% -10%, var(--app-glow-1), transparent 60%),
+        radial-gradient(900px 500px at -10% 10%, var(--app-glow-2), transparent 60%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    min-height: 100vh;
+    /* Deja espacio para el footer fijo (--footer-h lo calcula el JS según el viewport) */
+    padding-bottom: calc(var(--footer-h, 96px) + 1.25rem);
+}
+
+/* Transición suave al cambiar de tema */
+body,
+.app-card,
+.app-card .card-header,
+.component-tile,
+.theme-box,
+.app-card .list-group-item,
+.phpinfo-wrapper,
+footer {
+    transition: background-color .25s ease, color .25s ease, border-color .25s ease;
+}
+
+/* ---------- Utilidades de tema (usadas en el HTML) ---------- */
+.theme-text  { color: var(--app-text) !important; }
+.theme-muted { color: var(--app-muted) !important; }
+.theme-border { border-color: var(--app-border) !important; }
+
+.theme-box {
+    background-color: var(--app-box-bg);
+    border: 1px solid var(--app-border);
+}
+
+.theme-badge {
+    background-color: var(--app-accent-soft);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+    font-weight: 600;
+}
+
+/* ---------- Navbar ---------- */
+.app-navbar {
+    --bs-navbar-toggler-icon-bg: var(--app-toggler-icon);
+    background: var(--app-navbar-bg) !important;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--app-border);
+}
+
+[data-bs-theme="light"] .app-navbar {
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 8px 20px -16px rgba(16, 24, 40, .45);
+}
+
+/* Forzar transparencia total en la barra de navegación */
+.app-navbar .navbar-nav,
+.app-navbar .nav-item,
+.app-navbar .nav-link {
+    background-color: transparent !important;
+}
+
+/* Botón hamburguesa (móvil) transparente */
+.navbar-toggler,
+.navbar-toggler:focus,
+.navbar-toggler:active,
+.navbar-toggler-icon {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Estilo tipo "píldora" para los enlaces de la derecha */
+.app-navbar .nav-link {
+    color: var(--app-text) !important;
+    transition: all .2s ease;
+    border-radius: 8px;
+    padding: 8px 16px !important;
+    border: 1px solid transparent;
+}
+
+.app-navbar .nav-link:hover,
+.app-navbar .nav-link:focus {
+    color: var(--app-accent) !important;
+    background-color: var(--app-accent-soft) !important;
+    border-color: var(--app-accent-border);
+}
+
+/* ---------- Icono de unicornio (PNG como máscara: toma el color del texto) ---------- */
+.nav-icon-unicorn {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 1.15em;
+    height: 1.15em;
+    background-color: currentColor;
+    -webkit-mask: url("../images/Unicorn.png") center / contain no-repeat;
+    mask: url("../images/Unicorn.png") center / contain no-repeat;
+    vertical-align: -0.2em;
+}
+
+/* ---------- Interruptor de tema (sol / luna) ---------- */
+.theme-switch {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    line-height: 0;
+    cursor: pointer;
+}
+
+.theme-switch-track {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 64px;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background-color: var(--app-switch-bg);
+    border: 1px solid var(--app-switch-border);
+    transition: background-color .25s ease, border-color .25s ease;
+}
+
+.theme-switch-icon {
+    position: relative;
+    z-index: 1;
+    font-size: .8rem;
+    color: var(--app-muted);
+    opacity: .55;
+    transition: color .25s ease, opacity .25s ease;
+}
+
+.theme-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    z-index: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: var(--app-switch-thumb);
+    border: 1px solid var(--app-switch-thumb-border);
+    box-shadow: 0 2px 6px rgba(16, 24, 40, .35);
+    transition: transform .28s cubic-bezier(.4, .1, .3, 1), background-color .25s ease;
+}
+
+/* Posición del pulsador y realce del icono activo */
+[data-bs-theme="light"] .theme-switch-thumb { transform: translateX(0); }
+[data-bs-theme="dark"]  .theme-switch-thumb { transform: translateX(32px); }
+
+[data-bs-theme="light"] .theme-switch-sun { color: var(--app-switch-sun); }
+[data-bs-theme="dark"]  .theme-switch-moon { color: var(--app-switch-moon); }
+
+[data-bs-theme="light"] .theme-switch-moon,
+[data-bs-theme="dark"]  .theme-switch-sun {
+    opacity: .45;
+}
+
+.theme-switch:hover .theme-switch-track {
+    border-color: var(--app-accent-border);
+    background-color: var(--app-accent-soft);
+}
+
+.theme-switch:focus-visible .theme-switch-track {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 2px;
+}
+
+/* ---------- Hero ---------- */
+.app-hero {
+    position: relative;
+    border-bottom: 1px solid var(--app-border);
+    background: linear-gradient(180deg, var(--app-accent-soft), transparent);
+}
+
+/* ---------- Cards ---------- */
+.app-card {
+    background-color: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--app-card-shadow);
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.app-card:hover {
+    border-color: var(--app-accent-border);
+    box-shadow: var(--app-shadow);
+}
+
+.app-card .card-header {
+    background-color: var(--app-header-bg);
+    border-bottom: 1px solid var(--app-border);
+    padding: .85rem 1.1rem;
+    font-size: .95rem;
+}
+
+.app-card .card-body {
+    padding: 1.1rem;
+    color: var(--app-text);
+}
+
+/* ---------- Component tiles ---------- */
+.component-tile {
+    background-color: var(--app-tile-bg);
+    border: 1px solid var(--app-border);
+    transition: all .2s ease;
+}
+
+.component-tile:hover {
+    background-color: var(--app-accent-soft);
+    border-color: var(--app-accent-border);
+    transform: translateY(-2px);
+}
+
+/* ---------- List group sidebar ---------- */
+.app-card .list-group-item {
+    background-color: transparent !important;
+    border-color: var(--app-border);
+    color: var(--app-text) !important;
+    padding: .9rem 1.1rem;
+}
+
+.app-card .list-group-item:hover,
+.app-card .list-group-item:focus {
+    background-color: var(--app-accent-soft) !important;
+    color: var(--app-hover-text) !important;
+}
+
+/* ---------- Serial Generador: selector WEB | GUI | TUI ---------- */
+.serial-modes {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+    background-color: var(--app-surface-alt);
+}
+
+.serial-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .32rem .62rem;
+    border: 0;
+    border-radius: 7px;
+    background-color: transparent;
+    color: var(--app-muted);
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, transform .15s ease;
+}
+
+.serial-mode i {
+    font-size: .82rem;
+}
+
+.serial-mode:hover,
+.serial-mode:focus-visible {
+    background-color: var(--app-accent-soft);
+    color: var(--app-text);
+    outline: none;
+}
+
+.serial-mode:active {
+    transform: translateY(1px);
+}
+
+/* Color propio por modo (solo en el hover/foco, para no recargar la fila) */
+.serial-mode[data-modo="web"]:hover,
+.serial-mode[data-modo="web"]:focus-visible { color: #3b82f6; }
+
+.serial-mode[data-modo="gui"]:hover,
+.serial-mode[data-modo="gui"]:focus-visible { color: #f59e0b; }
+
+.serial-mode[data-modo="tui"]:hover,
+.serial-mode[data-modo="tui"]:focus-visible { color: #22c55e; }
+
+.serial-mode.is-busy {
+    opacity: .55;
+    pointer-events: none;
+}
+
+/* En móvil el selector baja a su propia línea y se reparte a lo ancho */
+@media (max-width: 575.98px) {
+    .serial-modes {
+        width: 100%;
+    }
+
+    .serial-mode {
+        flex: 1 1 0;
+        justify-content: center;
+        padding: .45rem .5rem;
+    }
+}
+
+/* ---------- Alertas (config.php no encontrado) ---------- */
+.app-card .alert code {
+    color: inherit;
+    background-color: rgba(128, 128, 128, 0.15);
+    padding: 0 .25rem;
+    border-radius: 4px;
+}
+
+/* ---------- phpinfo wrapper ---------- */
+.phpinfo-wrapper {
+    max-height: 520px;
+    overflow: auto;
+    border-radius: 8px;
+    background-color: var(--app-code-bg);
+    color: var(--app-text);
+    padding: 1rem;
+}
+
+.phpinfo-wrapper::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.phpinfo-wrapper::-webkit-scrollbar-thumb {
+    background: var(--app-border);
+    border-radius: 4px;
+}
+.phpinfo-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--app-accent);
+}
+
+/* El logo de PHP solo se invierte en modo oscuro */
+[data-bs-theme="dark"] .phpinfo-wrapper img {
+    filter: invert(1) hue-rotate(180deg);
+    opacity: .6;
+}
+[data-bs-theme="light"] .phpinfo-wrapper img {
+    filter: none;
+    opacity: .95;
+}
+
+.phpinfo-wrapper .p {
+    display: none;
+}
+
+/* Sobrescritura de los estilos propios que imprime phpinfo() */
+.phpinfo-wrapper table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    background-color: transparent !important;
+}
+
+.phpinfo-wrapper td,
+.phpinfo-wrapper th {
+    border: 1px solid var(--app-border) !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    background-color: transparent !important;
+    color: var(--app-text) !important;
+}
+
+.phpinfo-wrapper h1,
+.phpinfo-wrapper h2,
+.phpinfo-wrapper span,
+.phpinfo-wrapper div,
+.phpinfo-wrapper p,
+.phpinfo-wrapper pre,
+.phpinfo-wrapper body {
+    color: var(--app-text) !important;
+    background-color: transparent !important;
+}
+
+.phpinfo-wrapper .e {
+    color: #d97706 !important;
+    font-weight: bold !important;
+}
+[data-bs-theme="dark"] .phpinfo-wrapper .e {
+    color: #ffb86b !important;
+}
+
+.phpinfo-wrapper .h {
+    color: #ffffff !important;
+    background-color: var(--app-accent) !important;
+    font-weight: bold !important;
+}
+
+.phpinfo-wrapper .v {
+    color: var(--app-text) !important;
+}
+
+.phpinfo-wrapper .vr {
+    background-color: var(--app-box-bg) !important;
+    color: var(--app-text) !important;
+    text-align: right !important;
+}
+
+.phpinfo-wrapper a:link,
+.phpinfo-wrapper a:hover {
+    color: var(--app-accent) !important;
+    text-decoration: none !important;
+}
+.phpinfo-wrapper a:hover {
+    text-decoration: underline !important;
+}
+
+/* ---------- Footer (fijo, siempre visible) ---------- */
+footer,
+.app-footer {
+    background-color: var(--app-footer-bg);
+}
+
+.app-footer {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1030;
+    padding: .6rem 0 .55rem;
+    border-top: 1px solid var(--app-border);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 -8px 24px -20px rgba(16, 24, 40, .55);
+}
+
+[data-bs-theme="light"] .app-footer {
+    box-shadow: 0 -8px 20px -18px rgba(16, 24, 40, .45);
+}
+
+.app-footer-brand i {
+    color: var(--app-accent);
+}
+
+.app-footer-legal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+}
+
+.app-footer-legal a {
+    color: var(--app-text);
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+    transition: color .2s ease;
+}
+
+.app-footer-legal a:hover,
+.app-footer-legal a:focus {
+    color: var(--app-accent);
+}
+
+.app-footer-mail {
+    font-weight: 600;
+    color: var(--app-text);
+}
+
+.app-footer-mail i {
+    color: var(--app-accent);
+    font-size: .9em;
+}
+
+.app-footer-legal sup {
+    font-size: .65em;
+    opacity: .8;
+}
+
+.app-footer-sep {
+    opacity: .5;
+}
+
+/* ---------- Botones flotantes (principio / final) ---------- */
+.scroll-fabs {
+    position: fixed;
+    right: 1.15rem;
+    bottom: calc(var(--footer-h, 96px) + 1.1rem);
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+}
+
+.scroll-fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 50%;
+    background-color: var(--app-surface);
+    color: var(--app-accent);
+    border: 1px solid var(--app-border);
+    box-shadow: 0 8px 20px -10px rgba(16, 24, 40, .55);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px) scale(.92);
+    transition: opacity .2s ease, transform .2s ease, visibility .2s ease,
+                background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+
+.scroll-fab.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+}
+
+.scroll-fab:hover {
+    color: #fff;
+    background-color: var(--app-accent);
+    border-color: var(--app-accent);
+    transform: translateY(-2px);
+}
+
+.scroll-fab:focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 3px;
+}
+
+/* ---------- Adaptación a tablet / móvil ---------- */
+@media (max-width: 991.98px) {
+    .app-footer {
+        padding: .55rem 0 .5rem;
+    }
+    .app-footer-brand {
+        font-size: .8rem;
+        margin-bottom: .35rem !important;
+    }
+    .app-footer-legal {
+        font-size: .76rem;
+        gap: .3rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .app-footer {
+        padding: .45rem 0 .4rem;
+    }
+    .app-footer-brand {
+        font-size: .74rem;
+        margin-bottom: .2rem !important;
+    }
+    .app-footer-brand i {
+        display: none;
+    }
+    .app-footer-legal {
+        font-size: .7rem;
+        gap: .25rem;
+    }
+    .app-footer-sep {
+        display: none;
+    }
+    .scroll-fabs {
+        right: .7rem;
+        gap: .4rem;
+    }
+    .scroll-fab {
+        width: 42px;
+        height: 42px;
+        font-size: .85rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scroll-fab,
+    .theme-switch-thumb,
+    .app-card,
+    .component-tile {
+        transition: none !important;
+    }
+}
+
+/* ---------- SweetAlert2 ---------- */
+.swal2-popup {
+    border-radius: 14px !important;
+    border: 1px solid var(--app-border) !important;
+}
