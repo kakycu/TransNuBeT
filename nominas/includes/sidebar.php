@@ -1228,7 +1228,9 @@ html.focus-mode .fluid-container {
     <nav class="sidebar-nav">
         <span class="nav-category">General</span>
         <?php if (permiso_puede('dashboard', 'ver')): ?>
-        <div class="nav-group <?php echo (in_array($current_file, ['dashboard.php', 'carpetas.php'])) ? 'open' : ''; ?>" id="dashboardNavGroup">
+        <?php /* El submenú solo arranca abierto cuando estamos en el Explorador de Archivos;
+                 en dashboard.php queda cerrado hasta que se pulse el chevron. */ ?>
+        <div class="nav-group <?php echo ($current_file === 'carpetas.php') ? 'open' : ''; ?>" id="dashboardNavGroup">
             <a href="<?php echo $base_prefix; ?>dashboard.php" class="nav-item <?php echo ($current_file == 'dashboard.php') ? 'active' : ''; ?>" data-tooltip="Dashboard" data-tooltip-theme="primary">
                 <i class="fas fa-chart-line"></i>
                 <span class="sidebar-text">Dashboard</span>

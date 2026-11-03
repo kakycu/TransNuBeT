@@ -1587,7 +1587,7 @@ body::after {
     color: #fff;
 }
 
-/* ===== DROPDOWN: OTROS SERVICIOS (en la barra de título) ===== */
+/* ===== DROPDOWN: OTRAS OPCIONES (en la barra de título) ===== */
 .titlebar-login .custom-dropdown {
     position: relative;
     display: inline-block;
@@ -2754,7 +2754,7 @@ body::after {
             <div class="titlebar-buttons">
                 <div class="custom-dropdown" id="otrosServiciosDropdown">
                     <button type="button" class="custom-dropdown-btn" id="dropdownToggleLogin">
-                        <i class="fas fa-ellipsis-h"></i> OTROS SERVICIOS
+                        <i class="fas fa-ellipsis-h"></i> OTRAS OPCIONES
                         <i class="fas fa-chevron-down" id="dropdownArrowLogin"></i>
                     </button>
                     <div class="custom-dropdown-menu" id="dropdownMenuLogin">
@@ -2769,6 +2769,10 @@ body::after {
                         <button type="button" class="dropdown-item" data-servicio="sobre-autor">
                             <i class="fas fa-user"></i> Sobre el Autor
                         </button>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="../phpinfo/index.php" target="_blank" rel="noopener noreferrer" data-servicio="phpinfo">
+                            <i class="fas fa-server"></i> PHP Info
+                        </a>
                     </div>
                 </div>
                 <button type="button" class="titlebar-btn tb-collapse" id="btnCollapseLogin" title="Colapsar / Expandir" data-tooltip="Colapsar / Expandir" data-tooltip-theme="info">
@@ -5671,7 +5675,7 @@ function checkDatabaseStatus() {
 })();
 </script>
 <script>
-// ============ DROPDOWN: OTROS SERVICIOS (barra de título del login) ============
+// ============ DROPDOWN: OTRAS OPCIONES (barra de título del login) ============
 (function () {
     function initDropdownServicios() {
         var dropdownToggle = document.getElementById('dropdownToggleLogin');
@@ -5755,6 +5759,10 @@ function checkDatabaseStatus() {
                     window.open('/contacto.php', '_blank');
                 } else if (servicio === 'sobre-autor') {
                     window.open('/explorer.php', '_blank');
+                } else if (servicio === 'phpinfo') {
+                    // Abrir el diagnóstico de PHP (phpinfo) en pestaña nueva
+                    e.preventDefault();
+                    window.open('../phpinfo/index.php', '_blank');
                 }
             });
         });

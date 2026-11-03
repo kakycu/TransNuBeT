@@ -1289,10 +1289,10 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             </div>
         </div>
         <div class="header-badge">
-            <!-- DROPDOWN: OTROS SERVICIOS -->
+            <!-- DROPDOWN: OTRAS OPCIONES -->
             <div class="custom-dropdown" id="otrosServiciosDropdown">
                 <button class="custom-dropdown-btn" id="dropdownToggle">
-                    <i class="fas fa-ellipsis-h"></i> OTROS SERVICIOS
+                    <i class="fas fa-ellipsis-h"></i> OTRAS OPCIONES
                     <i class="fas fa-chevron-down" id="dropdownArrow"></i>
                 </button>
                 <div class="custom-dropdown-menu" id="dropdownMenu">
@@ -1317,6 +1317,10 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
                     <button class="dropdown-item" data-servicio="sobre-autor">
                         <i class="fas fa-user"></i> Sobre el Autor
                     </button>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="phpinfo/index.php" target="_blank" rel="noopener noreferrer" data-servicio="phpinfo">
+                        <i class="fas fa-server"></i> PHP Info
+                    </a>
                 </div>
             </div>
 
@@ -2066,7 +2070,7 @@ function mostrarEstadoLicencia() {
         });
 }
 
-// ============ DROPDOWN: OTROS SERVICIOS (VERSIÓN DEFINITIVA) ============
+// ============ DROPDOWN: OTRAS OPCIONES (VERSIÓN DEFINITIVA) ============
 (function() {
     // Esperar a que el DOM esté listo
     if (document.readyState === 'loading') {
@@ -2190,6 +2194,10 @@ function mostrarEstadoLicencia() {
                 } else if (servicio === 'sobre-autor') {
                     // Abrir el explorador de portafolio del autor en pestaña nueva
                     window.open('/explorer.php', '_blank');
+                } else if (servicio === 'phpinfo') {
+                    // Abrir el diagnóstico de PHP (phpinfo) en pestaña nueva
+                    e.preventDefault();
+                    window.open('phpinfo/index.php', '_blank');
                 } else {
                     // Por si hubiera otros, aunque ahora solo está este
                     Swal.fire({
