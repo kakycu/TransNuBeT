@@ -165,13 +165,11 @@ function datosPersonalesDesdeCI($ci) {
     $hoy = new DateTime('today');
     $edad_actual = $hoy->diff($nac)->y;
 
-    // Próximo cumpleaños (este año si aún no pasó, si no el del próximo año)
-    $prox = clone $nac;
-    $prox->setDate((int)$hoy->format('Y'), (int)$nac->format('m'), (int)$nac->format('d'));
-    if ($prox < $hoy) {
-        $prox->modify('+1 year');
-    }
-    $dias_restantes = (int)$hoy->diff($prox)->format('%a');
+    // Próximo cumpleaños y días restantes con el mismo helper que el dashboard
+    // y empleados: así el perfil no dice una cosa y la tarjeta de cumpleaños
+    // otra (el cálculo por instante daba un día de menos por la tarde).
+    $proximoCumple = proximoCumpleanosDesdeNacimiento($nac, $hoy);
+    if ($proximoCumple === null) { return null; }
 
     // Sexo: el décimo dígito del CI, par = masculino, impar = femenino
     $sexo = (((int)substr($ci, 9, 1)) % 2 === 0) ? 'Masculino' : 'Femenino';
@@ -179,9 +177,9 @@ function datosPersonalesDesdeCI($ci) {
     return [
         'fecha_nacimiento'   => $nac->format('d/m/Y'),
         'edad_actual'        => $edad_actual,
-        'proximo_cumpleanos' => $prox->format('d/m/Y'),
-        'edad_a_cumplir'     => $edad_actual + 1,
-        'dias_para_cumple'   => $dias_restantes,
+        'proximo_cumpleanos' => $proximoCumple['fecha']->format('d/m/Y'),
+        'edad_a_cumplir'     => $proximoCumple['edad'],
+        'dias_para_cumple'   => $proximoCumple['dias'],
         'sexo'               => $sexo,
         'sexo_icono'         => ($sexo === 'Masculino') ? 'fa-mars' : 'fa-venus',
         'sexo_color'         => ($sexo === 'Masculino') ? '#60a5fa' : '#f472b6',

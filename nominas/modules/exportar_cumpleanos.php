@@ -52,45 +52,23 @@ function obtenerCumpleaneros($pdo, $tipo) {
     ");
     $trabajadores = $stmt->fetchAll();
 
-    $hoy = new DateTime();
     $cumpleaneros = [];
 
     foreach ($trabajadores as $t) {
-        $ci_limpio = preg_replace('/\D/', '', $t['ci']);
-        if (strlen($ci_limpio) < 6) continue;
-
-        $anio = substr($ci_limpio, 0, 2);
-        $mes  = substr($ci_limpio, 2, 2);
-        $dia  = substr($ci_limpio, 4, 2);
-
-        if (!checkdate((int)$mes, (int)$dia, 2000)) continue;
-
-        $anio_completo = ((int)$anio < 24) ? (2000 + (int)$anio) : (1900 + (int)$anio);
-        if ($anio_completo > (int)$hoy->format('Y')) {
-            $anio_completo -= 100;
-        }
-
-        $fecha_nacimiento = DateTime::createFromFormat('Y-m-d', $anio_completo . '-' . $mes . '-' . $dia);
-        if (!$fecha_nacimiento) continue;
-
-        $proximo = DateTime::createFromFormat('Y-m-d', $hoy->format('Y') . '-' . $fecha_nacimiento->format('m-d'));
-        if (!$proximo) continue;
-        if ($proximo->format('Y-m-d') < $hoy->format('Y-m-d')) {
-            $proximo->modify('+1 year');
-        }
-
-        $dias = (int)$hoy->diff($proximo)->days;
-        $edad = (int)$proximo->format('Y') - (int)$fecha_nacimiento->format('Y');
+        // Cálculo centralizado en funciones.php: días completos, no instantes,
+        // para que el listado diga lo mismo que el dashboard y empleados.
+        $cumple = proximoCumpleanosDesdeCI($t['ci']);
+        if ($cumple === null) continue;
 
         $cumpleaneros[] = [
-            'codigo' => $t['codigo'],
-            'ci'     => $ci_limpio,
-            'nombre' => $t['nombre_completo'],
-            'fecha'  => $proximo->format('d/m/Y'),
-            'fecha_ymd' => $proximo->format('Y-m-d'),
-            'edad'   => $edad,
-            'dias'   => $dias,
-            'dias_txt' => ($dias === 0) ? 'HOY' : $dias
+            'codigo'    => $t['codigo'],
+            'ci'        => preg_replace('/\D/', '', $t['ci']),
+            'nombre'    => $t['nombre_completo'],
+            'fecha'     => $cumple['fecha']->format('d/m/Y'),
+            'fecha_ymd' => $cumple['fecha']->format('Y-m-d'),
+            'edad'      => $cumple['edad'],
+            'dias'      => $cumple['dias'],
+            'dias_txt'  => ($cumple['dias'] === 0) ? 'HOY' : $cumple['dias'],
         ];
     }
 

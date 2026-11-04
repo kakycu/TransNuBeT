@@ -131,43 +131,21 @@ try {
     ");
     $trabajadores = $stmt->fetchAll();
 
-    $hoy = new DateTime();
     foreach ($trabajadores as $t) {
-        $ci_limpio = preg_replace('/\D/', '', $t['ci']);
-        if (strlen($ci_limpio) < 6) continue;
+        // El cálculo vive en funciones.php y compara días completos, no
+        // instantes: si se usara la hora actual, a media tarde saldría un día
+        // de menos en la tarjeta de cumpleaños.
+        $cumple = proximoCumpleanosDesdeCI($t['ci']);
+        if ($cumple === null) continue;
 
-        $anio = substr($ci_limpio, 0, 2);
-        $mes  = substr($ci_limpio, 2, 2);
-        $dia  = substr($ci_limpio, 4, 2);
-
-        if (!checkdate((int)$mes, (int)$dia, 2000)) continue;
-
-        $anio_completo = ($anio < 24) ? (2000 + $anio) : (1900 + $anio);
-        // Ajustar si el año es mayor al actual (ej: 25 -> 1925)
-        if ($anio_completo > $hoy->format('Y')) {
-            $anio_completo -= 100;
-        }
-
-        $fecha_nacimiento = DateTime::createFromFormat('Y-m-d', $anio_completo . '-' . $mes . '-' . $dia);
-        if (!$fecha_nacimiento) continue;
-
-        // Calcular próximo cumpleaños (mes/día en año actual)
-        $proximo = DateTime::createFromFormat('Y-m-d', $hoy->format('Y') . '-' . $fecha_nacimiento->format('m-d'));
-        if (!$proximo) continue;
-        if ($proximo->format('Y-m-d') < $hoy->format('Y-m-d')) {
-            $proximo->modify('+1 year');
-        }
-
-        $dias = $hoy->diff($proximo)->days;
         // Mostrar todos, sin límite de 30 días
-        $edad = $proximo->format('Y') - $fecha_nacimiento->format('Y');
         $cumpleaneros[] = [
-            'id'        => $t['id'],
-            'nombre'    => $t['nombre_completo'],
-            'foto'      => $t['foto_ruta'],
-            'fecha'     => $proximo->format('d/m/Y'),
-            'edad'      => $edad,
-            'dias'      => $dias
+            'id'     => $t['id'],
+            'nombre' => $t['nombre_completo'],
+            'foto'   => $t['foto_ruta'],
+            'fecha'  => $cumple['fecha']->format('d/m/Y'),
+            'edad'   => $cumple['edad'],
+            'dias'   => $cumple['dias'],
         ];
     }
     // Ordenar por días restantes (más cercano primero)

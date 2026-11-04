@@ -1809,40 +1809,19 @@ try {
     ");
     $trabajadores_cumple = $stmt->fetchAll();
 
-    $hoy = new DateTime();
     foreach ($trabajadores_cumple as $t) {
-        $ci_limpio = preg_replace('/\D/', '', $t['ci']);
-        if (strlen($ci_limpio) < 6) continue;
+        // Mismo cálculo centralizado que el dashboard: días completos, no
+        // instantes (con la hora actual salía un día de menos por la tarde).
+        $cumple = proximoCumpleanosDesdeCI($t['ci']);
+        if ($cumple === null) continue;
 
-        $anio = substr($ci_limpio, 0, 2);
-        $mes  = substr($ci_limpio, 2, 2);
-        $dia  = substr($ci_limpio, 4, 2);
-
-        if (!checkdate((int)$mes, (int)$dia, 2000)) continue;
-
-        $anio_completo = ($anio < 24) ? (2000 + $anio) : (1900 + $anio);
-        if ($anio_completo > $hoy->format('Y')) {
-            $anio_completo -= 100;
-        }
-
-        $fecha_nacimiento = DateTime::createFromFormat('Y-m-d', $anio_completo . '-' . $mes . '-' . $dia);
-        if (!$fecha_nacimiento) continue;
-
-        $proximo = DateTime::createFromFormat('Y-m-d', $hoy->format('Y') . '-' . $fecha_nacimiento->format('m-d'));
-        if (!$proximo) continue;
-        if ($proximo->format('Y-m-d') < $hoy->format('Y-m-d')) {
-            $proximo->modify('+1 year');
-        }
-
-        $dias = $hoy->diff($proximo)->days;
-        $edad = $proximo->format('Y') - $fecha_nacimiento->format('Y');
         $cumpleaneros[] = [
-            'id'        => $t['id'],
-            'nombre'    => $t['nombre_completo'],
-            'foto'      => $t['foto_ruta'] ? '../' . $t['foto_ruta'] : '',
-            'fecha'     => $proximo->format('d/m/Y'),
-            'edad'      => $edad,
-            'dias'      => $dias
+            'id'     => $t['id'],
+            'nombre' => $t['nombre_completo'],
+            'foto'   => $t['foto_ruta'] ? '../' . $t['foto_ruta'] : '',
+            'fecha'  => $cumple['fecha']->format('d/m/Y'),
+            'edad'   => $cumple['edad'],
+            'dias'   => $cumple['dias'],
         ];
     }
     usort($cumpleaneros, function($a, $b) {
