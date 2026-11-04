@@ -23,6 +23,9 @@
     --cierre-revertido:  #f59e0b;
     --cierre-pendiente:  var(--accent);
     --cierre-vacio:      var(--muted);
+    /* Estados del ciclo de vida de una nómina (chips del desglose). */
+    --cierre-pagado:        #0ea5e9;
+    --cierre-nomina-cerrada: #14b8a6;
 
     --cierre-cerrado-ink:   color-mix(in srgb, var(--cierre-cerrado) 28%, var(--txt));
     --cierre-revertido-ink: color-mix(in srgb, var(--cierre-revertido) 30%, var(--txt));
@@ -392,11 +395,21 @@
 }
 .cierre-alerta.es-ok > i { color: var(--cierre-cerrado); }
 
-/* ===== Desglose por tipo ===== */
+/* ===== Desglose por tipo =====
+ * Cada fila es la tarjeta de un tipo de nómina. La rejilla tiene tres zonas:
+ *   fila 1 -> nombre del tipo | barra de trabajadores | flecha de enlace
+ *   fila 2 -> chips de estado (uno por estado presente ese mes)
+ *   fila 3 -> devengado y neto
+ * Se usan áreas con nombre en vez de columnas numeradas para que el orden de
+ * los nodos que inyecta cierres.js no dependa de las posiciones del grid. */
 .cierre-desglose { display: flex; flex-direction: column; gap: 0.55rem; }
 .cierre-desglose-fila {
     display: grid;
     grid-template-columns: minmax(8rem, 1fr) 3fr auto;
+    grid-template-areas:
+        "etiqueta barra  flecha"
+        "estados  estados estados"
+        "cifras   cifras  cifras";
     gap: 0.35rem 0.75rem;
     padding: 0.5rem 0.6rem;
     border-radius: 0.6rem;
@@ -420,6 +433,8 @@
 /* La flecha solo aparece al pasar por encima: antes de tocar el raton el
  * desglose se lee como una lista, no como un menu. */
 .js-ir-nomina-icono {
+    grid-area: flecha;
+    justify-self: end;
     align-self: center;
     font-size: 0.75rem;
     color: var(--accent);
@@ -431,6 +446,7 @@
     opacity: 1;
 }
 .cierre-desglose-etiqueta {
+    grid-area: etiqueta;
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
@@ -440,6 +456,7 @@
 }
 .cierre-desglose-etiqueta small { font-weight: 500; color: var(--muted); font-size: 0.7rem; }
 .cierre-desglose-barra {
+    grid-area: barra;
     align-self: center;
     height: 0.45rem;
     border-radius: 999px;
@@ -454,7 +471,7 @@
     transition: width 0.4s ease;
 }
 .cierre-desglose-cifras {
-    grid-column: 1 / -1;
+    grid-area: cifras;
     display: flex;
     flex-wrap: wrap;
     gap: 0.9rem;
@@ -463,6 +480,66 @@
     font-variant-numeric: tabular-nums;
 }
 .cierre-desglose-cifras b { color: var(--txt); font-weight: 700; }
+
+/* Chips de estado dentro de la tarjeta de cada tipo.
+ *
+ * El estado ya no se puede deducir del conjunto: el mismo tipo puede tener a la
+ * vez nóminas en borrador y contabilizadas en el mes. Por eso la tarjeta lleva
+ * un chip por cada estado presente. Se colorean igual que los chips de la
+ * cabecera: el color semantico se mezcla con --txt (que se invierte con el
+ * tema) para que haya contraste en los seis temas sin duplicar reglas. */
+.cierre-desglose-estados {
+    grid-area: estados;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+}
+.cierre-estado-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.08rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.66rem;
+    font-weight: 600;
+    line-height: 1.7;
+    white-space: nowrap;
+    color: var(--txt);
+}
+.cierre-estado-chip i { font-size: 0.6rem; opacity: 0.85; }
+.cierre-estado-borrador {
+    color: color-mix(in srgb, var(--cierre-revertido) 55%, var(--txt));
+    background: color-mix(in srgb, var(--cierre-revertido) 16%, transparent);
+    border-color: color-mix(in srgb, var(--cierre-revertido) 45%, transparent);
+}
+.cierre-estado-procesado {
+    color: color-mix(in srgb, var(--accent) 55%, var(--txt));
+    background: color-mix(in srgb, var(--accent) 13%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.cierre-estado-pagado {
+    color: color-mix(in srgb, var(--cierre-pagado) 60%, var(--txt));
+    background: color-mix(in srgb, var(--cierre-pagado) 15%, transparent);
+    border-color: color-mix(in srgb, var(--cierre-pagado) 45%, transparent);
+}
+.cierre-estado-cerrado {
+    color: color-mix(in srgb, var(--cierre-nomina-cerrada) 60%, var(--txt));
+    background: color-mix(in srgb, var(--cierre-nomina-cerrada) 15%, transparent);
+    border-color: color-mix(in srgb, var(--cierre-nomina-cerrada) 45%, transparent);
+}
+.cierre-estado-contabilizado {
+    color: color-mix(in srgb, var(--cierre-cerrado) 55%, var(--txt));
+    background: color-mix(in srgb, var(--cierre-cerrado) 15%, transparent);
+    border-color: color-mix(in srgb, var(--cierre-cerrado) 45%, transparent);
+}
+.cierre-estado-sin_estado,
+.cierre-estado-desconocido {
+    color: var(--muted);
+    background: color-mix(in srgb, var(--muted) 12%, transparent);
+    border-color: color-mix(in srgb, var(--muted) 35%, transparent);
+}
 
 /* ===== Botones de acción =====
  * theme_config.php solo sobrescribe color y border-color de .btn-win (y lo hace
@@ -677,5 +754,16 @@
     .cierre-toolbar { flex-direction: column; align-items: stretch; }
     .cierre-selector-anio { justify-content: space-between; }
     .cierre-meses { grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr)); }
-    .cierre-desglose-fila { grid-template-columns: 1fr; }
+    /* En movil la tarjeta se apila: nombre y flecha, chips, barra y cifras.
+     * La barra pasa a ocupar todo el ancho para que siga leyendose como escala. */
+    .cierre-desglose-fila {
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "etiqueta flecha"
+            "estados  estados"
+            "barra    barra"
+            "cifras   cifras";
+        row-gap: 0.45rem;
+    }
+    .cierre-desglose-barra { align-self: stretch; }
 }

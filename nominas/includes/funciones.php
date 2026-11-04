@@ -50,6 +50,107 @@ function ultimoDiaDePeriodo($fecha) {
 }
 
 
+/**
+ * Fecha de nacimiento a partir del carnet de identidad cubano (AAMMDD...).
+ *
+ * Los dos primeros dígitos del CI no dicen el siglo. Se mantiene la regla que
+ * ya usaban el dashboard y empleados: AA < 24 es 20AA y el resto 19AA; si aun
+ * así quedara en el futuro se le resta un siglo. No hay trabajadores con AA
+ * entre 24 y 26, y quien nació del 2000 en adelante entra por AA < 24.
+ *
+ * @param string $ci
+ * @return DateTimeImmutable|null fecha a medianoche, o null si el CI no trae
+ *                                una fecha representable
+ */
+if (!function_exists('fechaNacimientoDesdeCI')) {
+function fechaNacimientoDesdeCI($ci) {
+    $limpio = preg_replace('/\D/', '', (string)$ci);
+    if (strlen($limpio) < 6) { return null; }
+
+    $yy = (int)substr($limpio, 0, 2);
+    $mm = (int)substr($limpio, 2, 2);
+    $dd = (int)substr($limpio, 4, 2);
+    if (!checkdate($mm, $dd, 2000)) { return null; }
+
+    $anio = ($yy < 24) ? (2000 + $yy) : (1900 + $yy);
+    if ($anio > (int)date('Y')) { $anio -= 100; }
+
+    // '!' deja la hora a medianoche: el cumpleaños se compara siempre por día.
+    $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', sprintf('%04d-%02d-%02d', $anio, $mm, $dd));
+    return $fecha ?: null;
+}
+}
+
+
+/**
+ * Próximo cumpleaños y días que faltan, calculados por día y no por instante.
+ *
+ * El cálculo tiene que hacerse entre dos fechas a medianoche. Si se compara el
+ * instante actual (con su hora) contra la medianoche del cumpleaños, el diff()
+ * recorta la fracción de día y el panel muestra un día de menos: a las 21:00,
+ * si el cumpleaños es pasado mañana, diff()->days devuelve 1 en vez de 2.
+ *
+ * Si el cumpleaños ya pasó este año se toma el del año que viene. El 29 de
+ * febrero en año no bisiesto se celebra el 1 de marzo: setDate() desborda
+ * igual que hacía antes createFromFormat('Y-m-d').
+ *
+ * @param DateTimeInterface|string      $nacimiento fecha de nacimiento
+ * @param DateTimeInterface|string|null $hoy        referencia (por defecto, ahora)
+ * @return array{fecha: DateTimeImmutable, dias: int, edad: int}|null
+ */
+if (!function_exists('proximoCumpleanosDesdeNacimiento')) {
+function proximoCumpleanosDesdeNacimiento($nacimiento, $hoy = null) {
+    if ($nacimiento instanceof DateTimeInterface) {
+        $nac = DateTimeImmutable::createFromInterface($nacimiento);
+    } else {
+        $nac = fechaComoDateTime((string)$nacimiento);
+        if ($nac === null) { return null; }
+    }
+
+    if ($hoy instanceof DateTimeInterface) {
+        $base = DateTimeImmutable::createFromInterface($hoy);
+    } elseif (is_string($hoy) && trim($hoy) !== '') {
+        $base = fechaComoDateTime($hoy);
+        if ($base === null) { return null; }
+    } else {
+        $base = new DateTimeImmutable('now');
+    }
+    $base = $base->setTime(0, 0, 0);
+
+    $mes  = (int)$nac->format('m');
+    $dia  = (int)$nac->format('d');
+    $anio = (int)$base->format('Y');
+
+    $proximo = $nac->setDate($anio, $mes, $dia)->setTime(0, 0, 0);
+    if ($proximo < $base) {
+        $proximo = $nac->setDate($anio + 1, $mes, $dia)->setTime(0, 0, 0);
+    }
+
+    return [
+        'fecha' => $proximo,
+        'dias'  => (int)$base->diff($proximo)->days,
+        'edad'  => (int)$proximo->format('Y') - (int)$nac->format('Y'),
+    ];
+}
+}
+
+
+/**
+ * Atajo para el caso habitual: carnet de identidad -> próximo cumpleaños.
+ *
+ * @param string                        $ci
+ * @param DateTimeInterface|string|null $hoy
+ * @return array{fecha: DateTimeImmutable, dias: int, edad: int}|null
+ */
+if (!function_exists('proximoCumpleanosDesdeCI')) {
+function proximoCumpleanosDesdeCI($ci, $hoy = null) {
+    $nac = fechaNacimientoDesdeCI($ci);
+    if ($nac === null) { return null; }
+    return proximoCumpleanosDesdeNacimiento($nac, $hoy);
+}
+}
+
+
 
 /**
  * Obtiene todos los centros de costo activos
@@ -929,6 +1030,85 @@ if (!function_exists('mensaje_periodo_futuro_nominas')) {
     }
 }
 
+if (!function_exists('mesSiguienteNominas')) {
+    /**
+     * Suma un mes a un par (anio, mes), devolviendo siempre valores validos.
+     */
+    function mesSiguienteNominas($anio, $mes) {
+        $anio = (int)$anio;
+        $mes  = (int)$mes;
+        if ($mes >= 12) {
+            return [$anio + 1, 1];
+        }
+        return [$anio, max(1, $mes + 1)];
+    }
+}
+
+if (!function_exists('periodoMaximoAperturaNominas')) {
+    /**
+     * Periodo mas lejano que se puede fijar como "periodo en curso".
+     *
+     * Regla: el unico mes posterior permitido es el SIGUIENTE al ultimo cierre
+     * (mensual o anual). No se avanza mas alla aunque los meses intermedios no
+     * tengan nominas. Todo lo anterior se evalua aparte (los meses sin datos se
+     * pueden fijar; los cerrados no).
+     *
+     * El puntero guardado (periodo_nominas_en_curso) entra en el calculo como
+     * suelo: si ya apunta mas adelante, no se le puede bloquear su propio valor.
+     * Y si esta atrasado (meses vacios sin cerrar) no debe impedir abrir el mes
+     * que toca: por eso el limite es el ultimo cierre + 1, no el puntero.
+     *
+     * Devuelve ['periodo' => 'AAAA-MM', 'anio' => int, 'mes' => int, 'origen' => string].
+     */
+    function periodoMaximoAperturaNominas($pdo) {
+        $enCurso = periodoNominasEnCurso($pdo);
+        $anio = (int)$enCurso['anio'];
+        $mes  = (int)$enCurso['mes'];
+        $origen = 'puntero';
+
+        try {
+            // Ultimo cierre MENSUAL vigente: el mes siguiente es el que toca abrir.
+            $st = $pdo->query("SELECT periodo_anio, periodo_mes FROM cierres_periodo_nomina
+                                WHERE estado = 'cerrado' AND tipo = 1
+                                  AND periodo_mes BETWEEN 1 AND 12
+                                ORDER BY periodo_anio DESC, periodo_mes DESC LIMIT 1");
+            $fila = $st ? $st->fetch(PDO::FETCH_ASSOC) : false;
+            if ($fila) {
+                list($cAnio, $cMes) = mesSiguienteNominas((int)$fila['periodo_anio'], (int)$fila['periodo_mes']);
+                if ($cAnio * 100 + $cMes > $anio * 100 + $mes) {
+                    $anio = $cAnio;
+                    $mes  = $cMes;
+                    $origen = 'ultimo_cierre';
+                }
+            }
+
+            // Cierre ANUAL vigente: deja abierto solo el enero siguiente.
+            $st = $pdo->query("SELECT periodo_anio FROM cierres_periodo_nomina
+                                WHERE estado = 'cerrado' AND tipo = 2
+                                ORDER BY periodo_anio DESC LIMIT 1");
+            $anioAnual = $st ? $st->fetchColumn() : false;
+            if ($anioAnual !== false && $anioAnual !== null) {
+                $cAnio = (int)$anioAnual + 1;
+                $cMes  = 1;
+                if ($cAnio * 100 + $cMes > $anio * 100 + $mes) {
+                    $anio = $cAnio;
+                    $mes  = $cMes;
+                    $origen = 'cierre_anual';
+                }
+            }
+        } catch (Throwable $e) {
+            // Sin datos de cierres el limite es el puntero, que es lo conservador.
+        }
+
+        return [
+            'periodo' => sprintf('%04d-%02d', $anio, $mes),
+            'anio'    => $anio,
+            'mes'     => $mes,
+            'origen'  => $origen,
+        ];
+    }
+}
+
 if (!function_exists('cierreAnualVigenteNominas')) {
     /**
      * Devuelve el cierre ANUAL del anio si sigue en estado 'cerrado', o null.
@@ -967,8 +1147,13 @@ if (!function_exists('estado_operacion_periodo_nominas')) {
     /**
      * Indica si se puede modificar una nomina de un periodo concreto.
      * Un mes cuenta como no operable si esta cerrado, o si su ano esta cerrado.
+     *
+     * $ignorar_futuro permite saltarse SOLO la regla de "periodo por delante del
+     * en curso" y seguir evaluando cierres. Lo usa el ajuste manual del periodo
+     * en curso, que tiene su propio limite (periodoMaximoAperturaNominas) porque
+     * el puntero puede estar atrasado. El resto de llamadas no lo pasan.
      */
-    function estado_operacion_periodo_nominas($pdo, $periodo) {
+    function estado_operacion_periodo_nominas($pdo, $periodo, $ignorar_futuro = false) {
         $periodo = normalizar_periodo_nominas($pdo, $periodo);
         $anio = (int)substr($periodo, 0, 4);
         $mes  = (int)substr($periodo, 5, 2);
@@ -980,7 +1165,8 @@ if (!function_exists('estado_operacion_periodo_nominas')) {
          * (exigir_periodo_operable, bloquear_periodo_nominas, el guard de la
          * fila) quedan cubiertos sin tocar uno por uno. */
         $en_curso = periodoNominasEnCurso($pdo);
-        if ($mes >= 1 && $mes <= 12 && $anio >= 2000
+        if (!$ignorar_futuro
+            && $mes >= 1 && $mes <= 12 && $anio >= 2000
             && ($anio > $en_curso['anio'] || ($anio === $en_curso['anio'] && $mes > $en_curso['mes']))) {
             return [
                 'operable' => false,
@@ -1215,6 +1401,39 @@ if (!function_exists('desgloseTiposNominaPeriodo')) {
                                 AND estado = 'contabilizado' AND numero_nomina IS NOT NULL
                               GROUP BY tipo_nomina
                               ORDER BY tipo_nomina");
+        $st->execute([$periodo_desde, $periodo_hasta]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
+if (!function_exists('desgloseTiposNominaPeriodoDetallado')) {
+    /**
+     * Desglose por tipo y estado para el panel del mes. A diferencia de
+     * desgloseTiposNominaPeriodo() --que alimenta el snapshot desglose_tipos de
+     * los cierres y por eso solo cuenta lo contabilizado-- aqui entra TODO:
+     * borradores incluidos. Un mes no se puede cerrar mientras quede algo sin
+     * contabilizar, asi que el panel tiene que ensenar esos pendientes aunque
+     * todavia no tengan numero_nomina.
+     *
+     * Los borradores tienen numero_nomina NULL: su COUNT(DISTINCT numero_nomina)
+     * vale 0. Es correcto: todavia no forman un lote. El panel muestra entonces
+     * solo los trabajadores.
+     *
+     * UNA fila por (tipo, estado); el JavaScript las agrupa por tipo para pintar
+     * una tarjeta con un chip por estado.
+     */
+    function desgloseTiposNominaPeriodoDetallado($pdo, $periodo_desde, $periodo_hasta) {
+        $st = $pdo->prepare("SELECT COALESCE(tipo_nomina, 'desconocido') AS tipo_nomina,
+                                    COALESCE(estado, 'sin_estado') AS estado,
+                                    COUNT(DISTINCT numero_nomina) AS lotes,
+                                    COUNT(DISTINCT trabajador_id) AS trabajadores,
+                                    COALESCE(SUM(total_salario_devengado), 0) AS devengado,
+                                    COALESCE(SUM(importe_neto), 0) AS neto
+                               FROM nominas
+                              WHERE periodo_desde = ? AND periodo_hasta = ?
+                              GROUP BY COALESCE(tipo_nomina, 'desconocido'),
+                                       COALESCE(estado, 'sin_estado')
+                              ORDER BY tipo_nomina, estado");
         $st->execute([$periodo_desde, $periodo_hasta]);
         return $st->fetchAll(PDO::FETCH_ASSOC);
     }

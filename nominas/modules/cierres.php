@@ -90,7 +90,9 @@ if ($accion !== '') {
 
             $check  = puedeCerrarMesNominas($pdo, $anio, $mes);
             $stats  = resumenTotalesPeriodoNominas($pdo, $desde, $hasta);
-            $desglo = desgloseTiposNominaPeriodo($pdo, $desde, $hasta);
+            // El panel ensena todos los estados (borradores incluidos); el
+            // snapshot del cierre sigue usando desgloseTiposNominaPeriodo().
+            $desglo = desgloseTiposNominaPeriodoDetallado($pdo, $desde, $hasta);
             $cierre = obtenerCierrePeriodoNominas($pdo, $anio, $mes);
 
             cierres_json([
@@ -283,14 +285,10 @@ $cierreAnio    = obtenerCierrePeriodoNominas($pdo, $anioBase, 0);
 $historial     = listarCierresNominas($pdo, ['anio' => $anioBase]);
 
 // Datos del mes en curso para abrir el panel con algo útil.
-$mesInicial    = (int)$enCurso['mes'];
-$cierreMesActual = obtenerCierrePeriodoNominas($pdo, $anioBase, $mesInicial);
-
-$desdeMesInicial = sprintf('%04d-%02d-01', $anioBase, $mesInicial);
-$hastaMesInicial = ultimoDiaDePeriodo($desdeMesInicial);
-$statsMesInicial = resumenTotalesPeriodoNominas($pdo, $desdeMesInicial, $hastaMesInicial);
-$desglosMesInicial = desgloseTiposNominaPeriodo($pdo, $desdeMesInicial, $hastaMesInicial);
-$checkMesInicial  = puedeCerrarMesNominas($pdo, $anioBase, $mesInicial);
+// Los totales y el desglose los pide el JS por AJAX (accion=verificar_mes), así
+// que aquí solo hacen falta el mes seleccionado y si se puede cerrar.
+$mesInicial      = (int)$enCurso['mes'];
+$checkMesInicial = puedeCerrarMesNominas($pdo, $anioBase, $mesInicial);
 
 $etiquetasTipo = [
     'automatica'     => 'Automática',

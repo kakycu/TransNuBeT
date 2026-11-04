@@ -288,7 +288,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $estado = estado_operacion_periodo_nominas($pdo, $crudo);
             if (empty($estado['operable'])) {
-                throw new RuntimeException('El periodo ' . $crudo . ' ya está cerrado. Reabra el cierre antes de fijarlo como periodo en curso.');
+                // El puntero del periodo en curso puede estar ATRASADO: los meses
+                // sin nominas no se cierran, asi que la cadena real va del ultimo
+                // cierre al mes siguiente mientras el puntero se queda en un mes
+                // viejo. Por eso el limite no es el puntero sino
+                // periodoMaximoAperturaNominas(): dentro de ese limite el mes se
+                // puede fijar aunque sea posterior al puntero.
+                $maximo = periodoMaximoAperturaNominas($pdo);
+                $pedido = sprintf('%04d-%02d', $anioP, $mesP);
+
+                // Se reevalua ignorando SOLO la regla de "futuro": si ademas esta
+                // cerrado (o su ano) el mensaje correcto es el del cierre.
+                if (strcmp($pedido, $maximo['periodo']) <= 0) {
+                    $estado = estado_operacion_periodo_nominas($pdo, $crudo, true);
+                }
+
+                if (empty($estado['operable'])) {
+                    if (($estado['motivo'] ?? '') === 'periodo_futuro') {
+                        throw new RuntimeException(
+                            'No puede fijar ' . etiquetaMesNominas($mesP) . ' ' . $anioP . ' como periodo en curso porque es mayor que el periodo actual, '
+                            . etiquetaMesNominas((int)$maximo['mes']) . ' ' . (int)$maximo['anio'] . ', que todavía está abierto. '
+                            . 'Cierre primero ' . etiquetaMesNominas((int)$maximo['mes']) . ' ' . (int)$maximo['anio']
+                            . ' en el módulo de Cierres y el periodo avanzará solo; después podrá fijar el que desee.'
+                        );
+                    }
+                    throw new RuntimeException(
+                        !empty($estado['mensaje'])
+                            ? $estado['mensaje']
+                            : 'El periodo ' . $crudo . ' no admite cambios en este momento.'
+                    );
+                }
             }
 
             // Los periodos se abren en cadena: no se puede saltar a un periodo
@@ -3700,7 +3729,10 @@ setInterval(updateClock, 1000); updateClock();
     };
 
     if (esError) {
-        alertMsg.remove();
+        // El aviso rojo de la pagina NO se elimina al abrir el SweetAlert: se
+        // queda a la vista hasta que el usuario lo cierre con su "x". Antes se
+        // hacia alertMsg.remove() aqui y el error desaparecia en cuanto salia
+        // el modal, justo cuando hay que poder releerlo.
         limpiarUrl();
         Swal.fire({
             icon: 'error',
@@ -3716,6 +3748,13 @@ setInterval(updateClock, 1000); updateClock();
             allowOutsideClick: false,
             allowEscapeKey: false,
             showConfirmButton: true
+        }).then(function () {
+            // La card de Cierres esta mas abajo: al cerrar el modal se lleva el
+            // aviso a la vista para que no parezca que ha desaparecido.
+            if (alertMsg && document.body.contains(alertMsg)) {
+                try { alertMsg.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                catch (e) { alertMsg.scrollIntoView(); }
+            }
         });
         return;
     }

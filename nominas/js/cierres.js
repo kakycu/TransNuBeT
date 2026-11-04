@@ -170,24 +170,51 @@
         $el.hidden = false;
     }
 
+    /* Estados de una nómina. Se ordenan como su ciclo de vida: el borrador
+     * primero, porque es lo que impide cerrar el mes. */
+    var ORDEN_ESTADOS = ['borrador', 'procesado', 'pagado', 'cerrado', 'contabilizado', 'sin_estado'];
+    var META_ESTADO = {
+        borrador:      { texto: 'Borrador',      icono: 'fa-pen' },
+        procesado:     { texto: 'Procesado',     icono: 'fa-gear' },
+        pagado:        { texto: 'Pagado',        icono: 'fa-dollar-sign' },
+        cerrado:       { texto: 'Cerrado',       icono: 'fa-lock' },
+        contabilizado: { texto: 'Contabilizado', icono: 'fa-check-double' },
+        sin_estado:    { texto: 'Sin estado',    icono: 'fa-question' }
+    };
+
     function pintarDesglose(items) {
         var cont = document.getElementById('desgloseTipos');
         if (!cont) { return; }
 
-        /* El servidor devuelve hoy UNA fila por tipo con lotes y trabajadores
-           (personas distintas) ya contados. Las filas viejas venian por lote:
-           en ese caso cada fila aporta 1 lote y sus trabajadores. */
+        /* El servidor manda una fila por (tipo, estado) y SIN filtrar por
+           contabilizado, así que los borradores también llegan. Aquí se agrupa
+           por tipo para pintar una tarjeta por tipo con un chip por estado. */
         var porTipo = {};
         (items || []).forEach(function (d) {
             if (!d) { return; }
             var t = d.tipo_nomina || 'desconocido';
             if (!porTipo[t]) {
-                porTipo[t] = { tipo: t, lotes: 0, trabajadores: 0, devengado: 0, neto: 0 };
+                porTipo[t] = { tipo: t, lotes: 0, trabajadores: 0, devengado: 0, neto: 0, estados: {} };
             }
-            porTipo[t].lotes         += (d.lotes != null && d.lotes !== '') ? (Number(d.lotes) || 0) : 1;
-            porTipo[t].trabajadores += Number(d.trabajadores) || 0;
-            porTipo[t].devengado     += Number(d.devengado) || 0;
-            porTipo[t].neto          += Number(d.neto) || 0;
+            var fila = porTipo[t];
+            /* Compatibilidad: si una fila no trae 'lotes' se cuenta como un
+               único lote (formato antiguo del desglose). */
+            var lotes         = (d.lotes != null && d.lotes !== '') ? (Number(d.lotes) || 0) : 1;
+            var trabajadores  = Number(d.trabajadores) || 0;
+            var devengado     = Number(d.devengado) || 0;
+            var neto          = Number(d.neto) || 0;
+            var estado        = d.estado || 'sin_estado';
+
+            fila.lotes         += lotes;
+            fila.trabajadores  += trabajadores;
+            fila.devengado     += devengado;
+            fila.neto          += neto;
+
+            if (!fila.estados[estado]) {
+                fila.estados[estado] = { estado: estado, trabajadores: 0, lotes: 0 };
+            }
+            fila.estados[estado].trabajadores += trabajadores;
+            fila.estados[estado].lotes        += lotes;
         });
 
         var filas = Object.keys(porTipo).map(function (k) { return porTipo[k]; })
@@ -211,12 +238,37 @@
              * tipo, para revisar o corregir ese lote sin volver a buscarlo. */
             var destino = 'nominas.php?periodo=' + ANIO + '-' + (MES_SEL < 10 ? '0' + MES_SEL : MES_SEL)
                 + '&tipo=' + encodeURIComponent(d.tipo);
+
+            var detalle = integer(d.trabajadores) + (d.trabajadores === 1 ? ' trabajador' : ' trabajadores');
+            if (d.lotes > 0) {
+                detalle += ' · ' + integer(d.lotes) + (d.lotes === 1 ? ' lote' : ' lotes');
+            }
+
+            var chips = Object.keys(d.estados)
+                .sort(function (a, b) {
+                    /* Un estado que no esté en la lista se manda al final en vez
+                     * de colarse el primero por venir con índice -1. */
+                    var ia = ORDEN_ESTADOS.indexOf(a);
+                    var ib = ORDEN_ESTADOS.indexOf(b);
+                    return (ia < 0 ? ORDEN_ESTADOS.length : ia) - (ib < 0 ? ORDEN_ESTADOS.length : ib);
+                })
+                .map(function (k) {
+                    var meta = META_ESTADO[k] || { texto: k, icono: 'fa-circle' };
+                    var clase = META_ESTADO[k] ? k : 'sin_estado';
+                    var e = d.estados[k];
+                    var titulo = integer(e.trabajadores) + (e.trabajadores === 1 ? ' trabajador' : ' trabajadores')
+                        + (e.lotes > 0 ? ' · ' + integer(e.lotes) + (e.lotes === 1 ? ' lote' : ' lotes') : '')
+                        + ' en estado ' + meta.texto.toLowerCase();
+                    return '<span class="cierre-estado-chip cierre-estado-' + clase + '" title="' + esc(titulo) + '">'
+                        + '<i class="fas ' + meta.icono + '"></i>' + esc(meta.texto) + '</span>';
+                }).join('');
+
             return '<a class="cierre-desglose-fila js-ir-nomina" href="' + esc(destino) + '"'
                 + ' data-tooltip="Abrir n&oacute;minas de ' + esc(nombre) + '" data-tooltip-theme="dark">'
                 + '<div class="cierre-desglose-etiqueta">' + esc(nombre)
-                + '<small>' + integer(d.trabajadores) + ' trabajadores · ' + integer(d.lotes)
-                + (d.lotes === 1 ? ' lote' : ' lotes') + '</small></div>'
+                + '<small>' + detalle + '</small></div>'
                 + '<div class="cierre-desglose-barra"><span style="width:' + pct + '%"></span></div>'
+                + '<div class="cierre-desglose-estados">' + chips + '</div>'
                 + '<div class="cierre-desglose-cifras">'
                 + '<span>Devengado <b>' + money(d.devengado) + '</b></span>'
                 + '<span>Neto <b>' + money(d.neto) + '</b></span>'
