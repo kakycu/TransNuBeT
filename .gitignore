@@ -8,13 +8,13 @@ Desktop.ini
 *.swo
 
 # ===== Copias de seguridad generadas por el sistema =====
-nominas/backups/
+**/nominas/backups/
 
 # ===== Logs y temporales =====
-nominas/logs/
-nominas/temp/
-nominas/solapines/
-nominas/modules/exports/
+**/nominas/logs/
+**/nominas/temp/
+**/nominas/solapines/
+**/nominas/modules/exports/
 *.log
 
 # ===== Artefactos de herramientas de desarrollo =====
@@ -24,7 +24,7 @@ nominas/modules/exports/
 .env
 .env.*
 *.local
-nominas/config.php
+**/nominas/config.php
 correo_privado.php
 opencode.json
 .opencode/

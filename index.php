@@ -1,2600 +1,503 @@
 <?php
-// NO se requiere ningún archivo externo que pueda definir $pdo
-// Se usa config.php (NOMINAS/config.php) para las credenciales de la base de datos.
+/**
+ * Landing público de PDL TransNuBeT.
+ *
+ * Vive en la raíz del sitio para que http://localhost/ muestre esta portada.
+ * Todo el sistema (portada de servicios, nóminas, facturación, paneles…) quedó
+ * bajo /servicios/. Los enlaces antiguos sin /servicios/ se redirigen desde el
+ * .htaccess de la raíz.
+ *
+ * Estilos: tokens del tema NeuroAI (fondo #070a12, superficies glass, acento
+ * violeta #6d5dfc y cian #24d6ff, tipografía Inter).
+ */
 
-// Si no existe la configuración del sistema, avisar y redirigir al instalador
-if (!file_exists(__DIR__ . '/nominas/config.php')) {
-    header('Content-Type: text/html; charset=utf-8');
-    ?>
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-        <title>Sistema sin configurar</title>
-        <link rel="stylesheet" href="NOMINAS/css/font-awesome6.4.0/css/all.min.css">
-        <script src="NOMINAS/js/sweetalert2.all.min.js"></script>
-        <style>
-            body {
-                margin:0;
-                padding:0;
-                background: linear-gradient(160deg, #0f766e 0%, #0f172a 45%, #020617 100%);
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                min-height:100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-        </style>
-    </head>
-    <body>
-        <script>
-        Swal.fire({
-            icon: 'error',
-            title: '<i class="fas fa-cogs" style="color:#f87171"></i> Configuración no encontrada',
-            html: 'No existe la <b>configuración del sistema</b>.<br>Deberá reinstalar la base de datos y sus archivos.',
-            confirmButtonText: '<i class="fas fa-cogs"></i> Ir al Instalador',
-            background: '#1e1e2f',
-            color: '#ffffff',
-            confirmButtonColor: '#3b82f6',
-            allowOutsideClick: false,
-            backdrop: 'rgba(0,0,0,0.85)'
-        }).then(function (result) {
-            if (result.isConfirmed) {
-                var w = window.open('instalarbd/InstalarBD.php', '_blank');
-                if (!w) { window.location.href = 'instalarbd/InstalarBD.php'; }
-            }
-        });
-        </script>
-    </body>
-    </html>
-    <?php
-    exit;
-}
+$anio = (int)date('Y');
+$base = '/servicios';
 
-require_once __DIR__ . '/nominas/config.php';
-session_start();
-
-// Endpoint de estado de licencia (en vivo): el MISMO index.php actúa de API.
-// Se usa ?licencia_json=1 para devolver los datos en JSON sin re-renderizar HTML.
-if (isset($_GET['licencia_json']) && $_GET['licencia_json'] === '1') {
-    require_once __DIR__ . '/nominas/includes/licencia.php';
-    $datos  = licencia_leer();
-    $activa = $datos !== null && licencia_activada();
-    $vence  = $datos !== null ? licencia_vencimiento($datos) : null;
-    header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: no-cache, no-store, must-revalidate');
-    echo json_encode(array(
-        'tiene'    => $datos !== null,
-        'activa'   => $activa,
-        'vencida'  => $datos !== null && $vence !== null && $vence < time(),
-        'dias'     => $activa ? licencia_dias_restantes($datos) : null,
-        'estado'   => licencia_etiqueta_estado($datos, 'LICENCIA ', $activa),
-        'registro' => ($datos !== null && ($datos['registro'] ?? '') !== '') ? $datos['registro'] : '—',
-        'usuario'  => ($datos !== null && ($datos['usuario'] ?? '') !== '') ? $datos['usuario'] : '—',
-        'tipo'     => ($datos !== null && ($datos['info']['nombre'] ?? '') !== '') ? $datos['info']['nombre'] : '—',
-        'instalada' => ($datos !== null && !empty($datos['fecha_activacion'])) ? date('d/m/Y', (int)$datos['fecha_activacion']) : '—',
-        'vence'    => licencia_texto_vencimiento($datos),
-        'serial'   => ($datos !== null && ($datos['serial'] ?? '') !== '') ? licencia_formatear_serial($datos['serial']) : '—',
-        'huella'   => licencia_fingerprint_equipo(),
-    ));
-    exit;
-}
-
-// Configuración de conexión (desde config.php)
-$host = DB_HOST;
-$user = DB_USER;
-$password = DB_PASS;  // Contraseña de MySQL (desde config.php)
-$database = DB_NAME;
-
-$server_status = [
-    'php' => true,
-    'mysql' => false,
-    'mysql_error' => null
+$ecosistema = [
+    [
+        'titulo'  => 'Ecosistema Financiero',
+        'texto'   => 'Facturación, nóminas, costos e inventarios en un solo lugar: entra al sistema completo y elige el módulo que necesitas.',
+        'icono'   => 'fa-solid fa-wallet',
+        'url'     => $base . '/index.php',
+        'etiqueta'=> 'Portada del sistema',
+        'destacada' => true,
+    ],
+    [
+        'titulo'  => 'Gestión de Nóminas',
+        'texto'   => 'Cálculo de nóminas, cierres mensuales, vacaciones, contribuciones y exportaciones bancarias.',
+        'icono'   => 'fa-solid fa-money-check-dollar',
+        'url'     => $base . '/nominas/',
+        'etiqueta'=> 'Módulo de nóminas',
+    ],
+    [
+        'titulo'  => 'Facturación Electrónica',
+        'texto'   => 'Emisión de facturas, clientes, servicios y reportes de cierre con control de usuarios.',
+        'icono'   => 'fa-solid fa-file-invoice-dollar',
+        'url'     => $base . '/facturacion/index.php',
+        'etiqueta'=> 'Módulo de facturación',
+    ],
+    [
+        'titulo'  => 'Panel del Servidor',
+        'texto'   => 'Estado de Apache, PHP y MySQL: versión, uptime real del motor y lanzadores de herramientas.',
+        'icono'   => 'fa-solid fa-server',
+        'url'     => $base . '/phpinfo/',
+        'etiqueta'=> 'Información del servidor',
+    ],
+    [
+        'titulo'  => 'Instalador de Base de Datos',
+        'texto'   => 'Asistente para crear o restaurar la base de datos del sistema cuando se prepara un equipo nuevo.',
+        'icono'   => 'fa-solid fa-database',
+        'url'     => $base . '/InstalarBD/InstalarBD.php',
+        'etiqueta'=> 'Preparar el sistema',
+    ],
+    [
+        'titulo'  => 'Soporte y Contacto',
+        'texto'   => 'Documentación de soporte, contacto directo y canales de atención para la operación diaria.',
+        'icono'   => 'fa-solid fa-headset',
+        'url'     => $base . '/soporte.php',
+        'etiqueta'=> 'Ayuda y contacto',
+    ],
 ];
 
-$sub_estados = [];     // estados de los subsistemas (código => 0/1)
-$COMPANY_NAME = defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom';
-$SITE_VERSION = defined('SITE_VERSION') ? SITE_VERSION : 'v2.0.1';
-$SITE_NAME = $COMPANY_NAME . ' - Centro de Control.';
-$SITE_EMAIL = defined('EMAIL_EMPRESA') ? EMAIL_EMPRESA : 'kakycu@gmail.com';
-$SITE_PHONE = defined('TELEFONO_EMPRESA') ? TELEFONO_EMPRESA : '+53 5 2712861';
-$SITE_PHONE_LINK = preg_replace('/[^0-9+]/', '', $SITE_PHONE);
-// Segundo movil empresarial y correo de soporte fijo: datos de contacto adicionales
-// que se muestran en un bloque aparte, bajo las vias de contacto de la base de datos.
-$CONTACTO_MOVIL_ALT      = '+53 52712861';
-$CONTACTO_MOVIL_ALT_LINK = preg_replace('/[^0-9+]/', '', $CONTACTO_MOVIL_ALT);
-$CONTACTO_EMAIL_ALT      = 'kakycu@gmail.com';
-// Rotulo de las vias de contacto que vienen de la base de datos.
-$CONTACTO_TITULO_VIAS = '<strong>V&iacute;as de contacto</strong><br>';
-// Bloque fijo de soporte. Usa entidades numericas para los emojis y asi no
-// depender de la codificacion del archivo.
-$CONTACTO_ADICIONAL =
-        '<br>' . "\n" . '<strong>Contacto de Soporte Fijo:</strong><br>'
-    . '&#128241; <strong>M&oacute;vil Empresarial:</strong> <a href="tel:' . $CONTACTO_MOVIL_ALT_LINK . '" style="color:#60a5fa;">' . $CONTACTO_MOVIL_ALT . '</a><br>'
-    . "\n" . '&#9993;&#65039; <strong>Email Soporte:</strong> <a href="mailto:' . $CONTACTO_EMAIL_ALT . '" style="color:#60a5fa;">' . $CONTACTO_EMAIL_ALT . '</a>';
-$SLOGAN = defined('SLOGAN') ? SLOGAN : 'Eslogan Corporativo Identificativo.';
-
-// Intentar conexión a MySQL
-$conn = null;
-try {
-    $conn = new mysqli($host, $user, $password, $database);
-    $conn->set_charset("utf8mb4");
-    
-    if ($conn->connect_error) {
-        $server_status['mysql'] = false;
-        $server_status['mysql_error'] = $conn->connect_error;
-    } else {
-        $server_status['mysql'] = true;
-
-        // Version real del motor MySQL/MariaDB en uso, para el pie de pagina.
-        $mysql_info = (string) $conn->server_info;
-        if (preg_match('/^\d+(\.\d+){1,2}/', $mysql_info, $m)) {
-            $MYSQL_VERSION_REAL = $m[0];
-        } else {
-            $MYSQL_VERSION_REAL = $mysql_info;
-        }
-        
-        // 1. Obtener estados de subsistemas
-        $res = $conn->query("SELECT codigo, estado FROM subsistemas");
-        if ($res && $res->num_rows > 0) {
-            while ($row = $res->fetch_assoc()) {
-                $sub_estados[$row['codigo']] = $row['estado'];
-            }
-        }
-        
-        // 2. Obtener configuración general (si la tabla existe)
-        $mantenimiento_activo = false;
-        $checkTable = $conn->query("SHOW TABLES LIKE 'configuracion_general'");
-        if ($checkTable && $checkTable->num_rows > 0) {
-            $configQuery = $conn->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa', 'site_name', 'email_empresa', 'telefono_empresa', 'slogan', 'email_soporte', 'modo_mantenimiento')");
-            if ($configQuery) {
-                while ($row = $configQuery->fetch_assoc()) {
-                    if ($row['parametro'] == 'nombre_empresa' && !empty($row['valor'])) {
-                        $COMPANY_NAME = $row['valor'];
-                        $SITE_NAME = $COMPANY_NAME . ' - Centro de Control.';
-                    }
-                    if ($row['parametro'] == 'site_name' && !empty($row['valor'])) {
-                        $SITE_NAME = $row['valor'];
-                    }
-                    if ($row['parametro'] == 'email_empresa' && !empty($row['valor'])) {
-                        $SITE_EMAIL = $row['valor'];
-                    }
-                    if ($row['parametro'] == 'email_soporte' && !empty($row['valor'])) {
-                        $SITE_EMAIL = $row['valor'];
-                    }
-                    if ($row['parametro'] == 'telefono_empresa' && !empty($row['valor'])) {
-                        $SITE_PHONE = $row['valor'];
-                    }
-                    if ($row['parametro'] == 'slogan' && !empty($row['valor'])) {
-                        $SLOGAN = $row['valor'];
-                    }
-                    if ($row['parametro'] == 'modo_mantenimiento') {
-                        $mantenimiento_activo = in_array((string)$row['valor'], ['1', 'true'], true);
-                    }
-                }
-            }
-        }
-        
-        $conn->close();
-    }
-} catch (Exception $e) {
-    $server_status['mysql'] = false;
-    $server_status['mysql_error'] = $e->getMessage();
-}
-
-$current_year = date('Y');
-$server_ok = $server_status['php'] && $server_status['mysql'];
-
-// Versiones reales que se muestran en el pie de pagina (nunca se inventan).
-$PHP_VERSION_REAL = PHP_VERSION;
-if (!isset($MYSQL_VERSION_REAL) || $MYSQL_VERSION_REAL === '') {
-    $MYSQL_VERSION_REAL = 'No disponible';
-}
-
-// Marca del sistema. La version viene de config.php (SITE_VERSION) y la
-// empresa es la que tiene el sistema instalado, leida de configuracion_general.
-// Se arma despues de la consulta para que siempre use el nombre de la base.
-$MARCA_PRODUCTO   = 'SiGesNom';
-$VERSION_PRODUCTO = trim((string) $SITE_VERSION);
-if ($VERSION_PRODUCTO === '') {
-    $VERSION_PRODUCTO = 'v0.0.0';
-} elseif ($VERSION_PRODUCTO[0] !== 'v') {
-    $VERSION_PRODUCTO = 'v' . $VERSION_PRODUCTO;
-}
-// "SiGesNom® v2.0.1"
-$MARCA_SISTEMA = $MARCA_PRODUCTO . '&reg; ' . $VERSION_PRODUCTO;
-// "SiGesNom® v2.0.1 - PDL TransNuBeT®"
-$LICENCIA_MARCA = $MARCA_SISTEMA . ' - ' . $COMPANY_NAME;
-
-if (!isset($mantenimiento_activo)) {
-    $mantenimiento_activo = false;
-}
-
-// Badge de Mantenimiento, se muestra debajo del badge "Acceder" de cada tarjeta
-function getMaintenanceBadge($activo) {
-    $clase = $activo ? 'maintenance-badge visible' : 'maintenance-badge';
-    return '<div class="' . $clase . '"><i class="fas fa-wrench"></i> ⚠️ En Mantenimiento</div>';
-}
-
-// Función auxiliar para generar el badge según código de subsistema
-function getBadge($codigo, $server_ok, $estados) {
-    if (!$server_ok) {
-        return '<span class="badge-inactivo">⚠️ NO DISPONIBLE</span>';
-    }
-    $activo = isset($estados[$codigo]) ? $estados[$codigo] : 0;
-    if ($activo == 1) {
-        return '<span class="badge-activo">✓ Activo</span>';
-    } else {
-        return '<span class="badge-inactivo">✗ Inactivo</span>';
-    }
-}
-
-// ============ DATOS DE LA LICENCIA (mismo motor que nominas) ============
-require_once __DIR__ . '/nominas/includes/licencia.php';
-$lic_raiz_datos  = licencia_leer();
-$lic_raiz_activa = $lic_raiz_datos !== null && licencia_activada();
-$lic_raiz_vence  = $lic_raiz_datos !== null ? licencia_vencimiento($lic_raiz_datos) : null;
-$lic_raiz_huella = licencia_fingerprint_equipo();
-
+$servicios = [
+    ['icono' => 'fa-solid fa-database',      'titulo' => 'Base de datos',   'texto' => 'Motor MySQL con integridad referencial, respaldo periódico y restauración confiable.'],
+    ['icono' => 'fa-brands fa-php',          'titulo' => 'PHP 8.1',         'texto' => 'Compatibilidad con el stack local y rendimiento estable para todos los módulos.'],
+    ['icono' => 'fa-solid fa-shield-halved', 'titulo' => 'Seguridad',       'texto' => 'Comunicación cifrada, autenticación reforzada y secretos fuera del código.'],
+    ['icono' => 'fa-solid fa-arrows-rotate', 'titulo' => 'Sincronización',  'texto' => 'Información siempre al día entre módulos, sin cálculos repetidos ni desfases.'],
+    ['icono' => 'fa-solid fa-clock',         'titulo' => 'Soporte 24/7',    'texto' => 'Acompañamiento continuo para la operación y resolución de incidencias.'],
+    ['icono' => 'fa-solid fa-lock',          'titulo' => 'Licencia local',  'texto' => 'Todo funciona en el equipo del cliente: los datos no salen de la red local.'],
+];
 ?>
-
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title><?php echo htmlspecialchars($SITE_NAME); ?> · <?php echo htmlspecialchars($SITE_VERSION); ?></title>
-    <link rel="icon" type="image/x-icon" href="images/favicons/LogoCorto.ico">
-    
-    <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
-    <!-- SweetAlert2 -->
-    <link rel="stylesheet" href="css/sweetalert2.min.css">
-    <script src="js/sweetalert211.js"></script>
-    <!-- Animate.css -->
-    <link rel="stylesheet" href="css/animate.min.css">
-    
-    <style>
-        /* ===== ESTILOS BASE ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #0A0F1A 0%, #0C111D 100%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            min-height: 100vh;
-            position: relative;
-            padding: 20px;
-        }
-
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
-            pointer-events: none;
-        }
-
-        body::after {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                repeating-linear-gradient(45deg, transparent, transparent 30px, rgba(59, 130, 246, 0.05) 30px, rgba(59, 130, 246, 0.05) 60px),
-                repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(139, 92, 246, 0.03) 35px, rgba(139, 92, 246, 0.03) 70px);
-            pointer-events: none;
-            animation: waveMove 12s ease-in-out infinite;
-            z-index: 0;
-        }
-
-        @keyframes waveMove {
-            0%, 100% { background-position: 0 0, 0 0; }
-            25% { background-position: 30px 30px, -30px -30px; }
-            50% { background-position: 60px 60px, -60px -60px; }
-            75% { background-position: 30px 30px, -30px -30px; }
-        }
-
-        .dashboard-container {
-            position: relative;
-            z-index: 1;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .modern-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0px 32px;
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(20px);
-            border-radius: 28px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-            animation: fadeInDown 0.6s ease-out;
-            overflow: visible;
-        }
-
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .logo-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3);
-        }
-
-        .logo-icon i {
-            font-size: 26px;
-            color: white;
-        }
-
-        .logo-text h2 {
-            font-size: 1.4rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #fff, #94a3f8);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            letter-spacing: -0.3px;
-        }
-
-        .logo-text span {
-            font-size: 0.7rem;
-            color: #94a3b8;
-            font-weight: 500;
-        }
-
-        .header-badge {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            overflow: visible;
-        }
-
-        .version-chip {
-            background: rgba(59, 130, 246, 0.15);
-            padding: 6px 16px;
-            border-radius: 40px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #60a5fa;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-
-        .version-chip.licencia-caida {
-            background: #b91c1c;
-            color: #fde047;
-            border-color: rgba(253, 224, 71, 0.6);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.375rem;
-            text-decoration: none;
-            cursor: pointer;
-            animation: licencia-caida-fade 1.8s ease-in-out infinite;
-        }
-
-        .version-chip.licencia-caida:hover {
-            box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.45);
-        }
-
-        /* El badge intercambia color con el texto: amarillo sobre rojo y,
-           en la mitad del ciclo, rojo sobre amarillo. */
-        @keyframes licencia-caida-fade {
-            0%, 100% { color: #fde047; background-color: #b91c1c; border-color: rgba(253, 224, 71, 0.6); }
-            50% { color: #b91c1c; background-color: #fde68a; border-color: rgba(185, 28, 28, 0.6); }
-        }
-
-        .status-dot {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 6px 14px;
-            border-radius: 40px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .status-dot:hover {
-            background: rgba(0, 0, 0, 0.6);
-            transform: scale(1.02);
-        }
-
-        .status-dot.status-online i { color: #22c55e; }
-        .status-dot.status-online { color: #86efac; }
-        .status-dot.status-offline i { color: #ef4444; }
-        .status-dot.status-offline { color: #fca5a5; }
-
-        .welcome-banner {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(139, 92, 246, 0.1));
-            backdrop-filter: blur(20px);
-            border-radius: 32px;
-            padding: 2px 8px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            text-align: center;
-            animation: fadeInUp 0.8s ease-out;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .estado-verificacion {
-            position: absolute;
-            inset: 0;
-            z-index: 5;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            background: rgba(15, 23, 42, 0.82);
-            backdrop-filter: blur(6px);
-            border-radius: 30px;
-            color: #e2e8f0;
-            text-align: center;
-            padding: 12px 20px 18px;
-        }
-        .estado-verificacion[hidden] { display: none; }
-        .estado-verificacion-texto {
-            font-size: 1rem;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-        }
-        .estado-verificacion-texto i { color: #60a5fa; margin-right: 6px; }
-        .estado-verificacion-barra {
-            width: min(420px, 85%);
-            height: 3px;
-            border-radius: 999px;
-            background: rgba(148, 163, 184, 0.25);
-            overflow: hidden;
-        }
-        .estado-verificacion-progreso {
-            width: 0%;
-            height: 100%;
-            border-radius: 999px;
-            background: linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd);
-            box-shadow: 0 0 10px rgba(96, 165, 250, 0.7);
-            transition: width 0.45s ease;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(40px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .welcome-banner h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: linear-gradient(145deg, #ffffff, #60a5fa, #a78bfa);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            margin-bottom: 12px;
-        }
-
-        .welcome-banner p {
-            color: #94a3b8;
-            font-size: 1rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .subsystems-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 24px;
-            margin-bottom: 16px;
-        }
-
-        .subsystem-card {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(20px);
-            border-radius: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .subsystem-card.disabled {
-            opacity: 0.6;
-            pointer-events: none;
-            cursor: default;
-            filter: grayscale(0.2);
-        }
-
-        .subsystem-card.disabled .access-badge {
-            background: rgba(100, 116, 139, 0.3);
-            color: #94a3b8;
-            cursor: not-allowed;
-        }
-
-        .subsystem-card.disabled .access-badge:hover {
-            transform: none;
-            background: rgba(100, 116, 139, 0.3);
-            box-shadow: none;
-        }
-
-        .subsystem-card.disabled .access-badge i {
-            animation: none;
-        }
-
-        .subsystem-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-            transition: left 0.6s ease;
-        }
-
-        .subsystem-card:hover::before {
-            left: 100%;
-        }
-
-        .subsystem-card:hover:not(.disabled) {
-            transform: translateY(-8px);
-            border-color: rgba(59, 130, 246, 0.4);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .card-image-container {
-            width: 100%;
-            height: 160px;
-            overflow: hidden;
-            background: linear-gradient(135deg, #1a1a2e, #0f0f1a);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .card-image-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            transition: transform 0.5s ease;
-            padding: 15px;
-        }
-
-        .subsystem-card:hover:not(.disabled) .card-image-container img {
-            transform: scale(1.15);
-        }
-
-        .card-content {
-            padding: 20px 24px 28px 24px;
-            position: relative;
-        }
-
-        .subsystem-card h3 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #f1f5f9;
-            margin-bottom: 12px;
-        }
-
-        .subsystem-card p {
-            color: #94a3b8;
-            font-size: 0.85rem;
-            line-height: 1.5;
-            margin-bottom: 20px;
-        }
-
-        .card-stats {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
-            color: #64748b;
-        }
-
-        .stat-item i {
-            font-size: 0.7rem;
-        }
-
-        .access-badge {
-            background: rgba(59, 130, 246, 0.2);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            color: #60a5fa;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .access-badge:hover {
-            background: #3b82f6;
-            color: white;
-            transform: scale(1.08);
-            padding: 6px 18px;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-        }
-
-        .access-badge:hover i {
-            color: white;
-        }
-
-        .access-badge i {
-            animation: arrowMove 1s ease-in-out infinite;
-            display: inline-block;
-            transition: color 0.3s ease;
-        }
-
-        .maintenance-badge {
-            display: none;
-            margin-top: 10px;
-            background: #f59e0b20;
-            border: 1px solid #f59e0b60;
-            color: #f59e0b;
-            border-radius: 20px;
-            padding: 6px 14px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .maintenance-badge.visible {
-            display: inline-flex;
-        }
-
-        @keyframes arrowMove {
-            0%, 100% { transform: translateX(0); }
-            50% { transform: translateX(5px); }
-        }
-
-        .badge-activo {
-            background: #22c55e20;
-            color: #22c55e;
-            border: 1px solid #22c55e60;
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .badge-inactivo {
-            background: #ef444420;
-            color: #f87171;
-            border: 1px solid #ef444460;
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .info-panel {
-            background: rgba(15, 23, 42, 0.5);
-            backdrop-filter: blur(16px);
-            border-radius: 28px;
-            padding: 24px 32px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            margin-bottom: 24px;
-        }
-
-        .info-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .info-item i {
-            font-size: 24px;
-            color: #3b82f6;
-        }
-
-        .info-item .info-text h4 {
-            font-size: 0.7rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .info-item .info-text p {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #e2e8f0;
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(10, 15, 26, 0.95);
-            backdrop-filter: blur(10px);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            gap: 20px;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .loading-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(59, 130, 246, 0.2);
-            border-top-color: #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-overlay p {
-            color: #e2e8f0;
-            font-size: 1rem;
-        }
-
-        .loading-overlay small {
-            color: #64748b;
-            font-size: 0.8rem;
-        }
-
-        .unicorn-icon {
-            width: 30px;
-            height: auto;
-            filter: brightness(0) invert(1);
-        }
-
-        .unified-footer-card {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(20px);
-            border-radius: 28px;
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            overflow: hidden;
-            margin-top: 8px;
-            animation: slideUp 0.5s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .unified-footer-card:hover {
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            transition: box-shadow 0.3s ease;
-        }
-
-        .footer-main {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px 28px;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.05));
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-
-        .footer-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .footer-brand i {
-            font-size: 28px;
-            color: #3b82f6;
-            transition: all 0.3s ease;
-        }
-
-        .footer-brand:hover i {
-            transform: scale(1.1) rotate(-5deg);
-            color: #60a5fa;
-        }
-
-        .brand-text h4 {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #f1f5f9;
-            margin-bottom: 4px;
-        }
-
-        .brand-text p {
-            font-size: 0.7rem;
-            color: #94a3b8;
-        }
-
-        .footer-stats {
-            display: flex;
-            gap: 20px;
-        }
-
-        .footer-stats span {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.75rem;
-            color: #94a3b8;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 6px 12px;
-            border-radius: 20px;
-        }
-
-        .footer-stats span:hover {
-            color: #60a5fa;
-            transform: translateY(-2px);
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        .footer-stats span i {
-            font-size: 0.8rem;
-            transition: all 0.3s ease;
-        }
-
-        .footer-stats span:hover i {
-            transform: rotate(15deg);
-            color: #3b82f6;
-        }
-
-        .footer-info-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 16px;
-            padding: 0px 28px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .footer-info-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 12px;
-            border-radius: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-        }
-
-        .footer-info-item:hover {
-            transform: translateY(-3px);
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        .footer-info-item i {
-            font-size: 22px;
-            color: #3b82f6;
-            transition: all 0.3s ease;
-        }
-
-        .footer-info-item:hover i {
-            transform: scale(1.1);
-            color: #60a5fa;
-        }
-
-        .info-details h4 {
-            font-size: 0.7rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: color 0.3s ease;
-        }
-
-        .footer-info-item:hover .info-details h4 {
-            color: #60a5fa;
-        }
-
-        .info-details p {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #e2e8f0;
-            transition: color 0.3s ease;
-        }
-
-        .footer-info-item:hover .info-details p {
-            color: white;
-        }
-
-        .footer-copyright {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 16px 28px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 0.7rem;
-            color: #64748b;
-            text-align: center;
-        }
-
-        /* Enlaces del pie (Terminos, Privacidad, Soporte, Contactenos) */
-        .footer-link {
-            color: #64748b;
-            text-decoration: none;
-            font-size: 0.7rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 6px;
-            border-radius: 8px;
-            transition: color 0.25s ease, background 0.25s ease, transform 0.25s ease;
-        }
-
-        .footer-link i {
-            transition: transform 0.25s ease, color 0.25s ease;
-        }
-
-        .footer-link:hover {
-            color: #60a5fa;
-            background: rgba(59, 130, 246, 0.12);
-            transform: translateY(-2px);
-        }
-
-        .footer-link:hover i {
-            color: #60a5fa;
-            transform: scale(1.25) rotate(-8deg);
-        }
-
-        .footer-link:active {
-            transform: translateY(0) scale(0.96);
-        }
-
-        .footer-link:focus-visible {
-            outline: 2px solid #60a5fa;
-            outline-offset: 2px;
-        }
-
-        .footer-copyright:hover .unicorn-icon {
-            transform: scale(1.1) rotate(5deg);
-        }
-
-        .footer-copyright span {
-            transition: color 0.3s ease;
-        }
-
-        .footer-copyright:hover span {
-            color: #60a5fa;
-        }
-
-        /* ===== ESTILOS DEL DROPDOWN (SOLO VISUALES, LA POSICIÓN LA CONTROLA JS) ===== */
-        .custom-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .custom-dropdown-btn {
-            background: rgba(59, 130, 246, 0.15);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            color: #e2e8f0;
-            padding: 8px 18px;
-            border-radius: 40px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: inherit;
-            white-space: nowrap;
-        }
-
-        .custom-dropdown-btn:hover {
-            background: rgba(59, 130, 246, 0.3);
-            border-color: rgba(59, 130, 246, 0.6);
-            transform: scale(1.02);
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        }
-
-        .custom-dropdown-btn i {
-            font-size: 0.8rem;
-            transition: transform 0.3s ease;
-        }
-
-        .custom-dropdown-btn.active i {
-            transform: rotate(180deg);
-        }
-
-        /* El menú se posiciona con JS, aquí solo estilos visuales */
-        .custom-dropdown-menu {
-            min-width: 280px;
-            background: rgba(15, 23, 42, 0.98);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
-            padding: 8px 0;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px) scale(0.98);
-            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            overflow: visible;
-            pointer-events: none;
-            /* position, top, left, z-index los pone JS */
-        }
-
-        .custom-dropdown-menu.show {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0) scale(1);
-            pointer-events: auto;
-        }
-
-        .custom-dropdown-menu .dropdown-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 12px 20px;
-            color: #e2e8f0;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            border: none;
-            background: transparent;
-            width: 100%;
-            text-align: left;
-            font-family: inherit;
-        }
-
-        .custom-dropdown-menu .dropdown-item:hover {
-            background: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-            padding-left: 24px;
-        }
-
-        /* Aviso de licencia: fondo rojo cuando no hay licencia o esta vencida */
-        .custom-dropdown-menu .dropdown-item.lic-alerta {
-            background: rgba(239, 68, 68, 0.16);
-            color: #fca5a5;
-            box-shadow: inset 3px 0 0 #ef4444;
-        }
-
-        .custom-dropdown-menu .dropdown-item.lic-alerta i {
-            color: #f87171;
-        }
-
-        .custom-dropdown-menu .dropdown-item.lic-alerta:hover {
-            background: rgba(239, 68, 68, 0.26);
-            color: #fecaca;
-        }
-
-        .custom-dropdown-menu .dropdown-item i {
-            width: 22px;
-            text-align: center;
-            font-size: 1rem;
-            color: #3b82f6;
-        }
-
-        .custom-dropdown-menu .dropdown-divider {
-            height: 1px;
-            background: rgba(255, 255, 255, 0.08);
-            margin: 6px 16px;
-        }
-
-        .custom-dropdown-menu .dropdown-title {
-            padding: 8px 20px 4px;
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #64748b;
-            font-weight: 700;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .modern-header {
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 12px;
-                padding: 12px 16px;
-                justify-content: space-between;
-            }
-            .logo-area {
-                flex: 1;
-                min-width: 180px;
-            }
-            .header-badge {
-                flex-wrap: wrap;
-                gap: 8px;
-                justify-content: flex-end;
-            }
-            .custom-dropdown-btn {
-                padding: 6px 14px;
-                font-size: 0.75rem;
-            }
-            .custom-dropdown-menu {
-                min-width: 240px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .logo-text h2 {
-                font-size: 1rem;
-            }
-            .logo-text span {
-                font-size: 0.6rem;
-            }
-            .custom-dropdown-btn {
-                padding: 5px 12px;
-                font-size: 0.7rem;
-            }
-            .custom-dropdown-menu {
-                min-width: 210px;
-            }
-            .custom-dropdown-menu .dropdown-item {
-                padding: 10px 16px;
-                font-size: 0.8rem;
-            }
-        }
-
-        @media (max-width: 1199px) {
-            .subsystems-grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 20px;
-            }
-        }
-
-        @media (max-width: 900px) {
-            .subsystems-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .welcome-banner h1 { font-size: 1.6rem; }
-            .subsystems-grid { grid-template-columns: 1fr; gap: 20px; }
-            .card-image-container { height: 140px; }
-            .footer-main {
-                flex-direction: column;
-                text-align: center;
-                padding: 16px 20px;
-            }
-            .footer-brand {
-                flex-direction: column;
-                text-align: center;
-            }
-            .footer-stats {
-                flex-direction: column;
-                gap: 10px;
-                width: 100%;
-            }
-            .footer-stats span {
-                justify-content: center;
-            }
-            .footer-info-grid {
-                grid-template-columns: 1fr;
-                padding: 16px 20px;
-            }
-            .footer-info-item {
-                justify-content: center;
-                padding: 10px;
-            }
-            .footer-copyright {
-                flex-direction: column;
-                padding: 14px 20px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .welcome-banner { padding: 24px 20px; }
-            .welcome-banner h1 { font-size: 1.3rem; }
-            .card-content { padding: 16px 20px 22px 20px; }
-            .subsystem-card h3 { font-size: 1.4rem; }
-            .card-image-container { height: 130px; }
-            .footer-info-item {
-                flex-direction: column;
-                text-align: center;
-                gap: 8px;
-            }
-            .footer-info-item i {
-                font-size: 28px;
-            }
-            .info-details {
-                text-align: center;
-            }
-        }
-
-        .modal-subsystem-img {
-            max-width: 180px;
-            max-height: 180px;
-            background: linear-gradient(135deg, #1a1a2e, #0f0f1a);
-            border-radius: 24px;
-            padding: 15px;
-            margin: 0 auto 20px auto;
-            display: block;
-            object-fit: contain;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PDL TransNuBeT · Ecosistema de gestión</title>
+<meta name="description" content="Ecosistema de gestión financiera, nóminas y facturación. Plataforma local PDL TransNuBeT.">
+<link rel="icon" type="image/x-icon" href="<?= $base ?>/images/favicons/LogoCorto.ico">
+<link rel="stylesheet" href="<?= $base ?>/css/font-awesome6.4.0/css/all.min.css">
+<style>
+    /* ===== Tokens del tema (NeuroAI) ===== */
+    :root {
+        --bg:            #070a12;
+        --bg-soft:       #0b1020;
+        --surface:       rgba(18, 26, 45, .72);
+        --surface-solid: #121a2d;
+        --border:        rgba(255, 255, 255, 0.12);
+        --border-strong: rgba(255, 255, 255, 0.18);
+        --txt:           #f7f9ff;
+        --muted:         #a8b3c7;
+        --subtle:        #7f8ba3;
+        --accent:        #6d5dfc;
+        --accent-soft:   rgba(109, 93, 252, 0.18);
+        --cyan:          #24d6ff;
+        --mint:          #2ee59d;
+        --radius:        .75rem;
+        --radius-lg:     1rem;
+        --shadow:        0 1.5rem 4rem rgba(0, 0, 0, .35);
+        --shadow-glow:   0 0 0 1px rgba(36, 214, 255, .08), 0 1.25rem 4rem rgba(109, 93, 252, .22);
+        --max:           72rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    /* Que el navbar fijo no tape el título al saltar a una sección. */
+    section[id] { scroll-margin-top: 4.75rem; }
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--txt);
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+    }
+    /* Resplandor de fondo, como el .bg-gradient-glow del tema */
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background:
+            radial-gradient(60rem 40rem at 15% -5%, rgba(36, 214, 255, .16), transparent 60%),
+            radial-gradient(55rem 38rem at 88% 0%, rgba(109, 93, 252, .22), transparent 60%),
+            radial-gradient(50rem 30rem at 50% 110%, rgba(46, 229, 157, .10), transparent 60%);
+        pointer-events: none;
+    }
+    a { color: inherit; }
+    img { max-width: 100%; display: block; }
+    .skip {
+        position: absolute; top: .75rem; left: .75rem;
+        padding: .6rem .9rem; border-radius: .5rem;
+        background: var(--accent); color: #fff;
+        transform: translateY(-160%); transition: transform .2s;
+        z-index: 100;
+    }
+    .skip:focus { transform: translateY(0); }
+
+    .wrap { width: min(100% - 2.5rem, var(--max)); margin-inline: auto; }
+    .section { padding-block: clamp(3.5rem, 7vw, 6rem); }
+    .stack > * + * { margin-top: 1rem; }
+
+    /* ===== Barra superior ===== */
+    .site-header {
+        position: sticky; top: 0; z-index: 50;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        background: rgba(7, 10, 18, .78);
+        border-bottom: 1px solid var(--border);
+    }
+    .nav {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 1rem; min-height: 4.25rem;
+    }
+    .brand { display: inline-flex; align-items: center; gap: .75rem; text-decoration: none; font-weight: 800; }
+    .brand-mark {
+        display: grid; place-items: center;
+        width: 2.6rem; height: 2.6rem; border-radius: .8rem;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%);
+        box-shadow: 0 0 0 1px rgba(255,255,255,.12) inset;
+        color: #fff; font-size: 1.15rem;
+    }
+    .brand-name { font-size: 1.02rem; letter-spacing: -.01em; }
+    .brand-name small { display: block; font-size: .66rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--subtle); }
+    .nav-links { display: none; align-items: center; gap: 1.6rem; }
+    .nav-links a {
+        text-decoration: none; color: var(--muted); font-size: .92rem; font-weight: 500;
+        transition: color .15s;
+    }
+    .nav-links a:hover, .nav-links a:focus-visible { color: var(--txt); }
+
+    /* ===== Botones ===== */
+    .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+        padding: .7rem 1.15rem; border-radius: .65rem;
+        border: 1px solid transparent; cursor: pointer;
+        font: inherit; font-weight: 700; font-size: .92rem;
+        text-decoration: none; white-space: nowrap;
+        transition: transform .15s, background .15s, border-color .15s, box-shadow .15s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+        color: #fff;
+        background: linear-gradient(135deg, var(--accent) 0%, #5d4fd6 100%);
+        box-shadow: 0 .6rem 1.6rem rgba(109, 93, 252, .35);
+    }
+    .btn-primary:hover { box-shadow: 0 .7rem 2rem rgba(109, 93, 252, .5); }
+    .btn-glass {
+        color: var(--txt); background: rgba(18, 26, 45, .6);
+        border-color: var(--border-strong);
+        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    }
+    .btn-glass:hover { border-color: rgba(255,255,255,.3); background: rgba(24, 33, 56, .75); }
+    .btn-sm { padding: .55rem .9rem; font-size: .82rem; }
+
+    /* ===== Hero ===== */
+    .hero { padding-block: clamp(4rem, 9vw, 7.5rem) clamp(3rem, 6vw, 5rem); }
+    .badge {
+        display: inline-flex; align-items: center; gap: .45rem;
+        padding: .38rem .8rem; border-radius: 999px;
+        border: 1px solid rgba(36, 214, 255, .35);
+        background: rgba(36, 214, 255, .08);
+        color: #c9f4ff; font-size: .76rem; font-weight: 700;
+        letter-spacing: .02em;
+    }
+    .badge .dot {
+        width: .45rem; height: .45rem; border-radius: 50%;
+        background: var(--mint); box-shadow: 0 0 0 .25rem rgba(46, 229, 157, .18);
+    }
+    h1 {
+        margin: 1.1rem 0 0;
+        font-size: clamp(2.35rem, 5.6vw, 4rem);
+        line-height: 1.06; letter-spacing: -.03em; font-weight: 800;
+        max-width: 22ch;
+    }
+    .text-gradient {
+        background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+    }
+    .lead { margin-top: 1.1rem; max-width: 60ch; color: var(--muted); font-size: clamp(1rem, 1.6vw, 1.12rem); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.9rem; }
+    .hero-note { margin-top: 1.1rem; color: var(--subtle); font-size: .82rem; }
+
+    /* ===== Métricas ===== */
+    .metrics {
+        display: grid; gap: 1px; margin-top: clamp(2.5rem, 5vw, 4rem);
+        grid-template-columns: repeat(2, 1fr);
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+    .metric { padding: 1.15rem 1.25rem; background: rgba(11, 16, 32, .82); }
+    .metric b { display: block; font-size: 1.35rem; letter-spacing: -.02em; }
+    .metric span { color: var(--subtle); font-size: .78rem; }
+
+    /* ===== Títulos de sección ===== */
+    .eyebrow {
+        text-transform: uppercase; letter-spacing: .14em;
+        font-size: .72rem; font-weight: 800; color: var(--cyan);
+    }
+    h2 {
+        margin: .55rem 0 0;
+        font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+        line-height: 1.15; letter-spacing: -.02em; font-weight: 800;
+    }
+    .section-head p { margin: .8rem 0 0; max-width: 62ch; color: var(--muted); }
+
+    /* ===== Tarjetas glass ===== */
+    .grid { display: grid; gap: 1.1rem; margin-top: 2rem; grid-template-columns: 1fr; }
+    .card {
+        position: relative;
+        display: flex; flex-direction: column;
+        padding: 1.35rem;
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+        text-decoration: none; color: inherit;
+        transition: transform .16s, border-color .16s, box-shadow .16s, background-color .16s;
+    }
+    a.card:hover, a.card:focus-visible {
+        transform: translateY(-3px);
+        border-color: rgba(255,255,255,.28);
+        box-shadow: var(--shadow-glow);
+        outline: none;
+    }
+    .card-icon {
+        display: grid; place-items: center;
+        width: 2.8rem; height: 2.8rem; border-radius: .8rem;
+        background: linear-gradient(135deg, rgba(109, 93, 252, .25), rgba(36, 214, 255, .14));
+        border: 1px solid var(--border-strong);
+        color: #cfd6ff; font-size: 1.1rem;
+        margin-bottom: 1rem;
+    }
+    .card h3 { margin: 0; font-size: 1.08rem; letter-spacing: -.01em; }
+    .card p { margin: .55rem 0 0; color: var(--muted); font-size: .9rem; flex: 1; }
+    .card-foot {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: .75rem; margin-top: 1.15rem;
+        color: var(--muted); font-size: .76rem;
+    }
+    .card-foot .arrow { color: var(--cyan); transition: transform .16s; }
+    a.card:hover .arrow { transform: translateX(.25rem); }
+    .card.is-featured {
+        background:
+            linear-gradient(180deg, rgba(109, 93, 252, .16), rgba(18, 26, 45, .72));
+        border-color: rgba(109, 93, 252, .45);
+    }
+    .card.is-featured .card-icon {
+        background: linear-gradient(135deg, var(--accent), var(--cyan));
+        color: #fff;
+    }
+    .tag {
+        display: inline-flex; align-items: center; gap: .35rem;
+        padding: .2rem .55rem; border-radius: 999px;
+        background: rgba(255,255,255,.06); border: 1px solid var(--border);
+        color: var(--muted); font-size: .68rem; font-weight: 700;
+    }
+
+    /* ===== Servicios ===== */
+    .features { display: grid; gap: 1px; margin-top: 2rem; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .feature { padding: 1.4rem 1.35rem; background: rgba(11, 16, 32, .82); }
+    .feature i { color: var(--cyan); font-size: 1.05rem; }
+    .feature h3 { margin: .65rem 0 0; font-size: .98rem; }
+    .feature p { margin: .4rem 0 0; color: var(--muted); font-size: .85rem; }
+
+    /* ===== CTA ===== */
+    .cta {
+        position: relative; overflow: hidden;
+        margin-top: 1rem; padding: clamp(2rem, 5vw, 3.25rem);
+        border-radius: 1.25rem;
+        background:
+            radial-gradient(30rem 18rem at 10% 0%, rgba(36, 214, 255, .16), transparent 60%),
+            radial-gradient(30rem 18rem at 90% 100%, rgba(109, 93, 252, .22), transparent 60%),
+            rgba(18, 26, 45, .72);
+        border: 1px solid rgba(109, 93, 252, .32);
+        box-shadow: var(--shadow);
+    }
+    .cta h2 { max-width: 24ch; }
+    .cta p { margin: .8rem 0 0; max-width: 60ch; color: var(--muted); }
+    /* El CTA cierra la página: sin el padding completo de .section para no
+     * dejar un hueco enorme entre los servicios y el bloque final. */
+    .cta-section { padding-block: 0 clamp(3.5rem, 6vw, 5rem); }
+
+    /* ===== Pie ===== */
+    .site-footer { margin-top: clamp(3rem, 6vw, 5rem); border-top: 1px solid var(--border); padding-block: 2rem; }
+    .foot-grid { display: flex; flex-direction: column; gap: 1.25rem; }
+    .foot-brand { display: flex; align-items: center; gap: .75rem; }
+    .foot-brand small { display: block; color: var(--subtle); font-size: .76rem; }
+    .foot-links { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; }
+    .foot-links a { color: var(--muted); text-decoration: none; font-size: .84rem; }
+    .foot-links a:hover { color: var(--txt); }
+    .foot-legal { color: var(--subtle); font-size: .76rem; }
+    .foot-legal a { color: var(--subtle); text-decoration: none; }
+    .foot-legal a:hover { color: var(--txt); }
+
+    /* ===== Responsive ===== */
+    @media (min-width: 640px) {
+        .metrics { grid-template-columns: repeat(4, 1fr); }
+        .grid { grid-template-columns: repeat(2, 1fr); }
+        .features { grid-template-columns: repeat(2, 1fr); }
+        .foot-grid { flex-direction: row; align-items: center; justify-content: space-between; }
+    }
+    @media (min-width: 1024px) {
+        .nav-links { display: flex; }
+        .grid { grid-template-columns: repeat(3, 1fr); }
+        .features { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        * { transition: none !important; }
+    }
+</style>
 </head>
 <body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
 
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="loading-spinner"></div>
-    <p><i class="fas fa-cloud-arrow-up"></i> Cargando módulo...</p>
-    <small>Conectando con el subsistema, por favor espera</small>
-</div>
+<header class="site-header">
+    <div class="wrap nav">
+        <a class="brand" href="/">
+            <span class="brand-mark"><i class="fa-solid fa-cubes"></i></span>
+            <span class="brand-name">PDL TransNuBeT<sup>&reg;</sup>
+                <small>Ecosistema de gestión</small>
+            </span>
+        </a>
+        <nav class="nav-links" aria-label="Secciones">
+            <a href="#ecosistema">Ecosistema</a>
+            <a href="#servicios">Servicios</a>
+            <a href="<?= $base ?>/soporte.php">Soporte</a>
+        </nav>
+        <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar al sistema
+        </a>
+    </div>
+</header>
 
-<div class="dashboard-container">
-    <div class="modern-header">
-        <div class="logo-area">
-            <div class="logo-icon">
-                <img src="images/LogoTN.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
-                     style="width: 100%; height: 100%; object-fit: contain;"
-                     onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon\'></i>';">
-            </div>
-            <div class="logo-text">
-                <h2><?php echo htmlspecialchars($COMPANY_NAME); ?> · <?php echo htmlspecialchars($SLOGAN); ?></h2>
-                <span style="font-size: 18px">Plataforma de Desarrollo de Subsistemas <?php echo $MARCA_SISTEMA; ?></span>
-            </div>
-        </div>
-        <div class="header-badge">
-            <!-- DROPDOWN: OTRAS OPCIONES -->
-            <div class="custom-dropdown" id="otrosServiciosDropdown">
-                <button class="custom-dropdown-btn" id="dropdownToggle">
-                    <i class="fas fa-ellipsis-h"></i> OTRAS OPCIONES
-                    <i class="fas fa-chevron-down" id="dropdownArrow"></i>
-                </button>
-                <div class="custom-dropdown-menu" id="dropdownMenu">
-                    <div class="dropdown-title">Servicios Generales</div>
-                    <button class="dropdown-item" data-servicio="salarios">
-                        <i class="fas fa-money-bill-wave"></i> Consultar Salario o Vacaciones
-                    </button>
-                    <button class="dropdown-item" data-servicio="charangon">
-                        <i class="fas fa-calculator"></i> Ficha Costo Charangón
-                    </button>
-                    <button class="dropdown-item" data-servicio="papel-adhesivo">
-                        <i class="fas fa-print"></i> Ficha Costo Impres. Papel Adhesivo
-                    </button>
-                    <div class="dropdown-divider"></div>
-                    <button class="dropdown-item" data-servicio="licencia" id="opcionLicencia">
-                        <i class="fas fa-key"></i> Estado de la Licencia
-                    </button>
-                    <div class="dropdown-divider"></div>
-                    <button class="dropdown-item" data-servicio="contacto">
-                        <i class="fas fa-headset"></i> Contactar Soporte
-                    </button>
-                    <button class="dropdown-item" data-servicio="sobre-autor">
-                        <i class="fas fa-user"></i> Sobre el Autor
-                    </button>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="phpinfo/index.php" target="_blank" rel="noopener noreferrer" data-servicio="phpinfo">
-                        <i class="fas fa-server"></i> PHP Info
-                    </a>
-                </div>
-            </div>
-
-            <?php if ($lic_raiz_activa): ?>
-            <div class="version-chip">
-                <i class="fas fa-code-branch"></i> Enterprise · Estable
-            </div>
-            <?php else: ?>
-            <a class="version-chip licencia-caida" href="nominas/licencia.php">
-                <i class="fas fa-triangle-exclamation"></i> Licencia Vencida o inexistente. Renueve, Registre o adquiera una nueva licencia.
+<main id="contenido">
+    <!-- ===== Hero ===== -->
+    <section class="wrap hero">
+        <span class="badge"><span class="dot"></span> Plataforma local · v10.0.1</span>
+        <h1>El ecosistema de gestión <span class="text-gradient">que impulsa tu operación</span></h1>
+        <p class="lead">
+            Facturación, nóminas, costos e inventarios en una plataforma que corre en tu propia red.
+            Elige un módulo del ecosistema y empieza a trabajar: los datos no salen de tu equipo.
+        </p>
+        <div class="hero-actions">
+            <a class="btn btn-primary" href="#ecosistema">
+                <i class="fa-solid fa-layer-group"></i> Explorar el ecosistema
             </a>
-            <?php endif; ?>
-            <div class="status-dot" id="serverStatusDot">
-                <i class="fas fa-circle" id="statusIcon"></i>
-                <span id="statusText">Verificando...</span>
+            <a class="btn btn-glass" href="<?= $base ?>/phpinfo/">
+                <i class="fa-solid fa-server"></i> Estado del servidor
+            </a>
+        </div>
+        <p class="hero-note">
+            <i class="fa-solid fa-shield-halved"></i>
+            Instalación local · sin dependencia de la nube · respaldo periódico
+        </p>
+
+        <div class="metrics" role="list">
+            <div class="metric" role="listitem"><b>4</b><span>Módulos de gestión</span></div>
+            <div class="metric" role="listitem"><b>PHP 8.1</b><span>Servidor local</span></div>
+            <div class="metric" role="listitem"><b>MySQL 5.7</b><span>Base de datos</span></div>
+            <div class="metric" role="listitem"><b>24/7</b><span>Soporte técnico</span></div>
+        </div>
+    </section>
+
+    <!-- ===== Ecosistema ===== -->
+    <section class="wrap section" id="ecosistema">
+        <div class="section-head">
+            <span class="eyebrow">Opciones y servicios</span>
+            <h2>Elige por dónde entrar</h2>
+            <p>
+                Cada acceso abre una parte del sistema. Si es tu primera vez, empieza por el
+                <strong>Ecosistema Financiero</strong>: desde ahí llegas a todos los módulos.
+            </p>
+        </div>
+
+        <div class="grid">
+            <?php foreach ($ecosistema as $item): ?>
+                <a class="card<?= !empty($item['destacada']) ? ' is-featured' : '' ?>" href="<?= htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') ?>">
+                    <span class="card-icon"><i class="<?= htmlspecialchars($item['icono'], ENT_QUOTES, 'UTF-8') ?>"></i></span>
+                    <h3><?= htmlspecialchars($item['titulo'], ENT_QUOTES, 'UTF-8') ?></h3>
+                    <p><?= htmlspecialchars($item['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                    <span class="card-foot">
+                        <span class="tag"><?= htmlspecialchars($item['etiqueta'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <i class="fa-solid fa-arrow-right arrow" aria-hidden="true"></i>
+                    </span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <!-- ===== Servicios ===== -->
+    <section class="wrap section" id="servicios">
+        <div class="section-head">
+            <span class="eyebrow">Lo que incluye</span>
+            <h2>Servicios de la plataforma</h2>
+            <p>Una base técnica pensada para la operación diaria y para no depender de servicios externos.</p>
+        </div>
+
+        <div class="features">
+            <?php foreach ($servicios as $s): ?>
+                <div class="feature">
+                    <i class="<?= htmlspecialchars($s['icono'], ENT_QUOTES, 'UTF-8') ?>"></i>
+                    <h3><?= htmlspecialchars($s['titulo'], ENT_QUOTES, 'UTF-8') ?></h3>
+                    <p><?= htmlspecialchars($s['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <!-- ===== CTA ===== -->
+    <section class="wrap cta-section">
+        <div class="cta">
+            <span class="eyebrow">Empieza ahora</span>
+            <h2>Todo el sistema, a un clic desde aquí</h2>
+            <p>
+                La portada del sistema reúne los accesos a cada módulo, el estado de la licencia
+                y la información de soporte de tu instalación.
+            </p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="<?= $base ?>/index.php">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Ir al Ecosistema Financiero
+                </a>
+                <a class="btn btn-glass" href="<?= $base ?>/soporte.php">
+                    <i class="fa-solid fa-headset"></i> Hablar con soporte
+                </a>
             </div>
         </div>
-    </div>
+    </section>
+</main>
 
-    <div class="welcome-banner animate__animated animate__fadeInUp">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
-            <img src="images/LogoTN.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
-                 style="height: 135px; width: auto; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));"
-                 onerror="this.onerror=null; this.style.display='none';">
+<footer class="site-footer">
+    <div class="wrap foot-grid">
+        <div class="foot-brand">
+            <span class="brand-mark" aria-hidden="true"><i class="fa-solid fa-cubes"></i></span>
             <div>
-                <h1 style="margin: 0;">
-                    <i class="fas fa-chalkboard-user"></i> 
-                    Ecosistema Financiero · <?php echo htmlspecialchars($COMPANY_NAME); ?>
-                </h1>
-                <div style="font-size: 1rem; color: #60a5fa; margin-top: 5px; animation: blink 1s ease-in-out infinite;">
-                    <i class="fas fa-hand-point-down"></i> 
-                    <span style="font-weight: 800;">Selecciona el subsistema que deseas gestionar. Todos los módulos están integrados y sincronizados para una experiencia fluida.</span>
-                </div>
+                <strong>PDL TransNuBeT<sup>&reg;</sup></strong>
+                <small>Ecosistema de gestión · v10.0.1</small>
             </div>
         </div>
-        <div class="estado-verificacion" id="estadoVerificacion" hidden>
-            <div class="estado-verificacion-texto">
-                <i class="fas fa-circle-notch fa-spin"></i><span id="estadoVerificacionPaso">Verificando estado...</span>
-            </div>
-            <div class="estado-verificacion-barra">
-                <div class="estado-verificacion-progreso" id="estadoVerificacionBarra"></div>
-            </div>
-        </div>
+        <nav class="foot-links" aria-label="Enlaces del pie">
+            <a href="<?= $base ?>/index.php">Ecosistema Financiero</a>
+            <a href="<?= $base ?>/nominas/">Nóminas</a>
+            <a href="<?= $base ?>/facturacion/index.php">Facturación</a>
+            <a href="<?= $base ?>/phpinfo/">Servidor</a>
+            <a href="<?= $base ?>/soporte.php">Soporte</a>
+        </nav>
     </div>
-
-    <div class="subsystems-grid">
-        <!-- Nóminas (código 0001) -->
-        <div class="subsystem-card <?php echo !$server_ok ? 'disabled' : ''; ?> animate__animated animate__fadeInUp" 
-             data-module="nominas" 
-             data-name="Nóminas" 
-             data-url="/nominas/index.php" 
-             data-activo="<?php echo isset($sub_estados['0001']) ? $sub_estados['0001'] : 0; ?>">
-            <div class="card-image-container">
-                <img src="images/nominas.png" alt="Nóminas"
-                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 150\'%3E%3Crect width=\'200\' height=\'150\' fill=\'%233b82f6\'/%3E%3Ctext x=\'100\' y=\'85\' text-anchor=\'middle\' fill=\'white\' font-size=\'40\'%3EN%3C/text%3E%3C/svg%3E';">
-            </div>
-            <div class="card-content">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3>Nóminas</h3>
-                    <?php echo getBadge('0001', $server_ok, $sub_estados); ?>
-                </div>
-                <p>Gestión completa de salarios, cálculos automáticos de ISR, seguridad social, vacaciones y reportes ejecutivos.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Cálculos en tiempo real</span>
-                    </div>
-                    <div class="access-badge">
-                        <i class="fas fa-arrow-right"></i> Acceder
-                    </div>
-                </div>
-                <?php echo getMaintenanceBadge($mantenimiento_activo); ?>
-            </div>
-        </div>
-
-        <!-- Facturación (código 0002) -->
-        <div class="subsystem-card <?php echo !$server_ok ? 'disabled' : ''; ?> animate__animated animate__fadeInUp animate__delay-1s" 
-             data-module="facturacion" 
-             data-name="Facturación" 
-             data-url="/facturacion/index.php" 
-             data-activo="<?php echo isset($sub_estados['0002']) ? $sub_estados['0002'] : 0; ?>">
-            <div class="card-image-container">
-                <img src="images/facturacion.png" alt="Facturación"
-                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 150\'%3E%3Crect width=\'200\' height=\'150\' fill=\'%2310b981\'/%3E%3Ctext x=\'100\' y=\'85\' text-anchor=\'middle\' fill=\'white\' font-size=\'40\'%3EF%3C/text%3E%3C/svg%3E';">
-            </div>
-            <div class="card-content">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3>Facturación</h3>
-                    <?php echo getBadge('0002', $server_ok, $sub_estados); ?>
-                </div>
-                <p>Emisión de facturas electrónicas, control de clientes, seguimiento de pagos y reportes fiscales automatizados.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-chart-line"></i>
-                        <span>CFDI 4.0</span>
-                    </div>
-                    <div class="access-badge">
-                        <i class="fas fa-arrow-right"></i> Acceder
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Costos (código 0003) -->
-        <div class="subsystem-card <?php echo !$server_ok ? 'disabled' : ''; ?> animate__animated animate__fadeInUp animate__delay-2s" 
-             data-module="costos" 
-             data-name="Costos" 
-             data-url="/costos/login.php" 
-             data-activo="<?php echo isset($sub_estados['0003']) ? $sub_estados['0003'] : 0; ?>">
-            <div class="card-image-container">
-                <img src="images/costos.png" alt="Costos"
-                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 150\'%3E%3Crect width=\'200\' height=\'150\' fill=\'%23f59e0b\'/%3E%3Ctext x=\'100\' y=\'85\' text-anchor=\'middle\' fill=\'white\' font-size=\'40\'%3EC%3C/text%3E%3C/svg%3E';">
-            </div>
-            <div class="card-content">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3>Costos</h3>
-                    <?php echo getBadge('0003', $server_ok, $sub_estados); ?>
-                </div>
-                <p>Análisis de costos operativos, margen de ganancia, control de gastos y proyecciones financieras.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Dashboard analítico</span>
-                    </div>
-                    <div class="access-badge">
-                        <i class="fas fa-arrow-right"></i> Acceder
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Inventarios (código 0004) -->
-        <div class="subsystem-card <?php echo !$server_ok ? 'disabled' : ''; ?> animate__animated animate__fadeInUp animate__delay-3s" 
-             data-module="inventarios" 
-             data-name="Inventarios" 
-             data-url="/inventarios/login.php" 
-             data-activo="<?php echo isset($sub_estados['0004']) ? $sub_estados['0004'] : 0; ?>">
-            <div class="card-image-container">
-                <img src="images/inventario.png" alt="Inventarios"
-                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 150\'%3E%3Crect width=\'200\' height=\'150\' fill=\'%23ef4444\'/%3E%3Ctext x=\'100\' y=\'85\' text-anchor=\'middle\' fill=\'white\' font-size=\'40\'%3EI%3C/text%3E%3C/svg%3E';">
-            </div>
-            <div class="card-content">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3>Inventarios</h3>
-                    <?php echo getBadge('0004', $server_ok, $sub_estados); ?>
-                </div>
-                <p>Control de stock, entradas y salidas de productos, alertas de inventario mínimo y gestión de proveedores.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Stock en tiempo real</span>
-                    </div>
-                    <div class="access-badge">
-                        <i class="fas fa-arrow-right"></i> Acceder
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Administración (código 0005) -->
-        <div class="subsystem-card <?php echo !$server_ok ? 'disabled' : ''; ?> animate__animated animate__fadeInUp animate__delay-4s" 
-             data-module="administracion" 
-             data-name="Administración" 
-             data-url="/administracion/index.php" 
-             data-activo="<?php echo isset($sub_estados['0005']) ? $sub_estados['0005'] : 0; ?>">
-            <div class="card-image-container">
-                <img src="images/admin.png" alt="Administración"
-                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 200 150\'%3E%3Crect width=\'200\' height=\'150\' fill=\'%238b5cf6\'/%3E%3Ctext x=\'100\' y=\'85\' text-anchor=\'middle\' fill=\'white\' font-size=\'40\'%3EA%3C/text%3E%3C/svg%3E';">
-            </div>
-            <div class="card-content">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3>Administ.</h3>
-                    <?php echo getBadge('0005', $server_ok, $sub_estados); ?>
-                </div>
-                <p>Gestión centralizada de usuarios, roles, parámetros globales, auditoría y configuración del sistema.</p>
-                <div class="card-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Panel de control</span>
-                    </div>
-                    <div class="access-badge">
-                        <i class="fas fa-arrow-right"></i> Acceder
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="wrap">
+        <p class="foot-legal">
+            &copy; <?= $anio ?> USBWebserverUnicornio · Unicornio Software Cuba<sup>&reg;</sup> ·
+            <a href="<?= $base ?>/terminos.php">Términos</a> ·
+            <a href="<?= $base ?>/privacidad.php">Privacidad</a> ·
+            <a href="<?= $base ?>/contacto.php">Contacto</a>
+        </p>
     </div>
-
-    <!-- Footer Unificado -->
-    <div class="unified-footer-card">
-        <div class="footer-main">
-            <div class="footer-brand">
-                <i class="fas fa-cog"></i>
-                <div class="brand-text">
-                    <h4><?php echo $MARCA_SISTEMA; ?> - <?php echo htmlspecialchars($COMPANY_NAME); ?></h4>
-                    <p><?php echo htmlspecialchars($SLOGAN); ?></p>
-                </div>
-            </div>
-            <div class="footer-stats">
-                <span onclick="abrirModalIndex('proyecto')"><i class="fas fa-chart-line"></i> Proyecto en crecimiento</span>
-                <span onclick="abrirModalIndex('backup')"><i class="fas fa-cloud-upload-alt"></i> Backup automático</span>
-            </div>
-        </div>
-        
-        <div class="footer-info-grid">
-            <div class="footer-info-item" onclick="abrirModalIndex('bd')">
-                <i class="fas fa-database"></i>
-                <div class="info-details">
-                    <h4>Base de Datos</h4>
-                    <p>MySQL <?php echo htmlspecialchars($MYSQL_VERSION_REAL); ?> · Alta disponibilidad</p>
-                </div>
-            </div>
-            <div class="footer-info-item" onclick="abrirModalIndex('php')">
-                <i class="fab fa-php"></i>
-                <div class="info-details">
-                    <h4>PHP</h4>
-                    <p>v<?php echo htmlspecialchars($PHP_VERSION_REAL); ?> · Motor del sistema</p>
-                </div>
-            </div>
-            <div class="footer-info-item" onclick="abrirModalIndex('seguridad')">
-                <i class="fas fa-shield-alt"></i>
-                <div class="info-details">
-                    <h4>Seguridad</h4>
-                    <p>Cifrado SSL · Autenticación 2FA</p>
-                </div>
-            </div>
-            <div class="footer-info-item" onclick="abrirModalIndex('sincroniza')">
-                <i class="fas fa-sync-alt"></i>
-                <div class="info-details">
-                    <h4>Sincronización</h4>
-                    <p>Actualizaciones en tiempo real</p>
-                </div>
-            </div>
-            <div class="footer-info-item" onclick="abrirModalIndex('soporte')">
-                <i class="fas fa-headset"></i>
-                <div class="info-details">
-                    <h4>Soporte 24/7</h4>
-                    <p>Asistencia prioritaria</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="footer-copyright">
-            <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px;">
-                <img src="images/Unicorn.png" alt="Unicornio" class="unicorn-icon">
-                <span>Copyright © <?php echo $current_year; ?> UnicornioSoftware° - Kaky&reg;. Todos los derechos reservados.</span>
-                <div style="display: inline-flex; gap: 12px; align-items: center;">
-                    <a href="terminos.php" class="footer-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-file-contract"></i> Términos
-                    </a>
-                    <span style="color: #64748b;">•</span>
-                    <a href="privacidad.php" class="footer-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-lock"></i> Privacidad
-                    </a>
-                    <span style="color: #64748b;">•</span>
-                    <a href="soporte.php" class="footer-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-headset"></i> Soporte
-                    </a>
-                    <span style="color: #64748b;">•</span>
-                    <a href="contacto.php" class="footer-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-envelope"></i> Cont&aacute;ctenos
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-// ============ ESTADO DEL SERVIDOR (desde PHP) ============
-const serverStatus = {
-    php: <?php echo json_encode($server_status['php']); ?>,
-    mysql: <?php echo json_encode($server_status['mysql']); ?>,
-    mysqlError: <?php echo json_encode($server_status['mysql_error']); ?>
-};
-const serverOk = <?php echo json_encode($server_ok); ?>;
-
-let isRedirecting = false;
-
-function updateServerStatusUI() {
-    const statusDot = document.getElementById('serverStatusDot');
-    const statusIcon = document.getElementById('statusIcon');
-    const statusText = document.getElementById('statusText');
-    
-    if (serverStatus.php && serverStatus.mysql) {
-        statusDot.className = 'status-dot status-online';
-        statusIcon.style.color = '#22c55e';
-        statusText.innerHTML = 'Sistema Operativo';
-    } else if (serverStatus.php && !serverStatus.mysql) {
-        statusDot.className = 'status-dot status-offline';
-        statusIcon.style.color = '#ef4444';
-        statusText.innerHTML = 'MySQL desconectado';
-    }
-}
-
-function showLoading(moduleName) {
-    const overlay = document.getElementById('loadingOverlay');
-    const message = overlay.querySelector('p');
-    message.innerHTML = `<i class="fas fa-cloud-arrow-up"></i> Cargando módulo de ${moduleName}...`;
-    overlay.classList.add('active');
-}
-
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.classList.remove('active');
-}
-
-function showModuleWelcome(card) {
-    const moduleName = card.dataset.name;
-    const moduleUrl = card.dataset.url;
-    const moduleDescription = card.querySelector('p').innerHTML;
-    const moduleActivo = card.dataset.activo;
-    const cardImg = card.querySelector('.card-image-container img');
-    const imgSrc = cardImg ? cardImg.src : '';
-    const imgHtml = imgSrc ? `<img src="${imgSrc}" class="modal-subsystem-img" alt="${moduleName}">` : '';
-    
-    if (!serverOk) {
-        Swal.fire({
-            title: '⚠️ Servidor no disponible',
-            html: `No es posible acceder porque el servidor (PHP/MySQL) no está funcionando correctamente.<br><br>
-                   <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
-                   <?php echo $CONTACTO_ADICIONAL; ?><br><br>
-                   Contacte al administrador.`,
-            background: '#0f172a',
-            color: '#e2e8f0',
-            confirmButtonColor: '#ef4444',
-            confirmButtonText: '<i class="fas fa-times"></i> Cerrar'
-        });
-        return;
-    }
-    
-    if (moduleActivo == '0') {
-        Swal.fire({
-            title: '⛔ Subsistema inactivo',
-            html: `El subsistema de: <b>${moduleName}</b> se encuentra deshabilitado temporalmente.<br><br>
-                   <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
-                   <?php echo $CONTACTO_ADICIONAL; ?><br><br>
-                   Contacte al administrador para más información.`,
-            background: '#0f172a',
-            color: '#e2e8f0',
-            confirmButtonColor: '#f59e0b',
-            confirmButtonText: '<i class="fas fa-check"></i> Entendido'
-        });
-        return;
-    }
-    
-    Swal.fire({
-        title: `${moduleName}`,
-        html: `
-            <div style="text-align: center;">
-                ${imgHtml}
-                <p style="margin-bottom: 15px; text-align: left;">${moduleDescription}</p>
-                <div style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 12px; text-align: left;">
-                    <p><i class="fas fa-shield-alt"></i> <strong>Características destacadas:</strong></p>
-                    <ul style="margin-top: 8px; margin-left: 20px;">
-                        <li>Interfaz intuitiva y moderna</li>
-                        <li>Reportes en tiempo real</li>
-                        <li>Datos cifrados y seguros</li>
-                        <li>Soporte técnico prioritario</li>
-                    </ul>
-                </div>
-                <p style="margin-top: 15px; font-size: 0.85rem; color: #94a3b8;">
-                    <i class="fas fa-clock"></i> Último acceso: Hoy a las ${new Date().toLocaleTimeString()}
-                </p>
-            </div>
-        `,
-        background: '#0f172a',
-        color: '#e2e8f0',
-        confirmButtonColor: '#3b82f6',
-        confirmButtonText: `<i class="fas fa-arrow-right-to-bracket"></i> Ingresar a ${moduleName}`,
-        showCancelButton: true,
-        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
-        cancelButtonColor: '#475569',
-        backdrop: `rgba(0,0,0,0.8)`,
-        showClass: {
-            popup: 'animate__animated animate__zoomIn'
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            accessModule(moduleUrl, moduleName, moduleActivo);
-        }
-    });
-}
-
-async function urlExists(url, timeout = 3000) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    try {
-        const response = await fetch(url, { method: 'HEAD', signal: controller.signal });
-        clearTimeout(timeoutId);
-        return response.ok;
-    } catch (error) {
-        clearTimeout(timeoutId);
-        return false;
-    }
-}
-
-function accessModule(url, moduleName, moduleActivo) {
-    if (isRedirecting) return;
-    
-    if (!serverOk) {
-        Swal.fire({
-            title: '⚠️ Servidor no disponible',
-            html: `No es posible acceder porque el servidor (PHP/MySQL) no está funcionando correctamente.<br><br>
-                   <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
-                   <?php echo $CONTACTO_ADICIONAL; ?><br><br>
-                   Contacte al administrador.`,
-            icon: 'error',
-            background: '#0f172a',
-            color: '#e2e8f0',
-            confirmButtonColor: '#ef4444'
-        });
-        return;
-    }
-    
-    if (moduleActivo == '0') {
-        Swal.fire({
-            title: '⛔ Subsistema inactivo',
-            html: `El subsistema de: <b>${moduleName}</b> se encuentra deshabilitado temporalmente.<br><br>
-                   <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                   ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
-                   <?php echo $CONTACTO_ADICIONAL; ?><br><br>
-                   No es posible acceder.`,
-            icon: 'warning',
-            background: '#0f172a',
-            color: '#e2e8f0',
-            confirmButtonColor: '#f59e0b'
-        });
-        return;
-    }
-    
-    Swal.fire({
-        title: '🔍 Verificando acceso',
-        text: `Comprobando disponibilidad de ${moduleName}...`,
-        icon: 'info',
-        background: '#0f172a',
-        color: '#e2e8f0',
-        showConfirmButton: false,
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    urlExists(url).then(exists => {
-        Swal.close();
-        if (exists) {
-            isRedirecting = true;
-            showLoading(moduleName);
-            setTimeout(() => {
-                window.location.href = url;
-            }, 800);
-        } else {
-            Swal.fire({
-                title: '❌ Subsistema no disponible',
-                html: `El módulo <b>${moduleName}</b> no se encuentra instalado o la ruta es incorrecta.<br><br>
-<?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
-                     <?php echo $CONTACTO_ADICIONAL; ?><br><br>
-                       Contacte al administrador para instalar o corregir la ruta.`,
-                icon: 'error',
-                background: '#0f172a',
-                color: '#e2e8f0',
-                confirmButtonColor: '#ef4444',
-                confirmButtonText: '<i class="fas fa-times"></i> Cerrar'
-            });
-        }
-    }).catch(() => {
-        Swal.close();
-        Swal.fire({
-            title: '⚠️ Error de conexión',
-            text: `No se pudo verificar el estado de ${moduleName}. Intente más tarde.`,
-            icon: 'warning',
-            background: '#0f172a',
-            color: '#e2e8f0'
-        });
-    });
-}
-
-// ============ EVENTOS DE TARJETAS ============
-document.querySelectorAll('.subsystem-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-        if (e.target.closest('.access-badge')) return;
-        if (isRedirecting) return;
-        if (card.classList.contains('disabled')) return;
-        showModuleWelcome(card);
-    });
-    
-    card.addEventListener('mouseenter', () => {
-        if (!card.classList.contains('disabled')) {
-            card.style.cursor = 'pointer';
-        } else {
-            card.style.cursor = 'default';
-        }
-    });
-});
-
-document.querySelectorAll('.access-badge').forEach(badge => {
-    badge.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (isRedirecting) return;
-        const card = badge.closest('.subsystem-card');
-        if (card.classList.contains('disabled')) return;
-        showModuleWelcome(card);
-    });
-});
-
-// ============ FUNCIONES DE VERIFICACIÓN DE ESTADO ============
-const PASOS_VERIFICACION = [
-    { texto: 'Verificando estado...', progreso: 15, en: 0 },
-    { texto: 'Comprobando conexión con el servidor...', progreso: 50, en: 450 },
-    { texto: 'Verificando PHP y MySQL...', progreso: 80, en: 900 },
-    { texto: 'Verificación completada.', progreso: 100, en: 1350 }
-];
-
-function ejecutarVerificacionEnBanner(alFinalizar, omitirSecuencia) {
-    if (omitirSecuencia) { if (alFinalizar) alFinalizar(); return; }
-    const capa = document.getElementById('estadoVerificacion');
-    const paso = document.getElementById('estadoVerificacionPaso');
-    const barra = document.getElementById('estadoVerificacionBarra');
-    if (!capa || !paso || !barra) { if (alFinalizar) alFinalizar(); return; }
-    capa.hidden = false;
-    const banner = document.querySelector('.welcome-banner');
-    if (banner) banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    PASOS_VERIFICACION.forEach(function (p) {
-        setTimeout(function () {
-            paso.textContent = p.texto;
-            barra.style.width = p.progreso + '%';
-        }, p.en);
-    });
-    setTimeout(function () {
-        capa.hidden = true;
-        barra.style.width = '0%';
-        if (alFinalizar) alFinalizar();
-    }, 1750);
-}
-
-function verificarEstadoConLoading() {
-    sessionStorage.setItem('verificacionManual', '1');
-    ejecutarVerificacionEnBanner(function () {
-        location.reload();
-    });
-}
-
-const serverStatusDot = document.getElementById('serverStatusDot');
-if (serverStatusDot) {
-    serverStatusDot.addEventListener('click', () => {
-        if (serverStatus.php && serverStatus.mysql) {
-            Swal.fire({
-                title: '✅ Estado del servidor',
-                html: `
-                    <div style="text-align: left;">
-                        <p><strong>PHP:</strong> <span style="color: #22c55e;">✓ Activo</span></p>
-                        <p><strong>MySQL:</strong> <span style="color: #22c55e;">✓ Conectado correctamente</span></p>
-                        <p><strong>Base de datos:</strong> <?php echo htmlspecialchars(DB_NAME); ?></p>
-                        <hr style="margin: 15px 0; border-color: rgba(255,255,255,0.1);">
-                        <p><i class="fas fa-check-circle" style="color:#22c55e"></i> Todos los sistemas operativos</p>
-                    </div>
-                `,
-                icon: 'success',
-                background: '#0f172a',
-                color: '#e2e8f0',
-                confirmButtonColor: '#3b82f6',
-                confirmButtonText: '<i class="fas fa-check"></i> Aceptar',
-                showCancelButton: true,
-                cancelButtonText: '<i class="fas fa-sync-alt"></i> Verificar Estado',
-                cancelButtonColor: '#475569'
-            }).then((result) => {
-                if (result.dismiss === Swal.DismissReason.cancel) {
-                    verificarEstadoConLoading();
-                }
-            });
-        } else if (serverStatus.php && !serverStatus.mysql) {
-            Swal.fire({
-                title: '⚠️ Estado del servidor',
-                html: `
-                    <div style="text-align: left;">
-                        <p><strong>PHP:</strong> <span style="color: #22c55e;">✓ Activo</span></p>
-                        <p><strong>MySQL:</strong> <span style="color: #ef4444;">✗ Desconectado</span></p>
-                        <p><strong>Error:</strong> <span style="color: #fca5a5;">${serverStatus.mysqlError || 'No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión'}</span></p>
-                        <hr style="margin: 15px 0; border-color: rgba(255,255,255,0.1);">
-                        <p><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> Verifica el servicio de MySQL</p>
-                    </div>
-                `,
-                icon: 'warning',
-                background: '#0f172a',
-                color: '#e2e8f0',
-                confirmButtonColor: '#ef4444',
-                confirmButtonText: '<i class="fas fa-tools"></i> Entendido',
-                showCancelButton: true,
-                cancelButtonText: '<i class="fas fa-sync-alt"></i> Verificar Estado',
-                cancelButtonColor: '#475569'
-            }).then((result) => {
-                if (result.dismiss === Swal.DismissReason.cancel) {
-                    verificarEstadoConLoading();
-                }
-            });
-        }
-    });
-}
-
-// ============ BIENVENIDA ============
-function mostrarBienvenida() {
-    const justRedirected = sessionStorage.getItem('justRedirected');
-    if (!justRedirected) {
-        setTimeout(() => {
-            Swal.fire({
-                title: '✨ Bienvenido al Ecosistema Financiero de <?php echo htmlspecialchars($COMPANY_NAME); ?>',
-                html: '<span style="font-size:0.95rem;">Centro de Control Empresarial <?php echo htmlspecialchars($SITE_VERSION); ?><br><br><span style="animation: blink 1s step-start infinite; font-weight: 700; color: #3b82f6;">🔽 SELECCIONE UNO DE LOS SUBSISTEMAS A UTILIZAR.</span><br><br><i class="fas fa-chart-line"></i> Nóminas | <i class="fas fa-file-invoice-dollar"></i> Facturación<br><i class="fas fa-chart-pie"></i> Costos | <i class="fas fa-boxes"></i> Inventarios | <i class="fas fa-user-cog"></i> Administración</span>',
-                icon: 'info',
-                background: '#0f172a',
-                color: '#e2e8f0',
-                iconColor: '#3b82f6',
-                confirmButtonColor: '#2563eb',
-                confirmButtonText: '<i class="fas fa-rocket"></i> Explorar Subsistemas',
-                backdrop: `rgba(0,0,0,0.75)`,
-                showClass: { popup: 'animate__animated animate__fadeInDown' },
-                didOpen: () => {
-                    if (!document.querySelector('#blink-style')) {
-                        const style = document.createElement('style');
-                        style.id = 'blink-style';
-                        style.textContent = `
-                            @keyframes blink {
-                                0%, 100% { opacity: 1; }
-                                50% { opacity: 0; }
-                            }
-                        `;
-                        document.head.appendChild(style);
-                    }
-                    const icon = document.querySelector('.swal2-icon');
-                    if (icon) {
-                        icon.style.animation = 'pulseIcon 0.8s ease-in-out infinite';
-                        if (!document.querySelector('#pulse-style')) {
-                            const pulseStyle = document.createElement('style');
-                            pulseStyle.id = 'pulse-style';
-                            pulseStyle.textContent = `
-                                @keyframes pulseIcon {
-                                    0%, 100% { transform: scale(1); opacity: 1; }
-                                    50% { transform: scale(1.1); opacity: 0.8; }
-                                }
-                            `;
-                            document.head.appendChild(pulseStyle);
-                        }
-                    }
-                }
-            });
-        }, 300);
-    }
-    sessionStorage.removeItem('justRedirected');
-}
-
-// ============ ESTADO DE LA LICENCIA ============
-const licenciaRaiz = {
-    tiene: <?php echo json_encode($lic_raiz_datos !== null); ?>,
-    activa: <?php echo json_encode($lic_raiz_activa); ?>,
-    vencida: <?php echo json_encode($lic_raiz_datos !== null && $lic_raiz_vence !== null && $lic_raiz_vence < time()); ?>,
-    estado: <?php echo json_encode(licencia_etiqueta_estado($lic_raiz_datos, 'LICENCIA ', $lic_raiz_activa)); ?>,
-    dias: <?php echo json_encode($lic_raiz_activa ? licencia_dias_restantes($lic_raiz_datos) : null); ?>,
-    registro: <?php echo json_encode(($lic_raiz_datos['registro'] ?? '') !== '' ? $lic_raiz_datos['registro'] : '—'); ?>,
-    usuario: <?php echo json_encode(($lic_raiz_datos['usuario'] ?? '') !== '' ? $lic_raiz_datos['usuario'] : '—'); ?>,
-    tipo: <?php echo json_encode((($lic_raiz_datos['info']['nombre'] ?? '') !== '') ? $lic_raiz_datos['info']['nombre'] : '—'); ?>,
-    instalada: <?php echo json_encode($lic_raiz_datos !== null ? date('d/m/Y', (int)$lic_raiz_datos['fecha_activacion']) : '—'); ?>,
-    vence: <?php echo json_encode(licencia_texto_vencimiento($lic_raiz_datos)); ?>,
-    serial: <?php echo json_encode($lic_raiz_datos !== null && ($lic_raiz_datos['serial'] ?? '') !== '' ? licencia_formatear_serial($lic_raiz_datos['serial']) : '—'); ?>,
-    huella: <?php echo json_encode($lic_raiz_huella); ?>
-};
-
-// La opcion "Estado de la Licencia" del menu se pinta en rojo cuando no hay
-// licencia registrada o la que hay esta vencida.
-(function () {
-    var opcion = document.getElementById('opcionLicencia');
-    if (!opcion) return;
-    var sinLicencia = !licenciaRaiz.tiene || !licenciaRaiz.activa || licenciaRaiz.vencida;
-    opcion.classList.toggle('lic-alerta', sinLicencia);
-    opcion.setAttribute('title', sinLicencia
-        ? 'No hay una licencia vigente en este equipo. Click para registrarla.'
-        : '');
-})();
-
-function licenciaHTML(d) {
-    const color = d.activa ? '#22c55e' : (d.tiene ? '#ef4444' : '#f59e0b');
-    const fila = (l, v, r) => `<div style="display:flex; justify-content:space-between; gap:16px; padding:9px 2px; border-bottom:1px solid rgba(255,255,255,0.08);">
-        <span style="color:#94a3b8;">${l}</span>
-        <span style="font-weight:600; text-align:right; color:${r || '#e2e8f0'}; word-break:break-word;">${v}</span></div>`;
-    return `<div style="text-align:center; margin:4px 0 16px;">
-        <span style="display:inline-block; background:${color}22; color:${color}; border:1px solid ${color}66; padding:4px 16px; border-radius:40px; font-size:0.85rem; font-weight:700;">${d.estado}</span>
-    </div>
-    ${fila('Registro', `<i class="fas fa-building" style="color:#3b82f6;"></i> ${d.registro}`)}
-    ${fila('Usuario', `<i class="fas fa-user" style="color:#3b82f6;"></i> ${d.usuario}`)}
-    ${fila('Tipo', d.tipo)}
-    ${fila('Fecha Instalada', d.instalada)}
-    ${fila('Vence el', d.vence)}
-    ${fila('Licencia', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.serial}</span>${iconoCopiar(d.serial, 'Copiar licencia al portapapeles')}`, '#60a5fa')}
-    ${fila('Huella del PC', `<span style="font-family:'Consolas','Courier New',monospace; font-size:0.82rem;">${d.huella}</span>${iconoCopiar(d.huella, 'Copiar huella del PC al portapapeles')}`, '#94a3b8')}`;
-}
-
-function iconoCopiar(texto, titulo) {
-    if (!texto || texto === '—') return '';
-    const valor = String(texto).replace(/'/g, "\\'");
-    return ` <i class="fas fa-copy" role="button" tabindex="0" title="${titulo}" aria-label="${titulo}" style="cursor:pointer; font-size:0.72rem; opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7" onclick="copiarTexto(this, '${valor}')"></i>`;
-}
-
-function copiarTexto(icono, texto) {
-    const valor = texto || '';
-    if (!valor) return;
-    const confirmar = () => {
-        icono.className = 'fas fa-check';
-        icono.style.color = '#22c55e';
-        setTimeout(() => { icono.className = 'fas fa-copy'; icono.style.color = ''; }, 1500);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(valor).then(confirmar).catch(() => { copiarHuellaFallback(valor); confirmar(); });
-    } else {
-        copiarHuellaFallback(valor);
-        confirmar();
-    }
-}
-
-function copiarHuella(icono) {
-    copiarTexto(icono, licenciaRaiz.huella || '');
-}
-
-function copiarHuellaFallback(texto) {
-    const ta = document.createElement('textarea');
-    ta.value = texto;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); } catch (e) {}
-    document.body.removeChild(ta);
-}
-
-function mostrarEstadoLicencia() {
-    // Verificar la licencia en vivo cada vez que se presiona
-    fetch('index.php?licencia_json=1', { cache: 'no-store' })
-        .then(r => r.ok ? r.json() : Promise.reject('HTTP ' + r.status))
-        .then(d => {
-            abrirModalIndex('licencia', licenciaHTML(d), d);
-        })
-        .catch(() => {
-            // Fallback: mostrar los datos del render inicial
-            abrirModalIndex('licencia');
-        });
-}
-
-// ============ DROPDOWN: OTRAS OPCIONES (VERSIÓN DEFINITIVA) ============
-(function() {
-    // Esperar a que el DOM esté listo
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initDropdown);
-    } else {
-        initDropdown();
-    }
-
-    function initDropdown() {
-        const dropdownToggle = document.getElementById('dropdownToggle');
-        const dropdownMenu = document.getElementById('dropdownMenu');
-        const dropdownArrow = document.getElementById('dropdownArrow');
-        let isOpen = false;
-
-        if (!dropdownToggle || !dropdownMenu) return;
-
-        // Mover el menú al final del body para evitar cualquier contexto de apilamiento
-        document.body.appendChild(dropdownMenu);
-
-        // Establecer estilos fijos para el menú
-        dropdownMenu.style.position = 'fixed';
-        dropdownMenu.style.zIndex = '9999999';
-        dropdownMenu.style.overflow = 'visible';
-        dropdownMenu.style.pointerEvents = 'none';
-        dropdownMenu.style.maxWidth = '90vw';
-
-        function positionMenu() {
-            const rect = dropdownToggle.getBoundingClientRect();
-            const menuWidth = dropdownMenu.offsetWidth || 280;
-            const menuHeight = dropdownMenu.scrollHeight || 400;
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-
-            // Calcular posición horizontal (alineado a la derecha del botón)
-            let left = rect.right - menuWidth;
-            // Asegurar que no se salga por la izquierda
-            if (left < 10) left = 10;
-            // Asegurar que no se salga por la derecha
-            if (left + menuWidth > windowWidth - 10) {
-                left = windowWidth - menuWidth - 10;
-            }
-
-            // Calcular posición vertical (debajo del botón)
-            let top = rect.bottom + 10;
-            // Si no hay espacio abajo, poner arriba
-            if (top + menuHeight + 20 > windowHeight) {
-                top = rect.top - menuHeight - 10;
-                if (top < 10) top = 10;
-            }
-
-            dropdownMenu.style.top = top + 'px';
-            dropdownMenu.style.left = left + 'px';
-        }
-
-        function openMenu() {
-            isOpen = true;
-            dropdownMenu.classList.add('show');
-            dropdownMenu.style.pointerEvents = 'auto';
-            dropdownToggle.classList.add('active');
-            dropdownArrow.style.transform = 'rotate(180deg)';
-            positionMenu();
-        }
-
-        function closeMenu() {
-            isOpen = false;
-            dropdownMenu.classList.remove('show');
-            dropdownMenu.style.pointerEvents = 'none';
-            dropdownToggle.classList.remove('active');
-            dropdownArrow.style.transform = 'rotate(0deg)';
-        }
-
-        // Toggle
-        dropdownToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            if (isOpen) {
-                closeMenu();
-            } else {
-                openMenu();
-            }
-        });
-
-        // Cerrar al hacer clic fuera
-        document.addEventListener('click', function(e) {
-            if (isOpen && !dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                closeMenu();
-            }
-        });
-
-        // Reposicionar al scroll/resize
-        window.addEventListener('scroll', function() {
-            if (isOpen) positionMenu();
-        });
-        window.addEventListener('resize', function() {
-            if (isOpen) positionMenu();
-        });
-
-        // Manejar clics en items del dropdown (solo el ítem de Charangón)
-        dropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const servicio = this.dataset.servicio;
-                
-                // Cerrar el menú
-                closeMenu();
-
-                // Acción para "salarios": abrir la consulta pública en pestaña nueva
-                if (servicio === 'salarios') {
-                    window.open('/nominas/solic_userinfo/', '_blank');
-                } else if (servicio === 'charangon') {
-                    // Abrir fcostocharangon/ en pestaña nueva
-                    window.open('fcostoCharangon/', '_blank');
-                } else if (servicio === 'papel-adhesivo') {
-                    // Abrir la ficha de costo del papel adhesivo en pestaña nueva
-                    window.open('fcostoAdhesivo/', '_blank');
-                } else if (servicio === 'licencia') {
-                    // Mostrar el estado e info de la licencia
-                    mostrarEstadoLicencia();
-                } else if (servicio === 'contacto') {
-                    // Abrir el formulario de contacto en pestaña nueva
-                    window.open('/contacto.php', '_blank');
-                } else if (servicio === 'sobre-autor') {
-                    // Abrir el explorador de portafolio del autor en pestaña nueva
-                    window.open('/explorer.php', '_blank');
-                } else if (servicio === 'phpinfo') {
-                    // Abrir el diagnóstico de PHP (phpinfo) en pestaña nueva
-                    e.preventDefault();
-                    window.open('phpinfo/index.php', '_blank');
-                } else {
-                    // Por si hubiera otros, aunque ahora solo está este
-                    Swal.fire({
-                        title: 'ℹ️ Información',
-                        text: `Servicio "${this.textContent.trim()}" seleccionado.`,
-                        background: '#0f172a',
-                        color: '#e2e8f0',
-                        confirmButtonColor: '#3b82f6'
-                    });
-                }
-            });
-        });
-    }
-})();
-
-// ============ INICIALIZACIÓN ============
-window.addEventListener('pageshow', function(event) {
-    if (event.persisted) {
-        isRedirecting = false;
-        hideLoading();
-        if (Swal.isVisible()) {
-            Swal.close();
-        }
-    }
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    isRedirecting = false;
-    hideLoading();
-    updateServerStatusUI();
-    
-    // Verificación en línea sobre el banner "Ecosistema Financiero" (sin modal).
-    // Tras un "Verificar Estado" manual ya se mostró la secuencia: no repetir tras el reload.
-    const verificacionManual = sessionStorage.getItem('verificacionManual') === '1';
-    if (verificacionManual) sessionStorage.removeItem('verificacionManual');
-    ejecutarVerificacionEnBanner(() => {
-        setTimeout(() => {
-            if (serverStatus.php && serverStatus.mysql) {
-                if (licenciaRaiz.vencida || !licenciaRaiz.tiene) {
-                    abrirModalIndex('licencia_alerta');
-                } else {
-                    mostrarBienvenida();
-                }
-            } else {
-                Swal.fire({
-                    title: '⚠️ Error de Conexión',
-                    html: `
-                        <div style="text-align: left;">
-                            <p><strong>PHP:</strong> <span style="color: #22c55e;">✓ Activo</span></p>
-                            <p><strong>MySQL:</strong> <span style="color: #ef4444;">✗ Desconectado</span></p>
-                            <p><strong>Error:</strong> <span style="color: #fca5a5;">${serverStatus.mysqlError || 'No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión'}</span></p>
-                            <hr style="margin: 15px 0; border-color: rgba(255,255,255,0.1);">
-                            <p><i class="fas fa-exclamation-triangle" style="color:#f59e0b"></i> Verifica el servicio de MySQL</p>
-                            <br>
-                            <?php echo $CONTACTO_TITULO_VIAS; ?>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-                            ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
-                            <?php echo $CONTACTO_ADICIONAL; ?><br>
-                        </div>
-                    `,
-                    icon: 'warning',
-                    background: '#0f172a',
-                    color: '#e2e8f0',
-                    confirmButtonColor: '#ef4444',
-                    confirmButtonText: '<i class="fas fa-tools"></i> Entendido',
-                    showCancelButton: true,
-                    cancelButtonText: '<i class="fas fa-sync-alt fa-fw"></i> Verificar Estado',
-                    cancelButtonColor: '#475569'
-                }).then((result) => {
-                    if (result.dismiss === Swal.DismissReason.cancel) {
-                        verificarEstadoConLoading();
-                    }
-                });
-            }
-        }, 200);
-    }, verificacionManual);
-});
-
-window.addEventListener('beforeunload', () => {
-    if (isRedirecting) {
-        sessionStorage.setItem('justRedirected', 'true');
-    }
-});
-
-const cards = document.querySelectorAll('.subsystem-card');
-cards.forEach((card, index) => {
-    card.style.animationDelay = `${index * 0.1}s`;
-    card.classList.add('animate__animated', 'animate__fadeInUp');
-});
-</script>
-<script>
-/*document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-document.addEventListener('selectstart', function (e) { e.preventDefault(); });
-document.addEventListener('keydown', function (e) {
-    if (e.key === 'F12' || (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.shiftKey === true && (e.key === 'i' || e.key === 'I')))) {
-        e.preventDefault();
-    }
-});*/
-</script>
-
-<style>
-.iso27001-overlay {
-    position: fixed;
-    inset:0;
-    background: rgba(2, 6, 23, 0.72);
-    z-index: 10000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding:1.25rem;
-}
-.iso27001-box {
-    background: #15161d;
-    color: #e2e8f0;
-    border-radius: 0.75rem;
-    box-shadow: 0 1.25rem 3.75rem rgba(0, 0, 0, 0.6);
-    max-width:35rem;
-    width:100%;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    border: 0.0625rem solid rgba(255, 255, 255, 0.08);
-}
-.iso27001-titlebar {
-    display: flex;
-    align-items: center;
-    gap:0.625rem;
-    padding:0.75rem 1rem;
-    background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
-    border-bottom: 0.0625rem solid rgba(255, 255, 255, 0.1);
-    text-align: left;
-}
-.iso27001-titlebar .tt-icon { font-size:1.125rem; color:#5eead4; }
-.iso27001-titlebar .tt-text {
-    font-size:0.9375rem;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing:0.0188rem;
-    flex: 1;
-}
-.iso27001-close {
-    width:1.875rem;
-    height:1.875rem;
-    border: none;
-    background: rgba(255, 255, 255, 0.12);
-    color: #e2e8f0;
-    font-size:1.125rem;
-    line-height:1;
-    cursor: pointer;
-    border-radius: 0.5rem;
-    transition: all 0.2s;
-}
-.iso27001-close:hover { background: #ef4444; color: #fff; }
-.iso27001-body { padding:1.5rem 1.75rem 1.625rem; text-align: left; }
-.iso27001-body .iso-empresa {
-    font-size:1.0625rem;
-    font-weight: 700;
-    color: #fff;
-    line-height:1.35;
-    margin-bottom:0.375rem;
-}
-.iso27001-body .iso-empresa i { color:#5eead4; margin-right:0.5rem; }
-.iso27001-body .iso-sub {
-    font-size:0.8125rem;
-    color: #94a3b8;
-    margin-bottom:1.125rem;
-}
-.iso27001-body .iso-scroll {
-    max-height:18.75rem;
-    overflow-y: auto;
-    padding-right:0.375rem;
-}
-/* Modal de licencia (estado y aviso): un row mas de alto y un poco mas de
-   ancho, para que se vean todos los datos (serial y huella del equipo)
-   completos y sin tener que hacer scroll. */
-#modalIndex.licencia-amplio .iso-scroll { max-height:22.5rem; }
-#modalIndex.licencia-amplio .iso27001-box { max-width:41rem; }
-.iso27001-body h4 {
-    font-size:0.9062rem;
-    font-weight: 700;
-    color: #5eead4;
-    margin:0.875rem 0 0.375rem;
-}
-.iso27001-body h4:first-child { margin-top:0; }
-.iso27001-body p {
-    font-size:0.8125rem;
-    color: #cbd5e1;
-    line-height:1.55;
-    margin-bottom:0.625rem;
-}
-.iso27001-body .actions {
-    display: flex;
-    gap:0.625rem;
-    justify-content: flex-end;
-    margin-top:1.125rem;
-    padding-top:0.875rem;
-    border-top: 0.0625rem solid rgba(255, 255, 255, 0.08);
-}
-.iso27001-body .btn-iso-entendido {
-    background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
-    color: #fff;
-    border: none;
-    border-radius: 0.5rem;
-    padding:0.625rem 1.5rem;
-    font-size:0.8438rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.iso27001-body .btn-iso-entendido:hover {
-    transform: translateY(-0.0625rem);
-    box-shadow: 0 0.375rem 1.125rem rgba(15, 118, 110, 0.4);
-}
-.btn-iso-licencia {
-    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-    color: #fff;
-    border: none;
-    border-radius: 0.5rem;
-    padding: 0.625rem 1.5rem;
-    font-size: 0.8438rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.btn-iso-licencia:hover {
-    transform: translateY(-0.0625rem);
-    box-shadow: 0 0.375rem 1.125rem rgba(37, 99, 235, 0.4);
-}
-</style>
-
-<!-- Modal Ventana: Información de las opciones del footer -->
-<div class="iso27001-overlay" id="modalIndex" style="display: none;">
-    <div class="iso27001-box">
-        <div class="iso27001-titlebar">
-            <i class="fas fa-shield-halved tt-icon" id="modalIdxIcon"></i>
-            <span class="tt-text" id="modalIdxTitulo">Información del Sistema</span>
-            <button type="button" class="iso27001-close" aria-label="Cerrar" onclick="cerrarModalIndex()">&times;</button>
-        </div>
-        <div class="iso27001-body">
-            <div class="iso-empresa"><i class="fas fa-building"></i><?php echo htmlspecialchars($COMPANY_NAME); ?></div>
-            <div class="iso-sub" id="modalIdxSub"></div>
-            <div class="iso-scroll" id="modalIdxContenido"></div>
-            <div class="actions">
-                <button type="button" class="btn-iso-licencia" id="btnRegistrarLicencia" style="display:none;" onclick="window.location.href='nominas/licencia.php'"><i class="fas fa-key me-2"></i> Registrar Licencia</button>
-                <button type="button" class="btn-iso-entendido" onclick="cerrarModalIndex()"><i class="fas fa-check me-2"></i> Entendido</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-var CONTENIDO_MODALES_INDEX = {
-    licencia: {
-        icono: 'fa-key',
-        titulo: 'Estado de la Licencia',
-        sub: 'Registro y huella del equipo',
-        empresa: '<?= $LICENCIA_MARCA ?>',
-        html: licenciaHTML(licenciaRaiz)
-    },
-    licencia_alerta: {
-        icono: 'fa-triangle-exclamation',
-        titulo: 'Licencia del sistema',
-        sub: 'Se requiere una licencia vigente para operar',
-        empresa: '<?= $LICENCIA_MARCA ?>',
-        html: (function() {
-            const d = licenciaRaiz;
-            const vencida = d.vencida;
-            const color = vencida ? '#ef4444' : '#f59e0b';
-            const estadoTxt = vencida ? 'LICENCIA VENCIDA' : 'SIN LICENCIA REGISTRADA';
-            return `<div style="text-align:center; margin:4px 0 16px;">
-                <span style="display:inline-block; background:${color}22; color:${color}; border:1px solid ${color}66; padding:4px 16px; border-radius:40px; font-size:0.85rem; font-weight:700;">${estadoTxt}</span>
-            </div>
-            <h4>${vencida ? 'Su licencia ha vencido' : 'El sistema no tiene una licencia registrada'}</h4>
-            <p>${vencida ? 'La licencia registrada para este equipo ya no tiene vigencia. Contacte al administrador para renovarla o instalar una nueva.' : 'Para operar con normalidad debe registrar una licencia válida correspondiente a la huella de este equipo.'}</p>
-            <h4>Vías de contacto:</h4>
-            <p>📱 <strong>Móvil Empresarial:</strong> <a href="tel:<?php echo $SITE_PHONE_LINK; ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_PHONE); ?></a><br>
-            ✉️ <strong>Email:</strong> <a href="mailto:<?php echo htmlspecialchars($SITE_EMAIL); ?>" style="color:#60a5fa;"><?php echo htmlspecialchars($SITE_EMAIL); ?></a><br>
-            <?php echo $CONTACTO_ADICIONAL; ?></p>
-            <p style="font-size:0.78rem; color:#64748b;">Huella de este equipo:
-                <span style="font-family:Consolas,monospace; color:#94a3b8;">${d.huella}</span>
-                <i class="fas fa-copy" title="Copiar huella al portapapeles" onclick="copiarHuella(this)"
-                   style="cursor:pointer; margin-left:6px; color:#64748b;"></i></p>`;
-        })()
-    },
-    proyecto: {
-        icono: 'fa-chart-line',
-        titulo: 'Proyecto en crecimiento',
-        sub: 'Mejora continua · Evolución permanente',
-        html: '<h4>Un proyecto en constante evolución</h4>' +
-            '<p>El sistema de gestión de nóminas es un proyecto vivo que crece cada día: se incorporan nuevas funciones, se corrigen errores y se optimizan los procesos a partir del uso real y de las sugerencias de sus usuarios.</p>' +
-            '<h4>Modelo shareware</h4>' +
-            '<p>Se distribuye libremente y sin fines de lucro, permitiendo que cada institución lo adopte y aproveche sin barreras económicas.</p>' +
-            '<h4>Calidad basada en la comunidad</h4>' +
-            '<p>Cada actualización se produce con la retroalimentación de especialistas contables, de recursos humanos y de TI, garantizando un producto cada vez más sólido y alineado con la normativa vigente.</p>'
-    },
-    backup: {
-        icono: 'fa-cloud-upload-alt',
-        titulo: 'Backup automático',
-        sub: 'Copias de seguridad · Respaldo de la información',
-        html: '<h4>Protección de tus datos</h4>' +
-            '<p>El sistema dispone de un módulo de Backup/Restore para generar copias de seguridad de la base de datos (estructura, datos y configuraciones) y restaurarlas cuando sea necesario.</p>' +
-            '<h4>Respaldo periódico</h4>' +
-            '<p>Se recomienda programar copias periódicas (diarias o semanales) y almacenarlas en un medio seguro, garantizando la continuidad del negocio ante cualquier eventualidad.</p>' +
-            '<h4>Restauración confiable</h4>' +
-            '<p>El asistente de restauración valida la integridad de la copia antes de aplicarla, minimizando los riesgos de pérdida de información.</p>'
-    },
-    bd: {
-        icono: 'fa-database',
-        titulo: 'Base de Datos',
-        sub: 'MySQL <?php echo htmlspecialchars($MYSQL_VERSION_REAL, ENT_QUOTES, "UTF-8"); ?> · Alta disponibilidad',
-        html: '<h4>Motor robusto y confiable</h4>' +
-            '<p>El sistema opera sobre MySQL <?php echo htmlspecialchars($MYSQL_VERSION_REAL, ENT_QUOTES, "UTF-8"); ?>, un motor de bases de datos reconocido por su rendimiento, estabilidad y madurez a nivel mundial.</p>' +
-            '<h4>Integridad y consistencia</h4>' +
-            '<p>Los movimientos de nóminas, submayores y pagos se registran con integridad referencial y transacciones atómicas, garantizando que los cálculos siempre sean verificables.</p>' +
-            '<h4>Alta disponibilidad</h4>' +
-            '<p>Diseñado para operar en servidores locales con alta disponibilidad, permitiendo consultas y procesos en tiempo real dentro de la red de la institución.</p>'
-    },
-    php: {
-        icono: 'fa-code',
-        titulo: 'PHP',
-        sub: 'v<?php echo htmlspecialchars($PHP_VERSION_REAL, ENT_QUOTES, "UTF-8"); ?> · Motor del sistema',
-        html: '<h4>Lenguaje de ejecución</h4>' +
-            '<p>El sistema está desarrollado en PHP y se ejecuta sobre la versión v<?php echo htmlspecialchars($PHP_VERSION_REAL, ENT_QUOTES, "UTF-8"); ?> instalada en el servidor, con mejoras de rendimiento y tipado que garantizan estabilidad y seguridad.</p>' +
-            '<h4>Compatibilidad</h4>' +
-            '<p>El código sigue las prácticas recomendadas de la versión en uso, con consultas preparadas, manejo de sesiones seguro y soporte de UTF-8 en toda la aplicación.</p>' +
-            '<h4>Rendimiento</h4>' +
-            '<p>El motor de PHP procesa las nóminas, reportes y consultas del sistema en tiempo real dentro de la red local de la institución.</p>'
-    },
-    seguridad: {
-        icono: 'fa-shield-alt',
-        titulo: 'Seguridad',
-        sub: 'Cifrado SSL · Autenticación 2FA',
-        html: '<h4>Comunicación cifrada</h4>' +
-            '<p>Las conexiones web se protegen mediante cifrado SSL, evitando que las credenciales y la información sensible viajen en texto plano.</p>' +
-            '<h4>Autenticación reforzada</h4>' +
-            '<p>Se soporta autenticación en dos pasos (2FA) y login con cuenta de Google, además del control de acceso por roles y permisos por módulo.</p>' +
-            '<h4>Secretos protegidos</h4>' +
-            '<p>Las contraseñas SMTP y credenciales OAuth se almacenan cifradas en la base de datos, y las contraseñas de los usuarios se guardan con hash seguro.</p>'
-    },
-    sincroniza: {
-        icono: 'fa-sync-alt',
-        titulo: 'Sincronización',
-        sub: 'Actualizaciones en tiempo real',
-        html: '<h4>Información siempre al día</h4>' +
-            '<p>Los cambios realizados en el sistema se reflejan de inmediato: saldos de vacaciones, pagos adicionales, reportes y estados de nóminas se actualizan en tiempo real.</p>' +
-            '<h4>Cálculos consistentes</h4>' +
-            '<p>Cada modificación recalcula automáticamente los valores dependientes, manteniendo la coherencia entre submayores, acumulados y reportes.</p>' +
-            '<h4>Operación en red local</h4>' +
-            '<p>Al operar dentro de la red de la institución, todos los usuarios trabajan sobre la misma información sin necesidad de sincronización manual.</p>'
-    },
-    soporte: {
-        icono: 'fa-headset',
-        titulo: 'Soporte 24/7',
-        sub: 'Asistencia prioritaria',
-        html: '<h4>Canal directo de ayuda</h4>' +
-            '<p>Cuenta con el <b>formulario de Soporte Técnico</b> para crear tickets de atención por categorías (errores, cálculos, accesos, instalación de BD, entre otros).</p>' +
-            '<h4>Vías de contacto</h4>' +
-            '<p>Puede contactar por la <b>página de Contacto</b>, por <b>WhatsApp</b> o al correo de soporte durante el horario laboral.</p>' +
-            '<h4>Respuesta prioritaria</h4>' +
-            '<p>Los reportes de incidencias se atienden con prioridad, garantizando la mínima interrupción de los procesos de pago y control.</p>'
-    }
-};
-
-var modalIndexActual = null;
-function abrirModalIndex(tipo, htmlOverride, licOverride) {
-    var cfg = CONTENIDO_MODALES_INDEX[tipo] || CONTENIDO_MODALES_INDEX.proyecto;
-    modalIndexActual = tipo;
-    document.getElementById('modalIdxIcon').className = 'fas ' + cfg.icono + ' tt-icon';
-    document.getElementById('modalIdxTitulo').textContent = cfg.titulo;
-    document.getElementById('modalIdxSub').textContent = cfg.sub;
-    // Todos los modales muestran el rotulo completo del sistema:
-    // SiGesNom® v<version config.php> - <empresa que lo tiene instalado>.
-    var isoEmpresa = document.querySelector('#modalIndex .iso-empresa');
-    if (isoEmpresa) {
-        isoEmpresa.innerHTML = '<i class="fas fa-building"></i>'
-            + (cfg.empresa || '<?= $LICENCIA_MARCA ?>');
-    }
-    document.getElementById('modalIdxContenido').innerHTML = htmlOverride || cfg.html;
-    // "Registrar Licencia" solo se muestra en los modales de licencia cuando NO
-    // hay una licencia vigente (registro inexistente o vencido); con licencia
-    // activa se oculta.
-    var licEstado = licOverride || licenciaRaiz;
-    var btnReg = document.getElementById('btnRegistrarLicencia');
-    if (btnReg) btnReg.style.display = ((tipo === 'licencia_alerta' || tipo === 'licencia') && !licEstado.activa) ? 'inline-block' : 'none';
-    var overlay = document.getElementById('modalIndex');
-    // Los modales de licencia usan una caja mas alta/ancha (clase licencia-amplio).
-    overlay.classList.toggle('licencia-amplio', String(tipo || '').indexOf('licencia') === 0);
-    overlay.style.display = 'flex';
-}
-function cerrarModalIndex() {
-    modalIndexActual = null;
-    document.getElementById('modalIndex').style.display = 'none';
-}
-document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') cerrarModalIndex();
-});
-document.querySelector('.iso27001-overlay') && document.querySelector('.iso27001-overlay').addEventListener('click', function (e) { if (e.target === this && String(modalIndexActual || '').indexOf('licencia') !== 0) cerrarModalIndex(); });
-</script>
+</footer>
 </body>
 </html>

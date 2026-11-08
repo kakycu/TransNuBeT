@@ -9,10 +9,28 @@ Options -Indexes
 DirectoryIndex index.php no-index.php
 
 # Error 404 -> 404.php (recurso no encontrado)
-ErrorDocument 404 /404.php
+ErrorDocument 404 /servicios/404.php
 
 # Error 403 -> 403.php (acceso denegado)
-ErrorDocument 403 /403.php
+ErrorDocument 403 /servicios/403.php
+
+# =====================================================================
+# ESTRUCTURA DEL SITIO
+#   /              -> landing publico (index.php de la raiz)
+#   /servicios/... -> sistema completo (portada, nominas, facturacion...)
+#
+# Las URLs antiguas (sin /servicios/) se redirigen para que los enlaces ya
+# guardados en marcadores, plantillas y codigo no dejen de funcionar.
+# =====================================================================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Carpetas del sistema que se movieron a servicios/
+    RewriteRule ^(assets|css|js|images|lib|Documentos|fcostoAdhesivo|fcostoCharangon|InstalarBD|facturacion|nominas|phpinfo)(/.*)?$ /servicios/$1$2 [R=301,L,NC]
+
+    # Paginas sueltas del sistema
+    RewriteRule ^(403|404|no-index|contacto|correo_privado|explorer|sg|privacidad|soporte|terminos)\.php$ /servicios/$1.php [R=301,L,NC]
+</IfModule>
 
 # =====================================================================
 # SEGURIDAD - Bloquear archivos sensibles
