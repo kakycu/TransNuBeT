@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      reset_state:
+        description: 'Forzar subida completa (ignora el estado de sincronizacion anterior)'
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -11,6 +16,27 @@ jobs:
     steps:
       - name: Obtener codigo del repositorio
         uses: actions/checkout@v4
+
+      # El estado de sincronizacion (.ftp-deploy-sync-state*.json) se guarda en el
+      # servidor y recuerda que archivos se subieron la ultima vez. Si se borran
+      # archivos o carpetas DIRECTAMENTE en InfinityFree, ese estado queda
+      # desfasado: en el siguiente deploy la accion intenta borrar en remoto
+      # rutas que ya no existen y falla con "550 Can't change directory ...".
+      #
+      # Solucion: usar un nombre de estado nuevo (subida completa, sin borrados).
+      # - Push normal  -> .ftp-deploy-sync-state-v2.json
+      # - Manual (Actions > Deploy a InfinityFree > Run workflow > reset_state)
+      #   -> .ftp-deploy-sync-state-<timestamp>.json
+      - name: Elegir archivo de estado de sincronizacion
+        id: estado
+        shell: bash
+        run: |
+          if [ "${{ inputs.reset_state }}" = "true" ]; then
+            echo "name=.ftp-deploy-sync-state-$(date -u +%Y%m%d%H%M%S).json" >> "$GITHUB_OUTPUT"
+            echo "Reiniciando estado: subida completa sin borrados remotos."
+          else
+            echo "name=.ftp-deploy-sync-state-v2.json" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Subir archivos por FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -21,6 +47,7 @@ jobs:
           port: 21
           server-dir: /htdocs/
           protocol: ftps
+          state-name: ${{ steps.estado.outputs.name }}
           dangerous-clean-slate: false
           exclude: |
             **/.git*
