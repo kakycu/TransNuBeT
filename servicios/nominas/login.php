@@ -1587,6 +1587,18 @@ body::after {
     color: #fff;
 }
 
+/* Boton HOME de la barra de titulo: vuelve al inicio (landing) */
+.titlebar-login a.titlebar-btn.tb-home {
+    text-decoration: none;
+    line-height: 1;
+}
+
+.titlebar-login a.titlebar-btn.tb-home:hover {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.45);
+    color: #fff;
+}
+
 /* ===== DROPDOWN: OTRAS OPCIONES (en la barra de título) ===== */
 .titlebar-login .custom-dropdown {
     position: relative;
@@ -2752,6 +2764,9 @@ body::after {
                 <i class="fas fa-sign-in-alt"></i> Inicio de Sesión en SiGesNom®
             </div>
             <div class="titlebar-buttons">
+                <a href="../../" class="titlebar-btn tb-home" id="btnHomeLogin" title="Volver al inicio" data-tooltip="Volver al inicio" data-tooltip-theme="info" aria-label="Volver al inicio">
+                    <i class="fas fa-house"></i>
+                </a>
                 <div class="custom-dropdown" id="otrosServiciosDropdown">
                     <button type="button" class="custom-dropdown-btn" id="dropdownToggleLogin">
                         <i class="fas fa-ellipsis-h"></i> OTRAS OPCIONES

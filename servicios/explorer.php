@@ -346,7 +346,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Explorador de Portafolio Profesional</title>
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link href="css/font-awesome6.4.0/css/all.min.css" rel="stylesheet">
@@ -358,7 +358,10 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         background-color: transparent;
         color: white;
         height: 100vh;
+        height: 100dvh;
         overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-tap-highlight-color: transparent;
         background: url('images/fondoautor.jpg') no-repeat center center fixed;
         background-size: cover;
     }
@@ -404,6 +407,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         background-color: rgba(30,30,30,0.6);
         transition: backdrop-filter 0.3s ease, background-color 0.3s ease;
         border-bottom: 1px solid rgba(255,255,255,0.1);
+        touch-action: none;
     }
     #top-bar:hover { background-color: rgba(30,30,30,0.7); cursor: move; }
     .top-bar.double-click-active { animation: doubleClickEffect 0.4s ease; }
@@ -413,7 +417,8 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         100% { background-color: rgba(255,255,255,0); }
     }
 
-    .window-title { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
+    .window-title { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; min-width: 0; }
+    .window-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .window-controls button {
         background: none; border: none; color: white; width: 32px; height: 32px;
@@ -434,12 +439,16 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         display: flex; background-color: var(--mica-bg);
         border-bottom: 1px solid var(--mica-border);
         backdrop-filter: blur(10px);
+        overflow-x: auto; overflow-y: hidden;
+        scrollbar-width: none; -ms-overflow-style: none;
     }
+    .tabs::-webkit-scrollbar { display: none; }
     .tab {
         padding: 10px 16px; cursor: pointer;
         border-right: 1px solid var(--mica-border);
         display: flex; align-items: center; gap: 8px;
         color: #ccc; font-size: 14px; transition: all 0.3s ease;
+        flex: 0 0 auto; white-space: nowrap;
     }
     .tab.active { background-color: var(--bg-darker); color: white; font-weight: 500; }
     .tab:hover { background-color: #333; }
@@ -649,6 +658,142 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         margin-top: 4px;
         word-break: break-word;
     }
+    .explorer-window .resize-handle-bottom,
+    .explorer-window .resize-handle-right { touch-action: none; }
+
+    /* Icono del menú: carpeta en PC, hamburguesa en tablet/móvil */
+    .menu-icon-mobile { display: none !important; }
+
+    /* ==================== RESPONSIVE (PC / TABLET / MÓVIL) ==================== */
+
+    /* Tablets y pantallas medianas: menú lateral tipo cajón (hamburguesa) */
+    @media (max-width: 1024px) {
+        .explorer-window {
+            width: 94vw;
+            height: calc(100vh - 40px);
+            height: calc(100dvh - 40px);
+            top: 20px;
+            left: 3vw;
+        }
+        .main-area { padding: 14px; }
+        .window-title { font-size: 13px; }
+        .content-header h1 { font-size: 21px; }
+        .server-info-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+        /* Menú lateral deslizante con navegación y opciones de ventana */
+        .content { position: relative; }
+        .sidebar {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: min(80vw, 320px);
+            z-index: 70;
+            transform: translateX(-105%);
+            transition: transform 0.25s ease;
+            background-color: rgba(24, 24, 24, 0.98);
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 8px 0 24px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+        .sidebar.open { transform: translateX(0); }
+
+        /* Botón hamburguesa */
+        .menu-icon-mobile { display: inline-block !important; }
+        .menu-icon-desktop { display: none !important; }
+        .menu-button { width: 36px; height: 36px; padding: 0; }
+        .menu-button i { font-size: 16px !important; }
+    }
+
+    /* Móviles y tablets en vertical: ventana a pantalla completa y menú lateral deslizante */
+    @media (max-width: 768px) {
+        body { background-attachment: scroll; }
+
+        .explorer-window {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            max-height: none !important;
+            top: 0 !important;
+            left: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            transform: none !important;
+        }
+
+        /* Barra de título compacta y adaptable */
+        .title-bar {
+            height: auto;
+            min-height: 48px;
+            padding: env(safe-area-inset-top) 8px 0;
+            gap: 6px;
+        }
+        .window-title { font-size: 12.5px; flex: 1 1 auto; gap: 8px; }
+        .window-title span:first-of-type { display: none; }
+        .window-title span:last-of-type { font-weight: 600; }
+        #minimize-button, #maximize-button { display: none; }
+        .window-controls { flex: 0 0 auto; }
+        .window-controls button { width: 38px; height: 38px; }
+
+        /* Pestañas deslizables horizontalmente */
+        .tabs {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab { padding: 10px 12px; font-size: 12.5px; gap: 6px; }
+
+        /* Contenido principal */
+        .main-area {
+            padding: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .content-header h1 { font-size: 19px; }
+        .content-body { flex-direction: column; }
+        #home .profile-photo { margin: 0 auto; }
+        .project-card { padding: 12px; }
+        .project-card h3 { font-size: 16px; }
+        .server-info-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+        .info-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+        .info-value { max-width: 100%; text-align: left; }
+        .db-hero .db-hero-name { font-size: 19px; }
+        .icon-container a { font-size: 15px; word-break: break-word; }
+
+        /* Barra de estado con área segura (iPhone) */
+        .status-bar {
+            font-size: 11px;
+            padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+            flex-wrap: wrap;
+            gap: 4px 8px;
+        }
+
+        /* Menú lateral tipo cajón (drawer) */
+        .menu-button { width: 40px; height: 40px; }
+
+        /* Opciones de ventana que no aplican a pantalla completa */
+        #drawer-minimize, #drawer-maximize, #drawer-restore { display: none; }
+
+        /* En móvil no se arrastra ni redimensiona la ventana */
+        .resize-handle-bottom, .resize-handle-right { display: none; }
+        .explorer-window::before, .explorer-window::after { display: none; }
+    }
+
+    /* Teléfonos pequeños */
+    @media (max-width: 480px) {
+        .tab { padding: 9px 10px; font-size: 12px; }
+        .db-hero { padding: 14px 8px 10px; }
+        .status-bar #status-position { display: none; }
+    }
+
+    /* Pantallas bajas (móviles en horizontal) */
+    @media (max-height: 520px) and (max-width: 1024px) {
+        .title-bar { min-height: 40px; }
+        .tab { padding: 7px 12px; font-size: 12px; }
+        .status-bar { padding-top: 4px; padding-bottom: 4px; }
+    }
     </style>
 </head>
 <body>
@@ -659,8 +804,9 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         <!-- Barra superior -->
         <div class="title-bar mica" id="top-bar">
             <div class="window-title">
-                <button class="menu-button" id="menu-button" style="background: none; border: none; color: inherit; cursor: pointer;">
-                    <i class="fas fa-folder-open"></i>
+                <button class="menu-button" id="menu-button" style="background: none; border: none; color: inherit; cursor: pointer;" aria-label="Abrir menú de navegación" title="Menú">
+                    <i class="fas fa-folder-open menu-icon-desktop"></i>
+                    <i class="fas fa-bars menu-icon-mobile"></i>
                 </button>
                 <span>Explorador de Portafolio Personal:</span><span style="font-weight:bold;"> Franklin Ramos Lamadrid (Kaky°)</span>
             </div>
@@ -1149,6 +1295,30 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
     let isMaximized = false;
     let lastClickTime = 0;
     const doubleClickDelay = 300;
+    const MOBILE_BREAKPOINT = 768;
+
+    function isMobileLayout() { return window.innerWidth <= MOBILE_BREAKPOINT; }
+
+    const sidebar = document.querySelector('.sidebar');
+
+    function openSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.add('open');
+        explorerWindow.classList.add('sidebar-open');
+        updateStatus("Menú de navegación abierto");
+    }
+
+    function closeSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.remove('open');
+        explorerWindow.classList.remove('sidebar-open');
+    }
+
+    function toggleSidebar() {
+        if (!sidebar) return;
+        if (sidebar.classList.contains('open')) closeSidebar(); else openSidebar();
+    }
+
     let originalDimensions = {};
 
     let isResizing = false;
@@ -1172,11 +1342,13 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         top: explorerWindow.style.top
     };
 
-    topBar.addEventListener('mousedown', (e) => {
+    topBar.addEventListener('pointerdown', (e) => {
+        if (isMobileLayout()) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         const currentTime = new Date().getTime();
-        if (currentTime - lastClickTime < doubleClickDelay) { e.preventDefault(); return; }
+        if (currentTime - lastClickTime < doubleClickDelay) { return; }
         lastClickTime = currentTime;
-        if (e.target === menuButton || e.target.closest('.window-controls')) return;
+        if (e.target.closest('#menu-button') || e.target.closest('.window-controls')) return;
         isDragging = true;
         offsetX = e.clientX - explorerWindow.offsetLeft;
         offsetY = e.clientY - explorerWindow.offsetTop;
@@ -1189,7 +1361,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         toggleMaximize();
     });
 
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener('pointermove', (e) => {
         if (!isDragging || isMaximized || explorerWindow.classList.contains('minimized')) return;
         let newLeft = e.clientX - offsetX;
         let newTop = e.clientY - offsetY;
@@ -1200,7 +1372,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         explorerWindow.style.transform = 'none';
     });
 
-    document.addEventListener('mouseup', () => { isDragging = false; updateStatus("Listo"); });
+    document.addEventListener('pointerup', () => { isDragging = false; updateStatus("Listo"); });
 
     minimizeButton.addEventListener('click', () => {
         if (explorerWindow.classList.contains('minimized')) {
@@ -1228,6 +1400,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
     closeButton.addEventListener('click', () => { explorerWindow.style.display = 'none'; updateStatus("Ventana cerrada"); });
 
     function toggleMaximize() {
+        if (isMobileLayout()) { updateStatus("La ventana ya ocupa toda la pantalla"); return; }
         if (explorerWindow.classList.contains('minimized')) {
             explorerWindow.classList.remove('minimized');
             explorerWindow.style.height = originalDimensions.height;
@@ -1259,6 +1432,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
 
     menuButton.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (isMobileLayout()) { toggleSidebar(); return; }
         if (contextMenu.style.display === 'block') { cerrarMenuContextual(); return; }
         const buttonRect = menuButton.getBoundingClientRect();
         const windowRect = explorerWindow.getBoundingClientRect();
@@ -1271,7 +1445,8 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
     function cerrarMenuContextual() { contextMenu.style.display = 'none'; }
 
     document.addEventListener('click', (e) => {
-        if (!contextMenu.contains(e.target) && e.target !== menuButton) cerrarMenuContextual();
+        if (!contextMenu.contains(e.target) && !e.target.closest('#menu-button')) cerrarMenuContextual();
+        if (isMobileLayout() && !e.target.closest('.sidebar') && !e.target.closest('#menu-button')) closeSidebar();
     });
 
     document.getElementById('maximize-option').addEventListener('click', () => { toggleMaximize(); cerrarMenuContextual(); });
@@ -1293,6 +1468,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
             const contentId = tab.getAttribute('data-content');
             showContent(contentId);
             syncTabsAndNavigation(contentId);
+            if (isMobileLayout()) closeSidebar();
             updateStatus(`Sección ${tab.textContent.trim()} abierta`);
             updatePosition(tab.textContent.trim());
         });
@@ -1304,6 +1480,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
             const contentId = item.getAttribute('data-content');
             showContent(contentId);
             syncTabsAndNavigation(contentId);
+            if (isMobileLayout()) closeSidebar();
             updateStatus(`Sección ${item.textContent.trim()} abierta`);
         });
         item.addEventListener('mouseover', () => updateStatus(`Abrir ${item.textContent.trim()}`));
@@ -1327,7 +1504,8 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
     syncTabsAndNavigation('home');
 
     document.querySelectorAll('.resize-handle-bottom, .resize-handle-right').forEach(handle => {
-        handle.addEventListener('mousedown', (e) => {
+        handle.addEventListener('pointerdown', (e) => {
+            if (isMobileLayout() || e.pointerType === 'mouse' && e.button !== 0) return;
             isResizing = true;
             resizeDirection = getResizeDirection(e.target);
             initialX = e.clientX;
@@ -1338,7 +1516,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         });
     });
 
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener('pointermove', (e) => {
         if (!isResizing) return;
         const deltaX = e.clientX - initialX;
         const deltaY = e.clientY - initialY;
@@ -1350,7 +1528,7 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         }
     });
 
-    document.addEventListener('mouseup', () => {
+    document.addEventListener('pointerup', () => {
         if (isResizing) { isResizing = false; resizeDirection = null; updateStatus("Listo"); }
     });
 
@@ -1359,6 +1537,26 @@ $apacheRequests = 'N/D (requiere mod_status expuesto)';
         if (target.classList.contains('resize-handle-right')) return 'right';
         return null;
     }
+
+    let isMobileView = isMobileLayout();
+
+    window.addEventListener('resize', () => {
+        const mobileNow = isMobileLayout();
+        if (mobileNow === isMobileView) return;
+        isMobileView = mobileNow;
+        isMaximized = false;
+        isDragging = false;
+        isResizing = false;
+        explorerWindow.classList.remove('minimized');
+        explorerWindow.style.width = '';
+        explorerWindow.style.height = '';
+        explorerWindow.style.left = '';
+        explorerWindow.style.top = '';
+        explorerWindow.style.transform = '';
+        minimizeButton.innerHTML = '<i class="fa-solid fa-window-minimize"></i>';
+        maximizeButton.innerHTML = '<i class="fa-solid fa-window-maximize"></i>';
+        closeSidebar();
+    });
 
     function closeWindows() {
         var ref = document.referrer;

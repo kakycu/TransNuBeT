@@ -104,8 +104,12 @@ $servicios = [
         --footer-bg:     rgba(9, 13, 24, .74);
         --overlay-top:   rgba(7, 10, 18, .32);
         --overlay-bottom:rgba(7, 10, 18, .78);
-        --fondo-opacidad: .55;
+        --fondo-imagen:  url("/images/fondo.jpg");
+        --fondo-opacidad: 1.55;
         --shine:         rgba(255, 255, 255, .10);
+        --card-hover-border: rgba(255, 255, 255, .28);
+        --card-hover-shadow: 0 0 0 1px rgba(36, 214, 255, .12), 0 1.25rem 4rem rgba(109, 93, 252, .30);
+        --card-icon-color: #cfd6ff;
         --card-top:      rgba(255, 255, 255, .05);
         --card-bottom:   rgba(255, 255, 255, .015);
         --destacada-top: rgba(109, 93, 252, .16);
@@ -144,8 +148,12 @@ $servicios = [
         --footer-bg:     rgba(255, 255, 255, .84);
         --overlay-top:   rgba(238, 242, 250, .55);
         --overlay-bottom:rgba(238, 242, 250, .92);
-        --fondo-opacidad: .14;
-        --shine:         rgba(99, 122, 200, .18);
+        --fondo-imagen:  url("/images/fondo-dia.jpg");
+        --fondo-opacidad: 1.55;
+        --shine:         rgba(99, 90, 230, .26);
+        --card-hover-border: rgba(91, 75, 219, .5);
+        --card-hover-shadow: 0 0 0 1px rgba(14, 116, 144, .2), 0 1.1rem 2.8rem rgba(91, 75, 219, .30);
+        --card-icon-color: #4c3fd0;
         --card-top:      rgba(255, 255, 255, .92);
         --card-bottom:   rgba(255, 255, 255, .55);
         --destacada-top: rgba(109, 93, 252, .12);
@@ -188,7 +196,7 @@ $servicios = [
         position: fixed;
         inset: 0;
         z-index: -2;
-        background: url("/images/fondo.jpg") center center / cover no-repeat;
+        background: var(--fondo-imagen) center center / cover no-repeat;
         opacity: var(--fondo-opacidad);
         pointer-events: none;
         transition: opacity .3s ease;
@@ -368,9 +376,9 @@ $servicios = [
     }
     a.card:hover::after, a.card:focus-visible::after { left: 135%; }
     a.card:hover, a.card:focus-visible {
-        transform: translateY(-2px);
-        border-color: var(--border-strong);
-        box-shadow: 0 0 0 1px rgba(36, 214, 255, .08), 0 1.25rem 4rem rgba(109, 93, 252, .22);
+        transform: translateY(-3px);
+        border-color: var(--card-hover-border);
+        box-shadow: var(--card-hover-shadow);
         outline: none;
     }
     .card-icon {
@@ -378,10 +386,20 @@ $servicios = [
         width: 2.8rem; height: 2.8rem; border-radius: .8rem;
         background: linear-gradient(135deg, rgba(109, 93, 252, .25), rgba(36, 214, 255, .14));
         border: 1px solid var(--border-strong);
-        color: #cfd6ff; font-size: 1.1rem;
+        color: var(--card-icon-color); font-size: 1.1rem;
         margin-bottom: 1rem;
+        transition: transform .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
     }
-    .card h3 { margin: 0; font-size: 1.08rem; letter-spacing: -.01em; }
+    /* En hover el icono toma el gradiente del tema: así el efecto se nota
+     * igual en modo oscuro y en modo claro. */
+    a.card:hover .card-icon, a.card:focus-visible .card-icon {
+        transform: translateY(-2px) scale(1.06);
+        background: linear-gradient(135deg, var(--accent), var(--cyan));
+        border-color: transparent;
+        color: #fff;
+    }
+    .card h3 { margin: 0; font-size: 1.08rem; letter-spacing: -.01em; transition: color .18s ease; }
+    a.card:hover h3, a.card:focus-visible h3 { color: var(--accent); }
     .card p { margin: .55rem 0 0; color: var(--muted); font-size: .9rem; flex: 1; }
     .card-foot {
         display: flex; align-items: center; justify-content: space-between;
@@ -440,6 +458,8 @@ $servicios = [
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
         box-shadow: 0 -4px 20px rgba(0, 0, 0, .35);
+        /* Interlineado compacto, como se pidió para todo el pie. */
+        line-height: 1;
     }
     .footer-grid {
         display: grid;
@@ -457,7 +477,7 @@ $servicios = [
         letter-spacing: .12em;
     }
     .footer-col h4 i { color: var(--cyan); margin-right: .45rem; }
-    .footer-col p { margin: 0 0 .9rem; line-height: 1.75; }
+    .footer-col p { margin: 0 0 .9rem; line-height: 1; }
     .footer-col a { color: var(--muted); text-decoration: none; transition: color .15s; }
     .footer-col a:hover, .footer-col a:focus-visible { color: var(--cyan); }
 
@@ -481,7 +501,7 @@ $servicios = [
     .footer-contact p { margin-bottom: 1rem; }
     .footer-contact a { display: inline-flex; align-items: center; gap: .5rem; }
     .footer-contact i { color: var(--subtle); font-size: .8rem; width: 1rem; text-align: center; }
-    .footer-contact small { display: inline-flex; align-items: flex-start; gap: .5rem; color: var(--subtle); font-size: .76rem; line-height: 1.6; }
+    .footer-contact small { display: inline-flex; align-items: flex-start; gap: .5rem; color: var(--subtle); font-size: .76rem; line-height: 1; }
     .footer-buttons { display: flex; flex-wrap: wrap; gap: .55rem; }
     /* Los botones del pie no deben heredar el color de enlace de .footer-col a. */
     .footer-col .btn { color: var(--txt); text-decoration: none; }
@@ -649,6 +669,7 @@ $servicios = [
             <a href="#ecosistema"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Ecosistema</a>
             <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
             <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
+            <a href="<?= $base ?>/explorer.php"><i class="fa-solid fa-user-pen" aria-hidden="true"></i> Autor</a>
         </nav>
         <div class="nav-acciones">
             <button class="theme-switch" id="themeToggle" type="button" role="switch"

@@ -899,7 +899,7 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
 
         .footer-info-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: auto repeat(5, 1fr);
             gap: 16px;
             padding: 0px 28px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -929,6 +929,28 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
         .footer-info-item:hover i {
             transform: scale(1.1);
             color: #60a5fa;
+        }
+
+        /* Acceso al inicio (landing de localhost) */
+        .footer-info-grid a.footer-info-item {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .footer-info-item.home-item {
+            justify-content: center;
+            padding: 8px 10px;
+            border-right: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 20px;
+        }
+
+        .footer-info-item.home-item i {
+            font-size: 2em;
+            color: #22c55e;
+        }
+
+        .footer-info-item.home-item:hover i {
+            color: #4ade80;
         }
 
         .info-details h4 {
@@ -1526,6 +1548,9 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
         </div>
         
         <div class="footer-info-grid">
+            <a href="../../" class="footer-info-item home-item" title="Volver al inicio (localhost)" aria-label="Volver al inicio">
+                <i class="fas fa-house fa-2x"></i>
+            </a>
             <div class="footer-info-item" onclick="abrirModalIndex('bd')">
                 <i class="fas fa-database"></i>
                 <div class="info-details">
