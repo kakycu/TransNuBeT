@@ -2,6 +2,8 @@
 // modules/snc225.php - Tarjeta SNC-225
 require_once '../config/database.php';
 require_once '../includes/funciones.php';
+require_once __DIR__ . '/../includes/logger.php';
+require_once __DIR__ . '/../includes/snc225_reporte.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -150,10 +152,11 @@ $config_empresa = [
     'jefe_proyecto' => defined('JEFE_PROYECTO') ? JEFE_PROYECTO : 'Nombre Director',
     'especialista_gestion' => defined('ESPECIALISTA') ? ESPECIALISTA : 'Esp. Contab. y Finanzas',
     'especialista_gestionRRHH' => defined('ESPECIALISTA_RRHH') ? ESPECIALISTA_RRHH : 'Esp. RRHH',
-    'nit' => defined('NIT') ? NIT : '319-1-02264'
+    'nit' => defined('NIT') ? NIT : '319-1-02264',
+    'direccion_empresa' => ''
 ];
 try {
-    $stCfg = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa','jefe_proyecto','especialista_gestion','especialista_gestionRRHH')");
+    $stCfg = $pdo->query("SELECT parametro, valor FROM configuracion_general WHERE parametro IN ('nombre_empresa','jefe_proyecto','especialista_gestion','especialista_gestionRRHH','direccion_empresa')");
     while ($row = $stCfg->fetch(PDO::FETCH_ASSOC)) {
         if ($row['valor'] && trim($row['valor']) !== '') $config_empresa[$row['parametro']] = $row['valor'];
     }
@@ -166,6 +169,10 @@ if (file_exists($ruta_logo)) {
     $data = file_get_contents($ruta_logo);
     $logo_base64 = 'data:image/' . $tipo . ';base64,' . base64_encode($data);
 }
+
+// Modelo oficial SNC 2-25 (vista previa / Excel / PDF) — ver includes/snc225_reporte.php.
+// Se atiende antes de cualquier salida HTML, igual que el Anexo 14 en empleados.php.
+snc225_reporte_manejar($pdo, $config_empresa);
 ?>
 
 <!DOCTYPE html>
@@ -1386,13 +1393,68 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="modal-body" id="tarjetaBody" style="padding:1.5rem;">
             </div>
             <div class="modal-footer" style="border-top: 0.0625rem solid rgba(96,165,250,0.2); padding:0.75rem 1.5rem;">
+                <div class="dropdown dropup">
+                    <button type="button" class="btn-win btn-win-primary btn-win-sm dropdown-toggle" id="sncReporteDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Reporte oficial SNC 2-25" data-tooltip="Reporte oficial SNC 2-25" data-tooltip-theme="primary">
+                        <i class="fas fa-file-export me-1"></i> Reporte
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win" aria-labelledby="sncReporteDropdown">
+                        <li>
+                            <a class="dropdown-item" href="#" id="btnReporteSncImprimir" title="Vista previa del modelo SNC 2-25">
+                                <i class="fas fa-print me-2" style="color: #60a5fa;"></i>Imprimir
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="btnReporteSncExcel" title="Descargar el modelo SNC 2-25 en Excel">
+                                <i class="fas fa-file-excel me-2" style="color: #21a366;"></i>Exportar a Excel
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="btnReporteSncPdf" title="Guardar el modelo SNC 2-25 en PDF">
+                                <i class="fas fa-file-pdf me-2" style="color: #f40f02;"></i>Exportar a PDF
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 <button type="button" class="btn-win btn-win-outline btn-win-sm" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i> Cerrar
-                    </button>
-                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Observaciones del reporte SNC 2-25 (previo a imprimir / exportar) -->
+<div class="modal fade" id="modalObsSnc" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--panel); border: 0.0625rem solid rgba(96,165,250,0.3); border-radius: 1rem; color: #e2e8f0;">
+            <div class="modal-header" style="border-bottom: 0.0625rem solid rgba(96,165,250,0.2); padding:1rem 1.5rem;">
+                <h5 class="modal-title" style="font-weight: 600;">
+                    <i class="fas fa-pen-to-square me-2" style="color: #60a5fa;"></i>
+                    Observaciones del reporte
+                </h5>
+                <button type="button" class="btn-close btn-close-white" id="btnObsSncCerrarX" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:1.25rem 1.5rem;">
+                <label for="sncObsTexto" class="form-label" style="color:#93c5fd; font-weight:600;">
+                    Texto para el apartado OBSERVACIONES del modelo SNC 2-25
+                </label>
+                <textarea id="sncObsTexto" class="form-control" rows="3" maxlength="200"
+                    placeholder="Escriba la observación que se imprimirá en el modelo..."
+                    style="background: rgba(15,23,42,0.65); color:#e2e8f0; border: 0.0625rem solid rgba(96,165,250,0.35); border-radius:0.5rem; resize: vertical;"></textarea>
+                <div class="form-text" style="color:#94a3b8;">
+                    Si cancela o cierra este diálogo se usará la nota por defecto:
+                    «Corte al … — Generado el …».
                 </div>
             </div>
+            <div class="modal-footer" style="border-top: 0.0625rem solid rgba(96,165,250,0.2); padding:0.75rem 1.5rem;">
+                <button type="button" class="btn-win btn-win-outline btn-win-sm" id="btnObsSncCancelar">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+                <button type="button" class="btn-win btn-win-primary btn-win-sm" id="btnObsSncAceptar">
+                    <i class="fas fa-check me-1"></i> Aceptar
+                </button>
             </div>
+        </div>
     </div>
 </div>
 
@@ -1424,6 +1486,9 @@ function formatFechaSNC(fecha) {
 }
 
 function abrirTarjeta(data) {
+    // Se recuerda el trabajador abierto: el reporte oficial se genera en el
+    // servidor con sus datos reales (ver includes/snc225_reporte.php).
+    window.SNC_TRABAJADOR_ID = data.id;
     document.getElementById('tarjetaTitulo').textContent = 'Tarjeta SNC - 225 — PERSONAL DE: ' + (data.nombre_completo || '');
     var dev = (parseFloat(data.total_devengado) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     var tanos = data.t_anos || '—', tmeses = data.t_meses || '—', tdias = data.t_dias || '—';
@@ -1476,6 +1541,95 @@ function abrirTarjeta(data) {
     var modal = new bootstrap.Modal(document.getElementById('modalTarjeta'));
     modal.show();
 }
+
+// ============================================
+// REPORTE OFICIAL SNC 2-25 (modelo Excel)
+// Genera el modelo "Registro de Salarios y Tiempo de Servicios" en el
+// servidor, con los datos reales del trabajador y el corte seleccionado.
+// ============================================
+function sncUrlReporte(formato, obs) {
+    var id = window.SNC_TRABAJADOR_ID || '';
+    var corte = $('#filtroFechaCalculo').val() || '';
+    var url = 'snc225.php?snc225_reporte=' + encodeURIComponent(formato) + '&id=' + encodeURIComponent(id);
+    if (corte) url += '&corte=' + encodeURIComponent(corte);
+    if (obs) url += '&obs=' + encodeURIComponent(obs);
+    return url;
+}
+
+function sncAvisoSinTrabajador() {
+    Swal.fire({ icon: 'warning', title: 'Sin trabajador', text: 'Abra la tarjeta de un trabajador para generar el reporte.' });
+}
+
+// --------------------------------------------
+// Observaciones del reporte
+// Antes de imprimir o exportar se pide el texto de OBSERVACIONES en un
+// diálogo que solo se cierra con Aceptar, Cancelar o la X. Si se cancela o
+// se cierra con la X se usa la nota por defecto (corte y fecha).
+// --------------------------------------------
+var SNC_REPORTE_ACCION = null;
+var sncModalObs = null;
+
+function sncModalObservaciones() {
+    if (!sncModalObs) {
+        sncModalObs = new bootstrap.Modal(document.getElementById('modalObsSnc'), {
+            backdrop: 'static',
+            keyboard: false
+        });
+    }
+    return sncModalObs;
+}
+
+function sncPedirObservacion(accion) {
+    if (!window.SNC_TRABAJADOR_ID) { sncAvisoSinTrabajador(); return; }
+    SNC_REPORTE_ACCION = accion;
+    var texto = document.getElementById('sncObsTexto');
+    texto.value = '';
+    sncModalObservaciones().show();
+    setTimeout(function () { texto.focus(); }, 300);
+}
+
+function sncEjecutarReporte(observacion) {
+    var accion = SNC_REPORTE_ACCION || 'ver';
+    var url = sncUrlReporte(accion, observacion || '');
+    if (accion === 'xlsx') {
+        window.location.href = url;
+    } else {
+        window.open(url, '_blank');
+    }
+}
+
+document.getElementById('btnObsSncAceptar')?.addEventListener('click', function () {
+    var texto = (document.getElementById('sncObsTexto').value || '').trim();
+    sncModalObservaciones().hide();
+    sncEjecutarReporte(texto);
+});
+
+document.getElementById('btnObsSncCancelar')?.addEventListener('click', function () {
+    // Se genera con la observación por defecto.
+    sncModalObservaciones().hide();
+    sncEjecutarReporte('');
+});
+
+document.getElementById('btnObsSncCerrarX')?.addEventListener('click', function () {
+    // Igual que Cancelar: se usa la nota por defecto.
+    sncModalObservaciones().hide();
+    sncEjecutarReporte('');
+});
+
+document.getElementById('btnReporteSncImprimir')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    sncPedirObservacion('imprimir');
+});
+
+document.getElementById('btnReporteSncExcel')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    sncPedirObservacion('xlsx');
+});
+
+document.getElementById('btnReporteSncPdf')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    sncPedirObservacion('pdf');
+});
 
 function nombreArchivoSNC(ext) {
     var f = new Date();
