@@ -48,6 +48,11 @@
         <div class="collapse navbar-collapse justify-content-end" id="navMenu">
             <ul class="navbar-nav gap-2 mt-3 mt-lg-0 pe-lg-3">
                 <li class="nav-item">
+                    <a class="nav-link theme-text" href="/" title="Ir a al Inicio">
+                        <i class="fa-solid fa-house me-1"></i> Inicio
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link theme-text" href="http://www.unicorniosoftware.gt.tc/" target="_blank">
                         <span class="nav-icon-unicorn me-2" aria-hidden="true"></span> UnicornioSoftware Cuba
                     </a>
