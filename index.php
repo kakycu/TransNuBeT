@@ -1,6 +1,6 @@
 <?php
 /**
- * Landing público de PDL TransNuBeT.
+ * Landing público del Entorno de Aplicaciones Web de UnicornioSoftware® Cuba.
  *
  * Vive en la raíz del sitio para que http://localhost/ muestre esta portada.
  * Todo el sistema (portada de servicios, nóminas, facturación, paneles…) quedó
@@ -74,9 +74,10 @@ $servicios = [
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PDL TransNuBeT · Ecosistema de gestión</title>
-<meta name="description" content="Ecosistema de gestión financiera, nóminas y facturación. Plataforma local PDL TransNuBeT.">
-<link rel="icon" type="image/x-icon" href="<?= $base ?>/images/favicons/LogoCorto.ico">
+<title>Entorno de Aplicaciones Web de UnicornioSoftware® Cuba. Kaky®</title>
+<meta name="description" content="Entorno de Aplicaciones Web de UnicornioSoftware® Cuba. Kaky®. Facturación, nóminas y gestión en una plataforma local.">
+<link rel="icon" type="image/png" href="/images/logo.png">
+<link rel="apple-touch-icon" href="/images/logo.png">
 <link rel="stylesheet" href="<?= $base ?>/css/font-awesome6.4.0/css/all.min.css">
 <style>
     /* ===== Tokens del tema (NeuroAI) ===== */
@@ -152,22 +153,31 @@ $servicios = [
         display: flex; align-items: center; justify-content: space-between;
         gap: 1rem; min-height: 4.25rem;
     }
-    .brand { display: inline-flex; align-items: center; gap: .75rem; text-decoration: none; font-weight: 800; }
-    .brand-mark {
-        display: grid; place-items: center;
-        width: 2.6rem; height: 2.6rem; border-radius: .8rem;
-        background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%);
-        box-shadow: 0 0 0 1px rgba(255,255,255,.12) inset;
-        color: #fff; font-size: 1.15rem;
+    .brand { display: inline-flex; align-items: center; gap: .7rem; text-decoration: none; font-weight: 800; min-width: 0; }
+    .brand-logo {
+        width: 2.9rem; height: 2.9rem; flex: 0 0 auto;
+        object-fit: contain;
+        padding: .18rem;
+        border-radius: .7rem;
+        background: rgba(255, 255, 255, .04);
+        border: 1px solid var(--border);
     }
-    .brand-name { font-size: 1.02rem; letter-spacing: -.01em; }
-    .brand-name small { display: block; font-size: .66rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--subtle); }
+    .brand-name { font-size: clamp(.76rem, 1.5vw, .92rem); line-height: 1.25; letter-spacing: -.01em; }
+    .brand-name small {
+        display: block;
+        font-size: clamp(.55rem, 1vw, .63rem);
+        font-weight: 600; letter-spacing: .06em;
+        color: var(--subtle);
+    }
     .nav-links { display: none; align-items: center; gap: 1.6rem; }
     .nav-links a {
+        display: inline-flex; align-items: center; gap: .42rem;
         text-decoration: none; color: var(--muted); font-size: .92rem; font-weight: 500;
         transition: color .15s;
     }
+    .nav-links a i { font-size: .8rem; color: var(--subtle); transition: color .15s; }
     .nav-links a:hover, .nav-links a:focus-visible { color: var(--txt); }
+    .nav-links a:hover i, .nav-links a:focus-visible i { color: var(--cyan); }
 
     /* ===== Botones ===== */
     .btn {
@@ -184,7 +194,10 @@ $servicios = [
         background: linear-gradient(135deg, var(--accent) 0%, #5d4fd6 100%);
         box-shadow: 0 .6rem 1.6rem rgba(109, 93, 252, .35);
     }
-    .btn-primary:hover { box-shadow: 0 .7rem 2rem rgba(109, 93, 252, .5); }
+    .btn-primary:hover, .btn-primary:focus-visible {
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 1px rgba(36, 214, 255, .08), 0 1.25rem 4rem rgba(109, 93, 252, .22);
+    }
     .btn-glass {
         color: var(--txt); background: rgba(18, 26, 45, .6);
         border-color: var(--border-strong);
@@ -232,6 +245,7 @@ $servicios = [
         overflow: hidden;
     }
     .metric { padding: 1.15rem 1.25rem; background: rgba(11, 16, 32, .82); }
+    .metric i { display: block; color: var(--cyan); font-size: .95rem; margin-bottom: .4rem; }
     .metric b { display: block; font-size: 1.35rem; letter-spacing: -.02em; }
     .metric span { color: var(--subtle); font-size: .78rem; }
 
@@ -250,21 +264,35 @@ $servicios = [
     /* ===== Tarjetas glass ===== */
     .grid { display: grid; gap: 1.1rem; margin-top: 2rem; grid-template-columns: 1fr; }
     .card {
-        position: relative;
+        position: relative; overflow: hidden;
         display: flex; flex-direction: column;
         padding: 1.35rem;
         border-radius: var(--radius-lg);
-        background: var(--surface);
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .015)),
+            var(--surface);
         border: 1px solid var(--border);
         box-shadow: var(--shadow);
         backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
         text-decoration: none; color: inherit;
-        transition: transform .16s, border-color .16s, box-shadow .16s, background-color .16s;
+        transition: border-color .18s, box-shadow .18s, transform .18s, background-color .18s;
     }
+    /* Barrido de luz del tema NeuroAI: una franja diagonal cruza la tarjeta al
+     * pasar el ratón (::after de -130% a 135%, transición de .6s). */
+    .card::after {
+        content: "";
+        position: absolute; top: 0; left: -130%;
+        width: 55%; height: 100%;
+        background: linear-gradient(120deg, transparent, rgba(255, 255, 255, .10), transparent);
+        transform: skew(-18deg);
+        transition: left .6s;
+        pointer-events: none;
+    }
+    a.card:hover::after, a.card:focus-visible::after { left: 135%; }
     a.card:hover, a.card:focus-visible {
-        transform: translateY(-3px);
-        border-color: rgba(255,255,255,.28);
-        box-shadow: var(--shadow-glow);
+        transform: translateY(-2px);
+        border-color: var(--border-strong);
+        box-shadow: 0 0 0 1px rgba(36, 214, 255, .08), 0 1.25rem 4rem rgba(109, 93, 252, .22);
         outline: none;
     }
     .card-icon {
@@ -331,10 +359,19 @@ $servicios = [
     .foot-brand { display: flex; align-items: center; gap: .75rem; }
     .foot-brand small { display: block; color: var(--subtle); font-size: .76rem; }
     .foot-links { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; }
-    .foot-links a { color: var(--muted); text-decoration: none; font-size: .84rem; }
+    .foot-links a {
+        display: inline-flex; align-items: center; gap: .38rem;
+        color: var(--muted); text-decoration: none; font-size: .84rem;
+    }
+    .foot-links a i { color: var(--subtle); font-size: .78rem; transition: color .15s; }
     .foot-links a:hover { color: var(--txt); }
+    .foot-links a:hover i { color: var(--cyan); }
     .foot-legal { color: var(--subtle); font-size: .76rem; }
-    .foot-legal a { color: var(--subtle); text-decoration: none; }
+    .foot-legal a {
+        display: inline-flex; align-items: center; gap: .3rem;
+        color: var(--subtle); text-decoration: none;
+    }
+    .foot-legal a i { font-size: .7rem; }
     .foot-legal a:hover { color: var(--txt); }
 
     /* ===== Responsive ===== */
@@ -349,27 +386,37 @@ $servicios = [
         .grid { grid-template-columns: repeat(3, 1fr); }
         .features { grid-template-columns: repeat(3, 1fr); }
     }
+    @media (max-width: 480px) {
+        /* En pantallas muy estrechas el nombre completo tiene que caber junto
+         * al botón: se reduce el logo y la tipografía de la marca. */
+        .brand-logo { width: 2.35rem; height: 2.35rem; }
+        .brand-name { font-size: .7rem; }
+        .brand-name small { font-size: .51rem; letter-spacing: .02em; }
+        .btn-sm { padding: .5rem .7rem; font-size: .76rem; }
+        .nav { gap: .5rem; }
+    }
     @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
         * { transition: none !important; }
+        .card::after { display: none; }
     }
 </style>
 </head>
 <body>
-<a class="skip" href="#contenido">Saltar al contenido</a>
+<a class="skip" href="#contenido"><i class="fa-solid fa-arrow-down"></i> Saltar al contenido</a>
 
 <header class="site-header">
     <div class="wrap nav">
-        <a class="brand" href="/">
-            <span class="brand-mark"><i class="fa-solid fa-cubes"></i></span>
-            <span class="brand-name">PDL TransNuBeT<sup>&reg;</sup>
-                <small>Ecosistema de gestión</small>
+        <a class="brand" href="/" title="Entorno de Aplicaciones Web de UnicornioSoftware® Cuba. Kaky®">
+            <img class="brand-logo" src="/images/logo.png" alt="UnicornioSoftware Cuba">
+            <span class="brand-name">Entorno de Aplicaciones Web
+                <small>de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup></small>
             </span>
         </a>
         <nav class="nav-links" aria-label="Secciones">
-            <a href="#ecosistema">Ecosistema</a>
-            <a href="#servicios">Servicios</a>
-            <a href="<?= $base ?>/soporte.php">Soporte</a>
+            <a href="#ecosistema"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Ecosistema</a>
+            <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
+            <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
         </nav>
         <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php">
             <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar al sistema
@@ -400,10 +447,10 @@ $servicios = [
         </p>
 
         <div class="metrics" role="list">
-            <div class="metric" role="listitem"><b>4</b><span>Módulos de gestión</span></div>
-            <div class="metric" role="listitem"><b>PHP 8.1</b><span>Servidor local</span></div>
-            <div class="metric" role="listitem"><b>MySQL 5.7</b><span>Base de datos</span></div>
-            <div class="metric" role="listitem"><b>24/7</b><span>Soporte técnico</span></div>
+            <div class="metric" role="listitem"><i class="fa-solid fa-cubes" aria-hidden="true"></i><b>4</b><span>Módulos de gestión</span></div>
+            <div class="metric" role="listitem"><i class="fa-brands fa-php" aria-hidden="true"></i><b>PHP 8.1</b><span>Servidor local</span></div>
+            <div class="metric" role="listitem"><i class="fa-solid fa-database" aria-hidden="true"></i><b>MySQL 5.7</b><span>Base de datos</span></div>
+            <div class="metric" role="listitem"><i class="fa-solid fa-headset" aria-hidden="true"></i><b>24/7</b><span>Soporte técnico</span></div>
         </div>
     </section>
 
@@ -476,26 +523,26 @@ $servicios = [
 <footer class="site-footer">
     <div class="wrap foot-grid">
         <div class="foot-brand">
-            <span class="brand-mark" aria-hidden="true"><i class="fa-solid fa-cubes"></i></span>
+            <img class="brand-logo" src="/images/logo.png" alt="UnicornioSoftware Cuba">
             <div>
-                <strong>PDL TransNuBeT<sup>&reg;</sup></strong>
-                <small>Ecosistema de gestión · v10.0.1</small>
+                <strong>Entorno de Aplicaciones Web</strong>
+                <small>de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup> · v10.0.1</small>
             </div>
         </div>
         <nav class="foot-links" aria-label="Enlaces del pie">
-            <a href="<?= $base ?>/index.php">Ecosistema Financiero</a>
-            <a href="<?= $base ?>/nominas/">Nóminas</a>
-            <a href="<?= $base ?>/facturacion/index.php">Facturación</a>
-            <a href="<?= $base ?>/phpinfo/">Servidor</a>
-            <a href="<?= $base ?>/soporte.php">Soporte</a>
+            <a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a>
+            <a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
+            <a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
+            <a href="<?= $base ?>/phpinfo/"><i class="fa-solid fa-server" aria-hidden="true"></i> Servidor</a>
+            <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
         </nav>
     </div>
     <div class="wrap">
         <p class="foot-legal">
-            &copy; <?= $anio ?> USBWebserverUnicornio · Unicornio Software Cuba<sup>&reg;</sup> ·
-            <a href="<?= $base ?>/terminos.php">Términos</a> ·
-            <a href="<?= $base ?>/privacidad.php">Privacidad</a> ·
-            <a href="<?= $base ?>/contacto.php">Contacto</a>
+            &copy; <?= $anio ?> Entorno de Aplicaciones Web de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup> ·
+            <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a> ·
+            <a href="<?= $base ?>/privacidad.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a> ·
+            <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
         </p>
     </div>
 </footer>
