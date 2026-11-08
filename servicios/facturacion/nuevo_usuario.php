@@ -1754,7 +1754,7 @@ function aplicarRecorte() {
             if (telefono.length > 0) {
                 let phoneRegex = /^\+?[0-9]{8,15}$/;
                 if (!phoneRegex.test(telefono)) {
-                    msg += "• El teléfono no es válido (ej: +5352712861, 32415418) signo '+' y mínimo 8 Dígitos<br>";
+                    msg += "• El teléfono no es válido (ej: +53 5 2712861, 32415418) signo '+' y mínimo 8 Dígitos<br>";
                     document.getElementById('inp_telefono').classList.add('is-invalid');
                     if (!focusInput) focusInput = document.getElementById('inp_telefono');
                 }

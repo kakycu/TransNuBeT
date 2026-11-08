@@ -102,7 +102,7 @@ $SITE_PHONE = defined('TELEFONO_EMPRESA') ? TELEFONO_EMPRESA : '+53 5 2712861';
 $SITE_PHONE_LINK = preg_replace('/[^0-9+]/', '', $SITE_PHONE);
 // Segundo movil empresarial y correo de soporte fijo: datos de contacto adicionales
 // que se muestran en un bloque aparte, bajo las vias de contacto de la base de datos.
-$CONTACTO_MOVIL_ALT      = '+53 52712861';
+$CONTACTO_MOVIL_ALT      = '+53 5 2712861';
 $CONTACTO_MOVIL_ALT_LINK = preg_replace('/[^0-9+]/', '', $CONTACTO_MOVIL_ALT);
 $CONTACTO_EMAIL_ALT      = 'kakycu@gmail.com';
 // Rotulo de las vias de contacto que vienen de la base de datos.

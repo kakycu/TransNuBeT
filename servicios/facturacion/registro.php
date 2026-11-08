@@ -2544,7 +2544,7 @@ function validarCI(input) {
                 if (telefonoInput.value.trim()) {
                     const phoneRegex = /^\+?[0-9]{8,15}$/;
                     if (!phoneRegex.test(telefonoInput.value)) {
-                        msg += "• El teléfono no es válido (ej: +5352712861)<br>";
+                        msg += "• El teléfono no es válido (ej: +53 5 2712861)<br>";
                         telefonoInput.classList.add('is-invalid');
                         if (!focusInput) focusInput = telefonoInput;
                     }
