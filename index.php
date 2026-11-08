@@ -70,7 +70,7 @@ $servicios = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-bs-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -79,13 +79,37 @@ $servicios = [
 <link rel="icon" type="image/png" href="/images/logo.png">
 <link rel="apple-touch-icon" href="/images/logo.png">
 <link rel="stylesheet" href="<?= $base ?>/css/font-awesome6.4.0/css/all.min.css">
+<script>
+    /* Aplica el tema guardado antes de pintar para que no haya parpadeo. */
+    (function () {
+        try {
+            var tema = localStorage.getItem('theme');
+            document.documentElement.setAttribute('data-bs-theme', tema === 'light' ? 'light' : 'dark');
+        } catch (e) {
+            document.documentElement.setAttribute('data-bs-theme', 'dark');
+        }
+    })();
+</script>
 <style>
-    /* ===== Tokens del tema (NeuroAI) ===== */
+    /* ===== Tokens del tema (NeuroAI), oscuro por defecto ===== */
     :root {
         --bg:            #070a12;
         --bg-soft:       #0b1020;
         --surface:       rgba(18, 26, 45, .72);
+        --surface-strong:rgba(24, 33, 56, .82);
         --surface-solid: #121a2d;
+        --tile:          rgba(255, 255, 255, .05);
+        --panel:         rgba(11, 16, 32, .82);
+        --header-bg:     rgba(7, 10, 18, .78);
+        --footer-bg:     rgba(9, 13, 24, .74);
+        --overlay-top:   rgba(7, 10, 18, .32);
+        --overlay-bottom:rgba(7, 10, 18, .78);
+        --fondo-opacidad: .55;
+        --shine:         rgba(255, 255, 255, .10);
+        --card-top:      rgba(255, 255, 255, .05);
+        --card-bottom:   rgba(255, 255, 255, .015);
+        --destacada-top: rgba(109, 93, 252, .16);
+        --destacada-bottom: rgba(18, 26, 45, .72);
         --border:        rgba(255, 255, 255, 0.12);
         --border-strong: rgba(255, 255, 255, 0.18);
         --txt:           #f7f9ff;
@@ -99,7 +123,50 @@ $servicios = [
         --radius-lg:     1rem;
         --shadow:        0 1.5rem 4rem rgba(0, 0, 0, .35);
         --shadow-glow:   0 0 0 1px rgba(36, 214, 255, .08), 0 1.25rem 4rem rgba(109, 93, 252, .22);
+        --switch-bg:     rgba(255, 255, 255, .08);
+        --switch-border: rgba(255, 255, 255, .18);
+        --switch-thumb:  #232c38;
+        --switch-thumb-border: rgba(255, 255, 255, .22);
+        --switch-sun:    #8b9bb4;
+        --switch-moon:   #24d6ff;
         --max:           72rem;
+    }
+    /* ===== Tema claro (mismo mecanismo que el panel phpinfo) ===== */
+    [data-bs-theme="light"] {
+        --bg:            #eef2fa;
+        --bg-soft:       #f7f9fd;
+        --surface:       rgba(255, 255, 255, .84);
+        --surface-strong:rgba(255, 255, 255, .96);
+        --surface-solid: #ffffff;
+        --tile:          rgba(15, 23, 42, .04);
+        --panel:         rgba(255, 255, 255, .76);
+        --header-bg:     rgba(255, 255, 255, .86);
+        --footer-bg:     rgba(255, 255, 255, .84);
+        --overlay-top:   rgba(238, 242, 250, .55);
+        --overlay-bottom:rgba(238, 242, 250, .92);
+        --fondo-opacidad: .14;
+        --shine:         rgba(99, 122, 200, .18);
+        --card-top:      rgba(255, 255, 255, .92);
+        --card-bottom:   rgba(255, 255, 255, .55);
+        --destacada-top: rgba(109, 93, 252, .12);
+        --destacada-bottom: rgba(255, 255, 255, .86);
+        --border:        rgba(15, 23, 42, 0.12);
+        --border-strong: rgba(15, 23, 42, 0.20);
+        --txt:           #101828;
+        --muted:         #475467;
+        --subtle:        #667085;
+        --accent:        #5b4bdb;
+        --accent-soft:   rgba(91, 75, 219, 0.12);
+        --cyan:          #0e7490;
+        --mint:          #047857;
+        --shadow:        0 1.5rem 4rem rgba(16, 24, 40, .12);
+        --shadow-glow:   0 0 0 1px rgba(14, 116, 144, .10), 0 1.25rem 4rem rgba(91, 75, 219, .16);
+        --switch-bg:     #e2e8f2;
+        --switch-border: #cfd7e4;
+        --switch-thumb:  #ffffff;
+        --switch-thumb-border: #cfd7e4;
+        --switch-sun:    #f59e0b;
+        --switch-moon:   #94a3b8;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -122,8 +189,9 @@ $servicios = [
         inset: 0;
         z-index: -2;
         background: url("/images/fondo.jpg") center center / cover no-repeat;
-        opacity: .55;
+        opacity: var(--fondo-opacidad);
         pointer-events: none;
+        transition: opacity .3s ease;
     }
     body::after {
         content: "";
@@ -133,7 +201,7 @@ $servicios = [
         background:
             radial-gradient(60rem 40rem at 15% -5%, rgba(36, 214, 255, .12), transparent 60%),
             radial-gradient(55rem 38rem at 88% 0%, rgba(109, 93, 252, .18), transparent 60%),
-            linear-gradient(180deg, rgba(7, 10, 18, .32) 0%, rgba(7, 10, 18, .78) 85%);
+            linear-gradient(180deg, var(--overlay-top) 0%, var(--overlay-bottom) 85%);
         pointer-events: none;
     }
     a { color: inherit; }
@@ -156,7 +224,7 @@ $servicios = [
         position: sticky; top: 0; z-index: 50;
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
-        background: rgba(7, 10, 18, .78);
+        background: var(--header-bg);
         border-bottom: 1px solid var(--border);
     }
     .nav {
@@ -169,7 +237,7 @@ $servicios = [
         object-fit: contain;
         padding: .18rem;
         border-radius: .7rem;
-        background: rgba(255, 255, 255, .04);
+        background: var(--tile);
         border: 1px solid var(--border);
     }
     .brand-name { font-size: clamp(.76rem, 1.5vw, .92rem); line-height: 1.25; letter-spacing: -.01em; }
@@ -209,11 +277,11 @@ $servicios = [
         box-shadow: 0 0 0 1px rgba(36, 214, 255, .08), 0 1.25rem 4rem rgba(109, 93, 252, .22);
     }
     .btn-glass {
-        color: var(--txt); background: rgba(18, 26, 45, .6);
+        color: var(--txt); background: var(--surface);
         border-color: var(--border-strong);
         backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     }
-    .btn-glass:hover { border-color: rgba(255,255,255,.3); background: rgba(24, 33, 56, .75); }
+    .btn-glass:hover { border-color: var(--border-strong); background: var(--surface-strong); }
     .btn-sm { padding: .55rem .9rem; font-size: .82rem; }
 
     /* ===== Hero ===== */
@@ -221,9 +289,9 @@ $servicios = [
     .badge {
         display: inline-flex; align-items: center; gap: .45rem;
         padding: .38rem .8rem; border-radius: 999px;
-        border: 1px solid rgba(36, 214, 255, .35);
-        background: rgba(36, 214, 255, .08);
-        color: #c9f4ff; font-size: .76rem; font-weight: 700;
+        border: 1px solid color-mix(in srgb, var(--cyan) 40%, transparent);
+        background: color-mix(in srgb, var(--cyan) 10%, transparent);
+        color: var(--txt); font-size: .76rem; font-weight: 700;
         letter-spacing: .02em;
     }
     .badge .dot {
@@ -254,7 +322,7 @@ $servicios = [
         border-radius: var(--radius-lg);
         overflow: hidden;
     }
-    .metric { padding: 1.15rem 1.25rem; background: rgba(11, 16, 32, .82); }
+    .metric { padding: 1.15rem 1.25rem; background: var(--panel); }
     .metric i { display: block; color: var(--cyan); font-size: .95rem; margin-bottom: .4rem; }
     .metric b { display: block; font-size: 1.35rem; letter-spacing: -.02em; }
     .metric span { color: var(--subtle); font-size: .78rem; }
@@ -279,7 +347,7 @@ $servicios = [
         padding: 1.35rem;
         border-radius: var(--radius-lg);
         background:
-            linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .015)),
+            linear-gradient(180deg, var(--card-top), var(--card-bottom)),
             var(--surface);
         border: 1px solid var(--border);
         box-shadow: var(--shadow);
@@ -293,7 +361,7 @@ $servicios = [
         content: "";
         position: absolute; top: 0; left: -130%;
         width: 55%; height: 100%;
-        background: linear-gradient(120deg, transparent, rgba(255, 255, 255, .10), transparent);
+        background: linear-gradient(120deg, transparent, var(--shine), transparent);
         transform: skew(-18deg);
         transition: left .6s;
         pointer-events: none;
@@ -324,7 +392,7 @@ $servicios = [
     a.card:hover .arrow { transform: translateX(.25rem); }
     .card.is-featured {
         background:
-            linear-gradient(180deg, rgba(109, 93, 252, .16), rgba(18, 26, 45, .72));
+            linear-gradient(180deg, var(--destacada-top), var(--destacada-bottom));
         border-color: rgba(109, 93, 252, .45);
     }
     .card.is-featured .card-icon {
@@ -334,13 +402,13 @@ $servicios = [
     .tag {
         display: inline-flex; align-items: center; gap: .35rem;
         padding: .2rem .55rem; border-radius: 999px;
-        background: rgba(255,255,255,.06); border: 1px solid var(--border);
+        background: var(--tile); border: 1px solid var(--border);
         color: var(--muted); font-size: .68rem; font-weight: 700;
     }
 
     /* ===== Servicios ===== */
     .features { display: grid; gap: 1px; margin-top: 2rem; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-    .feature { padding: 1.4rem 1.35rem; background: rgba(11, 16, 32, .82); }
+    .feature { padding: 1.4rem 1.35rem; background: var(--panel); }
     .feature i { color: var(--cyan); font-size: 1.05rem; }
     .feature h3 { margin: .65rem 0 0; font-size: .98rem; }
     .feature p { margin: .4rem 0 0; color: var(--muted); font-size: .85rem; }
@@ -353,7 +421,7 @@ $servicios = [
         background:
             radial-gradient(30rem 18rem at 10% 0%, rgba(36, 214, 255, .16), transparent 60%),
             radial-gradient(30rem 18rem at 90% 100%, rgba(109, 93, 252, .22), transparent 60%),
-            rgba(18, 26, 45, .72);
+            var(--surface);
         border: 1px solid rgba(109, 93, 252, .32);
         box-shadow: var(--shadow);
     }
@@ -368,7 +436,7 @@ $servicios = [
     .site-footer {
         margin-top: clamp(3rem, 6vw, 5rem);
         border-top: 1px solid rgba(109, 93, 252, .38);
-        background: rgba(9, 13, 24, .74);
+        background: var(--footer-bg);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
         box-shadow: 0 -4px 20px rgba(0, 0, 0, .35);
@@ -398,7 +466,7 @@ $servicios = [
         width: 3.4rem; height: 3.4rem; object-fit: contain;
         padding: .22rem; margin-bottom: .35rem;
         border-radius: .8rem;
-        background: rgba(255, 255, 255, .04);
+        background: var(--tile);
         border: 1px solid var(--border);
     }
     .footer-brand strong { color: var(--txt); font-size: 1.02rem; letter-spacing: -.01em; }
@@ -415,13 +483,19 @@ $servicios = [
     .footer-contact i { color: var(--subtle); font-size: .8rem; width: 1rem; text-align: center; }
     .footer-contact small { display: inline-flex; align-items: flex-start; gap: .5rem; color: var(--subtle); font-size: .76rem; line-height: 1.6; }
     .footer-buttons { display: flex; flex-wrap: wrap; gap: .55rem; }
+    /* Los botones del pie no deben heredar el color de enlace de .footer-col a. */
+    .footer-col .btn { color: var(--txt); text-decoration: none; }
+    .footer-col .btn i { color: inherit; opacity: .9; }
+    .footer-buttons .btn-primary,
+    .footer-buttons .btn-primary:hover,
+    .footer-buttons .btn-primary:focus-visible { color: #fff; }
 
     .social-links { display: flex; flex-wrap: wrap; gap: .55rem; }
     .social-link {
         display: inline-grid; place-items: center;
         width: 2.4rem; height: 2.4rem;
         border-radius: .7rem;
-        background: rgba(255, 255, 255, .05);
+        background: var(--tile);
         border: 1px solid var(--border);
         color: var(--muted); font-size: .92rem;
         transition: transform .15s, color .15s, border-color .15s, background .15s;
@@ -446,6 +520,80 @@ $servicios = [
     .footer-bar .wrap { display: flex; flex-direction: column; gap: .3rem; }
     .footer-bar i { color: var(--cyan); }
 
+    /* ===== Interruptor de tema (sol / luna), igual que el panel phpinfo ===== */
+    .theme-switch {
+        display: inline-flex; align-items: center;
+        padding: 0; background: transparent; border: 0;
+        line-height: 0; cursor: pointer; flex: 0 0 auto;
+    }
+    .theme-switch-track {
+        position: relative;
+        display: inline-flex; align-items: center; justify-content: space-between;
+        width: 64px; height: 32px; padding: 0 10px;
+        border-radius: 999px;
+        background-color: var(--switch-bg);
+        border: 1px solid var(--switch-border);
+        transition: background-color .25s ease, border-color .25s ease;
+    }
+    .theme-switch-icon {
+        position: relative; z-index: 1;
+        font-size: .8rem; color: var(--muted); opacity: .55;
+        transition: color .25s ease, opacity .25s ease;
+    }
+    .theme-switch-thumb {
+        position: absolute; top: 2px; left: 2px; z-index: 0;
+        width: 26px; height: 26px; border-radius: 50%;
+        background-color: var(--switch-thumb);
+        border: 1px solid var(--switch-thumb-border);
+        box-shadow: 0 2px 6px rgba(16, 24, 40, .35);
+        transition: transform .28s cubic-bezier(.4, .1, .3, 1), background-color .25s ease;
+    }
+    [data-bs-theme="light"] .theme-switch-thumb { transform: translateX(0); }
+    [data-bs-theme="dark"]  .theme-switch-thumb { transform: translateX(32px); }
+    [data-bs-theme="light"] .theme-switch-sun { color: var(--switch-sun); opacity: 1; }
+    [data-bs-theme="dark"]  .theme-switch-moon { color: var(--switch-moon); opacity: 1; }
+    [data-bs-theme="light"] .theme-switch-moon,
+    [data-bs-theme="dark"]  .theme-switch-sun { opacity: .45; }
+    .theme-switch:hover .theme-switch-track,
+    .theme-switch:focus-visible .theme-switch-track {
+        border-color: var(--switch-moon);
+        background-color: var(--accent-soft);
+    }
+    .theme-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 999px; }
+
+    /* ===== Botones flotantes: ir hasta arriba / ir hasta abajo ===== */
+    .scroll-fabs {
+        position: fixed;
+        right: 1.15rem;
+        bottom: 1.15rem;
+        z-index: 60;
+        display: flex;
+        flex-direction: column;
+        gap: .55rem;
+    }
+    .scroll-fab {
+        display: flex; align-items: center; justify-content: center;
+        width: 2.9rem; height: 2.9rem;
+        padding: 0;
+        border-radius: 50%;
+        background-color: var(--surface-strong);
+        color: var(--accent);
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 20px -10px rgba(16, 24, 40, .55);
+        cursor: pointer;
+        opacity: 0; visibility: hidden;
+        transform: translateY(8px) scale(.92);
+        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+        transition: opacity .2s ease, transform .2s ease, visibility .2s ease,
+                    background-color .2s ease, color .2s ease, border-color .2s ease;
+    }
+    .scroll-fab.is-visible { opacity: 1; visibility: visible; transform: none; }
+    .scroll-fab:hover { color: #fff; background-color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+    .scroll-fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    /* Agrupación del interruptor y el botón de acceso en el topbar */
+    .nav-acciones { display: flex; align-items: center; gap: .65rem; }
+
     /* ===== Responsive ===== */
     @media (min-width: 640px) {
         .metrics { grid-template-columns: repeat(4, 1fr); }
@@ -464,12 +612,20 @@ $servicios = [
     }
     @media (max-width: 480px) {
         /* En pantallas muy estrechas el nombre completo tiene que caber junto
-         * al botón: se reduce el logo y la tipografía de la marca. */
+         * al interruptor de tema y al botón: se reducen logo y tipografía. */
         .brand-logo { width: 2.35rem; height: 2.35rem; }
-        .brand-name { font-size: .7rem; }
-        .brand-name small { font-size: .51rem; letter-spacing: .02em; }
-        .btn-sm { padding: .5rem .7rem; font-size: .76rem; }
+        .brand-name { font-size: .68rem; }
+        .brand-name small { font-size: .49rem; letter-spacing: .02em; }
+        .btn-sm { padding: .5rem .6rem; font-size: .76rem; }
+        .btn-texto { display: none; }
         .nav { gap: .5rem; }
+        .nav-acciones { gap: .45rem; }
+        .theme-switch-track { width: 50px; height: 26px; padding: 0 7px; }
+        .theme-switch-thumb { width: 20px; height: 20px; }
+        [data-bs-theme="dark"] .theme-switch-thumb { transform: translateX(24px); }
+        .theme-switch-icon { font-size: .68rem; }
+        .scroll-fabs { right: .8rem; bottom: .8rem; }
+        .scroll-fab { width: 2.55rem; height: 2.55rem; font-size: .9rem; }
     }
     @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
@@ -494,9 +650,20 @@ $servicios = [
             <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
             <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
         </nav>
-        <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php">
-            <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar al sistema
-        </a>
+        <div class="nav-acciones">
+            <button class="theme-switch" id="themeToggle" type="button" role="switch"
+                    aria-checked="true" aria-label="Cambiar entre tema claro y oscuro"
+                    title="Cambiar a tema claro">
+                <span class="theme-switch-track">
+                    <i class="fa-solid fa-sun theme-switch-icon theme-switch-sun" aria-hidden="true"></i>
+                    <i class="fa-solid fa-moon theme-switch-icon theme-switch-moon" aria-hidden="true"></i>
+                    <span class="theme-switch-thumb"></span>
+                </span>
+            </button>
+            <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php" title="Entrar al sistema">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> <span class="btn-texto">Entrar al sistema</span>
+            </a>
+        </div>
     </div>
 </header>
 
@@ -618,7 +785,7 @@ $servicios = [
                 <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
                 <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
                 <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
-                <li><a href="<?= $base ?>/phpinfo/"><i class="fa-solid fa-server" aria-hidden="true"></i> Panel del servidor</a></li>
+                <li><a href="<?= $base ?>/phpinfo/"><i class="fa-solid fa-server" aria-hidden="true"></i> Servidor Info PHP</a></li>
                 <li><a href="<?= $base ?>/InstalarBD/InstalarBD.php"><i class="fa-solid fa-database" aria-hidden="true"></i> Instalador de BD</a></li>
             </ul>
         </nav>
@@ -645,12 +812,15 @@ $servicios = [
         <div class="footer-col">
             <h4><i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Síguenos</h4>
             <div class="social-links">
-                <a class="social-link" href="https://facebook.com/pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://x.com/pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)"><i class="fa-brands fa-x-twitter" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://linkedin.com/unicorniocuba/pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn"><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://instagram.com/pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://youtube.com/@pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://api.whatsapp.com/send?phone=53552712861" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://www.facebook.com/unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://www.x.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)">
+                    <!-- La marca X no viene en el build de Font Awesome del proyecto: se dibuja con su SVG oficial. -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/></svg>
+                </a>
+                <a class="social-link" href="https://www.linkedin.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn"><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://www.instagram.com/unicorniosoftcuba" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://www.youtube.com/@unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://api.whatsapp.com/send?phone=5352712861" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a>
             </div>
             <h4 class="footer-legal-title"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> Legal</h4>
             <p class="footer-legal-links">
@@ -669,15 +839,70 @@ $servicios = [
     </div>
 </footer>
 
+<!-- Botones flotantes: ir hasta arriba / ir hasta abajo -->
+<div class="scroll-fabs">
+    <button type="button" class="scroll-fab" id="btnScrollTop"
+            title="Ir hasta arriba" aria-label="Ir hasta arriba de la página">
+        <i class="fa-solid fa-angles-up"></i>
+    </button>
+    <button type="button" class="scroll-fab" id="btnScrollBottom"
+            title="Ir hasta abajo" aria-label="Ir hasta abajo de la página">
+        <i class="fa-solid fa-angles-down"></i>
+    </button>
+</div>
+
 <script>
-    // Botón "Ir al inicio" del pie (desplazamiento suave).
+    // Cambio de tema claro / oscuro (mismo mecanismo que el panel phpinfo).
     (function () {
-        var boton = document.getElementById('irArriba');
+        var boton = document.getElementById('themeToggle');
+        var raiz = document.documentElement;
+
+        function sincronizar(tema) {
+            var esDark = tema !== 'light';
+            if (boton) {
+                boton.setAttribute('aria-checked', esDark ? 'true' : 'false');
+                boton.title = esDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro';
+            }
+        }
+
+        sincronizar(raiz.getAttribute('data-bs-theme'));
         if (boton) {
             boton.addEventListener('click', function () {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                var actual = raiz.getAttribute('data-bs-theme') === 'light' ? 'light' : 'dark';
+                var nuevo = actual === 'dark' ? 'light' : 'dark';
+                raiz.setAttribute('data-bs-theme', nuevo);
+                try { localStorage.setItem('theme', nuevo); } catch (e) {}
+                sincronizar(nuevo);
             });
         }
+    })();
+
+    // Botón "Ir al inicio" del pie y botones flotantes arriba/abajo.
+    (function () {
+        var botonPie = document.getElementById('irArriba');
+        var arriba = document.getElementById('btnScrollTop');
+        var abajo = document.getElementById('btnScrollBottom');
+
+        function irArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        function irAbajo() {
+            var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+            window.scrollTo({ top: max, behavior: 'smooth' });
+        }
+
+        if (botonPie) { botonPie.addEventListener('click', irArriba); }
+        if (arriba) { arriba.addEventListener('click', irArriba); }
+        if (abajo) { abajo.addEventListener('click', irAbajo); }
+
+        // Cada botón aparece solo cuando tiene sentido.
+        function actualizar() {
+            var y = window.scrollY || document.documentElement.scrollTop || 0;
+            var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+            if (arriba) { arriba.classList.toggle('is-visible', y > 140); }
+            if (abajo) { abajo.classList.toggle('is-visible', y < max - 140); }
+        }
+        window.addEventListener('scroll', actualizar, { passive: true });
+        window.addEventListener('resize', actualizar);
+        actualizar();
     })();
 </script>
 </body>
