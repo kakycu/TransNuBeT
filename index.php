@@ -114,16 +114,26 @@ $servicios = [
         line-height: 1.6;
         -webkit-font-smoothing: antialiased;
     }
-    /* Resplandor de fondo, como el .bg-gradient-glow del tema */
+    /* Fondo fotográfico (imagen descargada en /images/fondo.jpg) + capa de
+     * oscurecido y resplandores del tema para no perder legibilidad. */
     body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -2;
+        background: url("/images/fondo.jpg") center center / cover no-repeat;
+        opacity: .55;
+        pointer-events: none;
+    }
+    body::after {
         content: "";
         position: fixed;
         inset: 0;
         z-index: -1;
         background:
-            radial-gradient(60rem 40rem at 15% -5%, rgba(36, 214, 255, .16), transparent 60%),
-            radial-gradient(55rem 38rem at 88% 0%, rgba(109, 93, 252, .22), transparent 60%),
-            radial-gradient(50rem 30rem at 50% 110%, rgba(46, 229, 157, .10), transparent 60%);
+            radial-gradient(60rem 40rem at 15% -5%, rgba(36, 214, 255, .12), transparent 60%),
+            radial-gradient(55rem 38rem at 88% 0%, rgba(109, 93, 252, .18), transparent 60%),
+            linear-gradient(180deg, rgba(7, 10, 18, .32) 0%, rgba(7, 10, 18, .78) 85%);
         pointer-events: none;
     }
     a { color: inherit; }
@@ -353,38 +363,104 @@ $servicios = [
      * dejar un hueco enorme entre los servicios y el bloque final. */
     .cta-section { padding-block: 0 clamp(3.5rem, 6vw, 5rem); }
 
-    /* ===== Pie ===== */
-    .site-footer { margin-top: clamp(3rem, 6vw, 5rem); border-top: 1px solid var(--border); padding-block: 2rem; }
-    .foot-grid { display: flex; flex-direction: column; gap: 1.25rem; }
-    .foot-brand { display: flex; align-items: center; gap: .75rem; }
-    .foot-brand small { display: block; color: var(--subtle); font-size: .76rem; }
-    .foot-links { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; }
-    .foot-links a {
-        display: inline-flex; align-items: center; gap: .38rem;
-        color: var(--muted); text-decoration: none; font-size: .84rem;
+    /* ===== Pie (estructura de la portada de facturación) =====
+     * Cuatro columnas: marca, enlaces, contacto con botones y redes + legal. */
+    .site-footer {
+        margin-top: clamp(3rem, 6vw, 5rem);
+        border-top: 1px solid rgba(109, 93, 252, .38);
+        background: rgba(9, 13, 24, .74);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, .35);
     }
-    .foot-links a i { color: var(--subtle); font-size: .78rem; transition: color .15s; }
-    .foot-links a:hover { color: var(--txt); }
-    .foot-links a:hover i { color: var(--cyan); }
-    .foot-legal { color: var(--subtle); font-size: .76rem; }
-    .foot-legal a {
-        display: inline-flex; align-items: center; gap: .3rem;
-        color: var(--subtle); text-decoration: none;
+    .footer-grid {
+        display: grid;
+        gap: 2rem;
+        grid-template-columns: 1fr;
+        padding-block: clamp(2.5rem, 5vw, 3.5rem);
     }
-    .foot-legal a i { font-size: .7rem; }
-    .foot-legal a:hover { color: var(--txt); }
+    .footer-col { color: var(--muted); font-size: .86rem; min-width: 0; }
+    .footer-col h4 {
+        margin: 0 0 .9rem;
+        color: var(--txt);
+        font-size: .76rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+    }
+    .footer-col h4 i { color: var(--cyan); margin-right: .45rem; }
+    .footer-col p { margin: 0 0 .9rem; line-height: 1.75; }
+    .footer-col a { color: var(--muted); text-decoration: none; transition: color .15s; }
+    .footer-col a:hover, .footer-col a:focus-visible { color: var(--cyan); }
+
+    .footer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }
+    .footer-logo {
+        width: 3.4rem; height: 3.4rem; object-fit: contain;
+        padding: .22rem; margin-bottom: .35rem;
+        border-radius: .8rem;
+        background: rgba(255, 255, 255, .04);
+        border: 1px solid var(--border);
+    }
+    .footer-brand strong { color: var(--txt); font-size: 1.02rem; letter-spacing: -.01em; }
+    .footer-brand small { color: var(--subtle); font-size: .72rem; }
+    .footer-slogan { color: var(--mint); font-weight: 700; font-size: .8rem; margin: 0; }
+
+    .footer-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .6rem; }
+    .footer-list a { display: inline-flex; align-items: center; gap: .5rem; }
+    .footer-list i { width: 1rem; text-align: center; color: var(--subtle); font-size: .8rem; transition: color .15s; }
+    .footer-list a:hover i { color: var(--cyan); }
+
+    .footer-contact p { margin-bottom: 1rem; }
+    .footer-contact a { display: inline-flex; align-items: center; gap: .5rem; }
+    .footer-contact i { color: var(--subtle); font-size: .8rem; width: 1rem; text-align: center; }
+    .footer-contact small { display: inline-flex; align-items: flex-start; gap: .5rem; color: var(--subtle); font-size: .76rem; line-height: 1.6; }
+    .footer-buttons { display: flex; flex-wrap: wrap; gap: .55rem; }
+
+    .social-links { display: flex; flex-wrap: wrap; gap: .55rem; }
+    .social-link {
+        display: inline-grid; place-items: center;
+        width: 2.4rem; height: 2.4rem;
+        border-radius: .7rem;
+        background: rgba(255, 255, 255, .05);
+        border: 1px solid var(--border);
+        color: var(--muted); font-size: .92rem;
+        transition: transform .15s, color .15s, border-color .15s, background .15s;
+    }
+    .social-link:hover, .social-link:focus-visible {
+        transform: translateY(-2px);
+        color: #fff;
+        border-color: rgba(109, 93, 252, .6);
+        background: rgba(109, 93, 252, .22);
+        outline: none;
+    }
+    .footer-legal-title { margin-top: 1.4rem !important; }
+    .footer-legal-links { display: flex; flex-wrap: wrap; gap: .4rem .95rem; font-size: .78rem; }
+    .footer-legal-links a { display: inline-flex; align-items: center; gap: .35rem; }
+
+    .footer-bar {
+        border-top: 1px solid var(--border);
+        padding-block: 1rem;
+        color: var(--subtle);
+        font-size: .76rem;
+    }
+    .footer-bar .wrap { display: flex; flex-direction: column; gap: .3rem; }
+    .footer-bar i { color: var(--cyan); }
 
     /* ===== Responsive ===== */
     @media (min-width: 640px) {
         .metrics { grid-template-columns: repeat(4, 1fr); }
         .grid { grid-template-columns: repeat(2, 1fr); }
         .features { grid-template-columns: repeat(2, 1fr); }
-        .foot-grid { flex-direction: row; align-items: center; justify-content: space-between; }
+    }
+    @media (min-width: 720px) {
+        .footer-grid { grid-template-columns: 1.5fr 1fr 1.25fr 1fr; }
+        .footer-bar .wrap { flex-direction: row; align-items: center; justify-content: space-between; }
     }
     @media (min-width: 1024px) {
         .nav-links { display: flex; }
         .grid { grid-template-columns: repeat(3, 1fr); }
         .features { grid-template-columns: repeat(3, 1fr); }
+        .footer-grid { grid-template-columns: 1.6fr 1fr 1.3fr 1.1fr; }
     }
     @media (max-width: 480px) {
         /* En pantallas muy estrechas el nombre completo tiene que caber junto
@@ -521,30 +597,88 @@ $servicios = [
 </main>
 
 <footer class="site-footer">
-    <div class="wrap foot-grid">
-        <div class="foot-brand">
-            <img class="brand-logo" src="/images/logo.png" alt="UnicornioSoftware Cuba">
-            <div>
-                <strong>Entorno de Aplicaciones Web</strong>
-                <small>de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup> · v10.0.1</small>
+    <div class="wrap footer-grid">
+
+        <!-- Columna 1: Marca -->
+        <div class="footer-col footer-brand">
+            <img class="footer-logo" src="/images/logo.png" alt="UnicornioSoftware Cuba">
+            <strong>Entorno de Aplicaciones Web</strong>
+            <small>de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup></small>
+            <p>
+                Facturación, nóminas y gestión en una plataforma local.<br>
+                &copy; <?= $anio ?> Todos los derechos reservados.
+            </p>
+            <p class="footer-slogan">«Donde tu visión toma forma»</p>
+        </div>
+
+        <!-- Columna 2: Enlaces -->
+        <nav class="footer-col" aria-label="Enlaces del pie">
+            <h4><i class="fa-solid fa-compass" aria-hidden="true"></i> Explorar</h4>
+            <ul class="footer-list">
+                <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
+                <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
+                <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
+                <li><a href="<?= $base ?>/phpinfo/"><i class="fa-solid fa-server" aria-hidden="true"></i> Panel del servidor</a></li>
+                <li><a href="<?= $base ?>/InstalarBD/InstalarBD.php"><i class="fa-solid fa-database" aria-hidden="true"></i> Instalador de BD</a></li>
+            </ul>
+        </nav>
+
+        <!-- Columna 3: Contacto -->
+        <div class="footer-col footer-contact">
+            <h4><i class="fa-solid fa-headset" aria-hidden="true"></i> Contacto</h4>
+            <p>
+                <a href="mailto:kakycu@gmail.com"><i class="fa-solid fa-envelope" aria-hidden="true"></i> kakycu@gmail.com</a><br>
+                <a href="tel:+53552712861"><i class="fa-solid fa-phone" aria-hidden="true"></i> +53 5 5271 2861</a><br>
+                <small><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>Sábados: 9:00 AM - 1:00 PM</small>
+            </p>
+            <div class="footer-buttons">
+                <button type="button" class="btn btn-glass btn-sm" id="irArriba">
+                    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Ir al inicio
+                </button>
+                <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php">
+                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Iniciar sesión
+                </a>
             </div>
         </div>
-        <nav class="foot-links" aria-label="Enlaces del pie">
-            <a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a>
-            <a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
-            <a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
-            <a href="<?= $base ?>/phpinfo/"><i class="fa-solid fa-server" aria-hidden="true"></i> Servidor</a>
-            <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
-        </nav>
+
+        <!-- Columna 4: Redes sociales y legal -->
+        <div class="footer-col">
+            <h4><i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Síguenos</h4>
+            <div class="social-links">
+                <a class="social-link" href="https://facebook.com/pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://x.com/pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)"><i class="fa-brands fa-x-twitter" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://linkedin.com/unicorniocuba/pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn"><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://instagram.com/pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://youtube.com/@pdlvisiones" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a>
+                <a class="social-link" href="https://api.whatsapp.com/send?phone=53552712861" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a>
+            </div>
+            <h4 class="footer-legal-title"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> Legal</h4>
+            <p class="footer-legal-links">
+                <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
+                <a href="<?= $base ?>/privacidad.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
+                <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+            </p>
+        </div>
     </div>
-    <div class="wrap">
-        <p class="foot-legal">
-            &copy; <?= $anio ?> Entorno de Aplicaciones Web de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup> ·
-            <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a> ·
-            <a href="<?= $base ?>/privacidad.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a> ·
-            <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
-        </p>
+
+    <div class="footer-bar">
+        <div class="wrap">
+            <span>&copy; <?= $anio ?> Entorno de Aplicaciones Web de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup></span>
+            <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Plataforma local · v10.0.1</span>
+        </div>
     </div>
 </footer>
+
+<script>
+    // Botón "Ir al inicio" del pie (desplazamiento suave).
+    (function () {
+        var boton = document.getElementById('irArriba');
+        if (boton) {
+            boton.addEventListener('click', function () {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+    })();
+</script>
 </body>
 </html>
