@@ -1440,6 +1440,29 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- MODAL AÑO COMPLETO POR MESES (ojo de las tarjetas de año) -->
+<div class="modal fade" id="modalSncMeses" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content" style="background: var(--panel); border: 0.0625rem solid rgba(96,165,250,0.3); border-radius: 1rem; color: var(--txt, #e2e8f0);">
+            <div class="modal-header" style="border-bottom: 0.0625rem solid rgba(96,165,250,0.2); padding:1rem 1.5rem;">
+                <h5 class="modal-title" style="font-weight: 600;">
+                    <i class="fas fa-eye me-2" style="color: #60a5fa;"></i>
+                    <span id="sncMesesTitulo">Año completo por meses</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" style="padding:1.25rem 1.5rem;">
+                <div id="sncMesesBody" style="display:flex; flex-direction:column; align-items:center;"></div>
+            </div>
+            <div class="modal-footer" style="border-top: 0.0625rem solid rgba(96,165,250,0.2); padding:0.75rem 1.5rem;">
+                <button type="button" class="btn-win btn-win-outline btn-win-sm" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     /* El placeholder se perdía sobre el fondo oscuro (tema Win11 dark). */
     #sncObsTexto { color-scheme: dark; }
@@ -1473,6 +1496,229 @@ document.addEventListener('DOMContentLoaded', function() {
     .snc-anio-card.activo .snc-anio-titulo {
         color: #34d399 !important;
         background: rgba(52, 211, 153, 0.16) !important;
+    }
+
+    /* Ojo del título de cada tarjeta de año: abre el año completo por meses. */
+    .snc-anio-ojo {
+        background: rgba(96, 165, 250, 0.18);
+        border: 0.0625rem solid rgba(96, 165, 250, 0.45);
+        color: #93c5fd;
+        width: 1.35rem;
+        height: 1.35rem;
+        padding: 0;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.68rem;
+        line-height: 1;
+        cursor: pointer;
+        flex: 0 0 auto;
+        transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+    .snc-anio-ojo:hover,
+    .snc-anio-ojo:focus-visible {
+        background: #60a5fa;
+        border-color: #60a5fa;
+        color: #0b1220;
+        outline: none;
+        transform: scale(1.1);
+    }
+    .snc-anio-card.activo .snc-anio-ojo {
+        border-color: rgba(52, 211, 153, 0.6);
+        color: #6ee7b7;
+    }
+
+    /* Tabla del modal "Año completo por meses": misma estructura del modelo
+       (MESES / AÑO SELECC. / Días Trab. / Salario Devengado / TOTAL) con un
+       acabado moderno. Fondo y textos salen de las variables del tema, así se
+       ve bien en claro, oscuro, azul, verde, orgullo y win11.
+       Las reglas de color llevan !important y el prefijo #modalSncMeses porque
+       los temas aplican color con !important a todo lo que hay dentro de
+       .modal-content: sin esto, el texto se volvía ilegible en tema claro. */
+    .snc-meses-card {
+        width: 100%;
+        max-width: 27rem;
+        margin: 0 auto;
+        border-radius: 0.85rem;
+        overflow: hidden;
+        background: linear-gradient(180deg, var(--panel-2, #1e293b), var(--panel, #0f172a));
+        border: 0.0625rem solid var(--border-2, rgba(148, 163, 184, 0.35));
+        box-shadow: 0 0.9rem 2.2rem rgba(2, 6, 23, 0.35), 0 0 0 0.25rem rgba(59, 130, 246, 0.06);
+    }
+    .snc-meses-top {
+        height: 0.3rem;
+        background: linear-gradient(90deg, var(--accent, #3b82f6) 0%,
+                    rgba(var(--accent-rgb, 59, 130, 246), 0.55) 50%, #34d399 100%);
+    }
+    /* Subtítulo centrado antes de la tabla. */
+    #modalSncMeses .snc-meses-subtitulo {
+        width: 100%;
+        max-width: 27rem;
+        margin: 0 auto 0.6rem;
+        text-align: center;
+        font-size: 0.74rem;
+        line-height: 1.35;
+        letter-spacing: 0.03em;
+        color: var(--muted, #94a3b8) !important;
+    }
+    #modalSncMeses .snc-meses-subtitulo i {
+        color: var(--accent, #3b82f6);
+        color: color-mix(in srgb, var(--accent, #3b82f6) 78%, var(--txt, #e2e8f0));
+        margin-right: 0.35rem;
+    }
+    #modalSncMeses .snc-meses-subtitulo strong {
+        color: var(--txt, #e2e8f0) !important;
+        font-weight: 800;
+    }
+    #modalSncMeses #sncMesesTabla {
+        border-collapse: collapse;
+        width: 100%;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 0.8rem;
+        color: var(--txt, #e2e8f0) !important;
+        background: transparent !important;
+    }
+    #modalSncMeses #sncMesesTabla th,
+    #modalSncMeses #sncMesesTabla td {
+        border: 0.0625rem solid var(--border, rgba(148, 163, 184, 0.32));
+        padding: 0.3rem 0.5rem;
+        line-height: 1.25;
+    }
+    #modalSncMeses #sncMesesTabla th {
+        background: linear-gradient(180deg,
+                    rgba(var(--accent-rgb, 59, 130, 246), 0.20),
+                    rgba(var(--accent-rgb, 59, 130, 246), 0.07)) !important;
+        color: var(--txt, #e2e8f0) !important;
+        font-weight: 700;
+        text-align: center;
+    }
+    #modalSncMeses #sncMesesTabla th.snc-meses-th {
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        color: var(--txt, #e2e8f0) !important;
+    }
+    #modalSncMeses #sncMesesTabla th.snc-anio-label {
+        font-size: 0.64rem;
+        letter-spacing: 0.12em;
+        color: var(--muted, #94a3b8) !important;
+    }
+    #modalSncMeses #sncMesesTabla th.snc-anio-th {
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.16) !important;
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        /* Acento mezclado con el texto del tema: mantiene el color del tema y
+           el contraste tanto en fondos claros como oscuros. */
+        color: var(--txt, #e2e8f0) !important;
+        color: color-mix(in srgb, var(--accent, #3b82f6) 78%, var(--txt, #e2e8f0)) !important;
+        padding: 0.18rem 0.5rem;
+    }
+    #modalSncMeses #sncMesesTabla th.snc-col-th {
+        font-size: 0.7rem;
+        letter-spacing: 0.04em;
+        color: var(--txt, #e2e8f0) !important;
+    }
+    #modalSncMeses #sncMesesTabla td.snc-mes {
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.10) !important;
+        color: var(--txt, #e2e8f0) !important;
+        font-size: 0.74rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-align: left;
+        white-space: nowrap;
+    }
+    #modalSncMeses #sncMesesTabla td.snc-val {
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.03) !important;
+        color: var(--txt, #e2e8f0) !important;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+    }
+    #modalSncMeses #sncMesesTabla td.snc-dias {
+        text-align: center;
+        color: var(--txt, #e2e8f0) !important;
+        color: color-mix(in srgb, var(--accent, #3b82f6) 72%, var(--txt, #e2e8f0)) !important;
+        font-weight: 700;
+    }
+    #modalSncMeses #sncMesesTabla tbody tr:nth-child(even) td.snc-val {
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.075) !important;
+    }
+    #modalSncMeses #sncMesesTabla tbody tr:not(.snc-total):hover td.snc-val,
+    #modalSncMeses #sncMesesTabla tbody tr:not(.snc-total):hover td.snc-mes {
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.18) !important;
+    }
+    #modalSncMeses #sncMesesTabla td.snc-vacio {
+        color: var(--muted, #94a3b8) !important;
+        color: color-mix(in srgb, var(--muted, #94a3b8) 78%, var(--txt, #e2e8f0)) !important;
+        font-weight: 800;
+        text-align: center;
+        letter-spacing: 0.14em;
+    }
+    #modalSncMeses #sncMesesTabla tr.snc-total td {
+        background: linear-gradient(135deg,
+                    var(--accent-dark, #1e3a8a), var(--accent, #2563eb)) !important;
+        color: #fff !important;
+        font-weight: 800;
+        border-top: 0.125rem solid rgba(var(--accent-rgb, 59, 130, 246), 0.9);
+        border-color: rgba(var(--accent-rgb, 59, 130, 246), 0.75);
+        font-size: 0.82rem;
+    }
+    #modalSncMeses #sncMesesTabla tr.snc-total td.snc-mes {
+        color: #fff !important;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+    #modalSncMeses #sncMesesTabla tr.snc-total td.snc-dias,
+    #modalSncMeses #sncMesesTabla tr.snc-total td.snc-sal {
+        color: #fff !important;
+    }
+
+    /* Chips con los totales del año, debajo de la tabla. */
+    .snc-meses-resumen {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        justify-content: center;
+        padding: 0.6rem 0.75rem 0.7rem;
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.06);
+        border-top: 0.0625rem dashed var(--border, rgba(148, 163, 184, 0.35));
+    }
+    .snc-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 0.22rem 0.55rem;
+        border-radius: 62.4375rem;
+        white-space: nowrap;
+        color: var(--txt, #e2e8f0) !important;
+    }
+    .snc-chip i { font-size: 0.66rem; }
+    .snc-chip-dias {
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.14) !important;
+        border: 0.0625rem solid rgba(var(--accent-rgb, 59, 130, 246), 0.42);
+    }
+    .snc-chip-dias i {
+        color: var(--accent, #3b82f6);
+        color: color-mix(in srgb, var(--accent, #3b82f6) 78%, var(--txt, #e2e8f0));
+    }
+    .snc-chip-meses {
+        background: rgba(139, 92, 246, 0.14) !important;
+        border: 0.0625rem solid rgba(139, 92, 246, 0.42);
+    }
+    .snc-chip-meses i {
+        color: #8b5cf6;
+        color: color-mix(in srgb, #8b5cf6 78%, var(--txt, #e2e8f0));
+    }
+    .snc-chip-sal {
+        background: rgba(16, 185, 129, 0.14) !important;
+        border: 0.0625rem solid rgba(16, 185, 129, 0.42);
+    }
+    .snc-chip-sal i {
+        color: var(--green, #10b981);
+        color: color-mix(in srgb, var(--green, #10b981) 78%, var(--txt, #e2e8f0));
     }
 
     /* El modal de la tarjeta se ve entero en pantalla: su alto nunca pasa del
@@ -1592,14 +1838,13 @@ function formatFechaSNC(fecha) {
     return parts[2] + '/' + parts[1] + '/' + parts[0];
 }
 
-// Resumen por año del trabajador para la tarjeta: días trabajados y salario
-// devengado de cada año, con el mismo criterio del modelo SNC 2-25 (los días
-// salen de la nómina automática, horas / 8, y si el mes no tiene se toma el
-// mayor valor del mes; el salario suma todas las nóminas del mes). Respeta la
-// Fecha Final de Cálculo cuando está definida.
-function sncAniosTrabajador(id, corte) {
+// Nómina del trabajador agrupada por año y mes, con el mismo criterio del
+// modelo SNC 2-25: los días salen de la nómina automática (horas / 8; si el
+// mes no tiene días se toma el mayor valor del mes) y el salario suma todas
+// las nóminas del mes. Respeta la Fecha Final de Cálculo cuando está definida.
+function sncNominaPorAnioMes(id, corte) {
     var nominas = (window.SNC_FILTROS && SNC_FILTROS.nominas) ? SNC_FILTROS.nominas[id] : null;
-    if (!nominas || !nominas.length) return [];
+    if (!nominas || !nominas.length) return {};
     if (corte === undefined) {
         corte = $('#filtroFechaCalculo').val() || '';
     }
@@ -1619,17 +1864,60 @@ function sncAniosTrabajador(id, corte) {
         if (parseInt(n.t, 10) === 1) m.dias += dias;
         m.salario += parseFloat(n.dev) || 0;
     });
+    return porAnio;
+}
+
+// Días trabajados del mes con la regla del modelo (enteros).
+function sncDiasMesSNC(m) {
+    if (!m) return 0;
+    return Math.round(m.dias > 0 ? m.dias : m.diasMax);
+}
+
+// Resumen por año del trabajador para la tarjeta: días trabajados y salario
+// devengado de cada año.
+function sncAniosTrabajador(id, corte) {
+    var porAnio = sncNominaPorAnioMes(id, corte);
     var filas = [];
     Object.keys(porAnio).sort().forEach(function (anio) {
         var diasTot = 0, salarioTot = 0;
         Object.keys(porAnio[anio]).forEach(function (mes) {
             var m = porAnio[anio][mes];
-            diasTot += Math.round(m.dias > 0 ? m.dias : m.diasMax);
+            diasTot += sncDiasMesSNC(m);
             salarioTot += m.salario;
         });
         filas.push({ anio: anio, dias: diasTot, salario: salarioTot });
     });
     return filas;
+}
+
+// Doce meses de un año concreto (enero a diciembre), para la tabla que abre
+// el ojo de cada tarjeta de año. Los meses sin valores quedan marcados con
+// "////" igual que en el modelo.
+function sncMesesTrabajador(id, anio) {
+    var porAnio = sncNominaPorAnioMes(id);
+    var meses = porAnio[anio] || {};
+    var filas = [];
+    for (var m = 1; m <= 12; m++) {
+        var datos = meses[m];
+        var dias = sncDiasMesSNC(datos);
+        var salario = datos ? datos.salario : 0;
+        filas.push({
+            mes: m,
+            dias: dias,
+            salario: salario,
+            tiene: !!(dias > 0 || salario > 0)
+        });
+    }
+    return filas;
+}
+
+// Formato de importes de la tabla de meses: enteros con separador de miles y
+// los centavos siempre visibles.
+function sncMoney(v) {
+    return (parseFloat(v) || 0).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 var SNC_ANIOS_SELECCIONADOS = [];
@@ -1755,7 +2043,10 @@ function sncHtmlAniosTrabajador(id) {
     html += '<div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.6rem;">';
     filas.forEach(function (f) {
         html += '<div class="snc-anio-card" data-anio="' + escHtmlSNC(f.anio) + '" role="button" tabindex="0" aria-pressed="false" title="Seleccionar el año ' + escHtmlSNC(f.anio) + ' para emitir el reporte" style="border:0.0625rem solid rgba(96,165,250,0.25); border-radius:0.5rem; overflow:hidden; background:rgba(15,23,42,0.35); min-width:0;">';
-        html += '<div class="snc-anio-titulo" style="padding:0.25rem 0.5rem; text-align:center; font-weight:700; color:#60a5fa; background:rgba(96,165,250,0.12); font-size:0.78rem;">Año: ' + escHtmlSNC(f.anio) + '</div>';
+        html += '<div class="snc-anio-titulo" style="padding:0.25rem 0.5rem; text-align:center; font-weight:700; color:#60a5fa; background:rgba(96,165,250,0.12); font-size:0.78rem; display:flex; align-items:center; justify-content:center; gap:0.4rem;">';
+        html += '<span>Año: ' + escHtmlSNC(f.anio) + '</span>';
+        html += '<button type="button" class="snc-anio-ojo" data-anio="' + escHtmlSNC(f.anio) + '" title="Ver el año ' + escHtmlSNC(f.anio) + ' completo por meses" aria-label="Ver el año ' + escHtmlSNC(f.anio) + ' completo por meses" onclick="event.stopPropagation(); sncVerMesesAnio(this);"><i class="fas fa-eye"></i></button>';
+        html += '</div>';
         html += '<div style="display:grid; grid-template-columns:1fr 1fr;">';
         html += '<div style="padding:0.35rem 0.4rem; text-align:center; border-right:0.0625rem solid rgba(255,255,255,0.08);">';
         html += '<div style="font-size:0.62rem; text-transform:uppercase; color:rgba(255,255,255,0.5); line-height:1.2;">Días Trab.</div>';
@@ -1768,6 +2059,101 @@ function sncHtmlAniosTrabajador(id) {
     html += '</div></div></div>';
     return html;
 }
+
+// Tabla del año completo por meses, con el formato del modelo SNC: MESES a la
+// izquierda, "AÑO SELECC." con el año, y las columnas Días Trab. / Salario
+// Devengado. Los meses sin valores se sellan con "////" y al final va TOTAL.
+function sncHtmlTablaMeses(anio) {
+    var nombres = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO',
+                   'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+    var meses = sncMesesTrabajador(window.SNC_TRABAJADOR_ID, anio);
+    var diasTot = 0, salarioTot = 0, mesesConDatos = 0;
+
+    var filas = '';
+    meses.forEach(function (f) {
+        var vacio = !f.tiene;
+        if (!vacio) {
+            diasTot += f.dias;
+            salarioTot += f.salario;
+            mesesConDatos++;
+        }
+        filas += '<tr>'
+            + '<td class="snc-mes">' + nombres[f.mes - 1] + '</td>'
+            + '<td class="snc-val snc-dias' + (vacio ? ' snc-vacio' : '') + '">' + (vacio ? '////' : f.dias) + '</td>'
+            + '<td class="snc-val snc-sal' + (vacio ? ' snc-vacio' : '') + '">' + (vacio ? '////' : sncMoney(f.salario)) + '</td>'
+            + '</tr>';
+    });
+
+    filas += '<tr class="snc-total">'
+        + '<td class="snc-mes">TOTAL</td>'
+        + '<td class="snc-val snc-dias">' + diasTot + '</td>'
+        + '<td class="snc-val snc-sal">' + sncMoney(salarioTot) + '</td>'
+        + '</tr>';
+
+    return '<div class="snc-meses-subtitulo">'
+        + '<i class="fas fa-table-list"></i>Días trabajados y salario devengado de cada mes del año <strong>' + escHtmlSNC(anio) + '</strong>'
+        + '</div>'
+        + '<div class="snc-meses-card">'
+        + '<div class="snc-meses-top"></div>'
+        + '<table id="sncMesesTabla">'
+        + '<colgroup><col style="width:42%;"><col style="width:22%;"><col style="width:36%;"></colgroup>'
+        + '<thead>'
+        + '<tr><th rowspan="3" class="snc-meses-th">MESES</th><th colspan="2" class="snc-anio-label">AÑO SELECC.</th></tr>'
+        + '<tr><th colspan="2" class="snc-anio-th">' + escHtmlSNC(anio) + '</th></tr>'
+        + '<tr><th class="snc-col-th">Días Trab.</th><th class="snc-col-th">Salario Devengado</th></tr>'
+        + '</thead><tbody>' + filas + '</tbody></table>'
+        + '<div class="snc-meses-resumen">'
+        + '<span class="snc-chip snc-chip-dias"><i class="fas fa-business-time"></i>' + diasTot + ' días</span>'
+        + '<span class="snc-chip snc-chip-meses"><i class="fas fa-calendar-check"></i>' + mesesConDatos + ' de 12 meses</span>'
+        + '<span class="snc-chip snc-chip-sal"><i class="fas fa-coins"></i>$' + sncMoney(salarioTot) + '</span>'
+        + '</div></div>';
+}
+
+// Abre el modal con el año completo por meses desde el ojo de una tarjeta.
+// La tarjeta se oculta mientras está abierto y se vuelve a mostrar al cerrar
+// (así no se apilan dos modales de Bootstrap y la selección no se pierde).
+function sncVerMesesAnio(origen) {
+    var card = origen && origen.closest ? origen.closest('.snc-anio-card') : null;
+    var anio = card ? (card.getAttribute('data-anio') || '') : (origen ? (origen.getAttribute('data-anio') || '') : '');
+    if (!anio || !window.SNC_TRABAJADOR_ID) return;
+
+    var titulo = document.getElementById('sncMesesTitulo');
+    if (titulo) {
+        titulo.textContent = 'Año ' + anio + ' — ' + (window.SNC_TRABAJADOR_NOMBRE || '');
+    }
+
+    var abrir = function () {
+        var cuerpo = document.getElementById('sncMesesBody');
+        if (cuerpo) cuerpo.innerHTML = sncHtmlTablaMeses(anio);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSncMeses')).show();
+    };
+
+    var tarjeta = document.getElementById('modalTarjeta');
+    var instancia = tarjeta ? bootstrap.Modal.getInstance(tarjeta) : null;
+    window.SNC_MESES_VOLVER_TARJETA = !!(tarjeta && instancia && tarjeta.classList.contains('show'));
+
+    if (window.SNC_MESES_VOLVER_TARJETA) {
+        tarjeta.addEventListener('hidden.bs.modal', function alOcultar() {
+            tarjeta.removeEventListener('hidden.bs.modal', alOcultar);
+            abrir();
+        });
+        instancia.hide();
+    } else {
+        abrir();
+    }
+}
+
+// Al cerrar el modal de meses se vuelve a la tarjeta del trabajador.
+(function () {
+    var modalMeses = document.getElementById('modalSncMeses');
+    if (!modalMeses) return;
+    modalMeses.addEventListener('hidden.bs.modal', function () {
+        if (!window.SNC_MESES_VOLVER_TARJETA) return;
+        window.SNC_MESES_VOLVER_TARJETA = false;
+        var tarjeta = document.getElementById('modalTarjeta');
+        if (tarjeta) bootstrap.Modal.getOrCreateInstance(tarjeta).show();
+    });
+})();
 
 function abrirTarjeta(data) {
     // Se recuerda el trabajador abierto: el reporte oficial se genera en el
@@ -1846,6 +2232,7 @@ function abrirTarjeta(data) {
         (function (card) {
             card.addEventListener('click', function () { sncSeleccionarAnio(card); });
             card.addEventListener('keydown', function (ev) {
+                if (ev.target !== card) return; // el ojo tiene su propio foco
                 if (ev.key === 'Enter' || ev.key === ' ') {
                     ev.preventDefault();
                     sncSeleccionarAnio(card);
