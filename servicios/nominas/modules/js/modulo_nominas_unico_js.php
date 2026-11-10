@@ -9100,85 +9100,448 @@ backdrop: 'rgba(0,0,0,0.6)'
         return html;
     }
 
+    // ---------- Reporte formal (logotipo, encabezado y pie de firmas) ----------
+    // Igual al formato que usan Imprimir / PDF / Word del modal
+    // "Trabajadores Sin Nómina": cabecera con logotipo, datos de emisión,
+    // tabla con totales y bloque de firmas al pie.
+    var HE_LOGO = (typeof SIN_NOMINA_LOGO !== 'undefined') ? SIN_NOMINA_LOGO : '';
+    var HE_JEFE = (typeof SIN_NOMINA_JEFE !== 'undefined') ? SIN_NOMINA_JEFE : '';
+    var HE_ESP_GESTION = (typeof SIN_NOMINA_ESP_GESTION !== 'undefined') ? SIN_NOMINA_ESP_GESTION : '';
+    var HE_ESP_RRHH = (typeof SIN_NOMINA_ESP_RRHH !== 'undefined') ? SIN_NOMINA_ESP_RRHH : '';
+
+    var HE_REPORTE_CSS = (typeof SIN_NOMINA_PRINT_CSS !== 'undefined' ? SIN_NOMINA_PRINT_CSS : '')
+        + '#he-reporte, #hePdfRender .he-pagina { color: #000; background: #fff; }'
+        + '#he-reporte .sn-tabla th, #he-reporte .sn-tabla td { font-size: 7pt; padding: 0.0625rem 0.125rem; }'
+        + '#he-reporte .sn-tabla th { font-size: 7pt; }'
+        + '#he-reporte .he-pie { margin-top: 0.375rem; font-size: 7pt; color: #555; text-align: center; }'
+        + '#he-reporte .he-pagina-num { font-size: 7pt; color: #555; text-align: right; margin-top: 0.25rem; }';
+
+    function heFechaHoraReporte() {
+        return new Date().toLocaleString('es-ES', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+        });
+    }
+
+    function heAlineacionCol(i) {
+        if (i === 0 || (i >= 6 && i <= 8)) { return 'right'; }
+        if (i === 4 || i === 5 || (i >= 9 && i <= 13)) { return 'center'; }
+        return 'left';
+    }
+
+    function heCabeceraReporte() {
+        return '<table class="sn-cabecera" cellspacing="0" cellpadding="0"><tr>'
+            + '<td class="sn-cabecera-logo">' + (HE_LOGO ? '<img src="' + HE_LOGO + '" alt="Logo">' : '') + '</td>'
+            + '<td class="sn-cabecera-titulo">'
+            +   '<div class="sn-empresa">' + escHe(HE_EMPRESA) + '</div>'
+            +   '<div class="sn-titulo">HORAS EXTRAORDINARIAS ANUALES</div>'
+            +   '<div class="sn-alcance">' + escHe(HE_EMPRESA) + ' - Período: Año ' + heAnioSeleccionado()
+            +   ' · ' + escHe(heNombreMes()) + ' · Tope de referencia: ' + heAnualesTope + ' h</div>'
+            + '</td>'
+            + '<td class="sn-cabecera-datos">'
+            +   '<strong>Emisión:</strong> ' + escHe(heFechaHoraReporte()) + '<br>'
+            +   '<strong>Generado por:</strong> ' + escHe(HE_USUARIO) + '<br>'
+            +   '<strong>Total de trabajadores:</strong> <span class="sn-total">' + heAnualesVisibles.length + '</span><br>'
+            +   '<strong>Total del año:</strong> <span class="sn-total">' + fmtHe(heTotales.anio) + ' h</span>'
+            + '</td>'
+            + '</tr></table>';
+    }
+
+    function heEncabezadoTablaReporte() {
+        var cols = heColumnas(true);
+        var html = '<thead><tr>';
+        $.each(cols, function(i, c) {
+            html += '<th style="text-align:' + heAlineacionCol(i) + ';">' + (i === 6 ? c : escHe(c)) + '</th>';
+        });
+        return html + '</tr></thead>';
+    }
+
+    function heFilaReporteHtml(t, i) {
+        var fila = heFilaTexto(t, i);
+        var html = '<tr>';
+        $.each(fila, function(j, c) {
+            html += '<td style="text-align:' + heAlineacionCol(j) + ';">' + escHe(c) + '</td>';
+        });
+        return html + '</tr>';
+    }
+
+    function heTotalesReporteHtml() {
+        var conMes = heMesEspecifico();
+        var pct = fmtPct(heAnualesTope > 0 && heAnualesVisibles.length > 0
+            ? (heTotales.anio / (heAnualesVisibles.length * heAnualesTope) * 100) : 0);
+        return '<tfoot><tr class="sn-total-fila">'
+            + '<td style="text-align:center;">TOTAL GENERAL</td>'
+            + '<td colspan="8" style="text-align:center;">' + escHe(heResumenStats()) + '</td>'
+            + '<td style="text-align:center;">' + (conMes ? fmtHe(heTotales.mes) : '—') + '</td>'
+            + '<td style="text-align:center;">' + fmtHe(heTotales.he) + '</td>'
+            + '<td style="text-align:center;">' + fmtHe(heTotales.dt) + '</td>'
+            + '<td style="text-align:center;">' + fmtHe(heTotales.anio) + '</td>'
+            + '<td style="text-align:center;">' + pct + '%</td>'
+            + '<td></td></tr></tfoot>';
+    }
+
+    function heFirmasReporteHtml() {
+        var firmas = [
+            ['Elaborado por:', HE_ESP_RRHH || HE_USUARIO, 'Especialista de Recursos Humanos'],
+            ['Revisado por:', HE_ESP_GESTION, 'Especialista en Gestión Económica'],
+            ['Aprobado por:', HE_JEFE, 'Director de Proyecto']
+        ];
+        var html = '<div class="sn-firmas"><table class="sn-firmas-tabla"><tr>';
+        $.each(firmas, function(i, f) {
+            html += '<td>'
+                + '<p class="sn-firma-label">' + escHe(f[0]) + '</p>'
+                + '<p class="sn-firma-linea"></p>'
+                + '<p class="sn-firma-cargo">' + escHe(f[1] || '') + '</p>'
+                + '<p class="sn-firma-subcargo">' + escHe(f[2]) + '</p>'
+                + '</td>';
+        });
+        html += '</tr></table></div>';
+        html += '<p class="he-pie">Generado: ' + escHe(heFechaHoraReporte()) + ' · ' + escHe(HE_USUARIO)
+             + ' · FIN DEL REPORTE - ' + escHe(HE_EMPRESA) + '</p>';
+        return html;
+    }
+
+    function heReporteCuerpo() {
+        var html = '<div id="he-reporte">' + heCabeceraReporte()
+            + '<table class="sn-tabla">' + heEncabezadoTablaReporte() + '<tbody>';
+        $.each(heAnualesVisibles, function(i, t) { html += heFilaReporteHtml(t, i); });
+        html += '</tbody>' + heTotalesReporteHtml() + '</table>' + heFirmasReporteHtml();
+        return html + '</div>';
+    }
+
+    // CSS compatible con Word (unidades pt y sin @page landscape de navegador).
+    var HE_REPORTE_CSS_WORD = '@page WordSection1 { size: 792pt 612pt; margin: 0.4in; }'
+        + 'div.WordSection1 { page: WordSection1; }'
+        + 'body { font-family: Calibri, Arial, sans-serif; font-size: 8pt; color: #000; }'
+        + 'table { border-collapse: collapse; width: 100%; }'
+        + '.sn-cabecera { width: 100%; border-bottom: 2pt solid #b91c1c; margin-bottom: 6pt; }'
+        + '.sn-cabecera-logo { width: 60pt; vertical-align: middle; }'
+        + '.sn-cabecera-logo img { width: 52pt; height: 52pt; }'
+        + '.sn-cabecera-titulo { text-align: center; vertical-align: middle; }'
+        + '.sn-empresa { font-size: 16pt; font-weight: bold; color: #1f2937; }'
+        + '.sn-titulo { font-size: 13pt; font-weight: bold; color: #b91c1c; }'
+        + '.sn-alcance { font-size: 8pt; color: #444; }'
+        + '.sn-cabecera-datos { font-size: 8pt; text-align: right; vertical-align: middle; }'
+        + '.sn-total { font-weight: bold; color: #b91c1c; }'
+        + '.sn-tabla th { background: #b91c1c; color: #fff; border: 1pt solid #000; padding: 1pt 2pt; font-size: 7pt; }'
+        + '.sn-tabla td { border: 1pt solid #666; padding: 1pt 2pt; font-size: 7pt; }'
+        + '.sn-total-fila td { border-top: 2pt solid #000; background: #fed7d7; font-weight: bold; }'
+        + '.sn-firmas { margin-top: 18pt; }'
+        + '.sn-firmas-tabla td { text-align: center; vertical-align: top; padding: 4pt; width: 33%; }'
+        + '.sn-firma-label { font-size: 9pt; font-weight: bold; margin: 0 0 3pt; }'
+        + '.sn-firma-linea { border-bottom: 1pt solid #000; height: 14pt; margin: 0 8pt; }'
+        + '.sn-firma-cargo { font-size: 10pt; font-weight: bold; margin: 3pt 0 0; }'
+        + '.sn-firma-subcargo { font-size: 8pt; color: #444; margin: 0; }'
+        + '.he-pie { font-size: 7pt; color: #555; text-align: center; margin-top: 6pt; }';
+
+    // Hoja Excel (.xls HTML) con el mismo encabezado y pie de firmas del
+    // reporte de impresión / PDF / Word.
+    function heExcelHtml() {
+        var cols = heColumnas(true);
+        var conMes = heMesEspecifico();
+        var pct = fmtPct(heAnualesTope > 0 && heAnualesVisibles.length > 0
+            ? (heTotales.anio / (heAnualesVisibles.length * heAnualesTope) * 100) : 0);
+        var borde = 'border:1px solid #7f1d1d;';
+
+        var html = '<table style="border-collapse:collapse; font-family:Arial,Helvetica,sans-serif; font-size:8pt; color:#000;">';
+
+        // Cabecera con logotipo
+        html += '<tr style="height:26px;">'
+            + '<td colspan="3" rowspan="3" style="border:none; text-align:left; vertical-align:middle;">'
+            + (HE_LOGO ? '<img src="' + HE_LOGO + '" width="58" height="55" alt="Logo">' : '') + '</td>'
+            + '<td colspan="9" style="border:none; text-align:center; font-size:16pt; font-weight:bold;">' + escHe(HE_EMPRESA) + '</td>'
+            + '<td colspan="3" style="border:none; text-align:right; font-size:8pt;"><strong>Emisión:</strong> ' + escHe(heFechaHoraReporte()) + '</td>'
+            + '</tr>'
+            + '<tr>'
+            + '<td colspan="9" style="border:none; text-align:center; font-size:12pt; font-weight:bold; color:#b91c1c;">HORAS EXTRAORDINARIAS ANUALES</td>'
+            + '<td colspan="3" style="border:none; text-align:right; font-size:8pt;"><strong>Generado por:</strong> ' + escHe(HE_USUARIO) + '</td>'
+            + '</tr>'
+            + '<tr>'
+            + '<td colspan="9" style="border:none; text-align:center; font-size:8pt; color:#444;">' + escHe(HE_EMPRESA)
+            + ' - Período: Año ' + heAnioSeleccionado() + ' · ' + escHe(heNombreMes()) + ' · Tope: ' + heAnualesTope + ' h</td>'
+            + '<td colspan="3" style="border:none; text-align:right; font-size:8pt;"><strong>Trabajadores:</strong> ' + heAnualesVisibles.length
+            + '<br><strong>Total año:</strong> ' + fmtHe(heTotales.anio) + ' h</td>'
+            + '</tr>'
+            + '<tr><td colspan="15" style="border:none; height:6px;"></td></tr>';
+
+        // Encabezados de la tabla
+        html += '<tr>';
+        $.each(cols, function(i, c) {
+            html += '<th style="' + borde + ' background:#b91c1c; color:#fff; font-weight:bold; text-align:center; padding:2px 4px; font-size:8pt;">'
+                + (i === 6 ? c : escHe(c)) + '</th>';
+        });
+        html += '</tr>';
+
+        // Filas
+        $.each(heAnualesVisibles, function(i, t) {
+            var fila = heFilaTexto(t, i);
+            html += '<tr>';
+            $.each(fila, function(j, c) {
+                html += '<td style="border:1px solid #999; padding:1px 4px; text-align:' + heAlineacionCol(j) + ';">' + escHe(c) + '</td>';
+            });
+            html += '</tr>';
+        });
+
+        // Total general
+        html += '<tr style="background:#fed7d7; font-weight:bold;">'
+            + '<td style="' + borde + ' text-align:center;">TOTAL GENERAL</td>'
+            + '<td colspan="8" style="' + borde + ' text-align:center;">' + escHe(heResumenStats()) + '</td>'
+            + '<td style="' + borde + ' text-align:center;">' + (conMes ? fmtHe(heTotales.mes) : '—') + '</td>'
+            + '<td style="' + borde + ' text-align:center;">' + fmtHe(heTotales.he) + '</td>'
+            + '<td style="' + borde + ' text-align:center;">' + fmtHe(heTotales.dt) + '</td>'
+            + '<td style="' + borde + ' text-align:center;">' + fmtHe(heTotales.anio) + '</td>'
+            + '<td style="' + borde + ' text-align:center;">' + pct + '%</td>'
+            + '<td style="' + borde + '"></td></tr>';
+
+        // Pie de firmas
+        html += '<tr><td colspan="15" style="border:none; height:20px;"></td></tr>'
+            + '<tr>'
+            + '<td colspan="5" style="border:none; text-align:center; font-weight:bold; font-size:9pt;">Elaborado por:</td>'
+            + '<td colspan="5" style="border:none; text-align:center; font-weight:bold; font-size:9pt;">Revisado por:</td>'
+            + '<td colspan="5" style="border:none; text-align:center; font-weight:bold; font-size:9pt;">Aprobado por:</td>'
+            + '</tr>'
+            + '<tr style="height:26px;">'
+            + '<td colspan="5" style="border:none; border-bottom:1px solid #000;"></td>'
+            + '<td colspan="5" style="border:none; border-bottom:1px solid #000;"></td>'
+            + '<td colspan="5" style="border:none; border-bottom:1px solid #000;"></td>'
+            + '</tr>'
+            + '<tr>'
+            + '<td colspan="5" style="border:none; text-align:center; font-weight:bold; font-size:9pt;">' + escHe(HE_ESP_RRHH || HE_USUARIO) + '</td>'
+            + '<td colspan="5" style="border:none; text-align:center; font-weight:bold; font-size:9pt;">' + escHe(HE_ESP_GESTION) + '</td>'
+            + '<td colspan="5" style="border:none; text-align:center; font-weight:bold; font-size:9pt;">' + escHe(HE_JEFE) + '</td>'
+            + '</tr>'
+            + '<tr>'
+            + '<td colspan="5" style="border:none; text-align:center; font-size:7pt; color:#444;">Especialista de Recursos Humanos</td>'
+            + '<td colspan="5" style="border:none; text-align:center; font-size:7pt; color:#444;">Especialista en Gestión Económica</td>'
+            + '<td colspan="5" style="border:none; text-align:center; font-size:7pt; color:#444;">Director de Proyecto</td>'
+            + '</tr>'
+            + '<tr><td colspan="15" style="border:none; height:16px;"></td></tr>'
+            + '<tr><td colspan="15" style="border:none; text-align:center; font-weight:bold; font-size:8pt;">FIN DEL REPORTE - ' + escHe(HE_EMPRESA) + '</td></tr>';
+
+        return html + '</table>';
+    }
+
+    function heExportarWord() {
+        var base = heArchivoBase();
+        var doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" '
+            + 'xmlns:w="urn:schemas-microsoft-com:office:word" '
+            + 'xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8">'
+            + '<title>Horas Extraordinarias Anuales</title>'
+            + '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View>'
+            + '<w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->'
+            + '<style>' + HE_REPORTE_CSS_WORD + '</style></head><body>'
+            + '<div class="WordSection1">' + heReporteCuerpo() + '</div></body></html>';
+        heDescargar(doc, base + '.doc', 'application/msword;charset=utf-8;');
+        heAvisoExito(base + '.doc', heAnualesVisibles.length);
+    }
+
+    // Reparte las filas en páginas sin cortar ninguna, midiendo el alto real.
+    function hePdfPaginas(anchoPx, altoPx) {
+        var medidor = document.createElement('div');
+        medidor.style.cssText = 'position:fixed;left:-20000px;top:0;width:' + anchoPx + 'px;background:#fff;';
+        medidor.innerHTML = '<style>' + HE_REPORTE_CSS + '</style>' + heReporteCuerpo();
+        document.body.appendChild(medidor);
+
+        var root = medidor.querySelector('#he-reporte');
+        var cab = root.querySelector('.sn-cabecera');
+        var tabla = root.querySelector('.sn-tabla');
+        var thead = tabla.querySelector('thead');
+        var filas = Array.prototype.slice.call(tabla.querySelectorAll('tbody tr'));
+        var tfoot = tabla.querySelector('tfoot');
+        var firmas = root.querySelector('.sn-firmas');
+
+        var altoCab = cab.offsetHeight;
+        var altoHead = thead.offsetHeight;
+        var altoFila = filas.map(function(f) { return f.offsetHeight || 12; });
+        var altoTot = tfoot ? tfoot.offsetHeight : 0;
+        var altoPie = 32; // pie de página: Página X de Y (izq.) y Generado (der.)
+        var altoFirmas = (firmas ? firmas.offsetHeight : 0) + 10;
+        var disponible = altoPx - altoCab - altoHead - 16 - altoPie;
+
+        var grupos = [];
+        var actual = [];
+        var usado = 0;
+        for (var i = 0; i < filas.length; i++) {
+            if (actual.length && usado + altoFila[i] > disponible) {
+                grupos.push(actual); actual = []; usado = 0;
+            }
+            actual.push(i); usado += altoFila[i];
+        }
+        grupos.push(actual);
+
+        var ultimo = grupos[grupos.length - 1];
+        var altoUltimo = 0;
+        for (var k = 0; k < ultimo.length; k++) { altoUltimo += altoFila[ultimo[k]]; }
+        if (altoUltimo + altoTot + altoFirmas > disponible) { grupos.push([]); }
+
+        var totalPag = grupos.length;
+        var fechaGen = heFechaHoraReporte();
+        var html = '';
+        for (var p = 0; p < totalPag; p++) {
+            var esUltima = (p === totalPag - 1);
+            html += '<div class="he-pagina">' + cab.outerHTML
+                + '<table class="sn-tabla">' + thead.outerHTML + '<tbody>';
+            for (var j = 0; j < grupos[p].length; j++) {
+                html += filas[grupos[p][j]].outerHTML;
+            }
+            html += '</tbody>';
+            if (esUltima) { html += tfoot.outerHTML; }
+            html += '</table>';
+            if (esUltima) { html += firmas.outerHTML; }
+            // Pie de página: número de página a la izquierda y "Generado:" a la derecha.
+            html += '<table style="width:100%; border-collapse:collapse; margin-top:6pt;"><tr>'
+                + '<td style="text-align:left; font-family:Arial,Helvetica,sans-serif; font-size:12pt; color:#000;">Página ' + (p + 1) + ' de ' + totalPag + '</td>'
+                + '<td style="text-align:right; font-family:Arial,Helvetica,sans-serif; font-size:12pt; color:#000;">Generado: ' + escHe(fechaGen) + ' · ' + escHe(HE_USUARIO) + '</td>'
+                + '</tr></table>';
+            html += '</div>';
+        }
+        document.body.removeChild(medidor);
+        return html;
+    }
+
+    function heExportarPdf() {
+        if (heAnualesVisibles.length === 0) { heAvisoVacio(); return; }
+        if (!window.html2canvas || !window.jspdf) { heImprimir(); return; }
+
+        var base = heArchivoBase();
+        var anchoPx = 1008;   // 10.5 in útiles a 96 dpi
+        var altoPx = 768;     // 8 in útiles a 96 dpi
+        var cont = document.createElement('div');
+        cont.id = 'hePdfRender';
+        cont.style.cssText = 'position:fixed;left:-20000px;top:0;width:' + anchoPx + 'px;background:#fff;';
+        cont.innerHTML = '<style>' + HE_REPORTE_CSS
+            + ' #hePdfRender .he-pagina { width:' + anchoPx + 'px; background:#fff; margin:0; padding:0; }'
+            + '</style>' + hePdfPaginas(anchoPx, altoPx);
+        document.body.appendChild(cont);
+
+        Swal.fire({
+            title: 'Generando PDF',
+            html: '<div class="d-flex flex-column align-items-center gap-2">'
+                + '<div class="spinner-border text-info" role="status" style="width:2.5rem;height:2.5rem;"></div>'
+                + '<div>Horas Extraordinarias Anuales</div></div>',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            background: '#1a1a2e',
+            color: '#ffffff'
+        });
+
+        var pdf = new window.jspdf.jsPDF({ unit: 'in', format: 'letter', orientation: 'landscape', compress: true });
+        var mIzq = 0.25, mDer = 0.25, mSup = 0.25, mInf = 0.25;
+        var anchoUtil = 11 - mIzq - mDer;
+        var altoUtil = 8.5 - mSup - mInf;
+        var nodos = Array.prototype.slice.call(cont.querySelectorAll('.he-pagina'));
+        var idx = 0;
+
+        function siguiente() {
+            if (idx >= nodos.length) {
+                pdf.save(base + '.pdf');
+                document.body.removeChild(cont);
+                Swal.close();
+                heAvisoExito(base + '.pdf', heAnualesVisibles.length);
+                return;
+            }
+            window.html2canvas(nodos[idx], { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+                .then(function(canvas) {
+                    if (idx > 0) { pdf.addPage('letter', 'landscape'); }
+                    var w = anchoUtil;
+                    var h = w * canvas.height / canvas.width;
+                    if (h > altoUtil) { h = altoUtil; w = h * canvas.width / canvas.height; }
+                    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG',
+                        mIzq + (anchoUtil - w) / 2, mSup, w, h);
+                    idx++;
+                    siguiente();
+                })
+                .catch(function() {
+                    document.body.removeChild(cont);
+                    Swal.close();
+                    heImprimir();
+                });
+        }
+        siguiente();
+    }
+
+    // Contenido de los exportados CSV / TXT: encabezado, tabla, totales y pie
+    // de firmas, igual que el resto de los reportes.
+    function heCampoCsv(v) {
+        var s = String(v == null ? '' : v);
+        if (/[",\r\n]/.test(s)) { s = '"' + s.replace(/"/g, '""') + '"'; }
+        return s;
+    }
+
+    function heContenidoLineal(separador, esCsv) {
+        var fmt = esCsv ? heCampoCsv : function(v) { return String(v == null ? '' : v); };
+        var linea = function(arr) { return arr.map(fmt).join(separador); };
+        var conMes = heMesEspecifico();
+        var pct = fmtPct(heAnualesTope > 0 && heAnualesVisibles.length > 0
+            ? (heTotales.anio / (heAnualesVisibles.length * heAnualesTope) * 100) : 0);
+        var lineas = [];
+
+        // Encabezado
+        lineas.push(linea(['Empresa', HE_EMPRESA]));
+        lineas.push(linea(['Reporte', 'HORAS EXTRAORDINARIAS ANUALES']));
+        lineas.push(linea(['Período', 'Año ' + heAnioSeleccionado() + ' · ' + heNombreMes()]));
+        lineas.push(linea(['Tope de referencia', heAnualesTope + ' h']));
+        lineas.push(linea(['Emisión', heFechaHoraReporte()]));
+        lineas.push(linea(['Generado por', HE_USUARIO]));
+        lineas.push(linea(['Total de trabajadores', heAnualesVisibles.length]));
+        lineas.push(linea(['Total del año', fmtHe(heTotales.anio) + ' h']));
+        lineas.push(linea([]));
+
+        // Tabla
+        lineas.push(linea(heColumnas()));
+        $.each(heAnualesVisibles, function(i, t) { lineas.push(linea(heFilaTexto(t, i))); });
+
+        // Total general (mismas 15 columnas de la tabla)
+        lineas.push(linea(['TOTAL GENERAL', heResumenStats(), '', '', '', '', '', '', '',
+            conMes ? fmtHe(heTotales.mes) : '—', fmtHe(heTotales.he), fmtHe(heTotales.dt),
+            fmtHe(heTotales.anio), pct + '%', '']));
+        lineas.push(linea([]));
+
+        // Pie de firmas
+        lineas.push(linea(['Elaborado por', HE_ESP_RRHH || HE_USUARIO, 'Especialista de Recursos Humanos']));
+        lineas.push(linea(['Revisado por', HE_ESP_GESTION, 'Especialista en Gestión Económica']));
+        lineas.push(linea(['Aprobado por', HE_JEFE, 'Director de Proyecto']));
+        lineas.push(linea([]));
+        lineas.push(linea(['FIN DEL REPORTE', HE_EMPRESA]));
+        return lineas.join('\r\n');
+    }
+
     function heExportar(formato) {
         if (heAnualesVisibles.length === 0) { heAvisoVacio(); return; }
         var base = heArchivoBase();
         var registros = heAnualesVisibles.length;
 
         if (formato === 'csv' || formato === 'txt') {
-            var separador = formato === 'csv' ? ';' : ' | ';
-            var lineas = [heColumnas().join(separador)];
-            $.each(heAnualesVisibles, function(i, t) { lineas.push(heFilaTexto(t, i).join(separador)); });
-            lineas.push(heTotalesTexto().join(separador));
+            var esCsv = (formato === 'csv');
+            var contenido = heContenidoLineal(esCsv ? ',' : ' | ', esCsv);
             var nombre = base + '.' + formato;
-            heDescargar(lineas.join('\r\n'), nombre,
-                formato === 'csv' ? 'text/csv;charset=utf-8;' : 'text/plain;charset=utf-8;');
+            heDescargar(contenido, nombre,
+                esCsv ? 'text/csv;charset=utf-8;' : 'text/plain;charset=utf-8;');
             heAvisoExito(nombre, registros);
             return;
         }
 
-        if (formato === 'excel' || formato === 'word') {
-            var esExcel = formato === 'excel';
-            var cuerpo = heTablaHtml(false, esExcel);
-            var doc;
-            if (esExcel) {
-                doc = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
-                    + '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>'
-                    + '<x:ExcelWorksheet><x:Name>HE Anuales</x:Name>'
-                    + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'
-                    + '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'
-                    + cuerpo + '</body></html>';
-            } else {
-                doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" '
-                    + 'xmlns:w="urn:schemas-microsoft-com:office:word" '
-                    + 'xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8">'
-                    + '<title>Horas Extraordinarias Anuales</title>'
-                    + '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View>'
-                    + '<w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--></head><body>'
-                    + cuerpo + '</body></html>';
-            }
-            var nombre = base + (esExcel ? '.xls' : '.doc');
-            heDescargar(doc, nombre,
-                esExcel ? 'application/vnd.ms-excel;charset=utf-8;' : 'application/msword;charset=utf-8;');
+        if (formato === 'excel') {
+            var doc = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
+                + '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>'
+                + '<x:ExcelWorksheet><x:Name>HE Anuales</x:Name>'
+                + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'
+                + '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
+                + '</head><body>' + heExcelHtml() + '</body></html>';
+            var nombre = base + '.xls';
+            heDescargar(doc, nombre, 'application/vnd.ms-excel;charset=utf-8;');
             heAvisoExito(nombre, registros);
+            return;
+        }
+
+        if (formato === 'word') {
+            heExportarWord();
             return;
         }
 
         if (formato === 'pdf') {
-            var cuerpo = [heColumnas()];
-            $.each(heAnualesVisibles, function(i, t) { cuerpo.push(heFilaTexto(t, i)); });
-            var ft = heTotalesTexto();
-            var filaTotal = [
-                { text: ft[0], alignment: 'center', bold: true },
-                { text: ft[1], colSpan: 8, alignment: 'center', bold: true },
-                {}, {}, {}, {}, {}, {}, {}
-            ];
-            for (var k = 9; k <= 14; k++) {
-                filaTotal.push({ text: ft[k], alignment: (k >= 9 && k <= 13) ? 'center' : 'left', bold: true });
-            }
-            cuerpo.push(filaTotal);
-            pdfMake.createPdf({
-                pageOrientation: 'landscape',
-                pageSize: 'A4',
-                content: [
-                    { text: 'Horas Extraordinarias Anuales', fontSize: 14, bold: true },
-                    { text: HE_EMPRESA, fontSize: 10 },
-                    { text: 'Año ' + heAnioSeleccionado() + ' · ' + heNombreMes()
-                            + ' · Trabajadores con horas > 0 · tope ' + heAnualesTope + ' h',
-                      fontSize: 10, margin: [0, 0, 0, 8] },
-                    { table: { headerRows: 1, widths: ['auto', 'auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'], body: cuerpo,
-                               columnStyles: {
-                                   4: { alignment: 'center' }, 5: { alignment: 'center' },
-                                   6: { alignment: 'right' }, 7: { alignment: 'right' }, 8: { alignment: 'right' },
-                                   9: { alignment: 'center' }, 10: { alignment: 'center' }, 11: { alignment: 'center' },
-                                   12: { alignment: 'center' }, 13: { alignment: 'center' }
-                               } },
-                      layout: 'grid' },
-                    { text: 'Generado: ' + new Date().toLocaleString() + ' · ' + HE_USUARIO, fontSize: 8, margin: [0, 6, 0, 0] }
-                ],
-                defaultStyle: { fontSize: 8 }
-            }).download(base + '.pdf');
-            heAvisoExito(base + '.pdf', registros);
+            heExportarPdf();
             return;
         }
     }
@@ -9199,8 +9562,9 @@ backdrop: 'rgba(0,0,0,0.6)'
             return;
         }
         w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
-            + '<title>Horas Extraordinarias Anuales · ' + heAnioSeleccionado() + '</title></head><body>'
-            + heTablaHtml(true) + '</body></html>');
+            + '<title>Horas Extraordinarias Anuales · ' + heAnioSeleccionado() + '</title>'
+            + '<style>' + HE_REPORTE_CSS + '</style></head><body>'
+            + PRINT_TOOLBAR_HTML + heReporteCuerpo() + '</body></html>');
         w.document.close();
         w.focus();
         setTimeout(function() { w.print(); }, 500);
