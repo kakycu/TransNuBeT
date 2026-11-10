@@ -4,7 +4,8 @@
     "type": "project",
     "require": {
         "phpoffice/phpspreadsheet": "^5.7",
-        "phpmailer/phpmailer": "^7.1"
+        "phpmailer/phpmailer": "^7.1",
+        "phpoffice/phpword": "^1.4"
     },
     "config": {
         "vendor-dir": "vendor"

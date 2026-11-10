@@ -138,13 +138,22 @@ unset($t);
 
 $total = count($trabajadores);
 
-$stNominasDet = $pdo->query("SELECT trabajador_id, periodo_hasta, total_salario_devengado FROM nominas WHERE total_salario_devengado > 0 ORDER BY trabajador_id, periodo_hasta");
+// Detalle de nóminas por trabajador. Además del período y lo devengado se
+// envían las horas y el tipo de nómina: la tarjeta los usa para mostrar el
+// resumen por año (días trabajados y salario) con el mismo criterio del
+// modelo SNC 2-25 que se imprime y exporta.
+$stNominasDet = $pdo->query("SELECT trabajador_id, periodo_hasta, total_salario_devengado, horas_laboradas, tipo_nomina FROM nominas WHERE total_salario_devengado > 0 ORDER BY trabajador_id, periodo_hasta");
 $nominasDetalle = $stNominasDet->fetchAll(PDO::FETCH_ASSOC);
 $nominasPorTrabajador = [];
 foreach ($nominasDetalle as $nd) {
     $nid = $nd['trabajador_id'];
     if (!isset($nominasPorTrabajador[$nid])) $nominasPorTrabajador[$nid] = [];
-    $nominasPorTrabajador[$nid][] = ['ph' => $nd['periodo_hasta'], 'dev' => (float)$nd['total_salario_devengado']];
+    $nominasPorTrabajador[$nid][] = [
+        'ph'  => $nd['periodo_hasta'],
+        'dev' => (float)$nd['total_salario_devengado'],
+        'h'   => (float)$nd['horas_laboradas'],
+        't'   => ($nd['tipo_nomina'] ?? '') === 'automatica' ? 1 : 0,
+    ];
 }
 
 $config_empresa = [
@@ -717,13 +726,13 @@ snc225_reporte_manejar($pdo, $config_empresa);
     #modalTarjeta .modal-body {
         font-size: 0.82rem;
     }
-    /* Grid de 2 columnas → 1 columna */
-    #tarjetaBody > div[style*="grid-template-columns:1fr 1fr"] {
+    /* Grid de datos (3 columnas) → 1 columna */
+    #tarjetaBody > div[style*="repeat(3, minmax(0, 1fr))"] {
         grid-template-columns: 1fr !important;
         gap: 0.5rem !important;
     }
     /* Sección "Tiempo Trabajado" más compacta */
-    #tarjetaBody > div[style*="display:flex; gap:1.5rem"] {
+    #tarjetaBody > div[style*="display:flex; gap:0.75rem; justify-content:space-between"] {
         gap: 1rem !important;
         justify-content: space-around;
     }
@@ -798,7 +807,7 @@ snc225_reporte_manejar($pdo, $config_empresa);
                 <i class="fas fa-bars"></i>
             </button>
             <div class="page-title">
-                <h1><i class="fas fa-id-card me-2" style="color: #60a5fa;"></i>Tarjeta SNC - 225</h1>
+                <h1><i class="fas fa-id-card me-2" style="color: #60a5fa;"></i>Tarjeta SNC - 2-25</h1>
                 <p><i class="fas fa-list-alt me-1"></i> Listado de todos los trabajadores para exportar SNC-225</p>
             </div>
         </div>
@@ -1380,21 +1389,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<div class="modal fade" id="modalTarjeta" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalTarjeta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="background: var(--panel); border: 0.0625rem solid rgba(96,165,250,0.3); border-radius: 1rem; color: #e2e8f0;">
             <div class="modal-header" style="border-bottom: 0.0625rem solid rgba(96,165,250,0.2); padding:1rem 1.5rem;">
                 <h5 class="modal-title" style="font-weight: 600;">
                     <i class="fas fa-id-card me-2" style="color: #60a5fa;"></i>
-                    <span id="tarjetaTitulo">Tarjeta SNC - 225</span>
+                    <span id="tarjetaTitulo">Tarjeta SNC 2-25</span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body" id="tarjetaBody" style="padding:1.5rem;">
             </div>
             <div class="modal-footer" style="border-top: 0.0625rem solid rgba(96,165,250,0.2); padding:0.75rem 1.5rem;">
+                <span id="sncAniosSeleccionados" class="me-auto" style="font-size:0.78rem; color:rgba(255,255,255,0.65); align-self:center; min-width:0;">
+                    <i class="fas fa-calendar-check me-1" style="color:#34d399;"></i>Años seleccionados: <strong style="color:#e2e8f0;">ninguno</strong>
+                </span>
                 <div class="dropdown dropup">
-                    <button type="button" class="btn-win btn-win-primary btn-win-sm dropdown-toggle" id="sncReporteDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Reporte oficial SNC 2-25" data-tooltip="Reporte oficial SNC 2-25" data-tooltip-theme="primary">
+                    <button type="button" class="btn-win btn-win-primary btn-win-sm dropdown-toggle" id="sncReporteDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-disabled="true" disabled title="Seleccione un año de la tarjeta para generar el reporte" data-tooltip="Seleccione un año de la tarjeta para generar el reporte" data-tooltip-theme="secondary">
                         <i class="fas fa-file-export me-1"></i> Reporte
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win" aria-labelledby="sncReporteDropdown">
@@ -1413,6 +1425,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <i class="fas fa-file-pdf me-2" style="color: #f40f02;"></i>Exportar a PDF
                             </a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="btnReporteSncWord" title="Descargar el modelo SNC 2-25 en Word">
+                                <i class="fas fa-file-word me-2" style="color: #2b579a;"></i>Exportar a Word
+                            </a>
+                        </li>
                     </ul>
                 </div>
                 <button type="button" class="btn-win btn-win-outline btn-win-sm" data-bs-dismiss="modal">
@@ -1422,6 +1439,93 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+<style>
+    /* El placeholder se perdía sobre el fondo oscuro (tema Win11 dark). */
+    #sncObsTexto { color-scheme: dark; }
+    #sncObsTexto::placeholder { color: #cbd5e1 !important; opacity: 1 !important; }
+    #sncObsTexto:focus {
+        background: rgba(15, 23, 42, 0.85);
+        color: #f8fafc;
+        border-color: rgba(96, 165, 250, 0.7);
+        box-shadow: 0 0 0 0.15rem rgba(96, 165, 250, 0.18);
+    }
+
+    /* Tarjetas de año de la tarjeta: efecto hover y estado seleccionado.
+       El año marcado es el que se emite en el reporte. */
+    .snc-anio-card {
+        cursor: pointer;
+        transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .snc-anio-card:hover,
+    .snc-anio-card:focus-visible {
+        transform: translateY(-0.125rem);
+        border-color: rgba(96, 165, 250, 0.85) !important;
+        background: rgba(96, 165, 250, 0.14) !important;
+        box-shadow: 0 0.25rem 0.75rem rgba(2, 6, 23, 0.45);
+        outline: none;
+    }
+    .snc-anio-card.activo {
+        border-color: rgba(52, 211, 153, 0.95) !important;
+        background: rgba(52, 211, 153, 0.12) !important;
+        box-shadow: 0 0 0 0.125rem rgba(52, 211, 153, 0.35);
+    }
+    .snc-anio-card.activo .snc-anio-titulo {
+        color: #34d399 !important;
+        background: rgba(52, 211, 153, 0.16) !important;
+    }
+
+    /* El modal de la tarjeta se ve entero en pantalla: su alto nunca pasa del
+       viewport y lo que sobra se desplaza por dentro, no fuera de la ventana. */
+    #modalTarjeta .modal-dialog {
+        max-height: calc(100vh - 1.5rem);
+        margin: 0.75rem auto;
+    }
+    #modalTarjeta .modal-content {
+        max-height: calc(100vh - 1.5rem);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    #modalTarjeta .modal-header,
+    #modalTarjeta .modal-footer {
+        flex: 0 0 auto;
+    }
+    #modalTarjeta .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+    }
+    /* Las tarjetas de año van en su propio contenedor desplazable, así los
+       filtros, el total y el pie quedan siempre a la vista. */
+    .snc-anios-scroll {
+        max-height: 38vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0.15rem 0.35rem 0.35rem 0;
+        border-radius: 0.5rem;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(96, 165, 250, 0.55) rgba(255, 255, 255, 0.06);
+    }
+    .snc-anios-scroll::-webkit-scrollbar { width: 0.55rem; }
+    .snc-anios-scroll::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 0.5rem;
+    }
+    .snc-anios-scroll::-webkit-scrollbar-thumb {
+        background: rgba(96, 165, 250, 0.55);
+        border-radius: 0.5rem;
+    }
+    .snc-anios-scroll::-webkit-scrollbar-thumb:hover { background: rgba(96, 165, 250, 0.8); }
+    /* El botón Reporte queda gris y deshabilitado hasta elegir un año. */
+    #sncReporteDropdown:disabled {
+        background: #475569 !important;
+        border-color: #475569 !important;
+        color: #cbd5e1 !important;
+        opacity: 1 !important;
+        cursor: not-allowed;
+    }
+</style>
 
 <!-- Observaciones del reporte SNC 2-25 (previo a imprimir / exportar) -->
 <div class="modal fade" id="modalObsSnc" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
@@ -1442,11 +1546,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     placeholder="Escriba la observación que se imprimirá en el modelo..."
                     style="background: rgba(15,23,42,0.65); color:#e2e8f0; border: 0.0625rem solid rgba(96,165,250,0.35); border-radius:0.5rem; resize: vertical;"></textarea>
                 <div class="form-text" style="color:#94a3b8;">
-                    Si cancela o cierra este diálogo se usará la nota por defecto:
-                    «Corte al … — Generado el …».
+                    Aceptar usa el texto escrito. Cancelar o la X generan el modelo con la nota
+                    por defecto («Corte al … — Generado el …»). Cerrar solo cierra el diálogo.
                 </div>
             </div>
             <div class="modal-footer" style="border-top: 0.0625rem solid rgba(96,165,250,0.2); padding:0.75rem 1.5rem;">
+                <button type="button" class="btn-win btn-win-outline btn-win-sm" id="btnObsSncSoloCerrar">
+                    <i class="fas fa-times me-1"></i> Cerrar
+                </button>
                 <button type="button" class="btn-win btn-win-outline btn-win-sm" id="btnObsSncCancelar">
                     <i class="fas fa-times me-1"></i> Cancelar
                 </button>
@@ -1485,11 +1592,193 @@ function formatFechaSNC(fecha) {
     return parts[2] + '/' + parts[1] + '/' + parts[0];
 }
 
+// Resumen por año del trabajador para la tarjeta: días trabajados y salario
+// devengado de cada año, con el mismo criterio del modelo SNC 2-25 (los días
+// salen de la nómina automática, horas / 8, y si el mes no tiene se toma el
+// mayor valor del mes; el salario suma todas las nóminas del mes). Respeta la
+// Fecha Final de Cálculo cuando está definida.
+function sncAniosTrabajador(id, corte) {
+    var nominas = (window.SNC_FILTROS && SNC_FILTROS.nominas) ? SNC_FILTROS.nominas[id] : null;
+    if (!nominas || !nominas.length) return [];
+    if (corte === undefined) {
+        corte = $('#filtroFechaCalculo').val() || '';
+    }
+    var porAnio = {};
+    nominas.forEach(function (n) {
+        var ph = String(n.ph || '').substring(0, 10);
+        if (corte && ph > corte) return;
+        var anio = parseInt(ph.substring(0, 4), 10);
+        var mes = parseInt(ph.substring(5, 7), 10);
+        if (!anio || !mes) return;
+        if (!porAnio[anio]) porAnio[anio] = {};
+        if (!porAnio[anio][mes]) porAnio[anio][mes] = { dias: 0, diasMax: 0, salario: 0 };
+        var m = porAnio[anio][mes];
+        var horas = parseFloat(n.h) || 0;
+        var dias = horas > 0 ? Math.round(horas / 8 * 100) / 100 : 0;
+        if (dias > m.diasMax) m.diasMax = dias;
+        if (parseInt(n.t, 10) === 1) m.dias += dias;
+        m.salario += parseFloat(n.dev) || 0;
+    });
+    var filas = [];
+    Object.keys(porAnio).sort().forEach(function (anio) {
+        var diasTot = 0, salarioTot = 0;
+        Object.keys(porAnio[anio]).forEach(function (mes) {
+            var m = porAnio[anio][mes];
+            diasTot += Math.round(m.dias > 0 ? m.dias : m.diasMax);
+            salarioTot += m.salario;
+        });
+        filas.push({ anio: anio, dias: diasTot, salario: salarioTot });
+    });
+    return filas;
+}
+
+var SNC_ANIOS_SELECCIONADOS = [];
+
+// Muestra en el pie del modal los años elegidos, en tiempo real.
+function sncActualizarResumenAnios() {
+    var etiqueta = document.getElementById('sncAniosSeleccionados');
+    if (!etiqueta) return;
+    var lista = SNC_ANIOS_SELECCIONADOS.join(', ');
+    etiqueta.innerHTML = '<i class="fas fa-calendar-check me-1" style="color:#34d399;"></i>Años seleccionados: <strong style="color:#e2e8f0;">'
+        + (lista || 'ninguno') + '</strong>';
+}
+
+// El botón Reporte solo se habilita cuando hay trabajador y al menos un año.
+function sncActualizarBotonReporte() {
+    var btn = document.getElementById('sncReporteDropdown');
+    if (!btn) return;
+    var listo = SNC_ANIOS_SELECCIONADOS.length > 0 && !!window.SNC_TRABAJADOR_ID;
+    btn.disabled = !listo;
+    btn.setAttribute('aria-disabled', listo ? 'false' : 'true');
+    btn.title = listo
+        ? 'Reporte oficial SNC 2-25 de: ' + SNC_ANIOS_SELECCIONADOS.join(', ')
+        : 'Seleccione al menos un año de la tarjeta para generar el reporte';
+    sncActualizarResumenAnios();
+}
+
+// Alterna la selección de una tarjeta de año: se pueden elegir varios años.
+function sncSeleccionarAnio(card) {
+    if (!card) return;
+    var anio = card.getAttribute('data-anio') || '';
+    if (!anio) return;
+    var pos = SNC_ANIOS_SELECCIONADOS.indexOf(anio);
+    if (pos >= 0) {
+        SNC_ANIOS_SELECCIONADOS.splice(pos, 1);
+    } else {
+        SNC_ANIOS_SELECCIONADOS.push(anio);
+    }
+    SNC_ANIOS_SELECCIONADOS.sort();
+    sncRefrescarSeleccionAnios();
+}
+
+// Marca o desmarca todas las tarjetas de año desde el check del resumen.
+function sncMarcarTodosAnios(marcar) {
+    var tarjetas = document.querySelectorAll('#tarjetaBody .snc-anio-card');
+    SNC_ANIOS_SELECCIONADOS = [];
+    if (marcar) {
+        for (var i = 0; i < tarjetas.length; i++) {
+            var anio = tarjetas[i].getAttribute('data-anio');
+            if (anio) SNC_ANIOS_SELECCIONADOS.push(anio);
+        }
+    }
+    SNC_ANIOS_SELECCIONADOS.sort();
+    sncRefrescarSeleccionAnios();
+}
+
+// Texto del contador de años seleccionados.
+function sncTextoAniosSeleccionados() {
+    var n = SNC_ANIOS_SELECCIONADOS.length;
+    if (!n) return 'sin años seleccionados';
+    return n === 1 ? '1 año seleccionado' : n + ' años seleccionados';
+}
+
+// Refresca tarjetas, contador de años, check de "todos los años" y botón
+// Reporte después de cambiar la selección de años.
+function sncRefrescarSeleccionAnios() {
+    var tarjetas = document.querySelectorAll('#tarjetaBody .snc-anio-card');
+    for (var i = 0; i < tarjetas.length; i++) {
+        var activa = SNC_ANIOS_SELECCIONADOS.indexOf(tarjetas[i].getAttribute('data-anio')) >= 0;
+        tarjetas[i].classList.toggle('activo', activa);
+        tarjetas[i].setAttribute('aria-pressed', activa ? 'true' : 'false');
+    }
+    // El título del modal solo muestra al trabajador; el contador de años va
+    // junto al rótulo "Resumen por año — modelo SNC 1-25".
+    var titulo = document.getElementById('tarjetaTitulo');
+    if (titulo) {
+        titulo.textContent = 'Tarjeta SNC 2-25 — PERSONAL DE: ' + (window.SNC_TRABAJADOR_NOMBRE || '');
+    }
+    var contador = document.getElementById('sncContadorAnios');
+    if (contador) {
+        contador.textContent = '— [' + sncTextoAniosSeleccionados() + ']';
+    }
+    sncActualizarBotonReporte();
+    sncActualizarCheckAnios();
+}
+
+// Estado del check "Todos los años": marcado si están todos, indeterminado si
+// hay una selección parcial y vacío si no hay ninguno.
+function sncActualizarCheckAnios() {
+    var chk = document.getElementById('sncCheckTodosAnios');
+    if (!chk) return;
+    var total = document.querySelectorAll('#tarjetaBody .snc-anio-card').length;
+    var marcadas = SNC_ANIOS_SELECCIONADOS.length;
+    chk.checked = total > 0 && marcadas === total;
+    chk.indeterminate = marcadas > 0 && marcadas < total;
+}
+
+// Al cargar la página el botón Reporte ya está deshabilitado: hasta que no se
+// elija un año en una tarjeta no se puede emitir nada.
+sncActualizarBotonReporte();
+
+// Reglilla de años de la tarjeta: tres años por fila, con los mismos datos del
+// modelo SNC 2-25 (Días Trab. y Salario devengado de cada año).
+function sncHtmlAniosTrabajador(id) {
+    var filas = sncAniosTrabajador(id);
+    if (!filas.length) {
+        return '<div style="margin-top:0.75rem; padding:0.6rem 0.75rem; border:0.0625rem dashed rgba(255,255,255,0.15); border-radius:0.5rem; color:rgba(255,255,255,0.45); font-size:0.75rem; text-align:center;">Sin nóminas registradas para este trabajador.</div>';
+    }
+    var html = '<div style="margin-top:0.75rem;">';
+    // Rótulo del resumen y, cuando el trabajador tiene más de un año, un check
+    // para marcar o desmarcar de una vez todas las tarjetas de año.
+    html += '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.4rem;">';
+    html += '<div style="display:flex; align-items:baseline; gap:0.45rem; flex-wrap:wrap; min-width:0;">';
+    html += '<div style="font-size:0.7rem; text-transform:uppercase; font-weight:600; color:#60a5fa; letter-spacing:0.05rem;"><i class="fas fa-table-list me-1"></i>Resumen por año — modelo SNC 1-25 (SC-4-08)</div>';
+    html += '<span id="sncContadorAnios" style="font-size:0.7rem; font-weight:700; color:#fbbf24; letter-spacing:0.02rem; text-transform:none; white-space:nowrap;">— [sin años seleccionados]</span>';
+    html += '</div>';
+    if (filas.length > 1) {
+        html += '<label for="sncCheckTodosAnios" title="Marcar o desmarcar todos los años" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.72rem; color:rgba(255,255,255,0.75); cursor:pointer; user-select:none; text-transform:uppercase; letter-spacing:0.03rem; font-weight:600;">';
+        html += '<input type="checkbox" id="sncCheckTodosAnios" style="width:1rem; height:1rem; cursor:pointer; accent-color:#3b82f6; margin:0;">';
+        html += '<span>Todos los años</span></label>';
+    }
+    html += '</div>';
+    html += '<div class="snc-anios-scroll">';
+    html += '<div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.6rem;">';
+    filas.forEach(function (f) {
+        html += '<div class="snc-anio-card" data-anio="' + escHtmlSNC(f.anio) + '" role="button" tabindex="0" aria-pressed="false" title="Seleccionar el año ' + escHtmlSNC(f.anio) + ' para emitir el reporte" style="border:0.0625rem solid rgba(96,165,250,0.25); border-radius:0.5rem; overflow:hidden; background:rgba(15,23,42,0.35); min-width:0;">';
+        html += '<div class="snc-anio-titulo" style="padding:0.25rem 0.5rem; text-align:center; font-weight:700; color:#60a5fa; background:rgba(96,165,250,0.12); font-size:0.78rem;">Año: ' + escHtmlSNC(f.anio) + '</div>';
+        html += '<div style="display:grid; grid-template-columns:1fr 1fr;">';
+        html += '<div style="padding:0.35rem 0.4rem; text-align:center; border-right:0.0625rem solid rgba(255,255,255,0.08);">';
+        html += '<div style="font-size:0.62rem; text-transform:uppercase; color:rgba(255,255,255,0.5); line-height:1.2;">Días Trab.</div>';
+        html += '<div style="font-weight:700; color:#e2e8f0;">' + escHtmlSNC(String(f.dias)) + '</div></div>';
+        html += '<div style="padding:0.35rem 0.4rem; text-align:center;">';
+        html += '<div style="font-size:0.62rem; text-transform:uppercase; color:rgba(255,255,255,0.5); line-height:1.2;">Salario devengado</div>';
+        html += '<div style="font-weight:700; color:#34d399; font-family:Consolas,monospace;">$' + f.salario.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</div></div>';
+        html += '</div></div>';
+    });
+    html += '</div></div></div>';
+    return html;
+}
+
 function abrirTarjeta(data) {
     // Se recuerda el trabajador abierto: el reporte oficial se genera en el
     // servidor con sus datos reales (ver includes/snc225_reporte.php).
     window.SNC_TRABAJADOR_ID = data.id;
-    document.getElementById('tarjetaTitulo').textContent = 'Tarjeta SNC - 225 — PERSONAL DE: ' + (data.nombre_completo || '');
+    window.SNC_TRABAJADOR_NOMBRE = data.nombre_completo || '';
+    // Cada vez que se abre la tarjeta hay que elegir de nuevo los años.
+    SNC_ANIOS_SELECCIONADOS = [];
+    // El título solo lleva al trabajador; el contador de años se muestra
+    // junto al rótulo "Resumen por año — modelo SNC 1-25".
+    document.getElementById('tarjetaTitulo').textContent = 'Tarjeta SNC 2-25 — PERSONAL DE: ' + (data.nombre_completo || '');
     var dev = (parseFloat(data.total_devengado) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     var tanos = data.t_anos || '—', tmeses = data.t_meses || '—', tdias = data.t_dias || '—';
     var $row = null;
@@ -1517,27 +1806,61 @@ function abrirTarjeta(data) {
     if (fc) html += '<br><i class="fas fa-calendar-check me-1"></i><strong>Fecha Final de Cálculo:</strong> ' + fc;
 	html += '<div class="snc-modal-nota"><i class="fas fa-info-circle me-1"></i>NOTA: El tiempo trabajado y salario devengado se calculan según la Fecha Final de Cálculo. Activos: desde inicio contrato hasta fecha filtro. Inactivos: desde inicio contrato hasta fecha de baja.</div>';
     html += '</div>';
-    html += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem 1.5rem;">';
+    // Datos en tres columnas: identificación, datos laborales y, en la
+    // última, el resumen del tiempo trabajado.
+    html += '<div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.75rem 1.25rem; align-items:start;">';
+    // Columna 1: expediente, C.I. y nombre
+    html += '<div style="display:flex; flex-direction:column; gap:0.45rem; min-width:0;">';
     html += '<p style="margin:0;"><strong>No. Exped.:</strong> <span style="color:#60a5fa;">' + escHtmlSNC(data.codigo || '') + '</span></p>';
     html += '<p style="margin:0;"><strong>C.I.:</strong> ' + escHtmlSNC(data.ci || '—') + '</p>';
-    html += '<p style="margin:0; grid-column:1/-1;"><strong>Nombre y Apellidos:</strong> <span style="color:#c084fc; font-weight:600;">' + escHtmlSNC(data.nombre_completo || '') + '</span></p>';
+    html += '<p style="margin:0; overflow-wrap:anywhere;"><strong>Nombre y Apellidos:</strong> <span style="color:#c084fc; font-weight:600;">' + escHtmlSNC(data.nombre_completo || '') + '</span></p>';
+    html += '</div>';
+    // Columna 2: centro de costo, área y fechas
+    html += '<div style="display:flex; flex-direction:column; gap:0.45rem; min-width:0;">';
     html += '<p style="margin:0;"><strong>C. Costo:</strong> ' + escHtmlSNC(data.c_costo || '—') + '</p>';
     html += '<p style="margin:0;"><strong>Área:</strong> ' + escHtmlSNC(data.area_nombre || '—') + '</p>';
     html += '<p style="margin:0;"><strong>F. Alta:</strong> ' + escHtmlSNC(formatFechaSNC(data.fecha_alta)) + '</p>';
     html += '<p style="margin:0;"><strong>F. Baja:</strong> ' + escHtmlSNC(formatFechaSNC(data.fecha_baja)) + '</p>';
     html += '</div>';
-    html += '<div style="margin-top:0.75rem; padding:0.6rem 0.75rem; background:rgba(96,165,250,0.08); border:0.0625rem solid rgba(96,165,250,0.2); border-radius:0.5rem;">';
+    // Columna 3: card del tiempo trabajado
+    html += '<div style="padding:0.6rem 0.75rem; background:rgba(96,165,250,0.08); border:0.0625rem solid rgba(96,165,250,0.2); border-radius:0.5rem; min-width:0;">';
     html += '<div style="font-size:0.7rem; text-transform:uppercase; font-weight:600; color:#60a5fa; letter-spacing:0.05rem; margin-bottom:0.4rem;">Tiempo Trabajado</div>';
-    html += '<div style="display:flex; gap:1.5rem;">';
-    html += '<div style="text-align:center;"><div style="font-size:1.4rem; font-weight:bold; color:#e2e8f0;">' + escHtmlSNC(tanos) + '</div><div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">AÑOS</div></div>';
-    html += '<div style="text-align:center;"><div style="font-size:1.4rem; font-weight:bold; color:#e2e8f0;">' + escHtmlSNC(tmeses) + '</div><div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">MESES</div></div>';
-    html += '<div style="text-align:center;"><div style="font-size:1.4rem; font-weight:bold; color:#e2e8f0;">' + escHtmlSNC(tdias) + '</div><div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">DÍAS</div></div>';
+    html += '<div style="display:flex; gap:0.75rem; justify-content:space-between;">';
+    html += '<div style="text-align:center;"><div style="font-size:1.3rem; font-weight:bold; color:#e2e8f0;">' + escHtmlSNC(tanos) + '</div><div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">AÑOS</div></div>';
+    html += '<div style="text-align:center;"><div style="font-size:1.3rem; font-weight:bold; color:#e2e8f0;">' + escHtmlSNC(tmeses) + '</div><div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">MESES</div></div>';
+    html += '<div style="text-align:center;"><div style="font-size:1.3rem; font-weight:bold; color:#e2e8f0;">' + escHtmlSNC(tdias) + '</div><div style="font-size:0.7rem; color:rgba(255,255,255,0.5);">DÍAS</div></div>';
     html += '</div></div>';
-    html += '<div style="margin-top:0.75rem; padding:0.6rem 0.75rem; background:rgba(52,211,153,0.08); border:0.0625rem solid rgba(52,211,153,0.2); border-radius:0.5rem; display:flex; justify-content:space-between; align-items:center;">';
-    html += '<strong style="font-size:0.85rem;">Total Devengado</strong>';
+    // Cierre del grid de tres columnas: lo que sigue (Total Devengado y el
+    // resumen por año) va a todo el ancho, debajo de los datos.
+    html += '</div>';
+    // Total devengado a todo el ancho (col-12) y, debajo, el resumen por año.
+    html += '<div style="margin-top:0.75rem; width:100%; box-sizing:border-box; padding:0.6rem 0.75rem; background:rgba(52,211,153,0.08); border:0.0625rem solid rgba(52,211,153,0.2); border-radius:0.5rem; display:flex; justify-content:space-between; align-items:center;">';
+    html += '<strong style="font-size:0.85rem;">Total Devengado En Base de Datos (Todos los Años)</strong>';
     html += '<span style="font-size:1.15rem; font-weight:bold; color:#34d399; font-family:Consolas,monospace;">$' + dev + '</span>';
     html += '</div>';
+    html += sncHtmlAniosTrabajador(data.id);
     document.getElementById('tarjetaBody').innerHTML = html;
+    // Las tarjetas de año se pueden seleccionar con ratón o teclado.
+    var tarjetasAnio = document.querySelectorAll('#tarjetaBody .snc-anio-card');
+    for (var i = 0; i < tarjetasAnio.length; i++) {
+        (function (card) {
+            card.addEventListener('click', function () { sncSeleccionarAnio(card); });
+            card.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    sncSeleccionarAnio(card);
+                }
+            });
+        })(tarjetasAnio[i]);
+    }
+    // Check "Todos los años": marca o desmarca todas las tarjetas de una vez.
+    var chkAnios = document.getElementById('sncCheckTodosAnios');
+    if (chkAnios) {
+        chkAnios.addEventListener('change', function () {
+            sncMarcarTodosAnios(this.checked);
+        });
+    }
+    sncRefrescarSeleccionAnios();
     var modal = new bootstrap.Modal(document.getElementById('modalTarjeta'));
     modal.show();
 }
@@ -1552,6 +1875,7 @@ function sncUrlReporte(formato, obs) {
     var corte = $('#filtroFechaCalculo').val() || '';
     var url = 'snc225.php?snc225_reporte=' + encodeURIComponent(formato) + '&id=' + encodeURIComponent(id);
     if (corte) url += '&corte=' + encodeURIComponent(corte);
+    if (SNC_ANIOS_SELECCIONADOS.length) url += '&anios=' + encodeURIComponent(SNC_ANIOS_SELECCIONADOS.join(','));
     if (obs) url += '&obs=' + encodeURIComponent(obs);
     return url;
 }
@@ -1563,8 +1887,9 @@ function sncAvisoSinTrabajador() {
 // --------------------------------------------
 // Observaciones del reporte
 // Antes de imprimir o exportar se pide el texto de OBSERVACIONES en un
-// diálogo que solo se cierra con Aceptar, Cancelar o la X. Si se cancela o
-// se cierra con la X se usa la nota por defecto (corte y fecha).
+// diálogo que solo se cierra con Aceptar, Cancelar, Cerrar o la X. Con
+// Cancelar o la X se genera el reporte con la nota por defecto (corte y
+// fecha); con Cerrar solo se cierra el diálogo, sin generar nada.
 // --------------------------------------------
 var SNC_REPORTE_ACCION = null;
 var sncModalObs = null;
@@ -1581,17 +1906,38 @@ function sncModalObservaciones() {
 
 function sncPedirObservacion(accion) {
     if (!window.SNC_TRABAJADOR_ID) { sncAvisoSinTrabajador(); return; }
+    if (!SNC_ANIOS_SELECCIONADOS.length) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Sin años seleccionados',
+            text: 'Seleccione al menos un año en la tarjeta para generar el reporte.'
+        });
+        return;
+    }
     SNC_REPORTE_ACCION = accion;
     var texto = document.getElementById('sncObsTexto');
     texto.value = '';
+    // Bootstrap mueve el foco al diálogo al mostrarlo; cuando termina la
+    // animación se lleva al textarea para poder escribir sin un clic extra.
+    var modalEl = document.getElementById('modalObsSnc');
+    if (modalEl && !modalEl.dataset.focoListo) {
+        modalEl.dataset.focoListo = '1';
+        modalEl.addEventListener('shown.bs.modal', function () {
+            var input = document.getElementById('sncObsTexto');
+            if (input) { input.focus(); }
+        });
+    }
     sncModalObservaciones().show();
-    setTimeout(function () { texto.focus(); }, 300);
+    setTimeout(function () {
+        var input = document.getElementById('sncObsTexto');
+        if (input) { input.focus(); }
+    }, 300);
 }
 
 function sncEjecutarReporte(observacion) {
     var accion = SNC_REPORTE_ACCION || 'ver';
     var url = sncUrlReporte(accion, observacion || '');
-    if (accion === 'xlsx') {
+    if (accion === 'xlsx' || accion === 'word') {
         window.location.href = url;
     } else {
         window.open(url, '_blank');
@@ -1608,6 +1954,12 @@ document.getElementById('btnObsSncCancelar')?.addEventListener('click', function
     // Se genera con la observación por defecto.
     sncModalObservaciones().hide();
     sncEjecutarReporte('');
+});
+
+document.getElementById('btnObsSncSoloCerrar')?.addEventListener('click', function () {
+    // Solo cierra el diálogo: no genera ningún reporte.
+    SNC_REPORTE_ACCION = null;
+    sncModalObservaciones().hide();
 });
 
 document.getElementById('btnObsSncCerrarX')?.addEventListener('click', function () {
@@ -1629,6 +1981,11 @@ document.getElementById('btnReporteSncExcel')?.addEventListener('click', functio
 document.getElementById('btnReporteSncPdf')?.addEventListener('click', function(e) {
     e.preventDefault();
     sncPedirObservacion('pdf');
+});
+
+document.getElementById('btnReporteSncWord')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    sncPedirObservacion('word');
 });
 
 function nombreArchivoSNC(ext) {

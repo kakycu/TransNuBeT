@@ -45,7 +45,7 @@ function guardarFotoUsuario($imagen_base64, $id_usuario) {
     if (!$imagen_decodificada) return null;
     
     // Crear carpeta si no existe
-    $carpeta = $_SERVER['DOCUMENT_ROOT'] . '/nominas/assets/imagenes/usuarios/';
+    $carpeta = dirname(__DIR__) . '/assets/imagenes/usuarios/';
     if (!is_dir($carpeta)) {
         mkdir($carpeta, 0777, true);
     }
@@ -174,8 +174,8 @@ try {
         
         // Eliminar foto si se solicitó
         if ($eliminar_foto == 1) {
-            if ($foto_actual && file_exists($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_actual)) {
-                unlink($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_actual);
+            if ($foto_actual && file_exists(dirname(__DIR__) . '/' . $foto_actual)) {
+                unlink(dirname(__DIR__) . '/' . $foto_actual);
             }
             $foto_ruta = null;
         }
@@ -183,8 +183,8 @@ try {
         // Guardar nueva foto si se recortó
         if (!empty($imagen_recortada)) {
             // Eliminar foto anterior si existe
-            if ($foto_actual && file_exists($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_actual)) {
-                unlink($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_actual);
+            if ($foto_actual && file_exists(dirname(__DIR__) . '/' . $foto_actual)) {
+                unlink(dirname(__DIR__) . '/' . $foto_actual);
             }
             $foto_ruta = guardarFotoUsuario($imagen_recortada, $id);
         }

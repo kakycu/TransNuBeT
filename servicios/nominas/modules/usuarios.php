@@ -1561,7 +1561,9 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
     // Verificar si el archivo existe
     $foto_existe = false;
     if ($foto_url) {
-        $ruta_foto_absoluta = $_SERVER['DOCUMENT_ROOT'] . '/nominas/' . str_replace('../', '', $foto_url);
+        // La foto se guarda relativa a la carpeta de la aplicación; se resuelve en disco
+        // (no con DOCUMENT_ROOT, que cambia según la URL con la que se publique la app).
+        $ruta_foto_absoluta = dirname(__DIR__) . '/' . str_replace('../', '', $foto_url);
         if (file_exists($ruta_foto_absoluta)) {
             $foto_existe = true;
         }

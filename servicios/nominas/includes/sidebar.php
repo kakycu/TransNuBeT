@@ -1309,9 +1309,9 @@ html.focus-mode .fluid-container {
                     <span class="sidebar-text">Cumpleaños 30 Días</span>
                 </a>
 				---->
-                <a href="<?php echo $base_prefix; ?>modules/snc225.php" class="nav-item <?php echo ($current_file == 'snc225.php') ? 'active' : ''; ?>" data-tooltip="Tarjeta SNC-225" data-tooltip-theme="primary">
+                <a href="<?php echo $base_prefix; ?>modules/snc225.php" class="nav-item <?php echo ($current_file == 'snc225.php') ? 'active' : ''; ?>" data-tooltip="Tarjeta SNC-2-25" data-tooltip-theme="primary">
                     <i class="fas fa-id-card"></i>
-                    <span class="sidebar-text">SNC - 225</span>
+                    <span class="sidebar-text">SNC - 2-25</span>
                 </a>
                 <a href="<?php echo $base_prefix; ?>modules/domiciliacion_tarjetas.php" class="nav-item <?php echo ($current_file == 'domiciliacion_tarjetas.php') ? 'active' : ''; ?>" data-tooltip="Generar base de datos de domiciliacion de tarjetas para el banco" data-tooltip-theme="primary">
                     <i class="fas fa-credit-card"></i>

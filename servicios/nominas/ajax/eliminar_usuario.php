@@ -36,7 +36,7 @@ $eliminado = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!empty($eliminado['foto'])) {
     $foto_bd = $eliminado['foto'];
     if (strpos($foto_bd, 'assets/imagenes/usuarios/') === 0) {
-        $ruta_foto = $_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_bd;
+        $ruta_foto = dirname(__DIR__) . '/' . $foto_bd;
         if (file_exists($ruta_foto)) {
             unlink($ruta_foto);
         }

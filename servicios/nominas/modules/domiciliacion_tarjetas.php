@@ -492,7 +492,7 @@ $totalGeneral = count($lista);
                     <span style="color:#fbbf24; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.0312rem;">Estado</span>
                     <select id="filtroEstado" class="search-box" data-tooltip="Filtrar por situación laboral" data-tooltip-theme="warning">
                         <option value="todos">Todos</option>
-                        <option value="activos">Solo activos</option>
+                        <option value="activos" selected>Solo activos</option>
                         <option value="bajas">Solo dados de baja</option>
                     </select>
                 </div>
@@ -501,7 +501,7 @@ $totalGeneral = count($lista);
                     <select id="filtroCuenta" class="search-box" data-tooltip="Filtrar por si el trabajador tiene o no cuenta bancaria registrada" data-tooltip-theme="info">
                         <option value="todos">Todas</option>
                         <option value="con">Con cuenta</option>
-                        <option value="sin">Sin cuenta</option>
+                        <option value="sin" selected>Sin cuenta</option>
                     </select>
                 </div>
                 <div class="d-flex flex-column gap-1" style="min-width:8.5rem;">
@@ -674,7 +674,7 @@ tabla = $('#tablaDom').DataTable({
         },
         dom: '<"d-flex justify-content-end align-items-center flex-wrap mb-3"<"dt-length"l>>rt<"d-flex justify-content-between align-items-center flex-wrap mt-2"<"dt-info"i><"dt-pagination"p>>',
         pagingType: 'full_numbers',
-        pageLength: -1,
+        pageLength: 5,
         lengthMenu: [[-1, 5, 10, 15, 25, 50, 75, 100], ['Todos', 5, 10, 15, 25, 50, 75, 100]],
         order: [[2, 'asc']],
         autoWidth: false,
@@ -833,6 +833,11 @@ tabla = $('#tablaDom').DataTable({
 
         return true;
     });
+
+    // Aplicar desde el inicio los filtros preseleccionados (Solo activos y
+    // Sin cuenta bancaria): el filtro se registra después del primer dibujo
+    // de DataTables, así que hay que redibujar para que se aplique ya.
+    tabla.draw();
 
     document.getElementById('sinResultados').style.display = 'none';
 
