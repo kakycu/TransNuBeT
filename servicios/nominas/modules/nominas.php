@@ -980,6 +980,7 @@ $ACCIONES_MUTANTES_NOMINA = [
     'corregir_cuadre', 'corregir_pendientes', 'corregir_cierres',
     'eliminar_nomina_completa', 'eliminar_borrador_por_ids', 'eliminar_nomina_individual',
     'regenerar_nomina', 'generar_nomina_automatica', 'generar_nomina_extraordinaria',
+    'importar_excel_automatica',
     'generar_nomina_bono', 'generar_nomina_ajuste', 'agregar_vacaciones',
     'agregar_bono_existente', 'contabilizar_nomina', 'revertir_nomina',
     'agregar_extraordinaria_existente', 'agregar_trabajadores_auto',
@@ -1926,6 +1927,590 @@ if (isset($_POST['generar_nomina_automatica'])) {
     
     logAction('generar_nomina_automatica', 'nominas', 'Generación de nómina automática', ['periodo' => $periodo_desde . '-' . $periodo_hasta, 'tipo_descuento' => $tipo_descuento], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
     header("Location: nominas.php?periodo=$periodo&tipo=$tipo&msg=generated");
+    exit;
+}
+
+if (!function_exists('generarNominaAutomaticaBorrador')) {
+    /**
+     * Crea en borrador las filas de la nómina automática para todos los
+     * trabajadores activos del período. Replica el cálculo de
+     * generar_nomina_automatica y se usa al importar el Excel cuando el
+     * período todavía no tiene nómina generada.
+     */
+    function generarNominaAutomaticaBorrador($pdo, $periodo_desde, $periodo_hasta, $tipo_descuento, $horas_jornada, $dias_laborables, $factor_909, $rangos_impuesto) {
+        $horas_mensuales   = getHorasMensuales($pdo);
+        $tasa_contribucion = getTasaContribucion($pdo);
+        $trabajadores      = getTrabajadoresActivos($pdo);
+        $tipo              = 'automatica';
+        $creados           = 0;
+
+        foreach ($trabajadores as $trabajador) {
+            $salario_hora    = $trabajador['salario_hora_ordinaria'];
+            $salario_mensual = $trabajador['salario_mensual'];
+            $salario_laboral = roundExcel($salario_hora * $horas_mensuales, 2);
+            $base            = $salario_laboral;
+
+            $pago_adicional_total = 0.0;
+            foreach (($trabajador['pagos_adicionales'] ?? []) as $pa) {
+                if ($pa['tipo_calculo'] === 'monto_fijo') {
+                    $pago_adicional_total += (float)$pa['monto'];
+                } elseif ($pa['tipo_calculo'] === 'porcentaje') {
+                    $pago_adicional_total += (float)$pa['monto'] / 100 * $base;
+                }
+            }
+            $pago_adicional_total = roundExcel($pago_adicional_total, 2);
+
+            $importe_vacaciones_adicional = 0;
+            if ($trabajador['no_acumular_vacaciones'] == 1) {
+                $dias_a_acumular = roundExcel(($horas_mensuales * $factor_909) / $horas_jornada, 2);
+                $valor_por_dia   = $salario_mensual / $dias_laborables;
+                $importe_vacaciones_adicional = roundExcel($dias_a_acumular * $valor_por_dia, 2);
+            }
+
+            $total_devengado = $salario_laboral + $importe_vacaciones_adicional + $pago_adicional_total;
+
+            if ($tipo_descuento == 'solo_cess') {
+                $contribucion = calcularCessProgresivoPHP($total_devengado);
+                $impuesto = 0;
+                $neto = roundExcel($total_devengado - $contribucion, 2);
+
+                $stmt_insert = $pdo->prepare("INSERT INTO nominas (
+                    trabajador_id, periodo_desde, periodo_hasta, horas_laboradas, dias_feriados,
+                    importe_salario_laboral, otros_salarios, total_salario_devengado, contribucion_especial,
+                    ingresos_personales, importe_neto, total_deducciones, tipo_nomina, estado, descripcion, tipo_descuento
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                $stmt_insert->execute([
+                    $trabajador['id'], $periodo_desde, $periodo_hasta, $horas_mensuales, 0,
+                    $salario_laboral, $pago_adicional_total, $total_devengado, $contribucion, $impuesto, $neto,
+                    roundExcel($contribucion + $impuesto, 2),
+                    $tipo, 'borrador', 'CESS progresivo: 5% hasta 15,000 CUP, 10% exceso', 'solo_cess'
+                ]);
+                $nomina_id_insertado = $pdo->lastInsertId();
+                foreach (($trabajador['pagos_adicionales'] ?? []) as $pa) {
+                    $importe = $pa['tipo_calculo'] === 'monto_fijo'
+                        ? (float)$pa['monto']
+                        : (float)$pa['monto'] / 100 * $base;
+                    $pdo->prepare("INSERT INTO nomina_pagos_adicionales (nomina_id, trabajador_id, pago_adicional_id, importe_aplicado) VALUES (?,?,?,?)")
+                        ->execute([$nomina_id_insertado, $trabajador['id'], $pa['id'], roundExcel($importe, 2)]);
+                }
+            } else {
+                $contribucion = roundExcel($total_devengado * ($tasa_contribucion / 100), 2);
+                $impuesto = calcularTotalImpuesto($total_devengado, $rangos_impuesto);
+                $neto = roundExcel($total_devengado - ($contribucion + $impuesto), 2);
+
+                $stmt_insert = $pdo->prepare("INSERT INTO nominas (
+                    trabajador_id, periodo_desde, periodo_hasta, horas_laboradas, dias_feriados,
+                    importe_salario_laboral, otros_salarios, total_salario_devengado, contribucion_especial,
+                    ingresos_personales, importe_neto, total_deducciones, tipo_nomina, estado, tipo_descuento
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                $stmt_insert->execute([
+                    $trabajador['id'], $periodo_desde, $periodo_hasta, $horas_mensuales, 0,
+                    $salario_laboral, $pago_adicional_total, $total_devengado, $contribucion, $impuesto, $neto,
+                    roundExcel($contribucion + $impuesto, 2), $tipo, 'borrador', 'total_rangos'
+                ]);
+                $nomina_id_insertado = $pdo->lastInsertId();
+                foreach (($trabajador['pagos_adicionales'] ?? []) as $pa) {
+                    $importe = $pa['tipo_calculo'] === 'monto_fijo'
+                        ? (float)$pa['monto']
+                        : (float)$pa['monto'] / 100 * $base;
+                    $pdo->prepare("INSERT INTO nomina_pagos_adicionales (nomina_id, trabajador_id, pago_adicional_id, importe_aplicado) VALUES (?,?,?,?)")
+                        ->execute([$nomina_id_insertado, $trabajador['id'], $pa['id'], roundExcel($importe, 2)]);
+                }
+            }
+            $creados++;
+        }
+
+        return $creados;
+    }
+}
+
+// ============================================
+// IMPORTAR EXCEL DE SALARIOS EN LA NÓMINA AUTOMÁTICA
+// ============================================
+// Lee el archivo SiGesNom (No. Exped. en A, Horas Lab en D, Día Feriados en E,
+// Otros Pagos en F y Retenciones en G) y carga esos valores sobre la nómina
+// automática del período, cruzando por el código de expediente del trabajador.
+// Reglas acordadas:
+//   - Horas Lab      -> horas_laboradas (y se recalcula el salario laboral).
+//   - Día Feriados   -> dias_feriados (se recalcula el importe al doble).
+//   - Otros Pagos    -> se SUMA a los pagos adicionales del trabajador.
+//   - Retenciones    -> descuento manual de la fila.
+//   - Solo quedan en la nómina los expedientes que vienen en el Excel; el
+//     resto de filas del borrador se elimina. No crea filas nuevas: si el mes
+//     no tiene nómina generada, se pide generarla primero.
+if (!function_exists('nominaExcelTexto')) {
+    function nominaExcelTexto($valor) {
+        if ($valor === null || is_bool($valor)) return '';
+        $txt = trim((string)$valor);
+        if ($txt === '') return '';
+        $txt = strtr($txt, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u',
+            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U',
+            'ñ' => 'N', 'Ñ' => 'N',
+        ]);
+        return strtoupper(preg_replace('/\s+/', ' ', $txt));
+    }
+}
+
+if (!function_exists('nominaExcelNormalizarExpediente')) {
+    /**
+     * Deja el expediente como lo guarda el sistema: solo dígitos, 6 posiciones
+     * y con ceros a la izquierda ("016525"). Si no trae dígitos devuelve ''.
+     */
+    function nominaExcelNormalizarExpediente($valor) {
+        $digitos = preg_replace('/\D/', '', (string)$valor);
+        if ($digitos === '') return '';
+        return str_pad($digitos, 6, '0', STR_PAD_LEFT);
+    }
+}
+
+if (!function_exists('nominaExcelNumero')) {
+    /**
+     * Convierte una celda a número tolerando texto con separadores de miles,
+     * coma decimal o símbolo de moneda.
+     */
+    function nominaExcelNumero($valor) {
+        if ($valor === null || $valor === '') return 0.0;
+        if (is_int($valor) || is_float($valor)) return (float)$valor;
+        $txt = trim((string)$valor);
+        $txt = str_replace([' ', "\xc2\xa0", '$', 'CUP'], '', $txt);
+        if ($txt === '') return 0.0;
+        $tieneComa = strpos($txt, ',') !== false;
+        $tienePunto = strpos($txt, '.') !== false;
+        if ($tieneComa && $tienePunto) {
+            // El separador que aparece al final es el decimal.
+            if (strrpos($txt, ',') > strrpos($txt, '.')) {
+                $txt = str_replace('.', '', str_replace(',', '.', $txt));
+            } else {
+                $txt = str_replace(',', '', $txt);
+            }
+        } elseif ($tieneComa) {
+            $txt = str_replace(',', '.', $txt);
+        }
+        $txt = preg_replace('/[^0-9\.\-]/', '', $txt);
+        return (float)$txt;
+    }
+}
+
+if (isset($_POST['importar_excel_automatica'])) {
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/json; charset=utf-8');
+
+    if (!$puede_editar_nomina) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'No tiene permisos para importar datos en esta nómina.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $periodo_import      = periodo_nominas_de_la_peticion($pdo, $periodo);
+    exigir_periodo_operable($pdo, $periodo_import);
+
+    $periodo_desde_imp = $periodo_import . '-01';
+    $periodo_hasta_imp = ultimoDiaDePeriodo($periodo_desde_imp);
+
+    // Estado de la nómina automática del período: si ya está contabilizada no
+    // se toca; si no existe, el import la genera antes de aplicar el Excel
+    // (permite generar e importar en un solo paso).
+    $stmt_imp = $pdo->prepare("SELECT estado FROM nominas
+                               WHERE periodo_desde = ? AND periodo_hasta = ?
+                                 AND tipo_nomina = 'automatica'");
+    $stmt_imp->execute([$periodo_desde_imp, $periodo_hasta_imp]);
+    $estados_imp        = array_map('strval', $stmt_imp->fetchAll(PDO::FETCH_COLUMN));
+    $generar_nomina_imp = empty($estados_imp);
+    if (!$generar_nomina_imp && !in_array('borrador', $estados_imp, true)) {
+        echo json_encode([
+            'success' => false,
+            'error'   => 'La nómina automática de este período ya está contabilizada y no se puede modificar.',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    if ($generar_nomina_imp && !$puede_crear_nomina) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'No tiene permisos para generar la nómina automática de este período.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    $tipo_descuento_imp = (($_POST['tipo_descuento'] ?? 'total_rangos') === 'solo_cess') ? 'solo_cess' : 'total_rangos';
+
+    // ---- Archivo subido ----
+    if (empty($_FILES['archivo_excel']) || !is_array($_FILES['archivo_excel'])) {
+        echo json_encode(['success' => false, 'error' => 'No se recibió ningún archivo.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    $archivo_imp = $_FILES['archivo_excel'];
+    $error_subida = (int)($archivo_imp['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($error_subida !== UPLOAD_ERR_OK) {
+        $mensajes_subida = [
+            UPLOAD_ERR_INI_SIZE   => 'El archivo supera el tamaño permitido por el servidor.',
+            UPLOAD_ERR_FORM_SIZE  => 'El archivo supera el tamaño permitido por el formulario.',
+            UPLOAD_ERR_PARTIAL    => 'La subida del archivo quedó incompleta. Intente de nuevo.',
+            UPLOAD_ERR_NO_FILE    => 'Seleccione el archivo Excel que desea importar.',
+            UPLOAD_ERR_NO_TMP_DIR => 'El servidor no tiene carpeta temporal para la subida.',
+            UPLOAD_ERR_CANT_WRITE => 'El servidor no pudo guardar el archivo temporal.',
+        ];
+        echo json_encode(['success' => false, 'error' => $mensajes_subida[$error_subida] ?? 'No se pudo subir el archivo.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    if ((int)($archivo_imp['size'] ?? 0) <= 0 || (int)$archivo_imp['size'] > 5 * 1024 * 1024) {
+        echo json_encode(['success' => false, 'error' => 'El archivo debe pesar entre 1 byte y 5 MB.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    $ext_imp = strtolower(pathinfo((string)($archivo_imp['name'] ?? ''), PATHINFO_EXTENSION));
+    if (!in_array($ext_imp, ['xlsx', 'xls'], true)) {
+        echo json_encode(['success' => false, 'error' => 'Formato no válido. Suba un archivo .xlsx o .xls.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ---- Lector de Excel ----
+    if (!class_exists('\PhpOffice\PhpSpreadsheet\IOFactory')) {
+        $autoload_imp = dirname(__DIR__) . '/vendor/autoload.php';
+        if (is_file($autoload_imp)) require_once $autoload_imp;
+    }
+    if (!class_exists('\PhpOffice\PhpSpreadsheet\IOFactory')) {
+        echo json_encode(['success' => false, 'error' => 'El servidor no tiene disponible la librería para leer Excel.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    try {
+        $reader_imp = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($archivo_imp['tmp_name']);
+        $reader_imp->setReadDataOnly(true);
+        $hoja_imp   = $reader_imp->load($archivo_imp['tmp_name'])->getSheet(0);
+        $max_filas_imp = (int)$hoja_imp->getHighestDataRow();
+        $max_col_imp   = $hoja_imp->getHighestDataColumn();
+        $matriz_imp    = $hoja_imp->rangeToArray('A1:' . $max_col_imp . $max_filas_imp, null, true, false, false);
+    } catch (\Throwable $e) {
+        echo json_encode(['success' => false, 'error' => 'No se pudo leer el Excel. Verifique que el archivo no esté dañado.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ---- Encabezados: se buscan por nombre, no por posición fija ----
+    $cols_imp = ['expediente' => null, 'horas' => null, 'feriados' => null, 'otros' => null, 'retenciones' => null];
+    $fila_cab_imp = null;
+    $limite_busqueda = min(count($matriz_imp), 20);
+    for ($i_imp = 0; $i_imp < $limite_busqueda && $fila_cab_imp === null; $i_imp++) {
+        $detectado_imp = ['expediente' => null, 'horas' => null, 'feriados' => null, 'otros' => null, 'retenciones' => null];
+        foreach ($matriz_imp[$i_imp] as $c_imp => $valor_celda) {
+            $etiqueta_imp = nominaExcelTexto($valor_celda);
+            if ($etiqueta_imp === '') continue;
+            if ($detectado_imp['expediente'] === null && strpos($etiqueta_imp, 'EXPED') !== false) {
+                $detectado_imp['expediente'] = $c_imp;
+            } elseif ($detectado_imp['horas'] === null && strpos($etiqueta_imp, 'HORA') !== false) {
+                $detectado_imp['horas'] = $c_imp;
+            } elseif ($detectado_imp['feriados'] === null && strpos($etiqueta_imp, 'FERIAD') !== false) {
+                $detectado_imp['feriados'] = $c_imp;
+            } elseif ($detectado_imp['otros'] === null && strpos($etiqueta_imp, 'OTRO') !== false) {
+                $detectado_imp['otros'] = $c_imp;
+            } elseif ($detectado_imp['retenciones'] === null && (strpos($etiqueta_imp, 'RETENC') !== false || strpos($etiqueta_imp, 'DESCUENT') !== false)) {
+                $detectado_imp['retenciones'] = $c_imp;
+            }
+        }
+        if ($detectado_imp['expediente'] !== null && $detectado_imp['horas'] !== null) {
+            $cols_imp = $detectado_imp;
+            $fila_cab_imp = $i_imp;
+        }
+    }
+    if ($fila_cab_imp === null) {
+        echo json_encode([
+            'success' => false,
+            'error'   => 'No se reconoció el encabezado del Excel. Debe tener una fila con "No. Exped.", "Horas Lab", "Día Feriados", "Otros Pagos" y "Retenciones".',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ---- Filas de datos: se cortan en la fila TOTAL ----
+    $datos_excel_imp = [];
+    $no_importados_imp = [];
+    $total_excel_imp = 0;
+    $total_filas_imp = count($matriz_imp);
+    for ($i_imp = $fila_cab_imp + 1; $i_imp < $total_filas_imp; $i_imp++) {
+        $fila_imp = $matriz_imp[$i_imp];
+        $crudo_exp = $fila_imp[$cols_imp['expediente']] ?? null;
+        $texto_exp = nominaExcelTexto($crudo_exp);
+        if ($texto_exp === '') continue;
+        if (strpos($texto_exp, 'TOTAL') !== false) break;
+
+        $total_excel_imp++;
+
+        $digitos_exp = preg_replace('/\D/', '', trim((string)$crudo_exp));
+        $mostrar_exp = trim((string)$crudo_exp);
+
+        if ($digitos_exp === '') {
+            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'motivo' => 'el expediente no tiene dígitos'];
+            continue;
+        }
+        if (strlen($digitos_exp) < 6) {
+            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'motivo' => 'tiene menos de 6 dígitos'];
+            continue;
+        }
+        if (strlen($digitos_exp) > 6) {
+            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'motivo' => 'tiene más de 6 dígitos'];
+            continue;
+        }
+
+        $exp_imp = $digitos_exp;
+        if (isset($datos_excel_imp[$exp_imp])) {
+            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'motivo' => 'está repetido en el Excel (fila ' . ($i_imp + 1) . ')'];
+            continue;
+        }
+
+        $datos_excel_imp[$exp_imp] = [
+            'mostrar'     => $mostrar_exp,
+            'horas'       => nominaExcelNumero($cols_imp['horas'] !== null ? ($fila_imp[$cols_imp['horas']] ?? 0) : 0),
+            'feriados'    => nominaExcelNumero($cols_imp['feriados'] !== null ? ($fila_imp[$cols_imp['feriados']] ?? 0) : 0),
+            'otros'       => nominaExcelNumero($cols_imp['otros'] !== null ? ($fila_imp[$cols_imp['otros']] ?? 0) : 0),
+            'retenciones' => nominaExcelNumero($cols_imp['retenciones'] !== null ? ($fila_imp[$cols_imp['retenciones']] ?? 0) : 0),
+        ];
+    }
+
+    if (empty($datos_excel_imp)) {
+        echo json_encode([
+            'success'        => false,
+            'error'          => 'El Excel no trae filas válidas con expediente debajo del encabezado.',
+            'no_importados'  => $no_importados_imp,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // Expedientes del Excel que existen (o no) en la base de trabajadores: sirve
+    // para separar "no existe en la base" de "existe pero no está en la nómina".
+    $existentes_bd_imp = [];
+    $codigos_bd_imp = array_keys($datos_excel_imp);
+    if (!empty($codigos_bd_imp)) {
+        $ph_exp_bd = implode(',', array_fill(0, count($codigos_bd_imp), '?'));
+        $stmt_exp_bd = $pdo->prepare("SELECT codigo FROM trabajadores WHERE codigo IN ($ph_exp_bd)");
+        $stmt_exp_bd->execute($codigos_bd_imp);
+        foreach ($stmt_exp_bd->fetchAll(PDO::FETCH_COLUMN) as $cod_bd) {
+            $existentes_bd_imp[nominaExcelNormalizarExpediente($cod_bd)] = true;
+        }
+    }
+
+    // ---- Parámetros de cálculo (los mismos que usa la edición de la nómina) ----
+    $cfg_imp = [];
+    $stmt_cfg_imp = $pdo->query("SELECT parametro, valor FROM configuracion_general
+                                 WHERE parametro IN ('dias_mensuales', 'horas_jornada_diaria')");
+    foreach ($stmt_cfg_imp->fetchAll(PDO::FETCH_ASSOC) as $c_imp_cfg) {
+        $cfg_imp[$c_imp_cfg['parametro']] = $c_imp_cfg['valor'];
+    }
+    $dias_mensuales_imp = intval($cfg_imp['dias_mensuales'] ?? 24) ?: 24;
+    $jornada_diaria_imp = intval($cfg_imp['horas_jornada_diaria'] ?? 8) ?: 8;
+    $factor_vac_imp     = ($factor_909 > 0) ? $factor_909 : 0.0909;
+    $tasa_cess_imp      = getTasaContribucion($pdo);
+
+    $actualizados_imp = 0;
+    $ids_fuera_imp    = [];
+    $importados_detalle_imp  = [];
+    $eliminados_codigos_imp  = [];
+
+    $pdo->beginTransaction();
+    try {
+        if ($generar_nomina_imp) {
+            generarNominaAutomaticaBorrador(
+                $pdo, $periodo_desde_imp, $periodo_hasta_imp, $tipo_descuento_imp,
+                $horas_jornada, $dias_laborables, $factor_909, $rangos_impuesto
+            );
+        }
+
+        // ---- Filas de la nómina automática del período ----
+        $stmt_filas_imp = $pdo->prepare("SELECT n.id, n.tipo_descuento,
+                                                t.id AS trabajador_id, t.codigo, t.no_acumular_vacaciones,
+                                                e.salario_mensual, e.salario_hora_ordinaria
+                                         FROM nominas n
+                                         JOIN trabajadores t ON t.id = n.trabajador_id
+                                         JOIN escalas_salariales e ON e.id = t.escala_salarial_id
+                                         WHERE n.periodo_desde = ? AND n.periodo_hasta = ?
+                                           AND n.tipo_nomina = 'automatica' AND n.estado = 'borrador'");
+        $stmt_filas_imp->execute([$periodo_desde_imp, $periodo_hasta_imp]);
+        $filas_nomina_imp = [];
+        foreach ($stmt_filas_imp->fetchAll(PDO::FETCH_ASSOC) as $fila_nom) {
+            $filas_nomina_imp[nominaExcelNormalizarExpediente($fila_nom['codigo'])] = $fila_nom;
+        }
+
+        $upd_imp = $pdo->prepare("UPDATE nominas SET
+                horas_laboradas = ?, dias_feriados = ?, importe_dias_feriados = ?,
+                importe_salario_laboral = ?, otros_salarios = ?, total_salario_devengado = ?,
+                descuentos = ?, contribucion_especial = ?, ingresos_personales = ?,
+                importe_neto = ?, total_deducciones = ?
+            WHERE id = ?");
+
+        foreach ($datos_excel_imp as $exp_imp => $valores_imp) {
+            if (!isset($existentes_bd_imp[$exp_imp])) {
+                $no_importados_imp[] = ['expediente' => $valores_imp['mostrar'], 'motivo' => 'no existe en la base de datos'];
+                continue;
+            }
+            if (!isset($filas_nomina_imp[$exp_imp])) {
+                $no_importados_imp[] = ['expediente' => $valores_imp['mostrar'], 'motivo' => 'no está en la nómina de este período'];
+                continue;
+            }
+            $fila_nom = $filas_nomina_imp[$exp_imp];
+
+            $horas_imp       = max(0, (int)round($valores_imp['horas']));
+            $feriados_imp    = max(0, round((float)$valores_imp['feriados'], 2));
+            $otros_imp       = max(0, round((float)$valores_imp['otros'], 2));
+            $retenciones_imp = max(0, round((float)$valores_imp['retenciones'], 2));
+
+            $salario_hora_imp    = (float)$fila_nom['salario_hora_ordinaria'];
+            $salario_mensual_imp = (float)$fila_nom['salario_mensual'];
+            $salario_diario_imp  = $salario_mensual_imp / $dias_mensuales_imp;
+
+            $salario_laboral_imp = roundExcel($salario_hora_imp * $horas_imp, 2);
+
+            // Otros Pagos se SUMA a lo que la nómina ya trae por pagos
+            // adicionales del trabajador. Se recalcula la base en cada import
+            // para que repetir el mismo archivo no duplique el importe.
+            $base_otros_imp = 0.0;
+            foreach (getPagosPorTrabajador($pdo, (int)$fila_nom['trabajador_id']) as $pa_imp) {
+                if (($pa_imp['tipo_calculo'] ?? '') === 'monto_fijo') {
+                    $base_otros_imp += (float)$pa_imp['monto'];
+                } elseif (($pa_imp['tipo_calculo'] ?? '') === 'porcentaje') {
+                    $base_otros_imp += (float)$pa_imp['monto'] / 100 * $salario_laboral_imp;
+                }
+            }
+            $otros_final_imp = roundExcel(roundExcel($base_otros_imp, 2) + $otros_imp, 2);
+
+            $importe_feriados_imp = roundExcel($salario_diario_imp * $feriados_imp * 2, 2);
+
+            $importe_vac_adic_imp = 0.0;
+            if ((int)($fila_nom['no_acumular_vacaciones'] ?? 0) === 1) {
+                $dias_vac_prop_imp = roundExcel(($horas_imp * $factor_vac_imp) / $jornada_diaria_imp, 2);
+                $importe_vac_adic_imp = roundExcel($dias_vac_prop_imp * $salario_diario_imp, 2);
+            }
+
+            $total_devengado_imp = roundExcel($salario_laboral_imp + $importe_feriados_imp + $otros_final_imp + $importe_vac_adic_imp, 2);
+
+            if (($fila_nom['tipo_descuento'] ?? 'total_rangos') === 'solo_cess') {
+                $contribucion_imp = calcularCessProgresivoPHP($total_devengado_imp);
+                $impuesto_imp = 0;
+            } else {
+                $contribucion_imp = roundExcel($total_devengado_imp * ($tasa_cess_imp / 100), 2);
+                $impuesto_imp = calcularTotalImpuesto($total_devengado_imp, $rangos_impuesto);
+            }
+
+            $neto_antes_imp = roundExcel($total_devengado_imp - ($contribucion_imp + $impuesto_imp), 2);
+            if ($retenciones_imp > $neto_antes_imp) $retenciones_imp = max(0, $neto_antes_imp);
+            $neto_final_imp = roundExcel($neto_antes_imp - $retenciones_imp, 2);
+
+            $upd_imp->execute([
+                $horas_imp, $feriados_imp, $importe_feriados_imp,
+                $salario_laboral_imp, $otros_final_imp, $total_devengado_imp,
+                $retenciones_imp, $contribucion_imp, $impuesto_imp,
+                $neto_final_imp, roundExcel($contribucion_imp + $impuesto_imp + $retenciones_imp, 2),
+                (int)$fila_nom['id'],
+            ]);
+            $importados_detalle_imp[] = [
+                'expediente'  => $exp_imp,
+                'horas'       => $horas_imp,
+                'feriados'    => $feriados_imp,
+                'otros'       => $otros_final_imp,
+                'retenciones' => $retenciones_imp,
+                'devengado'   => $total_devengado_imp,
+                'neto'        => $neto_final_imp,
+            ];
+            $actualizados_imp++;
+        }
+
+        // Los trabajadores que no vienen en el Excel salen de la nómina: el
+        // archivo manda sobre quiénes se pagan en este período.
+        foreach ($filas_nomina_imp as $exp_nom => $fila_nom) {
+            if (!isset($datos_excel_imp[$exp_nom])) {
+                $ids_fuera_imp[] = (int)$fila_nom['id'];
+                $eliminados_codigos_imp[] = $exp_nom;
+            }
+        }
+        if (!empty($ids_fuera_imp)) {
+            revertirDisfrutesLiquidacion($pdo, $ids_fuera_imp);
+            $ph_imp = implode(',', array_fill(0, count($ids_fuera_imp), '?'));
+            $pdo->prepare("DELETE FROM nomina_pagos_adicionales WHERE nomina_id IN ($ph_imp)")->execute($ids_fuera_imp);
+            $pdo->prepare("DELETE FROM nominas WHERE id IN ($ph_imp) AND estado = 'borrador'")->execute($ids_fuera_imp);
+        }
+
+        $pdo->commit();
+    } catch (\Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        echo json_encode(['success' => false, 'error' => 'No se pudo aplicar el Excel: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ---- Bitácora física de trazabilidad (servicios/nominas/logs) ----
+    $logs_dir_imp = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'logs';
+    if (!is_dir($logs_dir_imp)) { @mkdir($logs_dir_imp, 0775, true); }
+    $log_nombre_imp = 'nomImport_' . date('Y-m-d_H-i-s') . '.log';
+    $log_ruta_imp   = $logs_dir_imp . DIRECTORY_SEPARATOR . $log_nombre_imp;
+
+    $log_usuario_imp = trim((string)($_SESSION['username'] ?? 'N/D'));
+    if (!empty($_SESSION['user_nombre'])) {
+        $log_usuario_imp .= ' - ' . trim((string)$_SESSION['user_nombre']);
+    }
+
+    $log_lineas_imp   = [];
+    $log_lineas_imp[] = 'ARCHIVO DE LOGEO DE TRAZABILIDAD DE IMPORTACIÓN DE NÓMINAS DESDE EXCEL';
+    $log_lineas_imp[] = str_repeat('=', 78);
+    $log_lineas_imp[] = 'Fecha/Hora        : ' . date('Y-m-d H:i:s');
+    $log_lineas_imp[] = 'Período           : ' . $periodo_desde_imp . ' / ' . $periodo_hasta_imp;
+    $log_lineas_imp[] = 'Archivo           : ' . (string)($archivo_imp['name'] ?? '');
+    $log_lineas_imp[] = 'Usuario           : ' . $log_usuario_imp;
+    $log_lineas_imp[] = 'Tipo de descuento : ' . $tipo_descuento_imp;
+    $log_lineas_imp[] = 'Nómina generada   : ' . ($generar_nomina_imp ? 'SÍ (no existía)' : 'NO (ya existía en borrador)');
+    $log_lineas_imp[] = 'Expedientes leídos: ' . $total_excel_imp;
+    $log_lineas_imp[] = 'Importados        : ' . $actualizados_imp;
+    $log_lineas_imp[] = 'No importados     : ' . count($no_importados_imp);
+    $log_lineas_imp[] = 'Quitados de nómina: ' . count($ids_fuera_imp);
+    $log_lineas_imp[] = '';
+    $log_lineas_imp[] = 'DETALLE DE EXPEDIENTES IMPORTADOS';
+    $log_lineas_imp[] = str_repeat('-', 78);
+    foreach ($importados_detalle_imp as $det_imp) {
+        $log_lineas_imp[] = 'Expediente: ' . $det_imp['expediente']
+            . ' | Horas: ' . $det_imp['horas']
+            . ' | Feriados: ' . number_format((float)$det_imp['feriados'], 2, '.', '')
+            . ' | Otros: ' . number_format((float)$det_imp['otros'], 2, '.', '')
+            . ' | Retenciones: ' . number_format((float)$det_imp['retenciones'], 2, '.', '')
+            . ' | Devengado: ' . number_format((float)$det_imp['devengado'], 2, '.', '')
+            . ' | Neto: ' . number_format((float)$det_imp['neto'], 2, '.', '');
+    }
+    if (!empty($no_importados_imp)) {
+        $log_lineas_imp[] = '';
+        $log_lineas_imp[] = 'EXPEDIENTES NO IMPORTADOS';
+        $log_lineas_imp[] = str_repeat('-', 78);
+        foreach ($no_importados_imp as $ni_imp) {
+            $log_lineas_imp[] = 'Expediente: ' . $ni_imp['expediente'] . ', no se importó porque ' . $ni_imp['motivo'] . '.';
+        }
+    }
+    if (!empty($eliminados_codigos_imp)) {
+        $log_lineas_imp[] = '';
+        $log_lineas_imp[] = 'TRABAJADORES QUITADOS DE LA NÓMINA (no venían en el Excel)';
+        $log_lineas_imp[] = str_repeat('-', 78);
+        foreach ($eliminados_codigos_imp as $cod_out_imp) {
+            $log_lineas_imp[] = 'Expediente: ' . $cod_out_imp;
+        }
+    }
+    @file_put_contents($log_ruta_imp, implode(PHP_EOL, $log_lineas_imp) . PHP_EOL, LOCK_EX);
+
+    logAction(
+        'importar_excel_automatica',
+        'nominas',
+        'Importación de Excel de salarios en nómina automática',
+        [
+            'periodo'      => $periodo_desde_imp . '-' . $periodo_hasta_imp,
+            'importados'   => $actualizados_imp,
+            'eliminados'   => count($ids_fuera_imp),
+            'generada'     => $generar_nomina_imp ? 1 : 0,
+            'archivo'      => (string)($archivo_imp['name'] ?? ''),
+            'log'          => $log_nombre_imp,
+        ],
+        null,
+        'success',
+        null,
+        $_SESSION['auth_provider'] ?? 'local'
+    );
+
+    echo json_encode([
+        'success'       => true,
+        'importados'    => $actualizados_imp,
+        'eliminados'    => count($ids_fuera_imp),
+        'no_importados' => $no_importados_imp,
+        'total_excel'   => $total_excel_imp,
+        'generada'      => $generar_nomina_imp ? 1 : 0,
+        'log'           => 'logs/' . $log_nombre_imp,
+        'periodo'       => $periodo_desde_imp . ' / ' . $periodo_hasta_imp,
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -5434,6 +6019,9 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
                         <i class="fas fa-sync-alt me-1"></i> Regenerar
                     </button>
                 </form>
+                <button type="button" class="btn-win-success" data-bs-toggle="modal" data-bs-target="#modalImportarExcelNomina" title="Importar datos desde Excel" data-tooltip="Importar datos desde Excel" data-tooltip-theme="success" style="padding:0.375rem 0.75rem;">
+                    <i class="fas fa-file-excel me-1"></i> Importar Excel
+                </button>
             <?php endif; ?>
 
             <?php if ($tipo_nomina_activa == 'vacaciones' && !$contabilizada && $puede_editar_nomina): ?>
@@ -5781,6 +6369,12 @@ html[data-theme="light"] .select2-results__option[aria-selected="true"] { backgr
             <i class="fas fa-inbox fa-4x mb-3" style="color: rgba(255,255,255,0.2);"></i>
             <h4 class="text-white mb-2">No hay nómina generada</h4>
             <p style="color: rgba(255,255,255,0.5);">No existe nómina de tipo <strong><?php echo $tipos_nomina[$tipo_nomina_activa]['nombre']; ?></strong> para <?php echo $nombre_mes . ' ' . $anio; ?></p>
+            <?php if ($tipo_nomina_activa == 'automatica' && $puede_editar_nomina): ?>
+                <button type="button" class="btn-win-success mt-3" data-bs-toggle="modal" data-bs-target="#modalImportarExcelNomina" title="Importar Excel y generar la nómina" data-tooltip="Importar Excel y generar la nómina" data-tooltip-theme="success" style="padding:0.45rem 1.1rem;">
+                    <i class="fas fa-file-excel me-1"></i> Importar Excel
+                </button>
+                <div class="mt-2" style="color: rgba(255,255,255,0.45); font-size:0.75rem;">Carga el Excel de salarios y genera la nómina automática en un solo paso.</div>
+            <?php endif; ?>
         </div>
     <?php else: ?>
         <!-- Tarjetas Estadísticas Grid -->
@@ -6767,6 +7361,195 @@ if ($existe_nomina) {
     </div>
 </div>
 
+<!-- Importar Excel de salarios (SiGesNom) en la nómina automática -->
+<div class="modal fade" id="modalImportarExcelNomina" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-modern">
+            <div class="modal-header" style="background: linear-gradient(135deg, #16a34a, #0ea5e9); border-bottom: none;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-file-excel fa-2x me-3" style="color: #ffffff;"></i>
+                    <div>
+                        <h5 class="modal-title" style="color: white; font-weight: 600;">Importar Excel de salarios</h5>
+                        <p class="small mb-0" style="color: rgba(255,255,255,0.85);">Nómina automática del período seleccionado</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-custom" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;">
+                <label class="form-label fw-semibold mb-2" for="archivoExcelNomina" style="color: var(--txt); font-size:0.8rem;">
+                    <i class="fas fa-paperclip me-1" style="color: var(--color-success, #16a34a);"></i> Archivo Excel (.xlsx / .xls)
+                </label>
+                <input type="file" id="archivoExcelNomina" name="archivo_excel" class="form-control form-select-custom" accept=".xlsx,.xls" style="font-size:0.82rem;">
+                <div class="form-text mt-2" style="color: var(--muted); font-size:0.72rem;">
+                    Tamaño máximo 5 MB. El cruce se hace por el <strong>No. Expediente</strong> del trabajador.
+                </div>
+
+                <div class="mt-3 p-3" style="background: rgba(59,130,246,0.10); border: 0.0625rem solid rgba(59,130,246,0.30); border-radius:0.75rem; color: var(--txt); font-size:0.75rem;">
+                    <div class="fw-bold mb-1" style="color: var(--txt);"><i class="fas fa-table-columns me-1"></i> Columnas que se leen</div>
+                    <div style="color: var(--muted);">
+                        <strong style="color: var(--txt);">A</strong> No. Exped. &nbsp;·&nbsp;
+                        <strong style="color: var(--txt);">D</strong> Horas Lab &nbsp;·&nbsp;
+                        <strong style="color: var(--txt);">E</strong> Día Feriados &nbsp;·&nbsp;
+                        <strong style="color: var(--txt);">F</strong> Otros Pagos &nbsp;·&nbsp;
+                        <strong style="color: var(--txt);">G</strong> Retenciones
+                    </div>
+                </div>
+
+                <div class="mt-3 p-3" style="background: rgba(245,158,11,0.12); border: 0.0625rem solid rgba(245,158,11,0.35); border-radius:0.75rem; color: var(--txt); font-size:0.75rem;">
+                    <i class="fas fa-triangle-exclamation me-1" style="color:#f59e0b;"></i>
+                    Solo se cargan los expedientes que vienen en el Excel. Los trabajadores de esta nómina que <strong>no</strong> aparezcan en el archivo se quitarán del borrador.
+                </div>
+
+                <?php if (!$existe_nomina && $tipo_nomina_activa == 'automatica'): ?>
+                <div class="mt-3">
+                    <label class="form-label fw-semibold mb-2" for="importExcelTipoDescuento" style="color: var(--txt); font-size:0.8rem;">
+                        <i class="fas fa-percent me-1"></i> Tipo de descuento de la nómina que se generará
+                    </label>
+                    <select id="importExcelTipoDescuento" class="form-select form-select-custom" style="font-size:0.82rem;">
+                        <option value="total_rangos">Total Descuentos por rangos (ISIP)</option>
+                        <option value="solo_cess">Parcial de descuentos por rangos (PDL SOLO CESS)</option>
+                    </select>
+                    <div class="form-text mt-1" style="color: var(--muted); font-size:0.72rem;">
+                        Este período no tiene nómina: se generará automáticamente antes de aplicar el Excel.
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <div id="importExcelEstado" class="mt-3" style="display:none; font-size:0.78rem;"></div>
+            </div>
+            <div class="modal-footer" style="border-top: 0.0625rem solid rgba(255,255,255,0.1); padding:1rem 1.5rem;">
+                <button type="button" class="btn-win" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn-win-primary" id="btnImportarExcelNomina" title="Importar" data-tooltip="Importar" data-tooltip-theme="success">
+                    <i class="fas fa-upload me-2"></i>Importar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    var boton = document.getElementById('btnImportarExcelNomina');
+    if (!boton) return;
+
+    var input  = document.getElementById('archivoExcelNomina');
+    var estado = document.getElementById('importExcelEstado');
+    var modal  = document.getElementById('modalImportarExcelNomina');
+    var tipoDescuentoImport = document.getElementById('importExcelTipoDescuento');
+    var periodoActual = <?php echo json_encode($periodo); ?>;
+    var importando = false;
+    var importadoOk = false;
+
+    function importEsc(texto) {
+        return String(texto == null ? '' : texto)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function restaurarBoton() {
+        boton.disabled = false;
+        boton.innerHTML = '<i class="fas fa-upload me-2"></i>Importar';
+    }
+
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', function () {
+            var recargar = importadoOk;
+            input.value = '';
+            estado.style.display = 'none';
+            estado.innerHTML = '';
+            importando = false;
+            importadoOk = false;
+            restaurarBoton();
+            if (recargar) { window.location.reload(); }
+        });
+    }
+
+    boton.addEventListener('click', function () {
+        if (importando) return;
+        if (!input.files || !input.files.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Falta el archivo',
+                text: 'Seleccione el Excel que desea importar.',
+                confirmButtonColor: '#2563eb',
+				confirmButtonText: '<i class="fas fa-check m-2"></i> Entendido'
+            });
+            return;
+        }
+
+        var datos = new FormData();
+        datos.append('importar_excel_automatica', '1');
+        datos.append('periodo', periodoActual);
+        datos.append('tipo_nomina', 'automatica');
+        datos.append('tipo_descuento', tipoDescuentoImport ? tipoDescuentoImport.value : 'total_rangos');
+        datos.append('archivo_excel', input.files[0]);
+
+        importando = true;
+        boton.disabled = true;
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando...';
+        estado.style.display = 'none';
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: datos,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (respuesta) {
+            return respuesta.json().catch(function () {
+                throw new Error('El servidor devolvió una respuesta no válida. Revise el período e intente de nuevo.');
+            });
+        })
+        .then(function (res) {
+            if (!res || !res.success) {
+                throw new Error((res && res.error) || 'No se pudo importar el archivo.');
+            }
+
+            var noImportados = res.no_importados || [];
+            var listaNo = '';
+            if (noImportados.length) {
+                listaNo = '<div class="mt-2" style="text-align:left; max-height:13rem; overflow-y:auto; border-top:0.0625rem solid rgba(148,163,184,0.35); padding-top:0.5rem;">'
+                    + noImportados.map(function (item) {
+                        return '<div style="font-size:0.8rem; margin-bottom:0.35rem;">'
+                            + 'Expediente: <strong>' + importEsc(item.expediente) + '</strong>, no se importó porque ' + importEsc(item.motivo) + '.'
+                            + '</div>';
+                    }).join('')
+                    + '</div>';
+            }
+
+            var detalle = '<div style="text-align:left; font-size:0.88rem;">'
+                + '<div><i class="fas fa-check-circle me-1" style="color:#16a34a;"></i> Se importaron: <strong>' + res.importados + '</strong> expedientes de <strong>' + res.total_excel + '</strong> del archivo</div>'
+                + (res.generada ? '<div class="mt-1"><i class="fas fa-circle-plus me-1" style="color:#0ea5e9;"></i> La nómina automática del período se generó antes de importar</div>' : '')
+                + (res.eliminados > 0 ? '<div class="mt-1"><i class="fas fa-user-minus me-1" style="color:#f59e0b;"></i> <strong>' + res.eliminados + '</strong> trabajadores fuera del Excel, quitados de la nómina</div>' : '')
+                + (noImportados.length
+                    ? '<div class="mt-2 fw-semibold" style="color:#f59e0b;"><i class="fas fa-triangle-exclamation me-1"></i> No se importaron: ' + noImportados.length + '</div>' + listaNo
+                    : '<div class="mt-2" style="color: var(--muted);"><i class="fas fa-circle-check me-1" style="color:#16a34a;"></i> Todos los expedientes del archivo se importaron.</div>')
+                + (res.log ? '<div class="mt-2" style="font-size:0.75rem; color: var(--muted);"><i class="fas fa-file-lines me-1"></i> Bitácora: ' + importEsc(res.log) + '</div>' : '')
+                + '</div>';
+
+            estado.innerHTML = '<div class="alert alert-success mb-0" style="font-size:0.8rem;">' + detalle + '</div>';
+            estado.style.display = 'block';
+            importadoOk = true;
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Importación completada',
+                html: detalle,
+                confirmButtonColor: '#2563eb',
+                confirmButtonText: '<i class="fas fa-times me-2"></i>Cerrar'
+            });
+        })
+        .catch(function (err) {
+            estado.innerHTML = '<div class="alert alert-danger mb-0" style="font-size:0.8rem;"><i class="fas fa-circle-exclamation me-1"></i> '
+                + (err && err.message ? err.message : 'No se pudo importar el archivo.') + '</div>';
+            estado.style.display = 'block';
+            importando = false;
+            restaurarBoton();
+        });
+    });
+})();
+</script>
+
 <!-- Modal Seleccionar Tarifas (Ley 189/2026 vs Convenio Colectivo) -->
 <div class="modal fade" id="modalSeleccionTarifasExtra" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
@@ -7638,6 +8421,9 @@ if ($existe_nomina) {
                 <button type="button" class="btn-win" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger">
                     <i class="fas fa-times me-2"></i>Cancelar
                 </button>
+                <button type="button" class="btn-win-success" id="btnImportarExcelDesdeDescuento" title="Importar Excel y generar la nómina" data-tooltip="Importar Excel y generar la nómina" data-tooltip-theme="success" disabled>
+                    <i class="fas fa-file-excel me-2"></i>Importar Excel
+                </button>
                 <button type="button" class="btn-win-primary" id="btnConfirmarTipoDescuento" title="Generar nómina" data-tooltip="Generar nómina" data-tooltip-theme="success" disabled>
                     <i class="fas fa-play me-2"></i>Generar Nómina
                 </button>
@@ -7718,6 +8504,7 @@ $('#btnGenerarAutomaticaModal').on('click', function() {
     $('#opcionTotalDescuentos').removeClass('selected');
     $('#opcionSoloCess').removeClass('selected');
     $('#btnConfirmarTipoDescuento').prop('disabled', true);
+    $('#btnImportarExcelDesdeDescuento').prop('disabled', true);
     
     // CORRECCIÓN: Evitar duplicar la instancia del modal
     var modalEl = document.getElementById('modalSeleccionDescuento');
@@ -7730,6 +8517,7 @@ $('#opcionTotalDescuentos').on('click', function() {
     $('#opcionSoloCess').removeClass('selected');
     tipoDescuentoSeleccionado = 'total_rangos';
     $('#btnConfirmarTipoDescuento').prop('disabled', false);
+    $('#btnImportarExcelDesdeDescuento').prop('disabled', false);
 });
 
 $('#opcionSoloCess').on('click', function() {
@@ -7737,6 +8525,7 @@ $('#opcionSoloCess').on('click', function() {
     $('#opcionTotalDescuentos').removeClass('selected');
     tipoDescuentoSeleccionado = 'solo_cess';
     $('#btnConfirmarTipoDescuento').prop('disabled', false);
+    $('#btnImportarExcelDesdeDescuento').prop('disabled', false);
 });
 
 function procederGeneracionAutomatica() {
@@ -7791,6 +8580,19 @@ $('#btnConfirmarTipoDescuento').on('click', function() {
         .catch(function() {
             procederGeneracionAutomatica();
         });
+});
+
+// Abre el modal de importación de Excel desde el modal de tipo de descuento
+$('#btnImportarExcelDesdeDescuento').on('click', function() {
+    if (!tipoDescuentoSeleccionado) return;
+    var elDescuento = document.getElementById('modalSeleccionDescuento');
+    var modalDescuento = bootstrap.Modal.getOrCreateInstance(elDescuento);
+    $(elDescuento).one('hidden.bs.modal', function() {
+        var sel = document.getElementById('importExcelTipoDescuento');
+        if (sel) sel.value = tipoDescuentoSeleccionado;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalImportarExcelNomina')).show();
+    });
+    modalDescuento.hide();
 });
 
 function analizarCubanCI(ci) {

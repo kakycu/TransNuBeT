@@ -414,6 +414,7 @@ var SELECTORES_ANIO_PREVIO = [
     '#btnGenerarAutomaticaModal',
     '#btnConfirmarTipoDescuento',
     '#btnConfirmarDescuentoGen',
+    '#btnImportarExcelDesdeDescuento',
     '[data-bs-target="#modalSeleccionDescuento"]',
     '[data-bs-target="#modalSeleccionDescuentoGeneral"]',
     SELECTORES_CONSULTA_NOMINA
