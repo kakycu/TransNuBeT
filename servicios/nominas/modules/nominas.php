@@ -2129,7 +2129,23 @@ if (isset($_POST['importar_excel_automatica'])) {
         echo json_encode(['success' => false, 'error' => 'No tiene permisos para generar la nómina automática de este período.'], JSON_UNESCAPED_UNICODE);
         exit;
     }
-    $tipo_descuento_imp = (($_POST['tipo_descuento'] ?? 'total_rangos') === 'solo_cess') ? 'solo_cess' : 'total_rangos';
+    // Tipo de descuento: solo se exige cuando el período no tiene nómina (es
+    // decir, cuando este import la va a generar). Nunca se asume uno por
+    // defecto: el usuario debe elegirlo en el modal de importación o en el
+    // modal de selección de tipo de descuento.
+    $tipo_descuento_imp    = null;
+    $tipo_descuento_post   = trim((string)($_POST['tipo_descuento'] ?? ''));
+    if (in_array($tipo_descuento_post, ['total_rangos', 'solo_cess'], true)) {
+        $tipo_descuento_imp = $tipo_descuento_post;
+    }
+    if ($generar_nomina_imp && $tipo_descuento_imp === null) {
+        echo json_encode([
+            'success'    => false,
+            'requiere_tipo' => 1,
+            'error'      => 'Este período no tiene nómina: seleccione el tipo de descuento (Total por rangos o SOLO CESS) antes de importar el Excel.',
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
     // ---- Archivo subido ----
     if (empty($_FILES['archivo_excel']) || !is_array($_FILES['archivo_excel'])) {
@@ -2440,6 +2456,18 @@ if (isset($_POST['importar_excel_automatica'])) {
         $log_usuario_imp .= ' - ' . trim((string)$_SESSION['user_nombre']);
     }
 
+    // Si la nómina ya existía, el tipo aplicado es el suyo, no el del POST.
+    $log_tipo_descuento_imp = $tipo_descuento_imp;
+    if ($log_tipo_descuento_imp === null) {
+        foreach ($filas_nomina_imp as $fila_tipo_imp) {
+            $log_tipo_descuento_imp = trim((string)($fila_tipo_imp['tipo_descuento'] ?? ''));
+            break;
+        }
+    }
+    if ($log_tipo_descuento_imp === null || $log_tipo_descuento_imp === '') {
+        $log_tipo_descuento_imp = 'no aplica (nómina ya existente)';
+    }
+
     $log_lineas_imp   = [];
     $log_lineas_imp[] = 'ARCHIVO DE LOGEO DE TRAZABILIDAD DE IMPORTACIÓN DE NÓMINAS DESDE EXCEL';
     $log_lineas_imp[] = str_repeat('=', 78);
@@ -2447,7 +2475,7 @@ if (isset($_POST['importar_excel_automatica'])) {
     $log_lineas_imp[] = 'Período           : ' . $periodo_desde_imp . ' / ' . $periodo_hasta_imp;
     $log_lineas_imp[] = 'Archivo           : ' . (string)($archivo_imp['name'] ?? '');
     $log_lineas_imp[] = 'Usuario           : ' . $log_usuario_imp;
-    $log_lineas_imp[] = 'Tipo de descuento : ' . $tipo_descuento_imp;
+    $log_lineas_imp[] = 'Tipo de descuento : ' . $log_tipo_descuento_imp;
     $log_lineas_imp[] = 'Nómina generada   : ' . ($generar_nomina_imp ? 'SÍ (no existía)' : 'NO (ya existía en borrador)');
     $log_lineas_imp[] = 'Expedientes leídos: ' . $total_excel_imp;
     $log_lineas_imp[] = 'Importados        : ' . $actualizados_imp;
@@ -7406,6 +7434,7 @@ if ($existe_nomina) {
                         <i class="fas fa-percent me-1"></i> Tipo de descuento de la nómina que se generará
                     </label>
                     <select id="importExcelTipoDescuento" class="form-select form-select-custom" style="font-size:0.82rem;">
+                        <option value="" selected>— Seleccione el tipo de descuento —</option>
                         <option value="total_rangos">Total Descuentos por rangos (ISIP)</option>
                         <option value="solo_cess">Parcial de descuentos por rangos (PDL SOLO CESS)</option>
                     </select>
@@ -7428,6 +7457,95 @@ if ($existe_nomina) {
         </div>
     </div>
 </div>
+<style>
+    /* Visor de bitácoras de importación (capa propia sobre Swal y modales) */
+    .bitacora-capa {
+        position: fixed;
+        inset: 0;
+        z-index: 200000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(4, 8, 16, 0.62);
+        backdrop-filter: blur(2px);
+    }
+    .bitacora-ventana {
+        width: min(62rem, 94vw);
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: 0.9rem;
+        border: 0.0625rem solid var(--border, rgba(255,255,255,0.14));
+        background: var(--panel, #111827);
+        color: var(--txt, #e5e7eb);
+        box-shadow: 0 1.5rem 3.5rem rgba(0, 0, 0, 0.55);
+    }
+    .bitacora-cabecera {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.75rem 1rem;
+        background: linear-gradient(135deg, #0ea5e9, #2563eb);
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .bitacora-cabecera .bitacora-titulo {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .bitacora-cabecera .bitacora-x {
+        margin-left: auto;
+        border: 0;
+        background: transparent;
+        color: #ffffff;
+        font-size: 1.05rem;
+        line-height: 1;
+        padding: 0.15rem 0.35rem;
+        border-radius: 0.35rem;
+    }
+    .bitacora-cabecera .bitacora-x:hover { background: rgba(255,255,255,0.18); }
+    .bitacora-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 0.45rem 1rem;
+        font-size: 0.72rem;
+        color: var(--muted, #9aa3b2);
+        border-bottom: 0.0625rem solid var(--border, rgba(255,255,255,0.08));
+    }
+    .bitacora-meta-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .bitacora-cuerpo {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 1rem;
+    }
+    .bitacora-texto {
+        margin: 0;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 0.78rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--txt, #e5e7eb);
+    }
+    .bitacora-pie {
+        display: flex;
+        justify-content: flex-end;
+        padding: 0.65rem 1rem;
+        border-top: 0.0625rem solid var(--border, rgba(255,255,255,0.08));
+    }
+    .bitacora-enlace {
+        color: var(--accent, #38bdf8);
+        text-decoration: underline;
+        cursor: pointer;
+        word-break: break-all;
+    }
+    .bitacora-enlace:hover { color: #7dd3fc; }
+</style>
 <script>
 (function () {
     var boton = document.getElementById('btnImportarExcelNomina');
@@ -7440,6 +7558,7 @@ if ($existe_nomina) {
     var periodoActual = <?php echo json_encode($periodo); ?>;
     var importando = false;
     var importadoOk = false;
+    var modoCerrar = false;
 
     function importEsc(texto) {
         return String(texto == null ? '' : texto)
@@ -7448,9 +7567,106 @@ if ($existe_nomina) {
     }
 
     function restaurarBoton() {
+        modoCerrar = false;
         boton.disabled = false;
         boton.innerHTML = '<i class="fas fa-upload me-2"></i>Importar';
     }
+
+    /* Cierra la capa del visor de bitácora si está abierta. */
+    function cerrarVisorBitacora() {
+        var capa = document.querySelector('.bitacora-capa');
+        if (capa && capa.parentNode) { capa.parentNode.removeChild(capa); }
+    }
+
+    /* Visor de la bitácora .log: misma lectura que usa carpetas.php
+       (ver_archivo.php) en una capa propia, para no cerrar el Swal ni el
+       modal de importación que quedan detrás. */
+    function abrirVisorBitacora(ruta) {
+        var nombre = String(ruta || '').replace(/\\/g, '/').split('/').pop();
+        if (!nombre) { return; }
+
+        cerrarVisorBitacora();
+
+        var capa = document.createElement('div');
+        capa.className = 'bitacora-capa';
+        capa.innerHTML =
+            '<div class="bitacora-ventana" role="dialog" aria-modal="true" aria-label="Visor de bitácora">' +
+                '<div class="bitacora-cabecera">' +
+                    '<i class="fas fa-file-lines"></i>' +
+                    '<span class="bitacora-titulo">Archivo: ' + importEsc(nombre) + ' - LOG</span>' +
+                    '<button type="button" class="bitacora-x" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>' +
+                '</div>' +
+                '<div class="bitacora-meta" id="bitacoraLogMeta">Leyendo la bitácora…</div>' +
+                '<div class="bitacora-cuerpo"><pre class="bitacora-texto" id="bitacoraLogTexto"><i class="fas fa-spinner fa-spin me-2"></i>Cargando el archivo…</pre></div>' +
+                '<div class="bitacora-pie">' +
+                    '<button type="button" class="btn-win bitacora-cerrar-btn"><i class="fas fa-times me-2"></i>Cerrar</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(capa);
+
+        capa.querySelector('.bitacora-x').addEventListener('click', cerrarVisorBitacora);
+        capa.querySelector('.bitacora-cerrar-btn').addEventListener('click', cerrarVisorBitacora);
+        capa.addEventListener('click', function (e) { if (e.target === capa) { cerrarVisorBitacora(); } });
+
+        var meta = capa.querySelector('#bitacoraLogMeta');
+        var texto = capa.querySelector('#bitacoraLogTexto');
+
+        var cuerpo = new FormData();
+        cuerpo.append('carpeta', 'logs');
+        cuerpo.append('archivo', nombre);
+
+        fetch('ver_archivo.php', { method: 'POST', body: cuerpo, credentials: 'same-origin' })
+            .then(function (r) {
+                return r.json().then(function (json) {
+                    if (r.ok && json && json.success) { return json; }
+                    throw new Error((json && json.mensaje) || ('HTTP ' + r.status));
+                }, function () {
+                    throw new Error('HTTP ' + r.status);
+                });
+            })
+            .then(function (data) {
+                var bytes = parseInt(data.bytes, 10) || 0;
+                var peso = bytes >= 1048576
+                    ? (bytes / 1048576).toFixed(1).replace('.', ',') + ' MB'
+                    : bytes >= 1024
+                        ? (bytes / 1024).toFixed(1).replace('.', ',') + ' KB'
+                        : bytes + ' B';
+                var lineas = parseInt(data.lineas, 10) || 0;
+
+                meta.innerHTML =
+                    '<span class="bitacora-meta-item"><i class="fas fa-hard-drive"></i>' + importEsc(peso) + '</span>' +
+                    '<span class="bitacora-meta-item"><i class="fas fa-align-left"></i>' + lineas +
+                        ' l&iacute;nea' + (lineas === 1 ? '' : 's') + '</span>';
+
+                texto.innerHTML = importEsc(data.contenido || '') +
+                    (data.truncado
+                        ? '\n\n<i class="fas fa-triangle-exclamation me-1"></i>Se muestran los primeros 400 KB: el archivo es más largo.'
+                        : '');
+            })
+            .catch(function (err) {
+                meta.innerHTML = '';
+                texto.innerHTML = '<i class="fas fa-triangle-exclamation me-1"></i>' +
+                    importEsc((err && err.message) || 'No se pudo leer la bitácora.');
+            });
+    }
+
+    /* La línea "Bitácora: logs/nomImport_..." abre el visor. */
+    document.addEventListener('click', function (e) {
+        var enlace = e.target && e.target.closest ? e.target.closest('.bitacora-enlace') : null;
+        if (!enlace) { return; }
+        e.preventDefault();
+        e.stopPropagation();
+        abrirVisorBitacora(enlace.getAttribute('data-log') || '');
+    });
+
+    /* Esc cierra solo el visor: el Swal y el modal de importación siguen abiertos. */
+    document.addEventListener('keydown', function (e) {
+        if ((e.key === 'Escape' || e.keyCode === 27) && document.querySelector('.bitacora-capa')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            cerrarVisorBitacora();
+        }
+    }, true);
 
     if (modal) {
         modal.addEventListener('hidden.bs.modal', function () {
@@ -7466,6 +7682,10 @@ if ($existe_nomina) {
     }
 
     boton.addEventListener('click', function () {
+        if (modoCerrar) {
+            bootstrap.Modal.getOrCreateInstance(modal).hide();
+            return;
+        }
         if (importando) return;
         if (!input.files || !input.files.length) {
             Swal.fire({
@@ -7478,11 +7698,23 @@ if ($existe_nomina) {
             return;
         }
 
+        var tipoElegido = tipoDescuentoImport ? tipoDescuentoImport.value : '';
+        if (tipoDescuentoImport && !tipoElegido) {
+            Swal.fire({
+                icon: 'question',
+                title: 'Seleccione el tipo de descuento',
+                text: 'Este período todavía no tiene nómina. Indique con qué tipo de descuento se generará antes de importar el Excel.',
+                confirmButtonColor: '#2563eb',
+                confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido'
+            });
+            return;
+        }
+
         var datos = new FormData();
         datos.append('importar_excel_automatica', '1');
         datos.append('periodo', periodoActual);
         datos.append('tipo_nomina', 'automatica');
-        datos.append('tipo_descuento', tipoDescuentoImport ? tipoDescuentoImport.value : 'total_rangos');
+        datos.append('tipo_descuento', tipoElegido);
         datos.append('archivo_excel', input.files[0]);
 
         importando = true;
@@ -7524,12 +7756,19 @@ if ($existe_nomina) {
                 + (noImportados.length
                     ? '<div class="mt-2 fw-semibold" style="color:#f59e0b;"><i class="fas fa-triangle-exclamation me-1"></i> No se importaron: ' + noImportados.length + '</div>' + listaNo
                     : '<div class="mt-2" style="color: var(--muted);"><i class="fas fa-circle-check me-1" style="color:#16a34a;"></i> Todos los expedientes del archivo se importaron.</div>')
-                + (res.log ? '<div class="mt-2" style="font-size:0.75rem; color: var(--muted);"><i class="fas fa-file-lines me-1"></i> Bitácora: ' + importEsc(res.log) + '</div>' : '')
+                + (res.log ? '<div class="mt-2" style="font-size:0.78rem;"><i class="fas fa-file-lines me-1"></i> Bitácora: <a href="#" class="bitacora-enlace" data-log="' + importEsc(res.log) + '" title="Ver la bitácora de esta importación">' + importEsc(res.log) + '</a></div>' : '')
                 + '</div>';
 
             estado.innerHTML = '<div class="alert alert-success mb-0" style="font-size:0.8rem;">' + detalle + '</div>';
             estado.style.display = 'block';
             importadoOk = true;
+
+            // El botón deja de mostrar el spinner: pasa a "Aceptar" para poder
+            // cerrar el modal y ver el desglose que queda detrás.
+            importando = false;
+            modoCerrar = true;
+            boton.disabled = false;
+            boton.innerHTML = '<i class="fas fa-check me-2"></i>Aceptar';
 
             Swal.fire({
                 icon: 'success',
@@ -8358,8 +8597,25 @@ if ($existe_nomina) {
 </div>
 
 <!-- Modal Selección Tipo de Descuento para Nómina Automática -->
+<style>
+    /* Los tres botones del pie van uno al lado del otro: el modal es más ancho */
+    #modalSeleccionDescuento .modal-footer {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        gap: 0.6rem;
+    }
+    #modalSeleccionDescuento .modal-footer > button {
+        flex: 0 1 auto;
+        white-space: nowrap;
+    }
+    @media (max-width: 768px) {
+        #modalSeleccionDescuento .modal-footer { flex-wrap: wrap; }
+        #modalSeleccionDescuento .modal-footer > button { flex: 1 1 100%; }
+    }
+</style>
 <div class="modal fade" id="modalSeleccionDescuento" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: min(56rem, 96vw);">
         <div class="modal-content modal-content-modern">
             <div class="modal-header" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-bottom: none;">
                 <div class="d-flex align-items-center">
