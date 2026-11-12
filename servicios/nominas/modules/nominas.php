@@ -2262,6 +2262,7 @@ if (isset($_POST['importar_excel_automatica'])) {
         // y se informa que el modelo Excel viene incompleto.
         if ($texto_exp === '') {
             $no_importados_imp[] = [
+                'fila'       => $i_imp + 1,
                 'expediente' => '(sin expediente, fila ' . ($i_imp + 1) . ')',
                 'nombre'     => '',
                 'motivo'     => 'los valores del modelo Excel de la importación no estaban completos: falta el número de expediente',
@@ -2270,6 +2271,7 @@ if (isset($_POST['importar_excel_automatica'])) {
         }
         if ($texto_horas === '') {
             $no_importados_imp[] = [
+                'fila'       => $i_imp + 1,
                 'expediente' => $mostrar_exp,
                 'nombre'     => '',
                 'motivo'     => 'los valores del modelo Excel de la importación no estaban completos: falta Horas Lab',
@@ -2280,11 +2282,11 @@ if (isset($_POST['importar_excel_automatica'])) {
         $digitos_exp = preg_replace('/\D/', '', $mostrar_exp);
 
         if ($digitos_exp === '') {
-            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'el expediente no tiene dígitos'];
+            $no_importados_imp[] = ['fila' => $i_imp + 1, 'expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'el expediente no tiene dígitos'];
             continue;
         }
         if (strlen($digitos_exp) > 6) {
-            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'tiene más de 6 dígitos'];
+            $no_importados_imp[] = ['fila' => $i_imp + 1, 'expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'tiene más de 6 dígitos'];
             continue;
         }
 
@@ -2295,6 +2297,7 @@ if (isset($_POST['importar_excel_automatica'])) {
         $exp_imp = str_pad($digitos_exp, 6, '0', STR_PAD_LEFT);
         if (isset($datos_excel_imp[$exp_imp])) {
             $no_importados_imp[] = [
+                'fila'       => $i_imp + 1,
                 'expediente' => $mostrar_exp,
                 'nombre'     => '',
                 'motivo'     => 'está repetido en el Excel (fila ' . ($i_imp + 1) . '); se tomó la primera aparición (fila ' . $datos_excel_imp[$exp_imp]['fila'] . ')',
@@ -2319,12 +2322,18 @@ if (isset($_POST['importar_excel_automatica'])) {
     $codigos_bd_imp = array_keys($datos_excel_imp);
     if (!empty($codigos_bd_imp)) {
         $ph_exp_bd = implode(',', array_fill(0, count($codigos_bd_imp), '?'));
-        $stmt_exp_bd = $pdo->prepare("SELECT codigo, nombre_completo, fecha_baja FROM trabajadores WHERE codigo IN ($ph_exp_bd)");
+        $stmt_exp_bd = $pdo->prepare("SELECT t.codigo, t.nombre_completo, t.fecha_baja, t.activo,
+                                             (e.id IS NOT NULL) AS tiene_escala
+                                        FROM trabajadores t
+                                        LEFT JOIN escalas_salariales e ON e.id = t.escala_salarial_id
+                                       WHERE t.codigo IN ($ph_exp_bd)");
         $stmt_exp_bd->execute($codigos_bd_imp);
         foreach ($stmt_exp_bd->fetchAll(PDO::FETCH_ASSOC) as $trab_bd) {
             $existentes_bd_imp[nominaExcelNormalizarExpediente($trab_bd['codigo'])] = [
-                'nombre'     => trim((string)($trab_bd['nombre_completo'] ?? '')),
-                'fecha_baja' => trim((string)($trab_bd['fecha_baja'] ?? '')),
+                'nombre'       => trim((string)($trab_bd['nombre_completo'] ?? '')),
+                'fecha_baja'   => trim((string)($trab_bd['fecha_baja'] ?? '')),
+                'activo'       => (int)($trab_bd['activo'] ?? 0),
+                'tiene_escala' => (int)($trab_bd['tiene_escala'] ?? 0),
             ];
         }
     }
@@ -2347,6 +2356,7 @@ if (isset($_POST['importar_excel_automatica'])) {
         if (empty($valores_pad_imp['corto'])) { continue; }
         if (isset($existentes_bd_imp[$exp_pad_imp])) { continue; }
         $no_importados_imp[] = [
+            'fila'       => (int)($valores_pad_imp['fila'] ?? 0),
             'expediente' => $valores_pad_imp['mostrar'],
             'nombre'     => '',
             'motivo'     => 'tiene menos de 6 dígitos y no coincide con ningún expediente del sistema',
@@ -2371,6 +2381,105 @@ if (isset($_POST['importar_excel_automatica'])) {
             'no_importados'  => $no_importados_imp,
         ], JSON_UNESCAPED_UNICODE);
         exit;
+    }
+
+    // ============================================
+    // FASE 1: PREVISUALIZACIÓN (no escribe en la base)
+    // ============================================
+    // Devuelve todas las filas del Excel para que el usuario elija una, varias
+    // o todas antes de aplicar nada. Las filas con problemas se devuelven
+    // marcadas con su motivo para mostrarlas deshabilitadas en el modal.
+    $fase_imp = (isset($_POST['fase_import']) && $_POST['fase_import'] === 'previsualizar') ? 'previsualizar' : 'aplicar';
+
+    if ($fase_imp === 'previsualizar') {
+        // Expedientes que ya están en el borrador del período. Si la nómina
+        // todavía no existe, al generarla entrarán todos los trabajadores que
+        // estén activos y tengan escala salarial.
+        $en_nomina_imp = [];
+        if (!$generar_nomina_imp) {
+            $stmt_pv_nom = $pdo->prepare("SELECT t.codigo
+                                            FROM nominas n
+                                            JOIN trabajadores t ON t.id = n.trabajador_id
+                                           WHERE n.periodo_desde = ? AND n.periodo_hasta = ?
+                                             AND n.tipo_nomina = 'automatica' AND n.estado = 'borrador'");
+            $stmt_pv_nom->execute([$periodo_desde_imp, $periodo_hasta_imp]);
+            foreach ($stmt_pv_nom->fetchAll(PDO::FETCH_COLUMN) as $cod_pv_imp) {
+                $en_nomina_imp[nominaExcelNormalizarExpediente($cod_pv_imp)] = true;
+            }
+        }
+
+        $filas_pv_imp = [];
+        foreach ($datos_excel_imp as $exp_pv_imp => $val_pv_imp) {
+            $fila_pv_imp = [
+                'fila'        => (int)$val_pv_imp['fila'],
+                'expediente'  => $exp_pv_imp,
+                'nombre'      => '',
+                'horas'       => max(0, (int)round($val_pv_imp['horas'])),
+                'feriados'    => max(0, round((float)$val_pv_imp['feriados'], 2)),
+                'otros'       => max(0, round((float)$val_pv_imp['otros'], 2)),
+                'retenciones' => max(0, round((float)$val_pv_imp['retenciones'], 2)),
+                'valido'      => true,
+                'motivo'      => '',
+            ];
+
+            $trab_pv_imp = $existentes_bd_imp[$exp_pv_imp] ?? null;
+            if ($trab_pv_imp === null) {
+                $fila_pv_imp['valido'] = false;
+                $fila_pv_imp['motivo'] = 'no existe en la base de datos';
+            } else {
+                $fila_pv_imp['nombre'] = (string)($trab_pv_imp['nombre'] ?? '');
+                $baja_pv_imp = trim((string)($trab_pv_imp['fecha_baja'] ?? ''));
+                if ($baja_pv_imp !== '' && $baja_pv_imp !== '0000-00-00') {
+                    $ts_baja_pv_imp = strtotime($baja_pv_imp);
+                    $fila_pv_imp['valido'] = false;
+                    $fila_pv_imp['motivo'] = 'causó baja el ' . ($ts_baja_pv_imp ? date('d/m/Y', $ts_baja_pv_imp) : $baja_pv_imp);
+                } elseif (!$generar_nomina_imp && !isset($en_nomina_imp[$exp_pv_imp])) {
+                    $fila_pv_imp['valido'] = false;
+                    $fila_pv_imp['motivo'] = 'no está en la nómina de este período';
+                } elseif ($generar_nomina_imp && (int)($trab_pv_imp['activo'] ?? 0) !== 1) {
+                    $fila_pv_imp['valido'] = false;
+                    $fila_pv_imp['motivo'] = 'no está activo en la base de datos';
+                } elseif ($generar_nomina_imp && empty($trab_pv_imp['tiene_escala'])) {
+                    $fila_pv_imp['valido'] = false;
+                    $fila_pv_imp['motivo'] = 'no tiene escala salarial asignada';
+                }
+            }
+
+            $filas_pv_imp[] = $fila_pv_imp;
+        }
+
+        echo json_encode([
+            'success'       => true,
+            'previsualizar' => 1,
+            'total_excel'   => $total_excel_imp,
+            'nomina_existe' => $generar_nomina_imp ? 0 : 1,
+            'filas'         => $filas_pv_imp,
+            'no_importados' => $no_importados_imp,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ============================================
+    // FASE 2: APLICACIÓN DE LOS EXPEDIENTES ELEGIDOS
+    // ============================================
+    // `expedientes[]` llega marcado desde el modal de previsualización. Si no
+    // llega nada (llamadas anteriores), se aplican todas las filas del Excel.
+    $seleccion_imp = null;
+    if (isset($_POST['expedientes']) && is_array($_POST['expedientes'])) {
+        $seleccion_imp = [];
+        foreach ($_POST['expedientes'] as $exp_sel_imp) {
+            $exp_sel_norm_imp = nominaExcelNormalizarExpediente($exp_sel_imp);
+            if ($exp_sel_norm_imp !== '' && isset($datos_excel_imp[$exp_sel_norm_imp])) {
+                $seleccion_imp[$exp_sel_norm_imp] = true;
+            }
+        }
+        if (empty($seleccion_imp)) {
+            echo json_encode([
+                'success' => false,
+                'error'   => 'No seleccionó ningún expediente para importar. Elija al menos uno en la lista del Excel.',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
     }
 
     // ---- Parámetros de cálculo (los mismos que usa la edición de la nómina) ----
@@ -2423,6 +2532,9 @@ if (isset($_POST['importar_excel_automatica'])) {
             WHERE id = ?");
 
         foreach ($datos_excel_imp as $exp_imp => $valores_imp) {
+            if ($seleccion_imp !== null && !isset($seleccion_imp[$exp_imp])) {
+                continue;
+            }
             if (!isset($existentes_bd_imp[$exp_imp])) {
                 $no_importados_imp[] = ['expediente' => $valores_imp['mostrar'], 'nombre' => '', 'motivo' => 'no existe en la base de datos'];
                 continue;
@@ -2514,10 +2626,12 @@ if (isset($_POST['importar_excel_automatica'])) {
             $actualizados_imp++;
         }
 
-        // Los trabajadores que no vienen en el Excel salen de la nómina: el
-        // archivo manda sobre quiénes se pagan en este período.
+        // Los trabajadores que no vienen en el Excel (o que el usuario no
+        // marcó en la vista previa) salen de la nómina: el archivo y la
+        // selección mandan sobre quiénes se pagan en este período.
+        $vigentes_imp = ($seleccion_imp !== null) ? $seleccion_imp : $datos_excel_imp;
         foreach ($filas_nomina_imp as $exp_nom => $fila_nom) {
-            if (!isset($datos_excel_imp[$exp_nom])) {
+            if (!isset($vigentes_imp[$exp_nom])) {
                 $ids_fuera_imp[] = (int)$fila_nom['id'];
                 $eliminados_codigos_imp[] = [
                     'expediente' => $exp_nom,
@@ -2580,6 +2694,7 @@ if (isset($_POST['importar_excel_automatica'])) {
     $log_lineas_imp[] = 'Tipo de descuento : ' . $log_tipo_descuento_imp;
     $log_lineas_imp[] = 'Nómina generada   : ' . ($generar_nomina_imp ? 'SÍ (no existía)' : 'NO (ya existía en borrador)');
     $log_lineas_imp[] = 'Expedientes leídos: ' . $total_excel_imp;
+    $log_lineas_imp[] = 'Seleccionados     : ' . ($seleccion_imp !== null ? count($seleccion_imp) : $total_excel_imp);
     $log_lineas_imp[] = 'Importados        : ' . $actualizados_imp;
     $log_lineas_imp[] = 'No importados     : ' . count($no_importados_imp);
     $log_lineas_imp[] = 'Quitados de nómina: ' . count($ids_fuera_imp);
@@ -2606,9 +2721,29 @@ if (isset($_POST['importar_excel_automatica'])) {
                 . ', no se importó porque ' . $ni_imp['motivo'] . '.';
         }
     }
+    if ($seleccion_imp !== null) {
+        $no_sel_log_imp = [];
+        foreach ($datos_excel_imp as $exp_ns_imp => $val_ns_imp) {
+            if (!isset($seleccion_imp[$exp_ns_imp])) {
+                $no_sel_log_imp[] = [
+                    'expediente' => $val_ns_imp['mostrar'],
+                    'nombre'     => (string)($existentes_bd_imp[$exp_ns_imp]['nombre'] ?? ''),
+                ];
+            }
+        }
+        if (!empty($no_sel_log_imp)) {
+            $log_lineas_imp[] = '';
+            $log_lineas_imp[] = 'EXPEDIENTES NO SELECCIONADOS (no se importaron)';
+            $log_lineas_imp[] = str_repeat('-', 78);
+            foreach ($no_sel_log_imp as $ns_imp) {
+                $log_lineas_imp[] = 'Expediente: ' . $ns_imp['expediente']
+                    . (!empty($ns_imp['nombre']) ? ' | ' . $ns_imp['nombre'] : '');
+            }
+        }
+    }
     if (!empty($eliminados_codigos_imp)) {
         $log_lineas_imp[] = '';
-        $log_lineas_imp[] = 'TRABAJADORES QUITADOS DE LA NÓMINA (no venían en el Excel)';
+        $log_lineas_imp[] = 'TRABAJADORES QUITADOS DE LA NÓMINA (no venían en el Excel o no se seleccionaron)';
         $log_lineas_imp[] = str_repeat('-', 78);
         foreach ($eliminados_codigos_imp as $cod_out_imp) {
             $log_lineas_imp[] = 'Expediente: ' . $cod_out_imp['expediente']
@@ -2643,6 +2778,7 @@ if (isset($_POST['importar_excel_automatica'])) {
         'importados_detalle' => $importados_detalle_imp,
         'eliminados_detalle' => $eliminados_codigos_imp,
         'total_excel'   => $total_excel_imp,
+        'seleccionados' => ($seleccion_imp !== null ? count($seleccion_imp) : $total_excel_imp),
         'generada'      => $generar_nomina_imp ? 1 : 0,
         'log'           => 'logs/' . $log_nombre_imp,
         'periodo'       => $periodo_desde_imp . ' / ' . $periodo_hasta_imp,
@@ -7516,6 +7652,7 @@ if ($existe_nomina) {
                     <i class="fas fa-paperclip me-1" style="color: var(--color-success, #16a34a);"></i> Archivo Excel (.xlsx / .xls)
                 </label>
                 <input type="file" id="archivoExcelNomina" name="archivo_excel" class="form-control form-select-custom" accept=".xlsx,.xls" style="font-size:0.82rem;">
+                <div class="form-text mt-1" id="importExcelArchivoNombre" style="display:none; color:#16a34a; font-size:0.72rem;"></div>
                 <div class="form-text mt-2" style="color: var(--muted); font-size:0.72rem;">
                     Tamaño máximo 5 MB. El cruce se hace por el <strong>No. Expediente</strong> del trabajador.
                 </div>
@@ -7536,7 +7673,7 @@ if ($existe_nomina) {
 
                 <div class="mt-3 p-3" style="background: rgba(245,158,11,0.12); border: 0.0625rem solid rgba(245,158,11,0.35); border-radius:0.75rem; color: var(--txt); font-size:0.75rem;">
                     <i class="fas fa-triangle-exclamation me-1" style="color:#f59e0b;"></i>
-                    Solo se cargan los expedientes que vienen en el Excel. Los trabajadores de esta nómina que <strong>no</strong> aparezcan en el archivo se quitarán del borrador.
+                    Al previsualizar podrá elegir uno, varios o todos los expedientes. Los trabajadores de esta nómina que <strong>no</strong> queden seleccionados se quitarán del borrador.
                 </div>
 
                 <div class="mt-3">
@@ -7562,8 +7699,66 @@ if ($existe_nomina) {
                 <button type="button" class="btn-win" data-bs-dismiss="modal" title="Cancelar" data-tooltip="Cancelar" data-tooltip-theme="danger">
                     <i class="fas fa-times me-2"></i>Cancelar
                 </button>
-                <button type="button" class="btn-win-primary" id="btnImportarExcelNomina" title="Importar" data-tooltip="Importar" data-tooltip-theme="success">
-                    <i class="fas fa-upload me-2"></i>Importar
+                <button type="button" class="btn-win-primary" id="btnImportarExcelNomina" title="Previsualizar" data-tooltip="Previsualizar" data-tooltip-theme="success">
+                    <i class="fas fa-list-check me-2"></i>Previsualizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Previsualización del Excel: seleccionar expedientes antes de importar -->
+<div class="modal fade" id="modalPrevisualizarImportNomina" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width: min(76rem, 97vw);">
+        <div class="modal-content modal-content-modern">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0ea5e9, #2563eb); border-bottom: none;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-list-check fa-2x me-3" style="color: #ffffff;"></i>
+                    <div>
+                        <h5 class="modal-title" style="color: white; font-weight: 600;">Expedientes del Excel</h5>
+                        <p class="small mb-0" style="color: rgba(255,255,255,0.85);">Seleccione uno, varios o todos los que desea importar</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-custom" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding:1rem 1.25rem;">
+                <div id="importPreviewResumen" class="mb-2" style="font-size:0.78rem; color: var(--txt);"></div>
+                <div style="max-height:55vh; overflow:auto; border:0.0625rem solid rgba(148,163,184,0.3); border-radius:0.6rem;">
+                    <table class="import-preview-tabla">
+                        <thead>
+                            <tr>
+                                <th style="width:2.4rem; text-align:center;">
+                                    <input type="checkbox" id="importPreviewTodos" title="Seleccionar todos los importables" style="cursor:pointer;">
+                                </th>
+                                <th style="width:3.2rem;">Fila</th>
+                                <th style="width:7rem;">Expediente</th>
+                                <th>Nombre</th>
+                                <th style="width:4.2rem; text-align:right;">Horas</th>
+                                <th style="width:4.6rem; text-align:right;">Feriados</th>
+                                <th style="width:5.2rem; text-align:right;">Otros</th>
+                                <th style="width:5.6rem; text-align:right;">Retenc.</th>
+                                <th style="width:16rem;">Motivo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="importPreviewFilas">
+                            <tr><td colspan="9" style="text-align:center; color: var(--muted);">Cargando…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-2" style="font-size:0.72rem; color: var(--muted);">
+                    <i class="fas fa-circle-info me-1"></i>
+                    Los expedientes con problemas aparecen deshabilitados con el motivo. Los trabajadores de esta nómina que no queden seleccionados se quitarán del borrador.
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 0.0625rem solid rgba(255,255,255,0.1); padding:1rem 1.5rem;">
+                <div class="me-auto small" style="color: var(--muted);">
+                    <span id="importPreviewCount">0</span> seleccionados
+                </div>
+                <button type="button" class="btn-win" data-bs-dismiss="modal" title="Volver" data-tooltip="Volver" data-tooltip-theme="danger">
+                    <i class="fas fa-arrow-left me-2"></i>Volver
+                </button>
+                <button type="button" class="btn-win-primary" id="btnConfirmarPreviewImport" title="Importar los expedientes seleccionados" data-tooltip="Importar los expedientes seleccionados" data-tooltip-theme="success" disabled>
+                    <i class="fas fa-upload me-2"></i>Importar seleccionados
                 </button>
             </div>
         </div>
@@ -7659,6 +7854,49 @@ if ($existe_nomina) {
         word-break: break-all;
     }
     .bitacora-enlace:hover { color: #7dd3fc; }
+
+    /* Tabla de previsualización del Excel de importación */
+    .import-preview-tabla {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.76rem;
+        color: var(--txt, #e5e7eb);
+    }
+    .import-preview-tabla th,
+    .import-preview-tabla td {
+        padding: 0.35rem 0.45rem;
+        border-bottom: 0.0625rem solid rgba(148, 163, 184, 0.22);
+        text-align: left;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .import-preview-tabla th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--panel-2, #1f2937);
+        color: var(--muted, #9aa3b2);
+        font-weight: 600;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+    .import-preview-tabla td.import-preview-nombre {
+        white-space: normal;
+        min-width: 12rem;
+    }
+    .import-preview-tabla td.import-preview-motivo {
+        white-space: normal;
+        color: #f59e0b;
+        font-size: 0.72rem;
+    }
+    .import-preview-tabla tr.import-preview-invalida {
+        opacity: 0.55;
+        background: rgba(245, 158, 11, 0.06);
+    }
+    .import-preview-tabla tr.import-preview-invalida td.import-preview-motivo {
+        opacity: 1;
+    }
 </style>
 <script>
 (function () {
@@ -7674,6 +7912,42 @@ if ($existe_nomina) {
     var importadoOk = false;
     var modoCerrar = false;
 
+    /* Vista previa: expedientes elegidos y archivo que se conserva aunque el
+       input se limpie al ocultar el modal de importación. */
+    var pvModal     = document.getElementById('modalPrevisualizarImportNomina');
+    var pvFilas     = document.getElementById('importPreviewFilas');
+    var pvTodos     = document.getElementById('importPreviewTodos');
+    var pvCount     = document.getElementById('importPreviewCount');
+    var pvResumen   = document.getElementById('importPreviewResumen');
+    var pvConfirmar = document.getElementById('btnConfirmarPreviewImport');
+    var archivoPendiente = null;
+    var seleccionPendiente = null;
+    var pasandoAPreview = false;
+    var archivoNombre = document.getElementById('importExcelArchivoNombre');
+
+    function mostrarNombreArchivo(nombre) {
+        if (!archivoNombre) { return; }
+        if (!nombre) {
+            archivoNombre.style.display = 'none';
+            archivoNombre.textContent = '';
+            return;
+        }
+        archivoNombre.style.display = 'block';
+        archivoNombre.textContent = 'Archivo cargado: ' + nombre;
+    }
+
+    if (input) {
+        input.addEventListener('change', function () {
+            archivoPendiente = (input.files && input.files[0]) ? input.files[0] : null;
+            seleccionPendiente = null;
+            mostrarNombreArchivo(archivoPendiente ? archivoPendiente.name : '');
+        });
+    }
+
+    function archivoElegido() {
+        return (input.files && input.files[0]) ? input.files[0] : archivoPendiente;
+    }
+
     function importEsc(texto) {
         return String(texto == null ? '' : texto)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -7683,7 +7957,7 @@ if ($existe_nomina) {
     function restaurarBoton() {
         modoCerrar = false;
         boton.disabled = false;
-        boton.innerHTML = '<i class="fas fa-upload me-2"></i>Importar';
+        boton.innerHTML = '<i class="fas fa-list-check me-2"></i>Previsualizar';
     }
 
     /* Cierra la capa del visor de bitácora si está abierta. */
@@ -7880,8 +8154,147 @@ if ($existe_nomina) {
             estado.innerHTML = '';
             importando = false;
             importadoOk = false;
+            if (!pasandoAPreview) {
+                archivoPendiente = null;
+                mostrarNombreArchivo(null);
+            }
+            pasandoAPreview = false;
             restaurarBoton();
             if (recargar) { window.location.reload(); }
+        });
+    }
+
+    /* ---------------------------------------------------------------
+       Vista previa del Excel: se listan todas las filas del archivo y
+       el usuario elige una, varias o todas antes de importar. Las
+       filas con problemas se ven deshabilitadas con su motivo.
+       --------------------------------------------------------------- */
+    function importNum(valor, decimales) {
+        var n = Number(valor);
+        if (!isFinite(n)) { n = 0; }
+        return n.toLocaleString('es-ES', { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
+    }
+
+    function abrirModal(id) {
+        var el = document.getElementById(id);
+        if (!el || typeof bootstrap === 'undefined') { return; }
+        bootstrap.Modal.getOrCreateInstance(el).show();
+    }
+
+    function checksPreview() {
+        if (!pvFilas) { return []; }
+        return Array.prototype.slice.call(pvFilas.querySelectorAll('input.import-preview-check'));
+    }
+
+    function seleccionadosPreview() {
+        return checksPreview().filter(function (c) { return c.checked; })
+            .map(function (c) { return c.value; });
+    }
+
+    function actualizarCuentaPreview() {
+        var todos = checksPreview();
+        var marcados = seleccionadosPreview();
+        if (pvCount) { pvCount.textContent = String(marcados.length); }
+        if (pvConfirmar) {
+            pvConfirmar.disabled = marcados.length === 0;
+            pvConfirmar.innerHTML = '<i class="fas fa-upload me-2"></i>Importar seleccionados'
+                + (marcados.length ? ' (' + marcados.length + ')' : '');
+        }
+        if (pvTodos) {
+            pvTodos.checked = todos.length > 0 && marcados.length === todos.length;
+            pvTodos.indeterminate = marcados.length > 0 && marcados.length < todos.length;
+        }
+    }
+
+    function pintarPreview(res, nombreArchivo) {
+        var filas = [];
+        (res.filas || []).forEach(function (f) {
+            filas.push({
+                fila: Number(f.fila) || 0,
+                expediente: String(f.expediente || ''),
+                nombre: String(f.nombre || ''),
+                horas: f.horas,
+                feriados: f.feriados,
+                otros: f.otros,
+                retenciones: f.retenciones,
+                valido: f.valido !== false,
+                motivo: String(f.motivo || '')
+            });
+        });
+        (res.no_importados || []).forEach(function (f) {
+            filas.push({
+                fila: Number(f.fila) || 0,
+                expediente: String(f.expediente || ''),
+                nombre: String(f.nombre || ''),
+                horas: null, feriados: null, otros: null, retenciones: null,
+                valido: false,
+                motivo: String(f.motivo || '')
+            });
+        });
+        filas.sort(function (a, b) { return (a.fila || 999999) - (b.fila || 999999); });
+
+        var importables = 0;
+        var bloqueadas = 0;
+        pvFilas.innerHTML = filas.map(function (f) {
+            if (f.valido) { importables++; } else { bloqueadas++; }
+            var casilla = f.valido
+                ? '<input type="checkbox" class="import-preview-check" value="' + importEsc(f.expediente) + '" checked title="Importar este expediente">'
+                : '<input type="checkbox" disabled title="No se puede importar">';
+            return '<tr class="' + (f.valido ? '' : 'import-preview-invalida') + '">'
+                + '<td style="text-align:center;">' + casilla + '</td>'
+                + '<td>' + (f.fila || '') + '</td>'
+                + '<td><strong>' + importEsc(f.expediente) + '</strong></td>'
+                + '<td class="import-preview-nombre">' + importEsc(f.nombre || '—') + '</td>'
+                + '<td style="text-align:right;">' + (f.valido ? importNum(f.horas, 0) : '—') + '</td>'
+                + '<td style="text-align:right;">' + (f.valido ? importNum(f.feriados, 2) : '—') + '</td>'
+                + '<td style="text-align:right;">' + (f.valido ? importNum(f.otros, 2) : '—') + '</td>'
+                + '<td style="text-align:right;">' + (f.valido ? importNum(f.retenciones, 2) : '—') + '</td>'
+                + '<td class="import-preview-motivo">' + importEsc(f.motivo || '') + '</td>'
+                + '</tr>';
+        }).join('');
+
+        if (pvResumen) {
+            pvResumen.innerHTML = '<i class="fas fa-table-list me-1"></i> '
+                + (nombreArchivo ? '<strong>' + importEsc(nombreArchivo) + '</strong>: ' : '')
+                + 'se leyeron <strong>' + filas.length + '</strong> filas; '
+                + '<strong style="color:#16a34a;">' + importables + '</strong> listas para importar'
+                + (bloqueadas ? ' y <strong style="color:#f59e0b;">' + bloqueadas + '</strong> con problemas.' : '.')
+                + (res.nomina_existe
+                    ? ' La nómina del período ya existe en borrador.'
+                    : ' La nómina del período se generará al importar.');
+        }
+
+        actualizarCuentaPreview();
+    }
+
+    if (pvFilas) {
+        pvFilas.addEventListener('change', function (e) {
+            if (e.target && e.target.classList && e.target.classList.contains('import-preview-check')) {
+                actualizarCuentaPreview();
+            }
+        });
+    }
+    if (pvTodos) {
+        pvTodos.addEventListener('change', function () {
+            checksPreview().forEach(function (c) { c.checked = pvTodos.checked; });
+            actualizarCuentaPreview();
+        });
+    }
+    if (pvConfirmar) {
+        pvConfirmar.addEventListener('click', function () {
+            var elegidos = seleccionadosPreview();
+            if (!elegidos.length) { return; }
+            seleccionPendiente = elegidos;
+            bootstrap.Modal.getOrCreateInstance(pvModal).hide();
+            abrirModal('modalImportarExcelNomina');
+            boton.click();
+        });
+    }
+    if (pvModal) {
+        pvModal.addEventListener('hidden.bs.modal', function () {
+            /* Si se cerró con "Volver" (sin confirmar), regresa al modal de
+               importación para poder elegir otro archivo. */
+            if (!seleccionPendiente) { abrirModal('modalImportarExcelNomina'); }
         });
     }
 
@@ -7891,7 +8304,8 @@ if ($existe_nomina) {
             return;
         }
         if (importando) return;
-        if (!input.files || !input.files.length) {
+        var archivo = archivoElegido();
+        if (!archivo) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Falta el archivo',
@@ -7916,14 +8330,19 @@ if ($existe_nomina) {
 
         var datos = new FormData();
         datos.append('importar_excel_automatica', '1');
+        datos.append('fase_import', seleccionPendiente ? 'aplicar' : 'previsualizar');
         datos.append('periodo', periodoActual);
         datos.append('tipo_nomina', 'automatica');
         datos.append('tipo_descuento', tipoElegido);
-        datos.append('archivo_excel', input.files[0]);
+        datos.append('archivo_excel', archivo);
+        if (seleccionPendiente) {
+            seleccionPendiente.forEach(function (exp) { datos.append('expedientes[]', exp); });
+        }
 
         importando = true;
         boton.disabled = true;
-        boton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Importando...';
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>'
+            + (seleccionPendiente ? 'Importando...' : 'Leyendo Excel...');
         estado.style.display = 'none';
 
         fetch(window.location.href, {
@@ -7939,6 +8358,22 @@ if ($existe_nomina) {
         .then(function (res) {
             if (!res || !res.success) {
                 throw new Error((res && res.error) || 'No se pudo importar el archivo.');
+            }
+
+            // Fase de vista previa: se muestran las filas y no se toca la BD.
+            if (res.previsualizar) {
+                importando = false;
+                restaurarBoton();
+                mostrarNombreArchivo(archivo ? archivo.name : '');
+                pintarPreview(res, archivo ? archivo.name : '');
+                var abrirPv = function () {
+                    modal.removeEventListener('hidden.bs.modal', abrirPv);
+                    abrirModal('modalPrevisualizarImportNomina');
+                };
+                modal.addEventListener('hidden.bs.modal', abrirPv);
+                pasandoAPreview = true;
+                bootstrap.Modal.getOrCreateInstance(modal).hide();
+                return;
             }
 
             var noImportados = res.no_importados || [];
@@ -7993,10 +8428,15 @@ if ($existe_nomina) {
                     + '</div></details>';
             }
 
+            var totalSel = (res.seleccionados == null) ? res.total_excel : Number(res.seleccionados);
+            var textoConteo = (totalSel !== Number(res.total_excel))
+                ? 'Se importaron: <strong>' + res.importados + '</strong> de <strong>' + totalSel + '</strong> seleccionados (<strong>' + res.total_excel + '</strong> filas en el archivo)'
+                : 'Se importaron: <strong>' + res.importados + '</strong> expedientes de <strong>' + res.total_excel + '</strong> del archivo';
+
             var detalle = '<div style="text-align:left; font-size:0.88rem;">'
-                + '<div><i class="fas fa-check-circle me-1" style="color:#16a34a;"></i> Se importaron: <strong>' + res.importados + '</strong> expedientes de <strong>' + res.total_excel + '</strong> del archivo</div>'
+                + '<div><i class="fas fa-check-circle me-1" style="color:#16a34a;"></i> ' + textoConteo + '</div>'
                 + (res.generada ? '<div class="mt-1"><i class="fas fa-circle-plus me-1" style="color:#0ea5e9;"></i> La nómina automática del período se generó antes de importar</div>' : '')
-                + (res.eliminados > 0 ? '<div class="mt-1"><i class="fas fa-user-minus me-1" style="color:#f59e0b;"></i> <strong>' + res.eliminados + '</strong> trabajadores fuera del Excel, quitados de la nómina</div>' : '')
+                + (res.eliminados > 0 ? '<div class="mt-1"><i class="fas fa-user-minus me-1" style="color:#f59e0b;"></i> <strong>' + res.eliminados + '</strong> trabajadores fuera del Excel o no seleccionados, quitados de la nómina</div>' : '')
                 + listaSi
                 + listaEliminados
                 + (noImportados.length
@@ -8008,6 +8448,7 @@ if ($existe_nomina) {
             estado.innerHTML = '<div class="alert alert-success mb-0" style="font-size:0.8rem;">' + detalle + '</div>';
             estado.style.display = 'block';
             importadoOk = true;
+            seleccionPendiente = null;
 
             // El botón deja de mostrar el spinner: pasa a "Aceptar" para poder
             // cerrar el modal y ver el desglose que queda detrás.
@@ -8029,6 +8470,7 @@ if ($existe_nomina) {
                 + (err && err.message ? err.message : 'No se pudo importar el archivo.') + '</div>';
             estado.style.display = 'block';
             importando = false;
+            seleccionPendiente = null;
             restaurarBoton();
         });
     });
