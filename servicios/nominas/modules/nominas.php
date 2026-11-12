@@ -2514,7 +2514,7 @@ if (isset($_POST['importar_excel_automatica'])) {
     $log_lineas_imp[] = str_repeat('-', 78);
     foreach ($importados_detalle_imp as $det_imp) {
         $log_lineas_imp[] = 'Expediente: ' . $det_imp['expediente']
-            . ' | Trabajador: ' . (($det_imp['nombre'] ?? '') !== '' ? $det_imp['nombre'] : 'N/D')
+            . ' | ' . (($det_imp['nombre'] ?? '') !== '' ? $det_imp['nombre'] : 'N/D')
             . ' | Horas: ' . $det_imp['horas']
             . ' | Feriados: ' . number_format((float)$det_imp['feriados'], 2, '.', '')
             . ' | Otros: ' . number_format((float)$det_imp['otros'], 2, '.', '')
@@ -2538,7 +2538,7 @@ if (isset($_POST['importar_excel_automatica'])) {
         $log_lineas_imp[] = str_repeat('-', 78);
         foreach ($eliminados_codigos_imp as $cod_out_imp) {
             $log_lineas_imp[] = 'Expediente: ' . $cod_out_imp['expediente']
-                . (!empty($cod_out_imp['nombre']) ? ' | Trabajador: ' . $cod_out_imp['nombre'] : '');
+                . (!empty($cod_out_imp['nombre']) ? ' | ' . $cod_out_imp['nombre'] : '');
         }
     }
     @file_put_contents($log_ruta_imp, implode(PHP_EOL, $log_lineas_imp) . PHP_EOL, LOCK_EX);
