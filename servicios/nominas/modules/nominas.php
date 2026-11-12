@@ -2551,20 +2551,22 @@ if (isset($_POST['importar_excel_automatica'])) {
             $filas_nomina_imp[nominaExcelNormalizarExpediente($fila_nom['codigo'])] = $fila_nom;
         }
 
-        // Expedientes del Excel que el usuario no pudo marcar (no existen,
-        // causaron baja, no están en la nómina...): se informan en el resumen
-        // final con su motivo, no solo en la vista previa.
+        // Expedientes del Excel que no se importaron: los que no se pudieron
+        // marcar (no existen, causaron baja, no están en la nómina...) y los
+        // que sí se podían marcar pero el usuario no seleccionó. Todos se
+        // informan en el resumen final y en la bitácora con su motivo.
         if ($seleccion_imp !== null) {
             foreach ($datos_excel_imp as $exp_ns_imp => $val_ns_imp) {
                 if (isset($seleccion_imp[$exp_ns_imp])) { continue; }
                 $motivo_ns_imp = $motivoNoImportableImp($exp_ns_imp, $filas_nomina_imp);
-                if ($motivo_ns_imp === '') { continue; }
+                if ($motivo_ns_imp === '') {
+                    $motivo_ns_imp = 'no se seleccionó en la vista previa';
+                }
                 $no_importados_imp[] = [
                     'fila'       => (int)($val_ns_imp['fila'] ?? 0),
                     'expediente' => $val_ns_imp['mostrar'],
                     'nombre'     => (string)($existentes_bd_imp[$exp_ns_imp]['nombre'] ?? ''),
                     'motivo'     => $motivo_ns_imp,
-                    'no_seleccionado' => 1,
                 ];
             }
         }
@@ -2740,6 +2742,7 @@ if (isset($_POST['importar_excel_automatica'])) {
     $log_lineas_imp[] = 'Nómina generada   : ' . ($generar_nomina_imp ? 'SÍ (no existía)' : 'NO (ya existía en borrador)');
     $log_lineas_imp[] = 'Expedientes leídos: ' . $total_excel_imp;
     $log_lineas_imp[] = 'Seleccionados     : ' . ($seleccion_imp !== null ? count($seleccion_imp) : $total_excel_imp);
+    $log_lineas_imp[] = 'No seleccionados  : ' . ($seleccion_imp !== null ? max(0, count($datos_excel_imp) - count($seleccion_imp)) : 0);
     $log_lineas_imp[] = 'Importados        : ' . $actualizados_imp;
     $log_lineas_imp[] = 'No importados     : ' . count($no_importados_imp);
     $log_lineas_imp[] = 'Quitados de nómina: ' . count($ids_fuera_imp);
@@ -2758,37 +2761,12 @@ if (isset($_POST['importar_excel_automatica'])) {
     }
     if (!empty($no_importados_imp)) {
         $log_lineas_imp[] = '';
-        $log_lineas_imp[] = 'EXPEDIENTES NO IMPORTADOS';
+        $log_lineas_imp[] = 'EXPEDIENTES NO IMPORTADOS (no seleccionados o con problemas)';
         $log_lineas_imp[] = str_repeat('-', 78);
         foreach ($no_importados_imp as $ni_imp) {
             $log_lineas_imp[] = 'Expediente: ' . $ni_imp['expediente']
-                . (!empty($ni_imp['nombre']) ? ' (' . $ni_imp['nombre'] . ')' : '')
-                . ', no se importó porque ' . $ni_imp['motivo'] . '.';
-        }
-    }
-    if ($seleccion_imp !== null) {
-        $no_sel_log_imp = [];
-        foreach ($datos_excel_imp as $exp_ns_imp => $val_ns_imp) {
-            if (isset($seleccion_imp[$exp_ns_imp])) { continue; }
-
-            /* Los que nunca se podían importar ya van en "EXPEDIENTES NO
-               IMPORTADOS" con su motivo; aquí solo quedan los que el usuario
-               pudo marcar y no marcó. */
-            if ($motivoNoImportableImp($exp_ns_imp, $filas_nomina_imp) !== '') { continue; }
-
-            $no_sel_log_imp[] = [
-                'expediente' => $val_ns_imp['mostrar'],
-                'nombre'     => (string)($existentes_bd_imp[$exp_ns_imp]['nombre'] ?? ''),
-            ];
-        }
-        if (!empty($no_sel_log_imp)) {
-            $log_lineas_imp[] = '';
-            $log_lineas_imp[] = 'EXPEDIENTES NO SELECCIONADOS (no se importaron)';
-            $log_lineas_imp[] = str_repeat('-', 78);
-            foreach ($no_sel_log_imp as $ns_imp) {
-                $log_lineas_imp[] = 'Expediente: ' . $ns_imp['expediente']
-                    . (!empty($ns_imp['nombre']) ? ' | ' . $ns_imp['nombre'] : '');
-            }
+                . (!empty($ni_imp['nombre']) ? ' | ' . $ni_imp['nombre'] : '')
+                . ' | no se importó porque ' . $ni_imp['motivo'] . '.';
         }
     }
     if (!empty($eliminados_codigos_imp)) {
