@@ -2246,13 +2246,38 @@ if (isset($_POST['importar_excel_automatica'])) {
         $fila_imp = $matriz_imp[$i_imp];
         $crudo_exp = $fila_imp[$cols_imp['expediente']] ?? null;
         $texto_exp = nominaExcelTexto($crudo_exp);
-        if ($texto_exp === '') continue;
-        if (strpos($texto_exp, 'TOTAL') !== false) break;
+        $crudo_horas = $cols_imp['horas'] !== null ? ($fila_imp[$cols_imp['horas']] ?? null) : null;
+        $texto_horas = nominaExcelTexto($crudo_horas);
+
+        // Fila totalmente vacía: las plantillas traen numeración y formatos en
+        // columnas que no se leen, así que se ignora sin reportarla.
+        if ($texto_exp === '' && $texto_horas === '') continue;
+        if ($texto_exp !== '' && strpos($texto_exp, 'TOTAL') !== false) break;
 
         $total_excel_imp++;
 
-        $digitos_exp = preg_replace('/\D/', '', trim((string)$crudo_exp));
         $mostrar_exp = trim((string)$crudo_exp);
+
+        // Ambas columnas son obligatorias: si falta una, la fila no se importa
+        // y se informa que el modelo Excel viene incompleto.
+        if ($texto_exp === '') {
+            $no_importados_imp[] = [
+                'expediente' => '(sin expediente, fila ' . ($i_imp + 1) . ')',
+                'nombre'     => '',
+                'motivo'     => 'los valores del modelo Excel de la importación no estaban completos: falta el número de expediente',
+            ];
+            continue;
+        }
+        if ($texto_horas === '') {
+            $no_importados_imp[] = [
+                'expediente' => $mostrar_exp,
+                'nombre'     => '',
+                'motivo'     => 'los valores del modelo Excel de la importación no estaban completos: falta Horas Lab',
+            ];
+            continue;
+        }
+
+        $digitos_exp = preg_replace('/\D/', '', $mostrar_exp);
 
         if ($digitos_exp === '') {
             $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'el expediente no tiene dígitos'];
