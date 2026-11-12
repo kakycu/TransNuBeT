@@ -2027,14 +2027,19 @@ if (!function_exists('generarNominaAutomaticaBorrador')) {
 // ============================================
 // IMPORTAR EXCEL DE SALARIOS EN LA NÓMINA AUTOMÁTICA
 // ============================================
-// Lee el archivo SiGesNom (No. Exped. en A, Horas Lab en D, Día Feriados en E,
-// Otros Pagos en F y Retenciones en G) y carga esos valores sobre la nómina
-// automática del período, cruzando por el código de expediente del trabajador.
+// Lee el archivo SiGesNom y carga los valores sobre la nómina automática del
+// período, cruzando por el código de expediente del trabajador.
+// Estructura de la plantilla (Tabla1, encabezados en la fila 3):
+//   - A "No."          -> numeración de control, se ignora.
+//   - B "No. Exped."   -> OBLIGATORIO. Llave del cruce con trabajadores.
+//   - C "CI"           -> control del modelo, no se importa.
+//   - D "Nombre Completo" -> control del modelo, no se importa (se toma de la BD).
+//   - E "Horas Lab"    -> OBLIGATORIO. horas_laboradas (recalcula el salario laboral).
+//   - F "Día Feriados" -> opcional. dias_feriados (recalcula el importe al doble).
+//   - G "Otros Pagos"  -> opcional. Se SUMA a los pagos adicionales del trabajador.
+//   - H "Retenciones"  -> opcional. Descuento manual de la fila.
+// Las columnas opcionales que no existan o vengan vacías se toman como 0.
 // Reglas acordadas:
-//   - Horas Lab      -> horas_laboradas (y se recalcula el salario laboral).
-//   - Día Feriados   -> dias_feriados (se recalcula el importe al doble).
-//   - Otros Pagos    -> se SUMA a los pagos adicionales del trabajador.
-//   - Retenciones    -> descuento manual de la fila.
 //   - Solo quedan en la nómina los expedientes que vienen en el Excel; el
 //     resto de filas del borrador se elimina. No crea filas nuevas: si el mes
 //     no tiene nómina generada, se pide generarla primero.
@@ -2227,7 +2232,7 @@ if (isset($_POST['importar_excel_automatica'])) {
     if ($fila_cab_imp === null) {
         echo json_encode([
             'success' => false,
-            'error'   => 'No se reconoció el encabezado del Excel. Debe tener una fila con "No. Exped.", "Horas Lab", "Día Feriados", "Otros Pagos" y "Retenciones".',
+            'error'   => 'No se reconoció el encabezado del Excel. Debe tener una fila con "No. Exped." y "Horas Lab" (como mínimo); "Día Feriados", "Otros Pagos" y "Retenciones" son opcionales.',
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -7463,11 +7468,14 @@ if ($existe_nomina) {
                 <div class="mt-3 p-3" style="background: rgba(59,130,246,0.10); border: 0.0625rem solid rgba(59,130,246,0.30); border-radius:0.75rem; color: var(--txt); font-size:0.75rem;">
                     <div class="fw-bold mb-1" style="color: var(--txt);"><i class="fas fa-table-columns me-1"></i> Columnas que se leen</div>
                     <div style="color: var(--muted);">
-                        <strong style="color: var(--txt);">A</strong> No. Exped. &nbsp;·&nbsp;
-                        <strong style="color: var(--txt);">D</strong> Horas Lab &nbsp;·&nbsp;
-                        <strong style="color: var(--txt);">E</strong> Día Feriados &nbsp;·&nbsp;
-                        <strong style="color: var(--txt);">F</strong> Otros Pagos &nbsp;·&nbsp;
-                        <strong style="color: var(--txt);">G</strong> Retenciones
+                        <strong style="color: var(--txt);">B</strong> No. Exped. (obligatorio) &nbsp;·&nbsp;
+                        <strong style="color: var(--txt);">E</strong> Horas Lab (obligatorio) &nbsp;·&nbsp;
+                        <strong style="color: var(--txt);">F</strong> Día Feriados &nbsp;·&nbsp;
+                        <strong style="color: var(--txt);">G</strong> Otros Pagos &nbsp;·&nbsp;
+                        <strong style="color: var(--txt);">H</strong> Retenciones
+                    </div>
+                    <div class="mt-1" style="color: var(--muted); font-size:0.7rem;">
+                        <strong style="color: var(--txt);">C</strong> CI y <strong style="color: var(--txt);">D</strong> Nombre Completo son solo de control del modelo: no se importan, el nombre se toma de la base de datos por el No. Expediente.
                     </div>
                 </div>
 
