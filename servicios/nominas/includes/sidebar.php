@@ -1411,7 +1411,7 @@ html.focus-mode .fluid-container {
         <?php if (permiso_puede('reportes', 'ver') || permiso_puede('clasificadores', 'ver')): ?>
         <span class="nav-category">Análisis e Informes</span>
         <?php if (permiso_puede('reportes', 'ver')): ?>
-        <div class="nav-group <?php echo (in_array($current_file, ['reportes.php', 'consolidados.php'])) ? 'open' : ''; ?>" id="reportesNavGroup">
+        <div class="nav-group <?php echo (in_array($current_file, ['reportes.php', 'consolidados.php', 'modelos.php'])) ? 'open' : ''; ?>" id="reportesNavGroup">
             <a href="<?php echo $base_prefix; ?>modules/reportes.php" class="nav-item <?php echo ($current_file == 'reportes.php') ? 'active' : ''; ?>" data-tooltip="Reportes y Estadísticas" data-tooltip-theme="primary">
                 <i class="fas fa-chart-bar"></i>
                 <span class="sidebar-text">Reportes</span>
@@ -1425,6 +1425,10 @@ html.focus-mode .fluid-container {
                 <a href="<?php echo $base_prefix; ?>modules/consolidados.php" class="nav-item <?php echo ($current_file == 'consolidados.php') ? 'active' : ''; ?>" data-tooltip="Consolidado de pagos por tipo de nómina (año y meses)" data-tooltip-theme="primary">
                     <i class="fas fa-file-invoice-dollar"></i>
                     <span class="sidebar-text">Consolidados</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/modelos.php" class="nav-item <?php echo ($current_file == 'modelos.php') ? 'active' : ''; ?>" data-tooltip="Selección y descarga de modelos" data-tooltip-theme="primary">
+                    <i class="fas fa-layer-group"></i>
+                    <span class="sidebar-text">Modelos</span>
                 </a>
             </div>
         </div>
