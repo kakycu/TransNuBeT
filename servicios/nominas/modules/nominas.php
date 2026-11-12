@@ -2499,6 +2499,33 @@ if (isset($_POST['importar_excel_automatica'])) {
     $importados_detalle_imp  = [];
     $eliminados_codigos_imp  = [];
 
+    /* Motivo por el que un expediente del Excel no se puede importar en este
+       período. Devuelve '' cuando sí se podría: en ese caso solo quedó fuera
+       porque el usuario no lo marcó en la vista previa. */
+    $motivoNoImportableImp = function ($exp_nsi, $en_nomina_nsi) use ($existentes_bd_imp, $generar_nomina_imp) {
+        $info_nsi = $existentes_bd_imp[$exp_nsi] ?? null;
+        if ($info_nsi === null) {
+            return 'no existe en la base de datos';
+        }
+
+        $baja_nsi = trim((string)($info_nsi['fecha_baja'] ?? ''));
+        if ($baja_nsi !== '' && $baja_nsi !== '0000-00-00') {
+            $ts_nsi = strtotime($baja_nsi);
+            return 'causó baja el ' . ($ts_nsi ? date('d/m/Y', $ts_nsi) : $baja_nsi);
+        }
+        if (!$generar_nomina_imp && empty($en_nomina_nsi[$exp_nsi])) {
+            return 'no está en la nómina de este período';
+        }
+        if ($generar_nomina_imp && (int)($info_nsi['activo'] ?? 0) !== 1) {
+            return 'no está activo en la base de datos';
+        }
+        if ($generar_nomina_imp && empty($info_nsi['tiene_escala'])) {
+            return 'no tiene escala salarial asignada';
+        }
+
+        return '';
+    };
+
     $pdo->beginTransaction();
     try {
         if ($generar_nomina_imp) {
@@ -2522,6 +2549,24 @@ if (isset($_POST['importar_excel_automatica'])) {
         $filas_nomina_imp = [];
         foreach ($stmt_filas_imp->fetchAll(PDO::FETCH_ASSOC) as $fila_nom) {
             $filas_nomina_imp[nominaExcelNormalizarExpediente($fila_nom['codigo'])] = $fila_nom;
+        }
+
+        // Expedientes del Excel que el usuario no pudo marcar (no existen,
+        // causaron baja, no están en la nómina...): se informan en el resumen
+        // final con su motivo, no solo en la vista previa.
+        if ($seleccion_imp !== null) {
+            foreach ($datos_excel_imp as $exp_ns_imp => $val_ns_imp) {
+                if (isset($seleccion_imp[$exp_ns_imp])) { continue; }
+                $motivo_ns_imp = $motivoNoImportableImp($exp_ns_imp, $filas_nomina_imp);
+                if ($motivo_ns_imp === '') { continue; }
+                $no_importados_imp[] = [
+                    'fila'       => (int)($val_ns_imp['fila'] ?? 0),
+                    'expediente' => $val_ns_imp['mostrar'],
+                    'nombre'     => (string)($existentes_bd_imp[$exp_ns_imp]['nombre'] ?? ''),
+                    'motivo'     => $motivo_ns_imp,
+                    'no_seleccionado' => 1,
+                ];
+            }
         }
 
         $upd_imp = $pdo->prepare("UPDATE nominas SET
@@ -2726,31 +2771,14 @@ if (isset($_POST['importar_excel_automatica'])) {
         foreach ($datos_excel_imp as $exp_ns_imp => $val_ns_imp) {
             if (isset($seleccion_imp[$exp_ns_imp])) { continue; }
 
-            /* Motivo por el que quedó fuera: no es lo mismo un expediente que
-               el usuario desmarcó que uno que nunca se pudo importar (no
-               existe, causó baja, no está en la nómina...). */
-            $trab_ns_imp = $existentes_bd_imp[$exp_ns_imp] ?? null;
-            $motivo_ns_imp = 'no se seleccionó en la vista previa';
-            if ($trab_ns_imp === null) {
-                $motivo_ns_imp = 'no existe en la base de datos';
-            } else {
-                $baja_ns_imp = trim((string)($trab_ns_imp['fecha_baja'] ?? ''));
-                if ($baja_ns_imp !== '' && $baja_ns_imp !== '0000-00-00') {
-                    $ts_ns_imp = strtotime($baja_ns_imp);
-                    $motivo_ns_imp = 'causó baja el ' . ($ts_ns_imp ? date('d/m/Y', $ts_ns_imp) : $baja_ns_imp);
-                } elseif (!$generar_nomina_imp && !isset($filas_nomina_imp[$exp_ns_imp])) {
-                    $motivo_ns_imp = 'no está en la nómina de este período';
-                } elseif ($generar_nomina_imp && (int)($trab_ns_imp['activo'] ?? 0) !== 1) {
-                    $motivo_ns_imp = 'no está activo en la base de datos';
-                } elseif ($generar_nomina_imp && empty($trab_ns_imp['tiene_escala'])) {
-                    $motivo_ns_imp = 'no tiene escala salarial asignada';
-                }
-            }
+            /* Los que nunca se podían importar ya van en "EXPEDIENTES NO
+               IMPORTADOS" con su motivo; aquí solo quedan los que el usuario
+               pudo marcar y no marcó. */
+            if ($motivoNoImportableImp($exp_ns_imp, $filas_nomina_imp) !== '') { continue; }
 
             $no_sel_log_imp[] = [
                 'expediente' => $val_ns_imp['mostrar'],
-                'nombre'     => (string)($trab_ns_imp['nombre'] ?? ''),
-                'motivo'     => $motivo_ns_imp,
+                'nombre'     => (string)($existentes_bd_imp[$exp_ns_imp]['nombre'] ?? ''),
             ];
         }
         if (!empty($no_sel_log_imp)) {
@@ -2759,8 +2787,7 @@ if (isset($_POST['importar_excel_automatica'])) {
             $log_lineas_imp[] = str_repeat('-', 78);
             foreach ($no_sel_log_imp as $ns_imp) {
                 $log_lineas_imp[] = 'Expediente: ' . $ns_imp['expediente']
-                    . (!empty($ns_imp['nombre']) ? ' | ' . $ns_imp['nombre'] : '')
-                    . ' | ' . $ns_imp['motivo'];
+                    . (!empty($ns_imp['nombre']) ? ' | ' . $ns_imp['nombre'] : '');
             }
         }
     }
