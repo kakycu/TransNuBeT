@@ -2724,12 +2724,34 @@ if (isset($_POST['importar_excel_automatica'])) {
     if ($seleccion_imp !== null) {
         $no_sel_log_imp = [];
         foreach ($datos_excel_imp as $exp_ns_imp => $val_ns_imp) {
-            if (!isset($seleccion_imp[$exp_ns_imp])) {
-                $no_sel_log_imp[] = [
-                    'expediente' => $val_ns_imp['mostrar'],
-                    'nombre'     => (string)($existentes_bd_imp[$exp_ns_imp]['nombre'] ?? ''),
-                ];
+            if (isset($seleccion_imp[$exp_ns_imp])) { continue; }
+
+            /* Motivo por el que quedó fuera: no es lo mismo un expediente que
+               el usuario desmarcó que uno que nunca se pudo importar (no
+               existe, causó baja, no está en la nómina...). */
+            $trab_ns_imp = $existentes_bd_imp[$exp_ns_imp] ?? null;
+            $motivo_ns_imp = 'no se seleccionó en la vista previa';
+            if ($trab_ns_imp === null) {
+                $motivo_ns_imp = 'no existe en la base de datos';
+            } else {
+                $baja_ns_imp = trim((string)($trab_ns_imp['fecha_baja'] ?? ''));
+                if ($baja_ns_imp !== '' && $baja_ns_imp !== '0000-00-00') {
+                    $ts_ns_imp = strtotime($baja_ns_imp);
+                    $motivo_ns_imp = 'causó baja el ' . ($ts_ns_imp ? date('d/m/Y', $ts_ns_imp) : $baja_ns_imp);
+                } elseif (!$generar_nomina_imp && !isset($filas_nomina_imp[$exp_ns_imp])) {
+                    $motivo_ns_imp = 'no está en la nómina de este período';
+                } elseif ($generar_nomina_imp && (int)($trab_ns_imp['activo'] ?? 0) !== 1) {
+                    $motivo_ns_imp = 'no está activo en la base de datos';
+                } elseif ($generar_nomina_imp && empty($trab_ns_imp['tiene_escala'])) {
+                    $motivo_ns_imp = 'no tiene escala salarial asignada';
+                }
             }
+
+            $no_sel_log_imp[] = [
+                'expediente' => $val_ns_imp['mostrar'],
+                'nombre'     => (string)($trab_ns_imp['nombre'] ?? ''),
+                'motivo'     => $motivo_ns_imp,
+            ];
         }
         if (!empty($no_sel_log_imp)) {
             $log_lineas_imp[] = '';
@@ -2737,7 +2759,8 @@ if (isset($_POST['importar_excel_automatica'])) {
             $log_lineas_imp[] = str_repeat('-', 78);
             foreach ($no_sel_log_imp as $ns_imp) {
                 $log_lineas_imp[] = 'Expediente: ' . $ns_imp['expediente']
-                    . (!empty($ns_imp['nombre']) ? ' | ' . $ns_imp['nombre'] : '');
+                    . (!empty($ns_imp['nombre']) ? ' | ' . $ns_imp['nombre'] : '')
+                    . ' | ' . $ns_imp['motivo'];
             }
         }
     }
