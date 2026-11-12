@@ -2294,12 +2294,17 @@ if (isset($_POST['importar_excel_automatica'])) {
         $exp_corto_imp = (strlen($digitos_exp) < 6);
         $exp_imp = str_pad($digitos_exp, 6, '0', STR_PAD_LEFT);
         if (isset($datos_excel_imp[$exp_imp])) {
-            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'está repetido en el Excel (fila ' . ($i_imp + 1) . ')'];
+            $no_importados_imp[] = [
+                'expediente' => $mostrar_exp,
+                'nombre'     => '',
+                'motivo'     => 'está repetido en el Excel (fila ' . ($i_imp + 1) . '); se tomó la primera aparición (fila ' . $datos_excel_imp[$exp_imp]['fila'] . ')',
+            ];
             continue;
         }
 
         $datos_excel_imp[$exp_imp] = [
             'mostrar'     => $mostrar_exp,
+            'fila'        => $i_imp + 1,
             'corto'       => $exp_corto_imp,
             'horas'       => nominaExcelNumero($cols_imp['horas'] !== null ? ($fila_imp[$cols_imp['horas']] ?? 0) : 0),
             'feriados'    => nominaExcelNumero($cols_imp['feriados'] !== null ? ($fila_imp[$cols_imp['feriados']] ?? 0) : 0),
