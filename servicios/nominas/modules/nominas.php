@@ -2258,16 +2258,16 @@ if (isset($_POST['importar_excel_automatica'])) {
             $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'el expediente no tiene dígitos'];
             continue;
         }
-        if (strlen($digitos_exp) < 6) {
-            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'tiene menos de 6 dígitos'];
-            continue;
-        }
         if (strlen($digitos_exp) > 6) {
             $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'tiene más de 6 dígitos'];
             continue;
         }
 
-        $exp_imp = $digitos_exp;
+        // Excel guarda los expedientes como número y pierde los ceros a la
+        // izquierda (16525 en vez de 016525). Se completan a 6 dígitos y más
+        // adelante solo se aceptan si el expediente existe realmente en la BD.
+        $exp_corto_imp = (strlen($digitos_exp) < 6);
+        $exp_imp = str_pad($digitos_exp, 6, '0', STR_PAD_LEFT);
         if (isset($datos_excel_imp[$exp_imp])) {
             $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'está repetido en el Excel (fila ' . ($i_imp + 1) . ')'];
             continue;
@@ -2275,20 +2275,12 @@ if (isset($_POST['importar_excel_automatica'])) {
 
         $datos_excel_imp[$exp_imp] = [
             'mostrar'     => $mostrar_exp,
+            'corto'       => $exp_corto_imp,
             'horas'       => nominaExcelNumero($cols_imp['horas'] !== null ? ($fila_imp[$cols_imp['horas']] ?? 0) : 0),
             'feriados'    => nominaExcelNumero($cols_imp['feriados'] !== null ? ($fila_imp[$cols_imp['feriados']] ?? 0) : 0),
             'otros'       => nominaExcelNumero($cols_imp['otros'] !== null ? ($fila_imp[$cols_imp['otros']] ?? 0) : 0),
             'retenciones' => nominaExcelNumero($cols_imp['retenciones'] !== null ? ($fila_imp[$cols_imp['retenciones']] ?? 0) : 0),
         ];
-    }
-
-    if (empty($datos_excel_imp)) {
-        echo json_encode([
-            'success'        => false,
-            'error'          => 'El Excel no trae filas válidas con expediente debajo del encabezado.',
-            'no_importados'  => $no_importados_imp,
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
     }
 
     // Expedientes del Excel que existen (o no) en la base de trabajadores: sirve
@@ -2317,6 +2309,39 @@ if (isset($_POST['importar_excel_automatica'])) {
         }
     }
     unset($ni_nombre_imp);
+
+    // Los expedientes escritos con menos de 6 dígitos (Excel pierde los ceros
+    // a la izquierda cuando la celda es numérica) solo se aceptan si al
+    // completarlos con ceros coinciden con un expediente real del sistema.
+    foreach ($datos_excel_imp as $exp_pad_imp => $valores_pad_imp) {
+        if (empty($valores_pad_imp['corto'])) { continue; }
+        if (isset($existentes_bd_imp[$exp_pad_imp])) { continue; }
+        $no_importados_imp[] = [
+            'expediente' => $valores_pad_imp['mostrar'],
+            'nombre'     => '',
+            'motivo'     => 'tiene menos de 6 dígitos y no coincide con ningún expediente del sistema',
+        ];
+        unset($datos_excel_imp[$exp_pad_imp]);
+    }
+
+    if (empty($datos_excel_imp)) {
+        $detalle_err_imp = '';
+        $motivos_err_imp = [];
+        foreach ($no_importados_imp as $ni_err_imp) {
+            $motivos_err_imp[] = 'Expediente ' . $ni_err_imp['expediente'] . ' (' . $ni_err_imp['motivo'] . ')';
+        }
+        if (!empty($motivos_err_imp)) {
+            $detalle_err_imp = ' Se descartaron: ' . implode('; ', array_slice($motivos_err_imp, 0, 12));
+            if (count($motivos_err_imp) > 12) { $detalle_err_imp .= '; …'; }
+            $detalle_err_imp .= '.';
+        }
+        echo json_encode([
+            'success'        => false,
+            'error'          => 'El Excel no trae filas válidas con expediente debajo del encabezado.' . $detalle_err_imp,
+            'no_importados'  => $no_importados_imp,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
     // ---- Parámetros de cálculo (los mismos que usa la edición de la nómina) ----
     $cfg_imp = [];
