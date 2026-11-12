@@ -2250,21 +2250,21 @@ if (isset($_POST['importar_excel_automatica'])) {
         $mostrar_exp = trim((string)$crudo_exp);
 
         if ($digitos_exp === '') {
-            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'motivo' => 'el expediente no tiene dígitos'];
+            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'el expediente no tiene dígitos'];
             continue;
         }
         if (strlen($digitos_exp) < 6) {
-            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'motivo' => 'tiene menos de 6 dígitos'];
+            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'tiene menos de 6 dígitos'];
             continue;
         }
         if (strlen($digitos_exp) > 6) {
-            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'motivo' => 'tiene más de 6 dígitos'];
+            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'tiene más de 6 dígitos'];
             continue;
         }
 
         $exp_imp = $digitos_exp;
         if (isset($datos_excel_imp[$exp_imp])) {
-            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'motivo' => 'está repetido en el Excel (fila ' . ($i_imp + 1) . ')'];
+            $no_importados_imp[] = ['expediente' => $mostrar_exp, 'nombre' => '', 'motivo' => 'está repetido en el Excel (fila ' . ($i_imp + 1) . ')'];
             continue;
         }
 
@@ -2292,12 +2292,23 @@ if (isset($_POST['importar_excel_automatica'])) {
     $codigos_bd_imp = array_keys($datos_excel_imp);
     if (!empty($codigos_bd_imp)) {
         $ph_exp_bd = implode(',', array_fill(0, count($codigos_bd_imp), '?'));
-        $stmt_exp_bd = $pdo->prepare("SELECT codigo FROM trabajadores WHERE codigo IN ($ph_exp_bd)");
+        $stmt_exp_bd = $pdo->prepare("SELECT codigo, nombre_completo FROM trabajadores WHERE codigo IN ($ph_exp_bd)");
         $stmt_exp_bd->execute($codigos_bd_imp);
-        foreach ($stmt_exp_bd->fetchAll(PDO::FETCH_COLUMN) as $cod_bd) {
-            $existentes_bd_imp[nominaExcelNormalizarExpediente($cod_bd)] = true;
+        foreach ($stmt_exp_bd->fetchAll(PDO::FETCH_ASSOC) as $trab_bd) {
+            $existentes_bd_imp[nominaExcelNormalizarExpediente($trab_bd['codigo'])] = trim((string)($trab_bd['nombre_completo'] ?? ''));
         }
     }
+
+    // Los expedientes rechazados antes del cruce también llevan el nombre cuando
+    // el código existe en la base de trabajadores.
+    foreach ($no_importados_imp as &$ni_nombre_imp) {
+        if (!isset($ni_nombre_imp['nombre'])) { $ni_nombre_imp['nombre'] = ''; }
+        $digitos_ni_imp = preg_replace('/\D/', '', (string)($ni_nombre_imp['expediente'] ?? ''));
+        if (strlen($digitos_ni_imp) === 6 && isset($existentes_bd_imp[$digitos_ni_imp])) {
+            $ni_nombre_imp['nombre'] = $existentes_bd_imp[$digitos_ni_imp];
+        }
+    }
+    unset($ni_nombre_imp);
 
     // ---- Parámetros de cálculo (los mismos que usa la edición de la nómina) ----
     $cfg_imp = [];
@@ -2327,7 +2338,8 @@ if (isset($_POST['importar_excel_automatica'])) {
 
         // ---- Filas de la nómina automática del período ----
         $stmt_filas_imp = $pdo->prepare("SELECT n.id, n.tipo_descuento,
-                                                t.id AS trabajador_id, t.codigo, t.no_acumular_vacaciones,
+                                                t.id AS trabajador_id, t.codigo, t.nombre_completo,
+                                                t.no_acumular_vacaciones,
                                                 e.salario_mensual, e.salario_hora_ordinaria
                                          FROM nominas n
                                          JOIN trabajadores t ON t.id = n.trabajador_id
@@ -2349,11 +2361,15 @@ if (isset($_POST['importar_excel_automatica'])) {
 
         foreach ($datos_excel_imp as $exp_imp => $valores_imp) {
             if (!isset($existentes_bd_imp[$exp_imp])) {
-                $no_importados_imp[] = ['expediente' => $valores_imp['mostrar'], 'motivo' => 'no existe en la base de datos'];
+                $no_importados_imp[] = ['expediente' => $valores_imp['mostrar'], 'nombre' => '', 'motivo' => 'no existe en la base de datos'];
                 continue;
             }
             if (!isset($filas_nomina_imp[$exp_imp])) {
-                $no_importados_imp[] = ['expediente' => $valores_imp['mostrar'], 'motivo' => 'no está en la nómina de este período'];
+                $no_importados_imp[] = [
+                    'expediente' => $valores_imp['mostrar'],
+                    'nombre'     => (string)($existentes_bd_imp[$exp_imp] ?? ''),
+                    'motivo'     => 'no está en la nómina de este período',
+                ];
                 continue;
             }
             $fila_nom = $filas_nomina_imp[$exp_imp];
@@ -2413,6 +2429,7 @@ if (isset($_POST['importar_excel_automatica'])) {
             ]);
             $importados_detalle_imp[] = [
                 'expediente'  => $exp_imp,
+                'nombre'      => trim((string)($fila_nom['nombre_completo'] ?? '')),
                 'horas'       => $horas_imp,
                 'feriados'    => $feriados_imp,
                 'otros'       => $otros_final_imp,
@@ -2428,7 +2445,10 @@ if (isset($_POST['importar_excel_automatica'])) {
         foreach ($filas_nomina_imp as $exp_nom => $fila_nom) {
             if (!isset($datos_excel_imp[$exp_nom])) {
                 $ids_fuera_imp[] = (int)$fila_nom['id'];
-                $eliminados_codigos_imp[] = $exp_nom;
+                $eliminados_codigos_imp[] = [
+                    'expediente' => $exp_nom,
+                    'nombre'     => trim((string)($fila_nom['nombre_completo'] ?? '')),
+                ];
             }
         }
         if (!empty($ids_fuera_imp)) {
@@ -2468,7 +2488,15 @@ if (isset($_POST['importar_excel_automatica'])) {
         $log_tipo_descuento_imp = 'no aplica (nómina ya existente)';
     }
 
+    // Encabezado de la bitácora: nombre del sistema y empresa configurada en BD.
+    $log_empresa_imp = trim((string)($config_empresa['nombre_empresa'] ?? ''));
+    if ($log_empresa_imp === '') {
+        $log_empresa_imp = defined('COMPANY_NAME') ? COMPANY_NAME : 'SiGesNom';
+    }
+
     $log_lineas_imp   = [];
+    $log_lineas_imp[] = 'SiGesNom - ' . $log_empresa_imp;
+    $log_lineas_imp[] = 'Bitácora de importación de nómina desde Excel';
     $log_lineas_imp[] = 'ARCHIVO DE LOGEO DE TRAZABILIDAD DE IMPORTACIÓN DE NÓMINAS DESDE EXCEL';
     $log_lineas_imp[] = str_repeat('=', 78);
     $log_lineas_imp[] = 'Fecha/Hora        : ' . date('Y-m-d H:i:s');
@@ -2486,6 +2514,7 @@ if (isset($_POST['importar_excel_automatica'])) {
     $log_lineas_imp[] = str_repeat('-', 78);
     foreach ($importados_detalle_imp as $det_imp) {
         $log_lineas_imp[] = 'Expediente: ' . $det_imp['expediente']
+            . ' | Trabajador: ' . (($det_imp['nombre'] ?? '') !== '' ? $det_imp['nombre'] : 'N/D')
             . ' | Horas: ' . $det_imp['horas']
             . ' | Feriados: ' . number_format((float)$det_imp['feriados'], 2, '.', '')
             . ' | Otros: ' . number_format((float)$det_imp['otros'], 2, '.', '')
@@ -2498,7 +2527,9 @@ if (isset($_POST['importar_excel_automatica'])) {
         $log_lineas_imp[] = 'EXPEDIENTES NO IMPORTADOS';
         $log_lineas_imp[] = str_repeat('-', 78);
         foreach ($no_importados_imp as $ni_imp) {
-            $log_lineas_imp[] = 'Expediente: ' . $ni_imp['expediente'] . ', no se importó porque ' . $ni_imp['motivo'] . '.';
+            $log_lineas_imp[] = 'Expediente: ' . $ni_imp['expediente']
+                . (!empty($ni_imp['nombre']) ? ' (' . $ni_imp['nombre'] . ')' : '')
+                . ', no se importó porque ' . $ni_imp['motivo'] . '.';
         }
     }
     if (!empty($eliminados_codigos_imp)) {
@@ -2506,7 +2537,8 @@ if (isset($_POST['importar_excel_automatica'])) {
         $log_lineas_imp[] = 'TRABAJADORES QUITADOS DE LA NÓMINA (no venían en el Excel)';
         $log_lineas_imp[] = str_repeat('-', 78);
         foreach ($eliminados_codigos_imp as $cod_out_imp) {
-            $log_lineas_imp[] = 'Expediente: ' . $cod_out_imp;
+            $log_lineas_imp[] = 'Expediente: ' . $cod_out_imp['expediente']
+                . (!empty($cod_out_imp['nombre']) ? ' | Trabajador: ' . $cod_out_imp['nombre'] : '');
         }
     }
     @file_put_contents($log_ruta_imp, implode(PHP_EOL, $log_lineas_imp) . PHP_EOL, LOCK_EX);
@@ -2534,6 +2566,8 @@ if (isset($_POST['importar_excel_automatica'])) {
         'importados'    => $actualizados_imp,
         'eliminados'    => count($ids_fuera_imp),
         'no_importados' => $no_importados_imp,
+        'importados_detalle' => $importados_detalle_imp,
+        'eliminados_detalle' => $eliminados_codigos_imp,
         'total_excel'   => $total_excel_imp,
         'generada'      => $generar_nomina_imp ? 1 : 0,
         'log'           => 'logs/' . $log_nombre_imp,
@@ -7391,7 +7425,7 @@ if ($existe_nomina) {
 
 <!-- Importar Excel de salarios (SiGesNom) en la nómina automática -->
 <div class="modal fade" id="modalImportarExcelNomina" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: min(44rem, 96vw);">
         <div class="modal-content modal-content-modern">
             <div class="modal-header" style="background: linear-gradient(135deg, #16a34a, #0ea5e9); border-bottom: none;">
                 <div class="d-flex align-items-center">
@@ -7428,21 +7462,22 @@ if ($existe_nomina) {
                     Solo se cargan los expedientes que vienen en el Excel. Los trabajadores de esta nómina que <strong>no</strong> aparezcan en el archivo se quitarán del borrador.
                 </div>
 
-                <?php if (!$existe_nomina && $tipo_nomina_activa == 'automatica'): ?>
                 <div class="mt-3">
                     <label class="form-label fw-semibold mb-2" for="importExcelTipoDescuento" style="color: var(--txt); font-size:0.8rem;">
-                        <i class="fas fa-percent me-1"></i> Tipo de descuento de la nómina que se generará
+                        <i class="fas fa-percent me-1"></i> Tipo de descuento de la nómina
                     </label>
                     <select id="importExcelTipoDescuento" class="form-select form-select-custom" style="font-size:0.82rem;">
-                        <option value="" selected>— Seleccione el tipo de descuento —</option>
+                        <option value="solo_cess" selected>Parcial de descuentos por rangos (PDL SOLO CESS)</option>
                         <option value="total_rangos">Total Descuentos por rangos (ISIP)</option>
-                        <option value="solo_cess">Parcial de descuentos por rangos (PDL SOLO CESS)</option>
                     </select>
                     <div class="form-text mt-1" style="color: var(--muted); font-size:0.72rem;">
-                        Este período no tiene nómina: se generará automáticamente antes de aplicar el Excel.
+                        <?php if ($existe_nomina): ?>
+                            La nómina de este período ya existe: se conserva el tipo de descuento con que fue generada.
+                        <?php else: ?>
+                            Este período no tiene nómina: se generará automáticamente con este tipo de descuento antes de aplicar el Excel.
+                        <?php endif; ?>
                     </div>
                 </div>
-                <?php endif; ?>
 
                 <div id="importExcelEstado" class="mt-3" style="display:none; font-size:0.78rem;"></div>
             </div>
@@ -7534,7 +7569,9 @@ if ($existe_nomina) {
     }
     .bitacora-pie {
         display: flex;
+        flex-wrap: wrap;
         justify-content: flex-end;
+        gap: 0.5rem;
         padding: 0.65rem 1rem;
         border-top: 0.0625rem solid var(--border, rgba(255,255,255,0.08));
     }
@@ -7599,11 +7636,100 @@ if ($existe_nomina) {
                 '<div class="bitacora-meta" id="bitacoraLogMeta">Leyendo la bitácora…</div>' +
                 '<div class="bitacora-cuerpo"><pre class="bitacora-texto" id="bitacoraLogTexto"><i class="fas fa-spinner fa-spin me-2"></i>Cargando el archivo…</pre></div>' +
                 '<div class="bitacora-pie">' +
+                    '<button type="button" class="btn-win bitacora-exportar-txt" title="Descargar la bitácora en TXT"><i class="fas fa-file-lines me-2"></i>Exportar TXT</button>' +
+                    '<button type="button" class="btn-win bitacora-exportar-pdf" title="Descargar la bitácora en PDF"><i class="fas fa-file-pdf me-2"></i>Exportar PDF</button>' +
                     '<button type="button" class="btn-win bitacora-cerrar-btn"><i class="fas fa-times me-2"></i>Cerrar</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(capa);
 
+        var contenidoLog = '';
+
+        function nombreBaseLog() {
+            return nombre.replace(/\.log$/i, '');
+        }
+
+        function descargarBlob(blob, archivo) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = archivo;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+        }
+
+        function exportarTxt() {
+            if (!contenidoLog) { return; }
+            // BOM para que el Bloc de notas de Windows respete los acentos.
+            descargarBlob(new Blob(['\ufeff' + contenidoLog], { type: 'text/plain;charset=utf-8' }), nombreBaseLog() + '.txt');
+        }
+
+        function exportarPdf() {
+            if (!contenidoLog) { return; }
+
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                // Sin jsPDF se abre la ventana de impresión (Guardar como PDF).
+                var ventana = window.open('', '_blank');
+                if (!ventana) { return; }
+                ventana.document.write(
+                    '<pre style="font:11px Consolas,monospace;white-space:pre-wrap;">' +
+                    importEsc(contenidoLog) + '</pre>'
+                );
+                ventana.document.close();
+                ventana.focus();
+                ventana.print();
+                return;
+            }
+
+            var doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait', compress: true });
+            var margen = 40;
+            var anchoPag = doc.internal.pageSize.getWidth();
+            var altoPag = doc.internal.pageSize.getHeight();
+            var anchoUtil = anchoPag - (margen * 2);
+            var altoLinea = 9.5;
+            var y = margen;
+
+            // El contenido ya trae el encabezado del sistema y la empresa
+            // (SiGesNom - Empresa / Bitácora de importación ...).
+            var lineas = contenidoLog.replace(/\r\n/g, '\n').split('\n');
+            lineas.forEach(function (linea, idx) {
+                if (idx === 0) {
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(11);
+                } else if (idx === 1) {
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9.5);
+                } else {
+                    doc.setFont('courier', 'normal');
+                    doc.setFontSize(8);
+                }
+                var salto = (idx === 0) ? 14 : altoLinea;
+                var trozos = doc.splitTextToSize(linea === '' ? ' ' : linea, anchoUtil);
+                trozos.forEach(function (trozo) {
+                    if (y + salto > altoPag - margen) {
+                        doc.addPage();
+                        y = margen;
+                    }
+                    doc.text(trozo, margen, y);
+                    y += salto;
+                });
+            });
+
+            var total = doc.internal.getNumberOfPages();
+            for (var p = 1; p <= total; p++) {
+                doc.setPage(p);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.text('Página ' + p + ' de ' + total, anchoPag - margen, altoPag - 22, { align: 'right' });
+            }
+
+            doc.save(nombreBaseLog() + '.pdf');
+        }
+
+        capa.querySelector('.bitacora-exportar-txt').addEventListener('click', exportarTxt);
+        capa.querySelector('.bitacora-exportar-pdf').addEventListener('click', exportarPdf);
         capa.querySelector('.bitacora-x').addEventListener('click', cerrarVisorBitacora);
         capa.querySelector('.bitacora-cerrar-btn').addEventListener('click', cerrarVisorBitacora);
         capa.addEventListener('click', function (e) { if (e.target === capa) { cerrarVisorBitacora(); } });
@@ -7625,6 +7751,7 @@ if ($existe_nomina) {
                 });
             })
             .then(function (data) {
+                contenidoLog = String(data.contenido || '');
                 var bytes = parseInt(data.bytes, 10) || 0;
                 var peso = bytes >= 1048576
                     ? (bytes / 1048576).toFixed(1).replace('.', ',') + ' MB'
@@ -7738,21 +7865,44 @@ if ($existe_nomina) {
             }
 
             var noImportados = res.no_importados || [];
+            var importadosDetalle = res.importados_detalle || [];
             var listaNo = '';
             if (noImportados.length) {
                 listaNo = '<div class="mt-2" style="text-align:left; max-height:13rem; overflow-y:auto; border-top:0.0625rem solid rgba(148,163,184,0.35); padding-top:0.5rem;">'
                     + noImportados.map(function (item) {
+                        var nombreNo = (item.nombre || '').trim();
                         return '<div style="font-size:0.8rem; margin-bottom:0.35rem;">'
-                            + 'Expediente: <strong>' + importEsc(item.expediente) + '</strong>, no se importó porque ' + importEsc(item.motivo) + '.'
+                            + 'Expediente: <strong>' + importEsc(item.expediente) + '</strong>'
+                            + (nombreNo !== '' ? ' — ' + importEsc(nombreNo) : '')
+                            + ', no se importó porque ' + importEsc(item.motivo) + '.'
                             + '</div>';
                     }).join('')
                     + '</div>';
+            }
+
+            var listaSi = '';
+            if (importadosDetalle.length) {
+                listaSi = '<details class="mt-2" style="text-align:left;">'
+                    + '<summary style="cursor:pointer; font-size:0.8rem; color:#16a34a;">'
+                    + '<i class="fas fa-users me-1"></i> Ver expedientes importados (' + importadosDetalle.length + ')'
+                    + '</summary>'
+                    + '<div style="max-height:12rem; overflow-y:auto; margin-top:0.4rem; border-top:0.0625rem solid rgba(148,163,184,0.35); padding-top:0.4rem;">'
+                    + importadosDetalle.map(function (item) {
+                        var nombreSi = (item.nombre || '').trim();
+                        return '<div style="font-size:0.8rem; margin-bottom:0.3rem;">'
+                            + 'Expediente: <strong>' + importEsc(item.expediente) + '</strong>'
+                            + (nombreSi !== '' ? ' — ' + importEsc(nombreSi) : '')
+                            + ' · Neto: ' + importEsc(Number(item.neto || 0).toFixed(2))
+                            + '</div>';
+                    }).join('')
+                    + '</div></details>';
             }
 
             var detalle = '<div style="text-align:left; font-size:0.88rem;">'
                 + '<div><i class="fas fa-check-circle me-1" style="color:#16a34a;"></i> Se importaron: <strong>' + res.importados + '</strong> expedientes de <strong>' + res.total_excel + '</strong> del archivo</div>'
                 + (res.generada ? '<div class="mt-1"><i class="fas fa-circle-plus me-1" style="color:#0ea5e9;"></i> La nómina automática del período se generó antes de importar</div>' : '')
                 + (res.eliminados > 0 ? '<div class="mt-1"><i class="fas fa-user-minus me-1" style="color:#f59e0b;"></i> <strong>' + res.eliminados + '</strong> trabajadores fuera del Excel, quitados de la nómina</div>' : '')
+                + listaSi
                 + (noImportados.length
                     ? '<div class="mt-2 fw-semibold" style="color:#f59e0b;"><i class="fas fa-triangle-exclamation me-1"></i> No se importaron: ' + noImportados.length + '</div>' + listaNo
                     : '<div class="mt-2" style="color: var(--muted);"><i class="fas fa-circle-check me-1" style="color:#16a34a;"></i> Todos los expedientes del archivo se importaron.</div>')
