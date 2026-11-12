@@ -7425,7 +7425,7 @@ if ($existe_nomina) {
 
 <!-- Importar Excel de salarios (SiGesNom) en la nómina automática -->
 <div class="modal fade" id="modalImportarExcelNomina" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: min(44rem, 96vw);">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" style="max-width: min(52rem, 96vw);">
         <div class="modal-content modal-content-modern">
             <div class="modal-header" style="background: linear-gradient(135deg, #16a34a, #0ea5e9); border-bottom: none;">
                 <div class="d-flex align-items-center">
