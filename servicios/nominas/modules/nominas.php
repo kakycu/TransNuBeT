@@ -2292,10 +2292,13 @@ if (isset($_POST['importar_excel_automatica'])) {
     $codigos_bd_imp = array_keys($datos_excel_imp);
     if (!empty($codigos_bd_imp)) {
         $ph_exp_bd = implode(',', array_fill(0, count($codigos_bd_imp), '?'));
-        $stmt_exp_bd = $pdo->prepare("SELECT codigo, nombre_completo FROM trabajadores WHERE codigo IN ($ph_exp_bd)");
+        $stmt_exp_bd = $pdo->prepare("SELECT codigo, nombre_completo, fecha_baja FROM trabajadores WHERE codigo IN ($ph_exp_bd)");
         $stmt_exp_bd->execute($codigos_bd_imp);
         foreach ($stmt_exp_bd->fetchAll(PDO::FETCH_ASSOC) as $trab_bd) {
-            $existentes_bd_imp[nominaExcelNormalizarExpediente($trab_bd['codigo'])] = trim((string)($trab_bd['nombre_completo'] ?? ''));
+            $existentes_bd_imp[nominaExcelNormalizarExpediente($trab_bd['codigo'])] = [
+                'nombre'     => trim((string)($trab_bd['nombre_completo'] ?? '')),
+                'fecha_baja' => trim((string)($trab_bd['fecha_baja'] ?? '')),
+            ];
         }
     }
 
@@ -2305,7 +2308,7 @@ if (isset($_POST['importar_excel_automatica'])) {
         if (!isset($ni_nombre_imp['nombre'])) { $ni_nombre_imp['nombre'] = ''; }
         $digitos_ni_imp = preg_replace('/\D/', '', (string)($ni_nombre_imp['expediente'] ?? ''));
         if (strlen($digitos_ni_imp) === 6 && isset($existentes_bd_imp[$digitos_ni_imp])) {
-            $ni_nombre_imp['nombre'] = $existentes_bd_imp[$digitos_ni_imp];
+            $ni_nombre_imp['nombre'] = $existentes_bd_imp[$digitos_ni_imp]['nombre'];
         }
     }
     unset($ni_nombre_imp);
@@ -2364,10 +2367,21 @@ if (isset($_POST['importar_excel_automatica'])) {
                 $no_importados_imp[] = ['expediente' => $valores_imp['mostrar'], 'nombre' => '', 'motivo' => 'no existe en la base de datos'];
                 continue;
             }
+            $trab_bd_imp = $existentes_bd_imp[$exp_imp];
+            if (($trab_bd_imp['fecha_baja'] ?? '') !== '' && $trab_bd_imp['fecha_baja'] !== '0000-00-00') {
+                $ts_baja_imp = strtotime($trab_bd_imp['fecha_baja']);
+                $fecha_baja_txt_imp = $ts_baja_imp ? date('d/m/Y', $ts_baja_imp) : $trab_bd_imp['fecha_baja'];
+                $no_importados_imp[] = [
+                    'expediente' => $valores_imp['mostrar'],
+                    'nombre'     => $trab_bd_imp['nombre'],
+                    'motivo'     => 'causó baja el ' . $fecha_baja_txt_imp,
+                ];
+                continue;
+            }
             if (!isset($filas_nomina_imp[$exp_imp])) {
                 $no_importados_imp[] = [
                     'expediente' => $valores_imp['mostrar'],
-                    'nombre'     => (string)($existentes_bd_imp[$exp_imp] ?? ''),
+                    'nombre'     => (string)($trab_bd_imp['nombre'] ?? ''),
                     'motivo'     => 'no está en la nómina de este período',
                 ];
                 continue;
@@ -7866,6 +7880,7 @@ if ($existe_nomina) {
 
             var noImportados = res.no_importados || [];
             var importadosDetalle = res.importados_detalle || [];
+            var eliminadosDetalle = res.eliminados_detalle || [];
             var listaNo = '';
             if (noImportados.length) {
                 listaNo = '<div class="mt-2" style="text-align:left; max-height:13rem; overflow-y:auto; border-top:0.0625rem solid rgba(148,163,184,0.35); padding-top:0.5rem;">'
@@ -7898,11 +7913,29 @@ if ($existe_nomina) {
                     + '</div></details>';
             }
 
+            var listaEliminados = '';
+            if (eliminadosDetalle.length) {
+                listaEliminados = '<details class="mt-2" style="text-align:left;">'
+                    + '<summary style="cursor:pointer; font-size:0.8rem; color:#f59e0b;">'
+                    + '<i class="fas fa-user-minus me-1"></i> Ver trabajadores quitados de la nómina (' + eliminadosDetalle.length + ')'
+                    + '</summary>'
+                    + '<div style="max-height:12rem; overflow-y:auto; margin-top:0.4rem; border-top:0.0625rem solid rgba(148,163,184,0.35); padding-top:0.4rem;">'
+                    + eliminadosDetalle.map(function (item) {
+                        var nombreQuitado = (item.nombre || '').trim();
+                        return '<div style="font-size:0.8rem; margin-bottom:0.3rem;">'
+                            + 'Expediente: <strong>' + importEsc(item.expediente) + '</strong>'
+                            + (nombreQuitado !== '' ? ' — ' + importEsc(nombreQuitado) : '')
+                            + '</div>';
+                    }).join('')
+                    + '</div></details>';
+            }
+
             var detalle = '<div style="text-align:left; font-size:0.88rem;">'
                 + '<div><i class="fas fa-check-circle me-1" style="color:#16a34a;"></i> Se importaron: <strong>' + res.importados + '</strong> expedientes de <strong>' + res.total_excel + '</strong> del archivo</div>'
                 + (res.generada ? '<div class="mt-1"><i class="fas fa-circle-plus me-1" style="color:#0ea5e9;"></i> La nómina automática del período se generó antes de importar</div>' : '')
                 + (res.eliminados > 0 ? '<div class="mt-1"><i class="fas fa-user-minus me-1" style="color:#f59e0b;"></i> <strong>' + res.eliminados + '</strong> trabajadores fuera del Excel, quitados de la nómina</div>' : '')
                 + listaSi
+                + listaEliminados
                 + (noImportados.length
                     ? '<div class="mt-2 fw-semibold" style="color:#f59e0b;"><i class="fas fa-triangle-exclamation me-1"></i> No se importaron: ' + noImportados.length + '</div>' + listaNo
                     : '<div class="mt-2" style="color: var(--muted);"><i class="fas fa-circle-check me-1" style="color:#16a34a;"></i> Todos los expedientes del archivo se importaron.</div>')
