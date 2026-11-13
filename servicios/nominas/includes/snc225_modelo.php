@@ -1,6 +1,6 @@
 <?php
 /**
- * Modelo SNC 2-25 descrito en código (sin plantilla .xlsx).
+ * Modelo SC-4-08 (Registro de Salarios y Tiempo de Servicio) descrito en código (sin plantilla .xlsx).
  *
  * Generado una vez a partir de la plantilla oficial; a partir de aquí el
  * layout vive en este arreglo y el exportador no lee ningún archivo.
@@ -166,7 +166,7 @@ function snc225_modelo_definicion(): array
     'G1' => 
     array (
       0 => 's',
-      1 => 'SNS 2-2.25',
+      1 => 'SNC - 225',
     ),
     'J1' => 
     array (

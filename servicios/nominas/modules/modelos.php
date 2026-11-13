@@ -1,6 +1,6 @@
 <?php
 // modules/modelos.php - Selección de modelos del sistema
-// Permite elegir uno o varios modelos (SNC 1-25, SNC 2-25, Anexo 14 y la
+// Permite elegir uno o varios modelos (SC-4-09/SNC 1-25, SC-4-08/SNC-225, Anexo 14 y la
 // plantilla para importar el pago de salarios) y continuar con sus acciones.
 require_once '../config/database.php';
 require_once '../includes/funciones.php';
@@ -164,6 +164,230 @@ function modelos_plantilla_salarios_descargar(): void
     $libro->disconnectWorksheets();
 }
 
+/** Envía el libro como descarga XLSX. */
+function modelos_enviar_xlsx($libro, string $nombre_archivo): void
+{
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $nombre_archivo . '"');
+    header('Cache-Control: max-age=0, must-revalidate');
+    header('Pragma: public');
+
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
+    $writer->save('php://output');
+    $libro->disconnectWorksheets();
+}
+
+/**
+ * Modelo en blanco de la Certificación de Años de Servicios y Salarios
+ * Devengados (SC-4-09 / SNC 1-25) en Word.
+ *
+ * Reproduce el formulario tal como está armado: hoja carta vertical, márgenes
+ * 426/900/1021/1134 twips, Arial 11, los párrafos con líneas para escribir, la
+ * relación de los últimos 10 años en dos bloques de cinco (año e importe
+ * recibido) y el pie con la ciudad y fecha, las observaciones y las firmas.
+ */
+function modelos_plantilla_sc409_word(array $config): void
+{
+    $autoload = __DIR__ . '/../vendor/autoload.php';
+    if (!file_exists($autoload)) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'No está disponible la librería para generar Word (vendor/autoload.php).';
+        return;
+    }
+    require_once $autoload;
+
+    if (!class_exists('\PhpOffice\PhpWord\PhpWord')) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'La librería PhpWord no está instalada en el servidor.';
+        return;
+    }
+
+    $documento = new \PhpOffice\PhpWord\PhpWord();
+    $documento->setDefaultFontName('Arial');
+    $documento->setDefaultFontSize(10);
+
+    $seccion = $documento->addSection([
+        'pageSizeW' => 12240,
+        'pageSizeH' => 15840,
+        'marginTop' => 426,
+        'marginRight' => 900,
+        'marginBottom' => 1021,
+        'marginLeft' => 1134,
+    ]);
+
+    // Párrafo del formulario: Arial 11, 1.15 de interlineado y 140 twips después.
+    $parrafo = function (string $texto, array $opciones = []) use ($seccion): void {
+        $estilo = [
+            'name' => 'Arial',
+            'size' => $opciones['size'] ?? 11,
+            'bold' => $opciones['bold'] ?? false,
+            'italic' => $opciones['italic'] ?? false,
+        ];
+        $formato = [
+            'spaceAfter' => $opciones['after'] ?? 140,
+            'lineHeight' => $opciones['linea'] ?? 1.15,
+        ];
+        if (!empty($opciones['centro'])) {
+            $formato['alignment'] = 'center';
+        }
+        if (!empty($opciones['indent'])) {
+            $formato['indentation'] = $opciones['indent'];
+        }
+        if (isset($opciones['linea']) && $opciones['linea'] === null) {
+            unset($formato['lineHeight']);
+        }
+        $seccion->addText($texto, $estilo, $formato);
+    };
+
+    $parrafo('CERTIFICACIÓN DE AÑOS DE SERVICIOS Y SALARIOS DEVENGADOS',
+        ['bold' => true, 'size' => 12, 'centro' => true, 'after' => 60]);
+    $parrafo('SNC 1-25 * SC-4-09', ['bold' => true, 'centro' => true, 'after' => 240]);
+
+    $parrafo('El trabajador ________________________________________________________________________ con Carnet de Identidad No _______________________, que ocupó la plaza de __________________');
+    $parrafo('__________________________________________________________________________________');
+    $parrafo('Según documentos que obran en nuestro poder prestó servicios en la entidad ____________________');
+    $parrafo('___________________________________________________________________________________');
+    $parrafo('Calle _______________________ No. ______ Municipio ___________________ Provincia _________');
+    $parrafo('Desde el mes de ______________ del ________ al mes de ______________ del _________, _______');
+    $parrafo('               DÍAS',
+        ['after' => 0, 'linea' => 1.0, 'indent' => ['left' => 8496]]);
+    $parrafo('                             TRABAJADOS',
+        ['after' => 0, 'linea' => 1.0, 'indent' => ['left' => 7080, 'right' => -426, 'firstLine' => 708]]);
+    $parrafo('', ['after' => 0, 'linea' => 1.0, 'indent' => ['left' => 7080, 'firstLine' => 708]]);
+    $parrafo('Y ha devengado en los últimos 10 años los salarios que a continuación se relacionan:',
+        ['after' => 120]);
+
+    // Relación de los últimos 10 años: dos bloques de cinco.
+    // Tabla de años: líneas solo debajo de AÑO e IMPORTE RECIBIDO, como el
+    // modelo impreso (las columnas separadoras quedan sin borde).
+    $anchos = [1680, 222, 3023, 236, 1680, 222, 3023];
+    $raya = ['borderBottomSize' => 4, 'borderBottomColor' => '000000'];
+
+    $tabla = $seccion->addTable(['width' => 10086, 'unit' => 'dxa', 'cellMargin' => 0]);
+    $encabezado = $tabla->addRow(340);
+    foreach (['AÑO', '', 'IMPORTE RECIBIDO', '', 'AÑO', '', 'IMPORTE RECIBIDO'] as $i => $rotulo) {
+        $encabezado->addCell($anchos[$i])
+            ->addText($rotulo, ['name' => 'Arial', 'size' => 11, 'bold' => true], ['alignment' => 'center', 'spaceAfter' => 0]);
+    }
+
+    for ($fila = 0; $fila < 5; $fila++) {
+        $filaTabla = $tabla->addRow(420);
+        foreach ($anchos as $i => $ancho) {
+            $conRaya = $i % 2 === 0;
+            $celda = $filaTabla->addCell($ancho, $conRaya ? $raya : []);
+            if (!in_array($i, [1, 5], true)) {
+                $celda->addText(' ', ['name' => 'Arial', 'size' => 11], ['spaceAfter' => 0]);
+            }
+        }
+    }
+
+    $parrafo('', ['after' => 80]);
+    $parrafo('Y para constancia se expide esta certificación por el jefe del Dpto. Contabilidad de acuerdo con los requisitos establecidos en la legislación de Seguridad Social vigente.');
+    $parrafo('');
+    $parrafo('Dada en la ciudad de __________________ a los ____ días del mes de ____________ del ________');
+    $parrafo('OBSERVACIONES:', ['bold' => true]);
+    for ($fila = 0; $fila < 4; $fila++) {
+        $parrafo('');
+    }
+
+    // Nombre y apellidos a la izquierda, firma y cuño a la derecha.
+    // Firmas: tabla sin bordes (las líneas son los guiones bajos del texto).
+    $firmas = $seccion->addTable(['cellMargin' => 0]);
+    $anchosFirma = [4763, 567, 4309];
+    $rayaFirmas = $firmas->addRow(340);
+    foreach (['_________________________________', '', '__________________________'] as $i => $texto) {
+        $rayaFirmas->addCell($anchosFirma[$i])
+            ->addText($texto, ['name' => 'Arial', 'size' => 11], ['alignment' => 'center', 'spaceAfter' => 0]);
+    }
+    $rotulos = $firmas->addRow(340);
+    foreach (['Nombre y Apellidos de quien certifica', '', 'Firma y cuño'] as $i => $texto) {
+        $rotulos->addCell($anchosFirma[$i])
+            ->addText($texto, ['name' => 'Arial', 'size' => 11], ['alignment' => 'center', 'spaceAfter' => 0]);
+    }
+
+    $parrafo('');
+    $parrafo('Esta certificación se expide en casos de baja del trabajador o de inicio de expediente de Seguridad Social.',
+        ['bold' => true, 'italic' => true, 'size' => 10, 'after' => 0]);
+
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    header('Content-Disposition: attachment; filename="Modelo_SC-4-09_SNC_1-25_en_blanco.docx"');
+    header('Cache-Control: max-age=0, must-revalidate');
+    header('Pragma: public');
+
+    $escritor = \PhpOffice\PhpWord\IOFactory::createWriter($documento, 'Word2007');
+    $escritor->save('php://output');
+}
+
+/**
+ * Modelo en blanco del SC-4-08 — Registro de Salarios y Tiempo de Servicio (SNC-225).
+ *
+ * Es el mismo modelo oficial que imprime snc225.php
+ * (?snc225_reporte=imprimir): las 17 columnas, los combinados, los estilos y
+ * la configuración de página salen de includes/snc225_modelo.php, así que la
+ * plantilla descargada coincide con el reporte y solo queda escribir los
+ * datos del trabajador, la entidad y los años.
+ */
+function modelos_plantilla_snc225(array $config): void
+{
+    require_once __DIR__ . '/../includes/snc225_reporte.php';
+
+    $libro = snc225_crear_libro();
+    if ($libro === null) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'No está disponible la librería para generar Excel (vendor/autoload.php).';
+        return;
+    }
+
+    $libro->getActiveSheet()->setTitle('SC-4-08');
+
+    modelos_enviar_xlsx($libro, 'Modelo_SC-4-08_en_blanco.xlsx');
+}
+
+/** Modelo en blanco del Anexo 14 (mismo modelo que exporta empleados.php). */
+function modelos_plantilla_anexo14($pdo, array $config): void
+{
+    // Se reutiliza el modelo del reporte de Empleados (?ver_anexo14), así la
+    // plantilla descargada tiene el mismo encabezado, columnas y estilos.
+    require_once __DIR__ . '/../includes/anexo14_reporte.php';
+
+    $libro = anexo14_construir($pdo, true);
+
+    modelos_enviar_xlsx($libro, 'Modelo_Anexo_14_en_blanco.xlsx');
+}
+
+/** Envía el modelo en blanco que corresponde al slug pedido. */
+function modelos_plantilla_descargar(string $slug, array $config, $pdo = null): void
+{
+    switch ($slug) {
+        case 'sc409_word':
+            modelos_plantilla_sc409_word($config);
+            return;
+        case 'snc225':
+            modelos_plantilla_snc225($config);
+            return;
+        case 'anexo14':
+            modelos_plantilla_anexo14($pdo, $config);
+            return;
+        case 'importacion_salarios':
+            modelos_plantilla_salarios_descargar();
+            return;
+    }
+
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'El modelo solicitado no está disponible.';
+}
+
 // Descarga directa de la plantilla de importación (no requiere selección).
 if (isset($_GET['descargar']) && $_GET['descargar'] === 'importacion_salarios') {
     modelos_plantilla_salarios_descargar();
@@ -185,6 +409,12 @@ try {
     }
 } catch (PDOException $e) {}
 
+// Descarga del modelo en blanco de cada tarjeta.
+if (isset($_GET['plantilla'])) {
+    modelos_plantilla_descargar((string)$_GET['plantilla'], $config_empresa, $pdo);
+    exit;
+}
+
 $puede_snc225 = permiso_puede('snc225', 'ver');
 $puede_empleados = permiso_puede('empleados', 'ver');
 
@@ -192,31 +422,38 @@ $puede_empleados = permiso_puede('empleados', 'ver');
 // "motivo" explica al usuario por qué no está disponible.
 $modelos = [
     [
-        'id' => 'snc-1-25',
-        'nombre' => 'SNC 1-25',
-        'descripcion' => 'Modelo de declaración SNC 1-25 para el ejercicio fiscal correspondiente.',
+        'id' => 'sc-4-09',
+        'plantilla' => 'sc409_word',
+        'plantilla_label' => 'Modelo en blanco (Word)',
+        'plantilla_formato' => 'Word',
+        'nombre' => 'SC-4-09 · Certificación de Años de Servicios y Salarios Devengados (SNC 1-25)',
+        'descripcion' => 'Certifica el tiempo de servicio y los salarios devengados del trabajador, como prueba documental para la prestación de Seguridad Social a largo plazo.',
         'icono' => 'fa-file-invoice',
-        'tipo' => 'Declaración',
+        'tipo' => 'Certificación',
         'color' => 'blue',
-        'disponible' => false,
-        'motivo' => 'Este modelo todavía no tiene generador en el sistema. Se habilitará en cuanto se defina su contenido.',
-        'acciones' => [],
+        'disponible' => true,
+        'motivo' => '',
+        'acciones' => permiso_puede('snc125', 'ver') ? [
+            ['label' => 'Abrir tarjeta SC-4-09', 'url' => 'snc125.php', 'tipo' => 'url', 'icono' => 'fa-arrow-up-right-from-square'],
+        ] : [],
     ],
     [
-        'id' => 'snc-2-25',
-        'nombre' => 'SNC 2-25',
-        'descripcion' => 'Certificación de salarios y tiempo de servicios por trabajador, con vista previa, Excel y PDF.',
+        'id' => 'sc-4-08',
+        'plantilla' => 'snc225',
+        'nombre' => 'SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225)',
+        'descripcion' => 'Registro de salarios y tiempo de servicios por trabajador (modelo SNC-225), con vista previa, Excel y PDF.',
         'icono' => 'fa-file-invoice-dollar',
-        'tipo' => 'Declaración',
+        'tipo' => 'Registro',
         'color' => 'teal',
         'disponible' => (bool)$puede_snc225,
-        'motivo' => 'No tiene permiso para acceder a la tarjeta SNC 2-25.',
+        'motivo' => 'No tiene permiso para acceder a la tarjeta SC-4-08.',
         'acciones' => $puede_snc225 ? [
-            ['label' => 'Abrir tarjeta SNC 2-25', 'url' => 'snc225.php', 'tipo' => 'url', 'icono' => 'fa-arrow-up-right-from-square'],
+            ['label' => 'Abrir tarjeta SC-4-08', 'url' => 'snc225.php', 'tipo' => 'url', 'icono' => 'fa-arrow-up-right-from-square'],
         ] : [],
     ],
     [
         'id' => 'anexo-14',
+        'plantilla' => 'anexo14',
         'nombre' => 'Anexo 14',
         'descripcion' => 'Anexo 14 con la información complementaria de los trabajadores (vista previa y Excel).',
         'icono' => 'fa-paperclip',
@@ -231,6 +468,8 @@ $modelos = [
     ],
     [
         'id' => 'importar-pago',
+        'plantilla' => 'importacion_salarios',
+        'plantilla_label' => 'Descargar Plantilla',
         'nombre' => 'Modelo para Importar Pago Salarios Automática',
         'descripcion' => 'Plantilla Excel para cargar horas, feriados, otros pagos y retenciones en la nómina automática.',
         'icono' => 'fa-money-bill-transfer',
@@ -391,6 +630,23 @@ $total_modelos = count($modelos);
         .t-amber  { background:rgba(251,191,36,.12);  color:#f59e0b; }
         .t-purple { background:rgba(167,139,250,.12); color:#a78bfa; }
 
+        /* ============ MODELO EN BLANCO (por tarjeta) ============ */
+        .model-actions { margin-top:.9rem; padding-top:.75rem; border-top:.0625rem solid rgba(255,255,255,.06); }
+        .btn-plantilla {
+            display:inline-flex; align-items:center; justify-content:center; gap:.45rem; width:100%;
+            background:rgba(255,255,255,.04); border:.0625rem solid var(--border); color:var(--muted);
+            font-size:.76rem; font-weight:500; padding:.42rem .6rem; border-radius:.375rem;
+            transition:background .15s ease, border-color .15s ease, color .15s ease; cursor:pointer;
+        }
+        .btn-plantilla:hover { background:rgba(var(--accent-rgb),.14); border-color:var(--accent); color:var(--txt); }
+        .btn-plantilla:active { transform:scale(.99); }
+        html[data-theme="light"] .model-actions,
+        html[data-theme="orgullo"] .model-actions { border-top-color:rgba(0,0,0,.08); }
+        html[data-theme="light"] .btn-plantilla,
+        html[data-theme="orgullo"] .btn-plantilla { background:rgba(0,0,0,.03); }
+        html[data-theme="light"] .btn-plantilla:hover,
+        html[data-theme="orgullo"] .btn-plantilla:hover { background:rgba(var(--accent-rgb),.12); }
+
         /* ============ RESUMEN ============ */
         .summary-panel {
             background:rgba(255,255,255,.035); border:.0625rem solid var(--border); border-radius:.625rem;
@@ -466,6 +722,10 @@ $total_modelos = count($modelos);
         .btn-accion:hover { background:rgba(var(--accent-rgb),.2); border-color:var(--accent); color:var(--txt); }
         .btn-accion.accion-descarga { background:rgba(45,212,191,.12); }
         .btn-accion.accion-descarga:hover { background:rgba(45,212,191,.22); border-color:#2dd4bf; }
+        .btn-accion.accion-plantilla { background:rgba(255,255,255,.04); border-style:dashed; }
+        .btn-accion.accion-plantilla:hover { background:rgba(var(--accent-rgb),.18); border-color:var(--accent); border-style:solid; }
+        html[data-theme="light"] .btn-accion.accion-plantilla,
+        html[data-theme="orgullo"] .btn-accion.accion-plantilla { background:rgba(0,0,0,.03); }
 
         /* ============ TEMA CLARO ============ */
         html[data-theme="light"] .modelos-toolbar,
@@ -548,7 +808,7 @@ $total_modelos = count($modelos);
     <div class="modelos-hero fade-in-up">
         <div class="brand-badge">
             <i class="fas fa-shield-halved"></i>
-            <span>Sistema de Declaraciones</span>
+            <span>Sistema de Modelaje SisGesNom®</span>
         </div>
         <h2 class="modelos-title">Selección de modelos</h2>
         <p class="modelos-subtitle">Elige los modelos que deseas incluir en el proceso. Puedes seleccionar varios a la vez y continuar con sus acciones.</p>
@@ -590,6 +850,16 @@ $total_modelos = count($modelos);
                 <span class="model-type t-<?php echo htmlspecialchars($m['color']); ?>"><?php echo htmlspecialchars($m['tipo']); ?></span>
                 <?php if (!$m['disponible']): ?>
                 <span class="model-flag"><i class="fas fa-clock"></i> Próximamente</span>
+                <?php endif; ?>
+            </div>
+            <div class="model-actions">
+                <?php if (!empty($m['plantilla'])): ?>
+                <button type="button" class="btn-plantilla"
+                        data-plantilla="<?php echo htmlspecialchars($m['plantilla']); ?>"
+                        title="<?php echo htmlspecialchars($m['plantilla_label'] ?? 'Modelo en blanco'); ?> (<?php echo htmlspecialchars($m['plantilla_formato'] ?? 'Excel'); ?>)">
+                    <i class="fas fa-file-arrow-down"></i>
+                    <span><?php echo htmlspecialchars($m['plantilla_label'] ?? 'Modelo en blanco'); ?></span>
+                </button>
                 <?php endif; ?>
             </div>
         </article>
@@ -797,15 +1067,15 @@ $total_modelos = count($modelos);
 
     function continuar() {
         var elegidos = MODELOS.filter(function (m) {
-            return seleccionados.has(m.id) && m.acciones && m.acciones.length;
+            return seleccionados.has(m.id) && ((m.acciones && m.acciones.length) || m.plantilla);
         });
 
         if (elegidos.length === 0) return;
 
-        var totalAcciones = elegidos.reduce(function (acc, m) { return acc + m.acciones.length; }, 0);
+        var totalAcciones = elegidos.reduce(function (acc, m) { return acc + (m.acciones ? m.acciones.length : 0); }, 0);
 
         // Un solo destino: se ejecuta directamente.
-        if (totalAcciones === 1) {
+        if (totalAcciones === 1 && elegidos.length === 1 && elegidos[0].acciones.length === 1) {
             ejecutarAccion(elegidos[0].acciones[0]);
             return;
         }
@@ -827,8 +1097,8 @@ $total_modelos = count($modelos);
             var botones = document.createElement('div');
             botones.className = 'modelo-accion-btns';
 
-            m.acciones.forEach(function (a) {
-                var btn = document.createElement(a.tipo === 'descarga' ? 'a' : 'a');
+            (m.acciones || []).forEach(function (a) {
+                var btn = document.createElement('a');
                 btn.className = 'btn-accion' + (a.tipo === 'descarga' ? ' accion-descarga' : '');
                 btn.href = a.url;
                 if (a.tipo === 'url') {
@@ -839,6 +1109,27 @@ $total_modelos = count($modelos);
                 btn.querySelector('span').textContent = a.label;
                 botones.appendChild(btn);
             });
+
+            // Plantilla de cada modelo seleccionado (modelo en blanco o el
+            // archivo descargable del modelo, según la tarjeta). Se omite
+            // cuando una acción de la fila ya descarga ese mismo archivo.
+            if (m.plantilla) {
+                var repetida = (m.acciones || []).some(function (a) {
+                    var url = a.url || '';
+                    return url.indexOf('plantilla=' + m.plantilla) !== -1
+                        || url.indexOf('descargar=' + m.plantilla) !== -1;
+                });
+                if (!repetida) {
+                    var etiqueta = m.plantilla_label || 'Modelo en blanco';
+                    var btnPlantilla = document.createElement('a');
+                    btnPlantilla.className = 'btn-accion accion-plantilla';
+                    btnPlantilla.href = '?plantilla=' + encodeURIComponent(m.plantilla);
+                    btnPlantilla.title = etiqueta + ' de ' + m.nombre;
+                    btnPlantilla.innerHTML = '<i class="fas fa-file-arrow-down"></i><span></span>';
+                    btnPlantilla.querySelector('span').textContent = etiqueta;
+                    botones.appendChild(btnPlantilla);
+                }
+            }
 
             fila.appendChild(icono);
             fila.appendChild(nombre);
@@ -859,6 +1150,18 @@ $total_modelos = count($modelos);
                 ev.preventDefault();
                 alternar(card.dataset.id);
             }
+        });
+    });
+
+    // Descarga del modelo en blanco de cada tarjeta: no cambia la selección.
+    grid.querySelectorAll('.btn-plantilla').forEach(function (btn) {
+        btn.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            var slug = btn.dataset.plantilla;
+            if (slug) window.location.href = '?plantilla=' + encodeURIComponent(slug);
+        });
+        btn.addEventListener('keydown', function (ev) {
+            ev.stopPropagation();
         });
     });
 

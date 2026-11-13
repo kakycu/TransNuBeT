@@ -40,7 +40,7 @@ function permiso_rol_codigo() {
  * El Visualizador (2) y el Supervisor General (4) no pueden usarlos.
  */
 function permisos_modulos_snc() {
-    return ['snc225', 'domiciliacion_tarjetas'];
+    return ['snc225', 'snc125', 'domiciliacion_tarjetas'];
 }
 
 /**
@@ -53,7 +53,7 @@ function permiso_matriz() {
     $NADA = ['ver' => false, 'crear' => false, 'editar' => false, 'eliminar' => false, 'exportar' => false];
     $SIN_CREAR = ['ver' => true, 'crear' => false, 'editar' => true, 'eliminar' => true, 'exportar' => true];
 
-    $modulos = ['dashboard', 'empleados', 'nominas', 'cierres', 'reportes', 'clasificadores', 'configuracion', 'usuarios', 'bandecnom', 'submayor', 'solapines', 'snc225', 'domiciliacion_tarjetas'];
+    $modulos = ['dashboard', 'empleados', 'nominas', 'cierres', 'reportes', 'clasificadores', 'configuracion', 'usuarios', 'bandecnom', 'submayor', 'solapines', 'snc225', 'snc125', 'domiciliacion_tarjetas'];
 
     foreach ($modulos as $m) {
         $matriz['Admin'][$m] = $TODO;
@@ -80,6 +80,7 @@ function permiso_matriz() {
         'submayor' => $SOLO_LECTURA,
         'solapines' => $SOLO_LECTURA,
         'snc225' => $NADA,
+        'snc125' => $NADA,
         'domiciliacion_tarjetas' => $NADA,
     ];
 
@@ -96,6 +97,7 @@ function permiso_matriz() {
         'submayor' => $TODO,
         'solapines' => $TODO,
         'snc225' => $TODO,
+        'snc125' => $TODO,
         'domiciliacion_tarjetas' => $TODO,
     ];
 
@@ -115,6 +117,7 @@ function permiso_matriz() {
         'submayor' => $TODO,
         'solapines' => $SOLO_LECTURA,
         'snc225' => $NADA,
+        'snc125' => $NADA,
         'domiciliacion_tarjetas' => $NADA,
     ];
 

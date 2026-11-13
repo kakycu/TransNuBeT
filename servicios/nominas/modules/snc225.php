@@ -1,5 +1,5 @@
 <?php
-// modules/snc225.php - Tarjeta SNC-225
+// modules/snc225.php - Tarjeta SC-4-08 — Registro de Salarios y Tiempo de Servicio (SNC-225)
 require_once '../config/database.php';
 require_once '../includes/funciones.php';
 require_once __DIR__ . '/../includes/logger.php';
@@ -16,7 +16,7 @@ if (!isset($_SESSION['usuario_id']) && !isset($_SESSION['logged_in'])) {
 
 // Acceso restringido: Administrador (Admin), Contador/Editor (Editor) y Programador (Soft).
 if (!permiso_puede('snc225', 'ver')) {
-    permiso_denegar_acceso('Tarjeta SNC-225');
+    permiso_denegar_acceso('Tarjeta SC-4-08');
 }
 
 setlocale(LC_TIME, 'es_ES.utf8', 'spanish');
@@ -141,7 +141,7 @@ $total = count($trabajadores);
 // Detalle de nóminas por trabajador. Además del período y lo devengado se
 // envían las horas y el tipo de nómina: la tarjeta los usa para mostrar el
 // resumen por año (días trabajados y salario) con el mismo criterio del
-// modelo SNC 2-25 que se imprime y exporta.
+// modelo SC-4-08 que se imprime y exporta.
 $stNominasDet = $pdo->query("SELECT trabajador_id, periodo_hasta, total_salario_devengado, horas_laboradas, tipo_nomina FROM nominas WHERE total_salario_devengado > 0 ORDER BY trabajador_id, periodo_hasta");
 $nominasDetalle = $stNominasDet->fetchAll(PDO::FETCH_ASSOC);
 $nominasPorTrabajador = [];
@@ -179,7 +179,7 @@ if (file_exists($ruta_logo)) {
     $logo_base64 = 'data:image/' . $tipo . ';base64,' . base64_encode($data);
 }
 
-// Modelo oficial SNC 2-25 (vista previa / Excel / PDF) — ver includes/snc225_reporte.php.
+// Modelo oficial SC-4-08 (vista previa / Excel / PDF) — ver includes/snc225_reporte.php.
 // Se atiende antes de cualquier salida HTML, igual que el Anexo 14 en empleados.php.
 snc225_reporte_manejar($pdo, $config_empresa);
 ?>
@@ -190,7 +190,7 @@ snc225_reporte_manejar($pdo, $config_empresa);
     <?php include '../includes/theme_early.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title><?php echo defined('SITE_NAME') ? htmlspecialchars(SITE_NAME) : 'SiGesNom'; ?> | SNC - 225</title>
+    <title><?php echo defined('SITE_NAME') ? htmlspecialchars(SITE_NAME) : 'SiGesNom'; ?> | SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225)</title>
     <link rel="icon" type="image/x-icon" href="../../images/favicons/nominas.ico">
 
     <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
@@ -807,8 +807,8 @@ snc225_reporte_manejar($pdo, $config_empresa);
                 <i class="fas fa-bars"></i>
             </button>
             <div class="page-title">
-                <h1><i class="fas fa-id-card me-2" style="color: #60a5fa;"></i>Tarjeta SNC - 2-25</h1>
-                <p><i class="fas fa-list-alt me-1"></i> Listado de todos los trabajadores para exportar SNC-225</p>
+                <h1><i class="fas fa-id-card me-2" style="color: #60a5fa;"></i>Tarjeta SC-4-08 · SNC - 225</h1>
+                <p><i class="fas fa-list-alt me-1"></i> Registro de Salarios y Tiempo de Servicio (SNC-225) — listado de trabajadores</p>
             </div>
         </div>
         <?php include '../includes/user_menu.php'; ?>
@@ -826,7 +826,7 @@ snc225_reporte_manejar($pdo, $config_empresa);
                 <div>
                     <h5 class="mb-1" style="color: #e2e8f0; font-weight: 600;">
                         <i class="fas fa-users me-2" style="color: #60a5fa;"></i>Listado de Trabajadores
-						<p>SC-4-09 Certificación de años de Servicios y Salarios Devengados</p>
+						<p>SC-4-08 Registro de Salarios y Tiempo de Servicio (SNC-225)</p>
                     </h5>
                     <?php
                     $totalBajas = 0;
@@ -836,11 +836,11 @@ snc225_reporte_manejar($pdo, $config_empresa);
                     ?>
                 </div>
                 <div class="d-flex gap-2 no-print">
-                    <div class="btn-group" role="group" aria-label="Acciones SNC-225">
-                        <button class="btn-win btn-win-primary btn-export-main" id="btnPrintSNC" title="Imprimir listado SNC-225" data-tooltip="Imprimir listado" data-tooltip-theme="primary">
+                    <div class="btn-group" role="group" aria-label="Acciones SC-4-08">
+                        <button class="btn-win btn-win-primary btn-export-main" id="btnPrintSNC" title="Imprimir listado SC-4-08" data-tooltip="Imprimir listado" data-tooltip-theme="primary">
                             <i class="fas fa-print me-2"></i>Imprimir
                         </button>
-                        <button type="button" class="btn-win btn-win-primary btn-export-toggle dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="Exportar listado SNC-225" data-tooltip="Exportar listado" data-tooltip-theme="info">
+                        <button type="button" class="btn-win btn-win-primary btn-export-toggle dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="Exportar listado SC-4-08" data-tooltip="Exportar listado" data-tooltip-theme="info">
                             <span class="visually-hidden">Exportar</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win" id="exportSNCMenu">
@@ -1053,7 +1053,7 @@ snc225_reporte_manejar($pdo, $config_empresa);
                     ?>
                     <tr data-id="<?php echo $t['id']; ?>" data-fecha-alta="<?php echo $fa ?? ''; ?>" data-fecha-baja="<?php echo $fb ?? ''; ?>" data-tanos="<?php echo htmlspecialchars($t['t_anos']); ?>" data-tmeses="<?php echo htmlspecialchars($t['t_meses']); ?>" data-tdias="<?php echo htmlspecialchars($t['t_dias']); ?>" data-alta-year="<?php echo $fa ? date('Y', strtotime($fa)) : ''; ?>" data-alta-month="<?php echo $fa ? date('m', strtotime($fa)) : ''; ?>" data-baja-year="<?php echo $fb ? date('Y', strtotime($fb)) : ''; ?>" data-baja-month="<?php echo $fb ? date('m', strtotime($fb)) : ''; ?>" data-costo="<?php echo htmlspecialchars($t['c_costo'] ?? ''); ?>" data-area="<?php echo htmlspecialchars($t['area_nombre'] ?? ''); ?>" data-activo="<?php echo $t['activo']; ?>">
                         <td style="text-align: center;">
-                            <button class="btn-icon btn-icon-primary" onclick="abrirTarjeta(<?php echo htmlspecialchars(json_encode($t)); ?>)" data-tooltip="Ver Tarjeta SNC-225" data-tooltip-theme="info" style="background: rgba(96,165,250,0.15); border: 0.0625rem solid rgba(96,165,250,0.3); color: #60a5fa; width:2rem; height:2rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center;">
+                            <button class="btn-icon btn-icon-primary" onclick="abrirTarjeta(<?php echo htmlspecialchars(json_encode($t)); ?>)" data-tooltip="Ver Tarjeta SC-4-08" data-tooltip-theme="info" style="background: rgba(96,165,250,0.15); border: 0.0625rem solid rgba(96,165,250,0.3); color: #60a5fa; width:2rem; height:2rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center;">
                                 <i class="fas fa-id-card" style="font-size:0.82rem;"></i>
                             </button>
                         </td>
@@ -1395,7 +1395,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="modal-header" style="border-bottom: 0.0625rem solid rgba(96,165,250,0.2); padding:1rem 1.5rem;">
                 <h5 class="modal-title" style="font-weight: 600;">
                     <i class="fas fa-id-card me-2" style="color: #60a5fa;"></i>
-                    <span id="tarjetaTitulo">Tarjeta SNC 2-25</span>
+                    <span id="tarjetaTitulo">SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225)</span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -1411,22 +1411,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win" aria-labelledby="sncReporteDropdown">
                         <li>
-                            <a class="dropdown-item" href="#" id="btnReporteSncImprimir" title="Vista previa del modelo SNC 2-25">
+                            <a class="dropdown-item" href="#" id="btnReporteSncImprimir" title="Vista previa del modelo SC-4-08">
                                 <i class="fas fa-print me-2" style="color: #60a5fa;"></i>Imprimir
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="#" id="btnReporteSncExcel" title="Descargar el modelo SNC 2-25 en Excel">
+                            <a class="dropdown-item" href="#" id="btnReporteSncExcel" title="Descargar el modelo SC-4-08 en Excel">
                                 <i class="fas fa-file-excel me-2" style="color: #21a366;"></i>Exportar a Excel
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="#" id="btnReporteSncPdf" title="Guardar el modelo SNC 2-25 en PDF">
+                            <a class="dropdown-item" href="#" id="btnReporteSncPdf" title="Guardar el modelo SC-4-08 en PDF">
                                 <i class="fas fa-file-pdf me-2" style="color: #f40f02;"></i>Exportar a PDF
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="#" id="btnReporteSncWord" title="Descargar el modelo SNC 2-25 en Word">
+                            <a class="dropdown-item" href="#" id="btnReporteSncWord" title="Descargar el modelo SC-4-08 en Word">
                                 <i class="fas fa-file-word me-2" style="color: #2b579a;"></i>Exportar a Word
                             </a>
                         </li>
@@ -1773,7 +1773,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 </style>
 
-<!-- Observaciones del reporte SNC 2-25 (previo a imprimir / exportar) -->
+<!-- Observaciones del reporte SC-4-08 (previo a imprimir / exportar) -->
 <div class="modal fade" id="modalObsSnc" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background: var(--panel); border: 0.0625rem solid rgba(96,165,250,0.3); border-radius: 1rem; color: #e2e8f0;">
@@ -1786,7 +1786,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="modal-body" style="padding:1.25rem 1.5rem;">
                 <label for="sncObsTexto" class="form-label" style="color:#93c5fd; font-weight:600;">
-                    Texto para el apartado OBSERVACIONES del modelo SNC 2-25
+                    Texto para el apartado OBSERVACIONES del modelo SC-4-08
                 </label>
                 <textarea id="sncObsTexto" class="form-control" rows="3" maxlength="200"
                     placeholder="Escriba la observación que se imprimirá en el modelo..."
@@ -1839,7 +1839,7 @@ function formatFechaSNC(fecha) {
 }
 
 // Nómina del trabajador agrupada por año y mes, con el mismo criterio del
-// modelo SNC 2-25: los días salen de la nómina automática (horas / 8; si el
+// modelo SC-4-08: los días salen de la nómina automática (horas / 8; si el
 // mes no tiene días se toma el mayor valor del mes) y el salario suma todas
 // las nóminas del mes. Respeta la Fecha Final de Cálculo cuando está definida.
 function sncNominaPorAnioMes(id, corte) {
@@ -1939,7 +1939,7 @@ function sncActualizarBotonReporte() {
     btn.disabled = !listo;
     btn.setAttribute('aria-disabled', listo ? 'false' : 'true');
     btn.title = listo
-        ? 'Reporte oficial SNC 2-25 de: ' + SNC_ANIOS_SELECCIONADOS.join(', ')
+        ? 'Reporte oficial SC-4-08 de: ' + SNC_ANIOS_SELECCIONADOS.join(', ')
         : 'Seleccione al menos un año de la tarjeta para generar el reporte';
     sncActualizarResumenAnios();
 }
@@ -1990,10 +1990,10 @@ function sncRefrescarSeleccionAnios() {
         tarjetas[i].setAttribute('aria-pressed', activa ? 'true' : 'false');
     }
     // El título del modal solo muestra al trabajador; el contador de años va
-    // junto al rótulo "Resumen por año — modelo SNC 1-25".
+    // junto al rótulo "Resumen por año".
     var titulo = document.getElementById('tarjetaTitulo');
     if (titulo) {
-        titulo.textContent = 'Tarjeta SNC 2-25 — PERSONAL DE: ' + (window.SNC_TRABAJADOR_NOMBRE || '');
+        titulo.textContent = 'SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225) — PERSONAL DE: ' + (window.SNC_TRABAJADOR_NOMBRE || '');
     }
     var contador = document.getElementById('sncContadorAnios');
     if (contador) {
@@ -2019,7 +2019,7 @@ function sncActualizarCheckAnios() {
 sncActualizarBotonReporte();
 
 // Reglilla de años de la tarjeta: tres años por fila, con los mismos datos del
-// modelo SNC 2-25 (Días Trab. y Salario devengado de cada año).
+// modelo SC-4-08 (Días Trab. y Salario devengado de cada año).
 function sncHtmlAniosTrabajador(id) {
     var filas = sncAniosTrabajador(id);
     if (!filas.length) {
@@ -2030,7 +2030,7 @@ function sncHtmlAniosTrabajador(id) {
     // para marcar o desmarcar de una vez todas las tarjetas de año.
     html += '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.4rem;">';
     html += '<div style="display:flex; align-items:baseline; gap:0.45rem; flex-wrap:wrap; min-width:0;">';
-    html += '<div style="font-size:0.7rem; text-transform:uppercase; font-weight:600; color:#60a5fa; letter-spacing:0.05rem;"><i class="fas fa-table-list me-1"></i>Resumen por año — modelo SNC 1-25 (SC-4-08)</div>';
+    html += '<div style="font-size:0.7rem; text-transform:uppercase; font-weight:600; color:#60a5fa; letter-spacing:0.05rem;"><i class="fas fa-table-list me-1"></i>Resumen por año — días trabajados y salario devengado</div>';
     html += '<span id="sncContadorAnios" style="font-size:0.7rem; font-weight:700; color:#fbbf24; letter-spacing:0.02rem; text-transform:none; white-space:nowrap;">— [sin años seleccionados]</span>';
     html += '</div>';
     if (filas.length > 1) {
@@ -2163,8 +2163,8 @@ function abrirTarjeta(data) {
     // Cada vez que se abre la tarjeta hay que elegir de nuevo los años.
     SNC_ANIOS_SELECCIONADOS = [];
     // El título solo lleva al trabajador; el contador de años se muestra
-    // junto al rótulo "Resumen por año — modelo SNC 1-25".
-    document.getElementById('tarjetaTitulo').textContent = 'Tarjeta SNC 2-25 — PERSONAL DE: ' + (data.nombre_completo || '');
+    // junto al rótulo "Resumen por año".
+    document.getElementById('tarjetaTitulo').textContent = 'SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225) — PERSONAL DE: ' + (data.nombre_completo || '');
     var dev = (parseFloat(data.total_devengado) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     var tanos = data.t_anos || '—', tmeses = data.t_meses || '—', tdias = data.t_dias || '—';
     var $row = null;
@@ -2253,7 +2253,7 @@ function abrirTarjeta(data) {
 }
 
 // ============================================
-// REPORTE OFICIAL SNC 2-25 (modelo Excel)
+// REPORTE OFICIAL SC-4-08 (modelo Excel)
 // Genera el modelo "Registro de Salarios y Tiempo de Servicios" en el
 // servidor, con los datos reales del trabajador y el corte seleccionado.
 // ============================================
@@ -2550,7 +2550,7 @@ function construirHtmlSNC(modo) {
     if (!data.filas.length) { Swal.fire({ icon: 'warning', title: 'Sin datos', text: 'No hay registros visibles para exportar.' }); return null; }
     var paraWord = modo === 'word';
     var filtros = obtenerFiltrosActivos();
-    var html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>SNC-225 - Certificación de Años de Servicios</title>';
+    var html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225)</title>';
     if (paraWord) html += '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->';
     html += '<style>';
     if (paraWord) {
@@ -2592,7 +2592,7 @@ document.getElementById('btnPrintSNC')?.addEventListener('click', function() {
     var win = window.open('', '_blank');
     if (!win) { Swal.fire({ icon: 'warning', title: 'Aviso', text: 'El navegador bloqueó la ventana de impresión. Permita las ventanas emergentes.' }); return; }
     win.document.open();
-    win.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>SNC-225</title><style>' + sncPrintCSS() + '</style></head><body>' + PRINT_TOOLBAR_HTML + contenido + '</body></html>');
+    win.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225)</title><style>' + sncPrintCSS() + '</style></head><body>' + PRINT_TOOLBAR_HTML + contenido + '</body></html>');
     win.document.close();
 });
 
@@ -2688,7 +2688,7 @@ function exportarPdfSNC() {
             },
             didDrawPage: function() {
                 doc.setFontSize(6); doc.setTextColor(150);
-                doc.text('SNC-225 / ' + SNC_EMPRESA + '  —  Página ' + doc.internal.getCurrentPageInfo().pageNumber, margenL, pageH - 8);
+                doc.text('SC-4-08 / ' + SNC_EMPRESA + '  —  Página ' + doc.internal.getCurrentPageInfo().pageNumber, margenL, pageH - 8);
                 doc.setDrawColor(200); doc.setLineWidth(0.2);
                 doc.line(margenL, pageH - 10, pageW - margenR, pageH - 10);
             }
@@ -2766,7 +2766,7 @@ function exportarExcelSNC() {
         if (ws[addr]) { ws[addr].t = 'n'; ws[addr].z = '$#,##0.00'; }
     }
     var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'SNC-225');
+    XLSX.utils.book_append_sheet(wb, ws, 'SC-4-08');
     XLSX.writeFile(wb, nombreArchivoSNC('xlsx'));
 }
 

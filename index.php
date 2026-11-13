@@ -1501,8 +1501,8 @@ $servicios = [
                     <span class="theme-switch-thumb"></span>
                 </span>
             </button>
-            <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php" title="Entrar al sistema">
-                <i class="fa-solid fa-arrow-right-to-bracket"></i> <span class="btn-texto">Entrar al sistema</span>
+            <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php" title="Explorar subsistemas">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> <span class="btn-texto">Explorar subsistemas</span>
             </a>
         </div>
     </div>

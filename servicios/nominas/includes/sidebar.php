@@ -1272,7 +1272,7 @@ html.focus-mode .fluid-container {
 
         <?php if (permiso_puede('empleados', 'ver') || permiso_puede('submayor', 'ver')): ?>
         <span class="nav-category">Personal</span>
-        <div class="nav-group <?php echo (in_array($current_file, ['empleados.php', 'snc225.php', 'domiciliacion_tarjetas.php', 'submayor_vacaciones.php'])) ? 'open' : ''; ?>" id="empleadosNavGroup">
+        <div class="nav-group <?php echo (in_array($current_file, ['empleados.php', 'snc225.php', 'snc125.php', 'domiciliacion_tarjetas.php', 'submayor_vacaciones.php'])) ? 'open' : ''; ?>" id="empleadosNavGroup">
             <?php if (permiso_puede('empleados', 'ver')): ?>
             <a href="<?php echo $base_prefix; ?>modules/empleados.php" class="nav-item <?php echo ($current_file == 'empleados.php') ? 'active' : ''; ?>" data-tooltip="Gestión de Empleados" data-tooltip-theme="primary">
                 <i class="fas fa-users"></i>
@@ -1309,9 +1309,13 @@ html.focus-mode .fluid-container {
                     <span class="sidebar-text">Cumpleaños 30 Días</span>
                 </a>
 				---->
-                <a href="<?php echo $base_prefix; ?>modules/snc225.php" class="nav-item <?php echo ($current_file == 'snc225.php') ? 'active' : ''; ?>" data-tooltip="Tarjeta SNC-2-25" data-tooltip-theme="primary">
+                <a href="<?php echo $base_prefix; ?>modules/snc225.php" class="nav-item <?php echo ($current_file == 'snc225.php') ? 'active' : ''; ?>" data-tooltip="Tarjeta SC-4-08 — Registro de Salarios y Tiempo de Servicio (SNC 2-25)" data-tooltip-theme="primary">
                     <i class="fas fa-id-card"></i>
-                    <span class="sidebar-text">SNC - 2-25</span>
+                    <span class="sidebar-text">SC-4-08 · SNC 2-25</span>
+                </a>
+                <a href="<?php echo $base_prefix; ?>modules/snc125.php" class="nav-item <?php echo ($current_file == 'snc125.php') ? 'active' : ''; ?>" data-tooltip="Tarjeta SC-4-09 — Certificación de Años de Servicios y Salarios Devengados (SNC 1-25)" data-tooltip-theme="primary">
+                    <i class="fas fa-file-signature"></i>
+                    <span class="sidebar-text">SC-4-09 · SNC 1-25</span>
                 </a>
                 <a href="<?php echo $base_prefix; ?>modules/domiciliacion_tarjetas.php" class="nav-item <?php echo ($current_file == 'domiciliacion_tarjetas.php') ? 'active' : ''; ?>" data-tooltip="Generar base de datos de domiciliacion de tarjetas para el banco" data-tooltip-theme="primary">
                     <i class="fas fa-credit-card"></i>

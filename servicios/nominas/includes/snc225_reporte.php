@@ -1,6 +1,6 @@
 <?php
 /**
- * snc225_reporte.php - Modelo oficial SNC 2-25
+ * snc225_reporte.php - Modelo oficial SC-4-08
  * -----------------------------------------------------------------
  * Genera el "Registro de Salarios y Tiempo de Servicios" rellenado con
  * los datos reales del trabajador, a partir del modelo descrito en código
@@ -53,7 +53,7 @@ function snc225_fecha_txt(?string $fecha): string
 }
 
 /**
- * Parte un importe en [pesos, centavos]. El modelo SNC 2-25 usa dos
+ * Parte un importe en [pesos, centavos]. El modelo SC-4-08 usa dos
  * columnas para el salario devengado: la parte entera y los centavos.
  *
  * @return array{0:int,1:int}
@@ -223,7 +223,7 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
 
     // La cabecera del modelo lleva solo el identificador del reporte; el
     // nombre del trabajador va en el título de la hoja del Excel.
-    $hoja->setCellValue('G1', 'SNC 2-25');
+    $hoja->setCellValue('G1', 'SNC - 225');
 
     // Cabecera: las tres líneas del bloque izquierdo van en una sola celda
     // (A1:F3) centrada, y "No. ______" ocupa todo el recuadro derecho
@@ -277,7 +277,7 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
         ]);
     }
 
-    // Divisoria vertical entre el recuadro "SNS 2-25" (G1:I3) y el título
+    // Divisoria vertical entre el recuadro "SNC - 225" (G1:I3) y el título
     // "REGISTRO DE SALARIOS Y TIEMPO DE SERVICIOS" (J1:N3).
     $hoja->getStyle('J1')->getBorders()->getLeft()->setBorderStyle(
         \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
@@ -463,7 +463,7 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
         ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER)
         ->setWrapText(false);
 }/**
- * Crea un libro con el modelo SNC 2-25 vacío.
+ * Crea un libro con el modelo SC-4-08 vacío.
  *
  * Anchos de columna, altos de fila, combinados, estilos, textos fijos y
  * configuración de página salen de snc225_modelo_definicion(): no se lee
@@ -581,7 +581,7 @@ function snc225_crear_libro(): ?\PhpOffice\PhpSpreadsheet\Spreadsheet
 }
 
 /**
- * Construye el libro SNC 2-25 del trabajador.
+ * Construye el libro SC-4-08 del trabajador.
  *
  * Devuelve ['spreadsheet' => Spreadsheet, 'datos' => array] o null si no
  * se pudo construir (sin trabajador o sin PhpSpreadsheet).
@@ -606,7 +606,7 @@ function snc225_construir(PDO $pdo, int $id, string $corte, array $config, strin
     // El título de la hoja (pestaña del Excel) lleva el nombre del trabajador;
     // Excel admite como máximo 31 caracteres.
     $corto = snc225_nombre_corto($datos['trabajador']);
-    $tituloHoja = snc225_recortar('SNC 2-25' . ($corto !== '' ? ' ' . $corto : ''), 31);
+    $tituloHoja = snc225_recortar('SC-4-08' . ($corto !== '' ? ' ' . $corto : ''), 31);
 
     $libroFinal = null;
     foreach ($paginas as $i => $aniosPagina) {
@@ -642,9 +642,9 @@ function snc225_error(string $mensaje): void
     http_response_code(500);
     header('Content-Type: text/html; charset=utf-8');
     echo '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
-        . '<title>SNC 2-25</title></head>'
+        . '<title>SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225)</title></head>'
         . '<body style="font-family:Arial,sans-serif;padding:2rem;text-align:center;color:#111;">'
-        . '<h3>Reporte SNC 2-25</h3>'
+        . '<h3>SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225)</h3>'
         . '<p>' . htmlspecialchars($mensaje, ENT_QUOTES, 'UTF-8') . '</p>'
         . '<p><button type="button" onclick="window.close()" style="padding:.5rem 1rem;">Cerrar</button></p>'
         . '</body></html>';
@@ -679,7 +679,7 @@ function snc225_nombre_corto(array $trabajador): string
 
 /**
  * Prefijo del nombre de archivo de las exportaciones:
- * SNC_225_Ariel_Rodriguez_Matos (sin acentos y con "_" en vez de espacios).
+ * SC-4-08_Ariel_Rodriguez_Matos (sin acentos y con "_" en vez de espacios).
  */
 function snc225_nombre_archivo(array $trabajador): string
 {
@@ -701,7 +701,7 @@ function snc225_nombre_archivo(array $trabajador): string
         }
     }
     $nombre = trim((string)preg_replace('/[^A-Za-z0-9]+/', '_', $nombre), '_');
-    return 'SNC_225_' . ($nombre !== '' ? $nombre : 'Trabajador');
+    return 'SC-4-08_' . ($nombre !== '' ? $nombre : 'Trabajador');
 }
 
 /**
@@ -711,7 +711,7 @@ function snc225_exportar_xlsx(PDO $pdo, int $id, string $corte, array $config, s
 {
     $res = snc225_construir($pdo, $id, $corte, $config, $obs, $anios);
     if (!$res) {
-        snc225_error('No se pudo generar el reporte SNC 2-25.');
+        snc225_error('No se pudo generar el reporte SC-4-08.');
     }
 
     $trabajador = $res['datos']['trabajador'];
@@ -721,7 +721,7 @@ function snc225_exportar_xlsx(PDO $pdo, int $id, string $corte, array $config, s
         logAction(
             'exportar_reporte',
             'snc225',
-            'Exportación del modelo SNC 2-25 (XLSX)',
+            'Exportación del modelo SC-4-08 (XLSX)',
             ['archivo' => $filename, 'trabajador_id' => $id],
             null,
             'success',
@@ -750,7 +750,7 @@ function snc225_exportar_word(PDO $pdo, int $id, string $corte, array $config, s
 {
     $res = snc225_construir($pdo, $id, $corte, $config, $obs, $anios);
     if (!$res) {
-        snc225_error('No se pudo generar el reporte SNC 2-25.');
+        snc225_error('No se pudo generar el reporte SC-4-08.');
     }
 
     $trabajador = $res['datos']['trabajador'];
@@ -760,7 +760,7 @@ function snc225_exportar_word(PDO $pdo, int $id, string $corte, array $config, s
         logAction(
             'exportar_reporte',
             'snc225',
-            'Exportación del modelo SNC 2-25 (Word)',
+            'Exportación del modelo SC-4-08 (Word)',
             ['archivo' => $base . '.docx', 'trabajador_id' => $id],
             null,
             'success',
@@ -988,7 +988,7 @@ function snc225_word_descargar_docx($spreadsheet, string $base): void
 {
     $hojas = $spreadsheet->getAllSheets();
     if (!$hojas) {
-        snc225_error('No se pudo generar el reporte SNC 2-25.');
+        snc225_error('No se pudo generar el reporte SC-4-08.');
     }
 
     $phpWord = new \PhpOffice\PhpWord\PhpWord();
@@ -1235,7 +1235,7 @@ function snc225_word_descargar_doc(array $res, string $base): void
     $spreadsheet = $res['spreadsheet'];
     $hojas = $spreadsheet->getAllSheets();
     if (!$hojas) {
-        snc225_error('No se pudo generar el reporte SNC 2-25.');
+        snc225_error('No se pudo generar el reporte SC-4-08.');
     }
 
     $writerHtml = new \PhpOffice\PhpSpreadsheet\Writer\Html($spreadsheet);
@@ -1289,7 +1289,7 @@ function snc225_word_descargar_doc(array $res, string $base): void
         . ' xmlns:w="urn:schemas-microsoft-com:office:word"'
         . ' xmlns="http://www.w3.org/TR/REC-html40"><head>'
         . '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'
-        . '<title>SNC 2-25</title>'
+        . '<title>SC-4-08 · Registro de Salarios y Tiempo de Servicio (SNC-225)</title>'
         . '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View>'
         . '<w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->'
         . '<style>'
@@ -1566,7 +1566,7 @@ function snc225_ver_reporte(PDO $pdo, int $id, string $corte, string $modo, arra
     $esPdf = $modo === 'pdf';
     $res = snc225_construir($pdo, $id, $corte, $config, $obs, $anios);
     if (!$res) {
-        snc225_error('No se pudo generar el reporte SNC 2-25.');
+        snc225_error('No se pudo generar el reporte SC-4-08.');
     }
 
     // Tabla HTML con la misma geometría que el .xlsx: 17 columnas con sus
@@ -1606,7 +1606,7 @@ function snc225_ver_reporte(PDO $pdo, int $id, string $corte, string $modo, arra
     };
 
     $trabajador = $res['datos']['trabajador'];
-    $titulo = 'SNC 2-25 · ' . ($trabajador['nombre_completo'] ?? '');
+    $titulo = 'SC-4-08 · ' . ($trabajador['nombre_completo'] ?? '');
     $enlaceExcel = 'snc225.php?snc225_reporte=xlsx&id=' . $id
         . ($corte !== '' ? '&corte=' . urlencode($corte) : '')
         . ($anios ? '&anios=' . urlencode(implode(',', $anios)) : '')
@@ -1653,7 +1653,7 @@ function snc225_ver_reporte(PDO $pdo, int $id, string $corte, string $modo, arra
         }' ;
 
     $aviso = $esPdf
-        ? '<div id="avisoSnc">Generando el PDF del modelo SNC 2-25…</div>'
+        ? '<div id="avisoSnc">Generando el PDF del modelo SC-4-08…</div>'
         : '';
 
     $nombrePdf = snc225_nombre_archivo($trabajador) . '_' . date('Y-m-d_H-i-s') . '.pdf';
@@ -1716,7 +1716,7 @@ function snc225_ver_reporte(PDO $pdo, int $id, string $corte, string $modo, arra
         . '<title>' . $h($titulo) . '</title>'
         . '<style>' . $css . '</style></head><body' . ($esPdf ? ' class="snc-pdf"' : '') . '>'
         . '<div id="tb-snc">'
-        . '<span class="etiqueta">SNC 2-25 — REGISTRO DE SALARIOS Y TIEMPO DE SERVICIOS</span>'
+        . '<span class="etiqueta">SC-4-08 — Registro de Salarios y Tiempo de Servicio (SNC-225)</span>'
         . '<a id="btnExportarSnc" href="' . $h($enlaceExcel) . '">📊 Exportar Excel</a>'
         . '<button type="button" id="btnImprimirSnc" onclick="sncImprimir()">🖨️ Imprimir</button>'
         . '<button type="button" id="btnCerrarSnc" onclick="window.close()">✖ Cerrar</button>'
@@ -1750,7 +1750,7 @@ function snc225_reporte_manejar(PDO $pdo, array $config): void
         $corte = '';
     }
 
-    // Años elegidos en las tarjetas de la tarjeta SNC 2-25 (vacío = todos).
+    // Años elegidos en las tarjetas de la tarjeta SC-4-08 (vacío = todos).
     $anios = [];
     if (isset($_GET['anios'])) {
         foreach (explode(',', (string)$_GET['anios']) as $valorAnio) {

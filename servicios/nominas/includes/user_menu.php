@@ -4400,7 +4400,7 @@ var PERMISOS_NOMBRES_MODULOS = {
     'dashboard': 'Panel de control', 'empleados': 'Empleados', 'nominas': 'Nóminas',
     'reportes': 'Reportes', 'clasificadores': 'Clasificadores', 'configuracion': 'Configuración',
     'usuarios': 'Usuarios', 'bandecnom': 'Banco (Exportar)', 'submayor': 'Submayor Vacaciones', 'solapines': 'Solapines',
-    'snc225': 'Tarjeta SNC-225', 'domiciliacion_tarjetas': 'Domiciliación Tarjetas'
+    'snc225': 'Tarjeta SC-4-08 · SNC - 225', 'snc125': 'Tarjeta SC-4-09 · SNC 1 - 25', 'domiciliacion_tarjetas': 'Domiciliación Tarjetas'
 };
 var PERMISOS_ACCIONES = [
     ['ver', 'Ver', '#34d399'],
