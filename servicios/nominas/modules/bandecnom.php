@@ -979,6 +979,7 @@ if (file_exists($ruta_logo)) {
     padding:0.625rem 0.9375rem;
     margin-bottom:1rem;
     border-left: 0.25rem solid #60a5fa;
+    gap: 0.5rem 0.9375rem;
 }
 
 /* Estilos para la fila de total en la tabla de preview */
@@ -2206,6 +2207,7 @@ if (file_exists($ruta_logo)) {
                 </div>
                 <div id="previewContent" style="display: none;">
                     <div class="preview-summary d-flex flex-wrap justify-content-between align-items-center">
+                        <div><i class="fas fa-calendar-alt me-2"></i> <strong>Período:</strong> <span id="previewPeriodo">--</span></div>
                         <div><i class="fas fa-users me-2"></i> <strong>Total trabajadores c/Tarjeta:</strong> <span id="previewTotalRegistros">0</span></div>
                         <div><i class="fas fa-dollar-sign me-2"></i> <strong>Suma total acreditar:</strong> <span id="previewTotalImporte">$0.00</span></div>
                         <div><i class="fas fa-info-circle me-2"></i> <span id="previewAdvertencia" class="text-warning small"></span></div>
@@ -2326,6 +2328,31 @@ function formatMoney(value) {
         currency: 'CUP',
         minimumFractionDigits: 2
     }).format(value);
+}
+
+// Período de operaciones tal como va en el nombre del archivo exportado:
+// mes en palabras + año, en minúsculas y sin acentos (ej. "octubre2026").
+// Debe coincidir con exportar_bandec_nombre_periodo() de exportar_bandec.php.
+function periodoEnPalabras(fecha) {
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    if (!fecha) return '';
+    const p = String(fecha).split(' ')[0].split('-');
+    const mes = parseInt(p[1], 10);
+    if (!p[0] || isNaN(mes) || mes < 1 || mes > 12) return '';
+    return meses[mes - 1] + p[0];
+}
+
+// Texto del resumen del modal: "01/10/2026 – 31/10/2026 · octubre2026"
+function textoPeriodoPreview(desde, hasta) {
+    const fmt = (f) => {
+        if (!f) return '';
+        const p = String(f).split(' ')[0].split('-');
+        return p[2] + '/' + p[1] + '/' + p[0];
+    };
+    const rango = fmt(desde) + (hasta ? ' – ' + fmt(hasta) : '');
+    const palabras = periodoEnPalabras(desde || hasta);
+    return palabras ? rango + ' · ' + palabras : rango;
 }
 
 // ==========================================
@@ -4299,7 +4326,11 @@ function _abrirPreviewYExportar(periodo, tipoNomina, comprimirZip) {
     // Limpiar contenido anterior
     const previewTableBody = document.getElementById('previewTableBody');
     if (previewTableBody) previewTableBody.innerHTML = '';
-    
+
+    // Período seleccionado y nombre con que saldrá el archivo
+    const previewPeriodo = document.getElementById('previewPeriodo');
+    if (previewPeriodo) previewPeriodo.textContent = textoPeriodoPreview(periodo.desde, periodo.hasta);
+
     modal.show();
     
     let formData = new FormData();
