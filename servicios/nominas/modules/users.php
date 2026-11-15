@@ -1411,6 +1411,10 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         <?php if ($es_propio || $es_admin): ?>
         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalConfiguraciones"><i class="fas fa-gear me-2" style="color:#60a5fa;"></i>Configuraciones</a></li>
         <?php endif; ?>
+        <?php if ($es_rol_admin_importar): ?>
+        <li><a class="dropdown-item" href="/phpmyadmin/" target="_blank" rel="noopener noreferrer"><i class="fas fa-database me-2" style="color:#f59e0b;"></i>Administrar BD (PhpMyAdmin)</a></li>
+        <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>../phpinfo/index.php" target="_blank" rel="noopener noreferrer"><i class="fas fa-server me-2" style="color:#38bdf8;"></i>PhpInfo</a></li>
+        <?php endif; ?>
         <li><hr class="dropdown-divider"></li>
         <li>
             <?php if ($perfil_pass_habilitado): ?>
@@ -2003,6 +2007,10 @@ elseif ($usuario['rol_nombre'] == 'Contador / Editor') $rol_badge_clase = 'bg-in
         <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); editarUsuario(<?php echo (int)$id; ?>);"><i class="fas fa-user-edit me-2" style="color:#60a5fa;"></i>Editar Perfil</a></li>
         <?php if ($es_propio || $es_admin): ?>
         <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalConfiguraciones"><i class="fas fa-gear me-2" style="color:#60a5fa;"></i>Configuraciones</a></li>
+        <?php endif; ?>
+        <?php if ($es_rol_admin_importar): ?>
+        <li><a class="dropdown-item" href="/phpmyadmin/" target="_blank" rel="noopener noreferrer"><i class="fas fa-database me-2" style="color:#f59e0b;"></i>Administrar BD (PhpMyAdmin)</a></li>
+        <li><a class="dropdown-item" href="<?php echo $base_prefix; ?>../phpinfo/index.php" target="_blank" rel="noopener noreferrer"><i class="fas fa-server me-2" style="color:#38bdf8;"></i>PhpInfo</a></li>
         <?php endif; ?>
         <li><hr class="dropdown-divider"></li>
         <li>
