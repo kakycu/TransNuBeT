@@ -4018,6 +4018,10 @@ function ejecutarExportacion(periodoDesde, periodoHasta, tipoNomina, formato, co
             const nombreArchivo = data.archivo;
             const urlDescarga = data.descarga;
             const extension = nombreArchivo.split('.').pop();
+            // El nombre ya trae el período de operaciones (ej. octubre2026). El
+            // ZIP descargado usa ese nombre, pero dentro debe ir siempre
+            // "nomina.<ext>": es el nombre fijo que exige el sistema del banco.
+            const nombreBase = nombreArchivo.replace(/\.[^.]+$/, '');
 
             if (comprimirZip) {
                 fetch(urlDescarga)
@@ -4029,7 +4033,7 @@ function ejecutarExportacion(periodoDesde, periodoHasta, tipoNomina, formato, co
                             .then(zipBlob => {
                                 const link = document.createElement('a');
                                 link.href = URL.createObjectURL(zipBlob);
-                                link.download = `${data.archivo}.zip`;
+                                link.download = `${nombreBase}.zip`;
                                 link.click();
                                 URL.revokeObjectURL(link.href);
                                 Swal.fire({
@@ -4038,7 +4042,7 @@ function ejecutarExportacion(periodoDesde, periodoHasta, tipoNomina, formato, co
                                     html: `
                                         <div style="text-align: center;">
                                             <i class="fas fa-file-archive" style="font-size:3rem; color: #60a5fa; margin-bottom:1rem;"></i>
-                                            <p><strong>Archivo ZIP generado:</strong> ${data.archivo}.zip</p>
+                                            <p><strong>Archivo ZIP generado:</strong> ${nombreBase}.zip</p>
                                             <p><strong>Registros exportados:</strong> ${data.registros}</p>
                                             <p><strong>Contenido:</strong> nomina.${extension}</p>
                                             <p><strong>Formato:</strong> ${formato.toUpperCase()} comprimido</p>
@@ -4085,7 +4089,7 @@ function ejecutarExportacion(periodoDesde, periodoHasta, tipoNomina, formato, co
                     html: `
                         <div style="text-align: center;">
                             <i class="fas fa-file-alt" style="font-size:3rem; color: #34D399; margin-bottom:1rem;"></i>
-                            <p><strong>Archivo generado:</strong> ${data.archivo}.${extension}</p>
+                            <p><strong>Archivo generado:</strong> ${data.archivo}</p>
                             <p><strong>Registros exportados:</strong> ${data.registros}</p>
                             <p><strong>Formato:</strong> ${formato.toUpperCase()}</p>
                         </div>

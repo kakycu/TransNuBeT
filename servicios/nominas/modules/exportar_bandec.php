@@ -759,11 +759,29 @@ if (empty($registros)) {
 $carpeta = __DIR__ . '/exports/';
 if (!is_dir($carpeta)) mkdir($carpeta, 0777, true);
 
-// Obtener información del período para el nombre del archivo
-$stmtPeriodo = $pdo->prepare("SELECT DATE_FORMAT(periodo_desde, '%Y%m') as periodo FROM nominas WHERE id = ?");
-$stmtPeriodo->execute([$periodoId]);
-$periodoInfo = $stmtPeriodo->fetch();
-$periodoStr = $periodoInfo ? $periodoInfo['periodo'] : date('Ym');
+// Nombre del período de operaciones para los archivos: mes en palabras y año,
+// por ejemplo "octubre2016". Antes se usaba el año y mes en cifras ("201610")
+// y, cuando no llegaba el id de la nómina, la fecha del día de la exportación.
+function exportar_bandec_nombre_periodo($fecha) {
+    $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    $fecha = trim((string)$fecha);
+    $marca = $fecha !== '' ? strtotime($fecha) : false;
+    if ($marca === false) {
+        $marca = time();
+    }
+    return $meses[(int)date('n', $marca) - 1] . date('Y', $marca);
+}
+
+// Período de operaciones: se toma de las fechas que envía la pantalla y, si no
+// llegan, de la nómina indicada por id.
+$fechaPeriodo = $periodoDesde ?: $periodoHasta;
+if ($fechaPeriodo === '' && $periodoId !== '') {
+    $stmtPeriodo = $pdo->prepare("SELECT periodo_desde FROM nominas WHERE id = ?");
+    $stmtPeriodo->execute([$periodoId]);
+    $fechaPeriodo = (string)$stmtPeriodo->fetchColumn();
+}
+$periodoStr = exportar_bandec_nombre_periodo($fechaPeriodo);
 
 $nombreArchivo = 'nomina_' . $tipoNomina . '_' . $periodoStr . '_' . date('Ymd_His');
 $archivoSalida = '';
