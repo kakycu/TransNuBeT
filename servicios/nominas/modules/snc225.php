@@ -814,9 +814,15 @@ snc225_reporte_manejar($pdo, $config_empresa);
         <?php include '../includes/user_menu.php'; ?>
     </div>
 
-    <div class="mb-3 fade-in-up" style="animation-delay: 0.05s;">
+    <div class="mb-3 fade-in-up d-flex flex-wrap gap-2" style="animation-delay: 0.05s;">
         <a href="empleados.php" class="btn-win btn-win-outline btn-win-sm" title="Volver a Empleados" data-tooltip="Volver a Empleados" data-tooltip-theme="primary">
             <i class="fas fa-arrow-left me-1"></i> Volver a Empleados
+        </a>
+        <a href="snc125.php" class="btn-win btn-win-outline btn-win-sm" title="Ir a SNC 1-25" data-tooltip="Ir a SNC 1-25" data-tooltip-theme="primary">
+            <i class="fas fa-file-signature me-1"></i> Ir a SNC 1-25
+        </a>
+        <a href="modelos.php" class="btn-win btn-win-outline btn-win-sm" title="Ir a Modelos" data-tooltip="Ir a Modelos" data-tooltip-theme="primary">
+            <i class="fas fa-layer-group me-1"></i> Ir a Modelos
         </a>
     </div>
 
@@ -836,11 +842,11 @@ snc225_reporte_manejar($pdo, $config_empresa);
                     ?>
                 </div>
                 <div class="d-flex gap-2 no-print">
-                    <div class="btn-group" role="group" aria-label="Acciones SC-4-08">
-                        <button class="btn-win btn-win-primary btn-export-main" id="btnPrintSNC" title="Imprimir listado SC-4-08" data-tooltip="Imprimir listado" data-tooltip-theme="primary">
+                    <div class="btn-group" role="group" aria-label="Acciones SNC 2-25">
+                        <button class="btn-win btn-win-primary btn-export-main" id="btnPrintSNC" title="Imprimir listado SNC 2-25" data-tooltip="Imprimir listado" data-tooltip-theme="primary">
                             <i class="fas fa-print me-2"></i>Imprimir
                         </button>
-                        <button type="button" class="btn-win btn-win-primary btn-export-toggle dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="Exportar listado SC-4-08" data-tooltip="Exportar listado" data-tooltip-theme="info">
+                        <button type="button" class="btn-win btn-win-primary btn-export-toggle dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="Exportar listado SNC 2-25" data-tooltip="Exportar listado" data-tooltip-theme="info">
                             <span class="visually-hidden">Exportar</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win" id="exportSNCMenu">
@@ -1053,7 +1059,7 @@ snc225_reporte_manejar($pdo, $config_empresa);
                     ?>
                     <tr data-id="<?php echo $t['id']; ?>" data-fecha-alta="<?php echo $fa ?? ''; ?>" data-fecha-baja="<?php echo $fb ?? ''; ?>" data-tanos="<?php echo htmlspecialchars($t['t_anos']); ?>" data-tmeses="<?php echo htmlspecialchars($t['t_meses']); ?>" data-tdias="<?php echo htmlspecialchars($t['t_dias']); ?>" data-alta-year="<?php echo $fa ? date('Y', strtotime($fa)) : ''; ?>" data-alta-month="<?php echo $fa ? date('m', strtotime($fa)) : ''; ?>" data-baja-year="<?php echo $fb ? date('Y', strtotime($fb)) : ''; ?>" data-baja-month="<?php echo $fb ? date('m', strtotime($fb)) : ''; ?>" data-costo="<?php echo htmlspecialchars($t['c_costo'] ?? ''); ?>" data-area="<?php echo htmlspecialchars($t['area_nombre'] ?? ''); ?>" data-activo="<?php echo $t['activo']; ?>">
                         <td style="text-align: center;">
-                            <button class="btn-icon btn-icon-primary" onclick="abrirTarjeta(<?php echo htmlspecialchars(json_encode($t)); ?>)" data-tooltip="Ver Tarjeta SC-4-08" data-tooltip-theme="info" style="background: rgba(96,165,250,0.15); border: 0.0625rem solid rgba(96,165,250,0.3); color: #60a5fa; width:2rem; height:2rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center;">
+                            <button class="btn-icon btn-icon-primary" onclick="abrirTarjeta(<?php echo htmlspecialchars(json_encode($t)); ?>)" data-tooltip="Ver Tarjeta SNC 2-25" data-tooltip-theme="info" style="background: rgba(96,165,250,0.15); border: 0.0625rem solid rgba(96,165,250,0.3); color: #60a5fa; width:2rem; height:2rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center;">
                                 <i class="fas fa-id-card" style="font-size:0.82rem;"></i>
                             </button>
                         </td>
@@ -1107,6 +1113,13 @@ var SNC_FILTROS = {
     totalActivos: <?php echo intval($totalActivos); ?>,
     totalInactivos: <?php echo intval($totalInactivos); ?>,
     nominas: <?php echo json_encode($nominasPorTrabajador); ?>,
+    fechas: <?php
+        $fechas = [];
+        foreach ($trabajadores as $t) {
+            $fechas[$t['id']] = ['a' => $t['fecha_alta'], 'b' => $t['fecha_baja']];
+        }
+        echo json_encode($fechas);
+    ?>,
     originales: <?php
         $orig = [];
         foreach ($trabajadores as $t) {
@@ -1411,22 +1424,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end dropdown-menu-win" aria-labelledby="sncReporteDropdown">
                         <li>
-                            <a class="dropdown-item" href="#" id="btnReporteSncImprimir" title="Vista previa del modelo SC-4-08">
+                            <a class="dropdown-item" href="#" id="btnReporteSncImprimir" title="Vista previa del modelo SNC 2-25">
                                 <i class="fas fa-print me-2" style="color: #60a5fa;"></i>Imprimir
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="#" id="btnReporteSncExcel" title="Descargar el modelo SC-4-08 en Excel">
+                            <a class="dropdown-item" href="#" id="btnReporteSncExcel" title="Descargar el modelo SNC 2-25 en Excel">
                                 <i class="fas fa-file-excel me-2" style="color: #21a366;"></i>Exportar a Excel
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="#" id="btnReporteSncPdf" title="Guardar el modelo SC-4-08 en PDF">
+                            <a class="dropdown-item" href="#" id="btnReporteSncPdf" title="Guardar el modelo SNC 2-25 en PDF">
                                 <i class="fas fa-file-pdf me-2" style="color: #f40f02;"></i>Exportar a PDF
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="#" id="btnReporteSncWord" title="Descargar el modelo SC-4-08 en Word">
+                            <a class="dropdown-item" href="#" id="btnReporteSncWord" title="Descargar el modelo SNC 2-25 en Word">
                                 <i class="fas fa-file-word me-2" style="color: #2b579a;"></i>Exportar a Word
                             </a>
                         </li>
@@ -1786,7 +1799,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="modal-body" style="padding:1.25rem 1.5rem;">
                 <label for="sncObsTexto" class="form-label" style="color:#93c5fd; font-weight:600;">
-                    Texto para el apartado OBSERVACIONES del modelo SC-4-08
+                    Texto para el apartado OBSERVACIONES del modelo SNC 2-25
                 </label>
                 <textarea id="sncObsTexto" class="form-control" rows="3" maxlength="200"
                     placeholder="Escriba la observación que se imprimirá en el modelo..."
@@ -1887,6 +1900,24 @@ function sncAniosTrabajador(id, corte) {
         });
         filas.push({ anio: anio, dias: diasTot, salario: salarioTot });
     });
+
+    // Años sin ninguna nómina dentro de la vida laboral (desde el alta hasta
+    // el último año con datos): se listan en cero para poder seleccionarlos,
+    // y en el modelo salen como columna cruzada.
+    var fechas = (window.SNC_FILTROS && SNC_FILTROS.fechas) ? SNC_FILTROS.fechas[id] : null;
+    if (filas.length && fechas && fechas.a) {
+        var desde = parseInt(String(fechas.a).substring(0, 4), 10);
+        var hasta = parseInt(String(filas[filas.length - 1].anio), 10);
+        if (desde > 0 && hasta >= desde) {
+            var porAnioFila = {};
+            filas.forEach(function (f) { porAnioFila[f.anio] = f; });
+            var completas = [];
+            for (var a = desde; a <= hasta; a++) {
+                completas.push(porAnioFila[a] || { anio: String(a), dias: 0, salario: 0 });
+            }
+            filas = completas;
+        }
+    }
     return filas;
 }
 
@@ -1939,7 +1970,7 @@ function sncActualizarBotonReporte() {
     btn.disabled = !listo;
     btn.setAttribute('aria-disabled', listo ? 'false' : 'true');
     btn.title = listo
-        ? 'Reporte oficial SC-4-08 de: ' + SNC_ANIOS_SELECCIONADOS.join(', ')
+        ? 'Reporte oficial SNC 2-25 de: ' + SNC_ANIOS_SELECCIONADOS.join(', ')
         : 'Seleccione al menos un año de la tarjeta para generar el reporte';
     sncActualizarResumenAnios();
 }

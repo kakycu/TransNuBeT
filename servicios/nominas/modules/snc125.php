@@ -198,6 +198,17 @@ snc125_reporte_manejar($pdo, $config_empresa);
         .btn-win-primary { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; }
         .btn-win-primary:hover:not(:disabled) { filter:brightness(1.1); }
         .btn-win-primary:disabled { opacity:.45; cursor:not-allowed; }
+        /* Vista previa en verde y PDF en rojo; Word sigue igual (btn-win-primary).
+           El tema aplica !important a .btn-win y variantes, así que se refuerza
+           el selector con el id del botón (gana siempre por especificidad). */
+        #btnVer.btn-win.btn-win-verde { background:linear-gradient(135deg,#16a34a,#22c55e) !important; border:none !important; color:#fff !important; }
+        #btnVer.btn-win.btn-win-verde i { color:#fff !important; }
+        #btnVer.btn-win.btn-win-verde:hover:not(:disabled) { background:linear-gradient(135deg,#15803d,#16a34a) !important; color:#fff !important; }
+        #btnVer.btn-win.btn-win-verde:disabled { opacity:.45 !important; cursor:not-allowed; }
+        #btnPdf.btn-win.btn-win-rojo { background:linear-gradient(135deg,#dc2626,#ef4444) !important; border:none !important; color:#fff !important; }
+        #btnPdf.btn-win.btn-win-rojo i { color:#fff !important; }
+        #btnPdf.btn-win.btn-win-rojo:hover:not(:disabled) { background:linear-gradient(135deg,#b91c1c,#dc2626) !important; color:#fff !important; }
+        #btnPdf.btn-win.btn-win-rojo:disabled { opacity:.45 !important; cursor:not-allowed; }
         .btn-win-outline { background:rgba(255,255,255,.05); border:.0625rem solid rgba(255,255,255,.12); color:#cbd5e1; }
         .btn-win-outline:hover { background:rgba(var(--accent-rgb),.15); color:#fff; }
         .btn-win-sm { font-size:.78rem; padding:.38rem .7rem; }
@@ -259,9 +270,15 @@ snc125_reporte_manejar($pdo, $config_empresa);
         <?php include '../includes/user_menu.php'; ?>
     </div>
 
-    <div class="mb-3">
-        <a href="modelos.php" class="btn-win btn-win-outline btn-win-sm" title="Volver a Modelos" data-tooltip="Volver a Modelos" data-tooltip-theme="primary">
-            <i class="fas fa-arrow-left me-1"></i> Volver a Modelos
+    <div class="mb-3 d-flex flex-wrap gap-2">
+        <a href="empleados.php" class="btn-win btn-win-outline btn-win-sm" title="Volver a Empleados" data-tooltip="Volver a Empleados" data-tooltip-theme="primary">
+            <i class="fas fa-arrow-left me-1"></i> Volver a Empleados
+        </a>
+        <a href="snc225.php" class="btn-win btn-win-outline btn-win-sm" title="Ir a SNC 2-25" data-tooltip="Ir a SNC 2-25" data-tooltip-theme="primary">
+            <i class="fas fa-id-card me-1"></i> Ir a SNC 2-25
+        </a>
+        <a href="modelos.php" class="btn-win btn-win-outline btn-win-sm" title="Ir a Modelos" data-tooltip="Ir a Modelos" data-tooltip-theme="primary">
+            <i class="fas fa-layer-group me-1"></i> Ir a Modelos
         </a>
     </div>
 
@@ -383,38 +400,16 @@ snc125_reporte_manejar($pdo, $config_empresa);
                 <i class="fas fa-hand-pointer me-1"></i>Ningún trabajador seleccionado
             </span>
             <div class="d-flex gap-2 flex-wrap">
-                <button type="button" class="btn-win btn-win-primary btn-win-sm" id="btnVer" disabled title="Vista previa de la certificación" data-tooltip="Vista previa del modelo" data-tooltip-theme="info">
+                <button type="button" class="btn-win btn-win-verde btn-win-sm" id="btnVer" disabled title="Vista previa de la certificación" data-tooltip="Vista previa del modelo" data-tooltip-theme="info">
                     <i class="fas fa-eye"></i> Vista previa
                 </button>
                 <button type="button" class="btn-win btn-win-primary btn-win-sm" id="btnWord" disabled title="Descargar la certificación en Word" data-tooltip="Descargar en Word" data-tooltip-theme="info">
                     <i class="fas fa-file-word"></i> Word
                 </button>
-                <button type="button" class="btn-win btn-win-primary btn-win-sm" id="btnPdf" disabled title="Imprimir la certificación o guardarla en PDF" data-tooltip="Imprimir / PDF" data-tooltip-theme="info">
+                <button type="button" class="btn-win btn-win-rojo btn-win-sm" id="btnPdf" disabled title="Imprimir la certificación o guardarla en PDF" data-tooltip="Imprimir / PDF" data-tooltip-theme="info">
                     <i class="fas fa-file-pdf"></i> PDF
                 </button>
             </div>
-        </div>
-
-        <div id="sncVistaOverlay" class="no-print" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(2,6,23,0.94);flex-direction:column;">
-            <div style="display:flex;align-items:center;gap:0.75rem;padding:0.625rem 1.25rem;background:linear-gradient(135deg,#1e3a8a,#2563eb);border-bottom:0.1875rem solid #1e40af;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;">
-                <span style="color:#e0e7ff;font-weight:bold;font-size:0.8125rem;letter-spacing:0.0312rem;">VISTA PREVIA · SC-4-09</span>
-                <span id="sncVistaArchivo" style="color:#c7d2fe;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-                <div style="margin-left:auto;display:flex;gap:0.5rem;">
-                    <button type="button" id="sncVistaImprimir" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.5625rem 1.25rem;background:#22c55e;color:#fff;border:none;border-radius:0.375rem;font-size:0.8125rem;font-weight:bold;cursor:pointer;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                        Imprimir
-                    </button>
-                    <button type="button" id="sncVistaDescargar" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.5625rem 1.25rem;background:#f59e0b;color:#fff;border:none;border-radius:0.375rem;font-size:0.8125rem;font-weight:bold;cursor:pointer;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        Descargar PDF
-                    </button>
-                    <button type="button" id="sncVistaCerrar" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.5625rem 1.25rem;background:#ef4444;color:#fff;border:none;border-radius:0.375rem;font-size:0.8125rem;font-weight:bold;cursor:pointer;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        Cerrar
-                    </button>
-                </div>
-            </div>
-            <iframe id="sncVistaFrame" title="Vista previa SC-4-09" style="flex:1;width:100%;border:0;background:#475569;"></iframe>
         </div>
 
         <div class="table-responsive">
@@ -513,8 +508,14 @@ var SNC_ESP_RRHH = <?php echo json_encode($config_empresa['especialista_gestionR
 var SNC_USUARIO = <?php echo json_encode($_SESSION['user_nombre'] ?? 'Usuario'); ?>;
 
 var PRINT_TOOLBAR_HTML = <?php echo json_encode(snc125_barra_impresion()); ?>;
+// Página de la vista previa (PDF + barra flotante autoocultable).
+var SNC_VISTA_HTML = <?php echo json_encode(snc125_vista_previa_html()); ?>;
 var tablaSNC125 = null;
 var trabajadorSel = 0;
+// Fecha de baja del trabajador elegido ('' si no tiene).
+var bajaSel = '';
+// Pestaña de vista previa: se declara aquí, antes de usarse.
+var sncVistaVentana = null;
 var nombreSel = '';
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -539,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function () {
             paginate: { first: 'Primero', last: 'Último', next: 'Siguiente', previous: 'Anterior' }
         },
         order: [[2, 'asc']],
-        pageLength: 25,
+        pageLength: 10,
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'Todos']],
         autoWidth: false,
         columnDefs: [
@@ -681,6 +682,10 @@ document.addEventListener('DOMContentLoaded', function () {
     jQuery('#filtroBajaMes').on('change', function () { tablaSNC125.draw(); });
     jQuery('#filtroCosto, #filtroArea, #filtroEstado, #filtroFechaCalculo').on('change', function () { tablaSNC125.draw(); });
 
+    // Al abrir la página: Estado = Inactivo y 10 registros por página.
+    $estado.val('0');
+    tablaSNC125.draw();
+
     jQuery('#btnLimpiarFiltrosSNC').on('click', function () {
         cargarMesesAlta('');
         cargarMesesBaja('');
@@ -725,6 +730,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function seleccionar(id, nombre) {
         trabajadorSel = id;
         nombreSel = nombre || '';
+        var $fila = document.querySelector('#tablaSNC125 tbody tr[data-id="' + id + '"]');
+        bajaSel = $fila ? ($fila.getAttribute('data-fecha-baja') || '') : '';
         document.querySelectorAll('.sel-trabajador').forEach(function (r) {
             r.checked = String(r.value) === String(id);
         });
@@ -749,10 +756,46 @@ document.addEventListener('DOMContentLoaded', function () {
         pedirDatosModelo('ver');
     }
 
-    // Pide la fecha de expedición (opcional) y las observaciones antes de
-    // generar el modelo. No se cierra al hacer clic fuera ni con Escape.
+    // Si el trabajador no tiene fecha de baja registrada, se pregunta antes
+    // de generar el modelo. Solo si acepta se piden los datos del modelo.
     function pedirDatosModelo(accion) {
         if (!trabajadorSel) return;
+        if (bajaSel) {
+            continuarDatosModelo(accion);
+            return;
+        }
+        Swal.fire({
+            icon: 'warning',
+            title: 'Sin fecha de baja',
+            html: '<div style="text-align:left;font-size:.88rem;">'
+                + 'El trabajador <b>' + escHtmlSNC(nombreSel) + '</b> no tiene fecha de baja '
+                + 'registrada en la base de datos.<br><br>'
+                + 'La certificación se generaría como trabajador activo, con los datos '
+                + 'hasta la fecha de corte.<br><br>'
+                + '<b>¿Deseas generarla de todas formas?</b>'
+                + '</div>',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-check"></i> Sí, generar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#64748b',
+            background: '#1e293b',
+            color: '#e2e8f0',
+            focusCancel: true,
+            allowOutsideClick: false
+        }).then(function (r) {
+            if (r.isConfirmed) {
+                continuarDatosModelo(accion);
+            }
+        });
+    }
+
+    // Pide la fecha de expedición (opcional) y las observaciones antes de
+    // generar el modelo. No se cierra al hacer clic fuera ni con Escape.
+    function continuarDatosModelo(accion) {
+        // true solo si esta generación abre su propia pestaña; así al
+        // cancelar o fallar no se cierra una vista previa anterior.
+        var ventanaNueva = false;
         Swal.fire({
             title: 'Datos del modelo',
             html: ''
@@ -779,13 +822,37 @@ document.addEventListener('DOMContentLoaded', function () {
             preConfirm: function () {
                 var f = document.getElementById('swalFechaExp');
                 var o = document.getElementById('swalObsModelo');
+                if (accion === 'ver') {
+                    // Una sola pestaña de vista previa: si ya hay una abierta se
+                    // reutiliza; si no, se abre aquí dentro del clic para que el
+                    // navegador no la bloquee como emergente.
+                    if (sncVistaVentana && !sncVistaVentana.closed) {
+                        sncVistaVentana.focus();
+                    } else {
+                        sncVistaVentana = window.open('', '_blank');
+                        ventanaNueva = !!sncVistaVentana;
+                    }
+                    if (ventanaNueva) {
+                        try {
+                            var h = sncVistaVentana.document;
+                            h.open();
+                            h.write(SNC_VISTA_HTML);
+                            h.close();
+                        } catch (e) { /* si no deja reescribir, se navega al PDF al terminar */ }
+                    }
+                }
                 return {
                     fecha: f ? f.value : '',
                     obs: o ? (o.value || '').trim() : ''
                 };
             }
         }).then(function (res) {
-            if (!res.isConfirmed || !res.value) return;
+            if (!res.isConfirmed || !res.value) {
+                if (ventanaNueva) {
+                    cerrarVentanaVista();
+                }
+                return;
+            }
             var fecha = res.value.fecha || '';
             var obs = res.value.obs || '';
             if (accion === 'word') {
@@ -796,23 +863,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 descargarPdfModelo(fecha, obs);
                 return;
             }
-            // Vista previa: el mismo PDF que se descarga, dentro de la página.
-            verPdfModelo(fecha, obs);
+            // Vista previa: el mismo PDF que se descarga, en su pestaña.
+            verPdfModelo(fecha, obs, ventanaNueva);
         });
     }
-
-    var btnVistaCerrar = document.getElementById('sncVistaCerrar');
-    var btnVistaDescargar = document.getElementById('sncVistaDescargar');
-    var btnVistaImprimir = document.getElementById('sncVistaImprimir');
-    if (btnVistaCerrar) btnVistaCerrar.addEventListener('click', cerrarVistaPdf);
-    if (btnVistaDescargar) btnVistaDescargar.addEventListener('click', function () {
-        if (sncVistaActual) sncVistaActual.doc.save(sncVistaActual.archivo);
-    });
-    if (btnVistaImprimir) btnVistaImprimir.addEventListener('click', imprimirVistaPdf);
-    document.addEventListener('keydown', function (ev) {
-        var capa = document.getElementById('sncVistaOverlay');
-        if (ev.key === 'Escape' && capa && capa.style.display === 'flex') cerrarVistaPdf();
-    });
 
     var btnVer = document.getElementById('btnVer');
     var btnWord = document.getElementById('btnWord');
@@ -869,18 +923,23 @@ function descargarPdfModelo(fecha, obs) {
         });
 }
 
-// Muestra el PDF generado dentro de la página (sin ventanas emergentes).
-function verPdfModelo(fecha, obs) {
+// Cierra la pestaña de vista previa (cancelar, error o sin jsPDF).
+function cerrarVentanaVista() {
+    if (sncVistaVentana && !sncVistaVentana.closed) {
+        try {
+            sncVistaVentana.close();
+        } catch (e) { /* pestaña ya cerrada por el usuario */ }
+    }
+    sncVistaVentana = null;
+}
+
+// Lleva la vista previa a la pestaña que se abrió al pulsar "Generar".
+function verPdfModelo(fecha, obs, ventanaNueva) {
     if (typeof window.jspdf === 'undefined') {
+        if (ventanaNueva) cerrarVentanaVista();
         Swal.fire({ icon: 'error', title: 'Sin librería', text: 'No está disponible jsPDF (js/jspdf.umd.min.js).' });
         return;
     }
-    Swal.fire({
-        title: 'Preparando la vista previa...',
-        text: 'Espere un momento.',
-        allowOutsideClick: false,
-        didOpen: function () { Swal.showLoading(); }
-    });
     fetch(snc125UrlReporte('datos', obs, fecha), { credentials: 'same-origin' })
         .then(function (r) {
             if (!r.ok) throw new Error('El servidor respondió ' + r.status);
@@ -888,48 +947,34 @@ function verPdfModelo(fecha, obs) {
         })
         .then(function (datos) {
             var doc = dibujarPdfModelo(datos);
-            sncVistaActual = { doc: doc, archivo: datos.archivo || 'SC-4-09.pdf' };
-            if (sncVistaUrl) {
-                URL.revokeObjectURL(sncVistaUrl);
+            var url = URL.createObjectURL(doc.output('blob'));
+            if (sncVistaVentana && !sncVistaVentana.closed) {
+                try {
+                    if (typeof sncVistaVentana.sncCargarPdf === 'function') {
+                        sncVistaVentana.sncCargarPdf(url);
+                    } else {
+                        sncVistaVentana.location.href = url;
+                    }
+                } catch (e) {
+                    sncVistaVentana.location.href = url;
+                }
+                sncVistaVentana.focus();
+            } else {
+                // Pestaña bloqueada: se intenta abrir aquí y, si tampoco,
+                // se descarga el PDF.
+                var otra = window.open(url, '_blank');
+                if (otra) {
+                    sncVistaVentana = otra;
+                } else {
+                    doc.save(datos.archivo || 'SC-4-09.pdf');
+                }
             }
-            sncVistaUrl = URL.createObjectURL(doc.output('blob'));
-            var marco = document.getElementById('sncVistaFrame');
-            if (marco) marco.src = sncVistaUrl;
-            var nombre = document.getElementById('sncVistaArchivo');
-            if (nombre) nombre.textContent = sncVistaActual.archivo;
-            var capa = document.getElementById('sncVistaOverlay');
-            if (capa) capa.style.display = 'flex';
-            Swal.close();
         })
         .catch(function (e) {
+            // Sin PDF no se deja la pestaña en blanco: se cierra si la abrimos.
+            if (ventanaNueva) cerrarVentanaVista();
             Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el PDF: ' + e.message });
         });
-}
-
-var sncVistaUrl = '';
-var sncVistaActual = null;
-
-function imprimirVistaPdf() {
-    if (!sncVistaActual) return;
-    var marco = document.getElementById('sncVistaFrame');
-    try {
-        if (marco && marco.contentWindow) {
-            marco.contentWindow.focus();
-            marco.contentWindow.print();
-            return;
-        }
-    } catch (e) { /* el visor de PDF a veces no expone print() */ }
-    // Si el visor no deja imprimir, se recarga el PDF con orden de impresión.
-    sncVistaActual.doc.autoPrint();
-    var url = URL.createObjectURL(sncVistaActual.doc.output('blob'));
-    if (marco) marco.src = url;
-}
-
-function cerrarVistaPdf() {
-    var capa = document.getElementById('sncVistaOverlay');
-    if (capa) capa.style.display = 'none';
-    var marco = document.getElementById('sncVistaFrame');
-    if (marco) marco.src = 'about:blank';
 }
 
 function dibujarPdfModelo(datos) {

@@ -217,7 +217,26 @@ function snc225_fusionar($hoja, string $rango): void
     $hoja->mergeCells($rango);
 }
 
-function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, array $config, string $obs = ''): void
+/**
+ * Indica si un año tiene algún día trabajado o algún importe. Un año
+ * seleccionado pero sin datos se cruza igual que los años no usados, para
+ * que todas las columnas vacías se vean idénticas en el Excel.
+ */
+function snc225_anio_con_datos(array $mesesAnio): bool
+{
+    foreach ($mesesAnio as $mes) {
+        if (!is_array($mes)) {
+            continue;
+        }
+        if ((int)round((float)($mes['dias'] ?? 0)) > 0 || (float)($mes['salario'] ?? 0) > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, array $config, string $obs = '', int $pagina = 0, int $paginas = 0): void
 {
     $t = $datos['trabajador'];
 
@@ -342,6 +361,12 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
             ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
             ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
 
+        // Año seleccionado sin ningún dato: se deja como columna cruzada
+        // (la misma diagonal que las no usadas) en vez de llenarse de "////".
+        if (!snc225_anio_con_datos(is_array($datos['meses'][$anio] ?? null) ? $datos['meses'][$anio] : [])) {
+            continue;
+        }
+
         $totalDias = 0;
         $totalSalario = 0.0;
         for ($mes = 1; $mes <= 12; $mes++) {
@@ -369,6 +394,14 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
                 $hoja->getStyle($cd . $fila)->getFont()->setBold(true);
                 $hoja->getStyle($cd . $fila)->getAlignment()
                     ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            } else {
+                // Salario sin días trabajados: el importe es por liquidación o
+                // baja, así que DÍAS TRAB. se marca con un guion centrado.
+                $hoja->setCellValue($cd . $fila, '-');
+                $hoja->getStyle($cd . $fila)->getFont()->setBold(true);
+                $hoja->getStyle($cd . $fila)->getAlignment()
+                    ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
+                    ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
             }
             if ($salario > 0) {
                 [$pesos, $centavos] = snc225_partir_salario($salario);
@@ -386,7 +419,9 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
             $totalSalario += $salario;
         }
 
-        $hoja->setCellValue($cd . $filaTotal, $totalDias);
+        // Total del año con el mismo criterio: si no hubo días pero sí
+        // importes (liquidación o baja), se marca con un guion centrado.
+        $hoja->setCellValue($cd . $filaTotal, $totalDias > 0 ? $totalDias : ($totalSalario > 0 ? '-' : 0));
         $hoja->getStyle($cd . $filaTotal)->getNumberFormat()->setFormatCode('0');
         $hoja->getStyle($cd . $filaTotal)->getFont()->setBold(true);
         $hoja->getStyle($cd . $filaTotal)->getAlignment()
@@ -401,6 +436,54 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
         $hoja->getStyle($cc . $filaTotal)->getFont()->setBold(true);
         $hoja->getStyle($cc . $filaTotal)->getAlignment()
             ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    }
+
+    // Columnas de año que no se usan (trabajador con menos de 10 años o años
+    // no seleccionados): el bloque de meses se une en una sola celda y se
+    // cruza con una diagonal de extremo a extremo, desde el final de DÍAS TRAB.
+    // hasta el inicio de SALARIO DEVENGADO, para que no se pueda rellenar a mano.
+    $totalAnios = count(array_values($anios));
+    $cruzados = [];
+    foreach (array_values($anios) as $i => $anio) {
+        if (!snc225_anio_con_datos(is_array($datos['meses'][$anio] ?? null) ? $datos['meses'][$anio] : [])) {
+            $cruzados[] = $i;
+        }
+    }
+    for ($i = $totalAnios; $i < 10; $i++) {
+        $cruzados[] = $i;
+    }
+    $cruzados = array_values(array_unique($cruzados));
+    sort($cruzados);
+
+    foreach ($cruzados as $i) {
+        $banda = intdiv($i, 5);
+        $slot  = $i % 5;
+        $filaIni   = $banda === 0 ? 12 : 31;
+        $filaTotal = $banda === 0 ? 24 : 43;
+        $colIni = $colDias[$slot];
+        $colFin = $colCentavos[$slot];
+        $rango  = $colIni . $filaIni . ':' . $colFin . $filaTotal;
+
+        // Los combinados propios del modelo dentro del bloque (por ejemplo
+        // O12:P12 en el último año) se quitan para poder cruzarlo entero.
+        $limites = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::rangeBoundaries($rango);
+        foreach (array_keys($hoja->getMergeCells()) as $combinado) {
+            $otros = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::rangeBoundaries($combinado);
+            $seTocan = !($otros[1][0] < $limites[0][0] || $otros[0][0] > $limites[1][0]
+                || $otros[1][1] < $limites[0][1] || $otros[0][1] > $limites[1][1]);
+            if ($seTocan) {
+                $hoja->unmergeCells($combinado);
+            }
+        }
+        foreach (\PhpOffice\PhpSpreadsheet\Cell\Coordinate::extractAllCellReferencesInRange($rango) as $coord) {
+            $hoja->setCellValue($coord, null);
+        }
+
+        $hoja->mergeCells($rango);
+        $bordes = $hoja->getStyle($colIni . $filaIni)->getBorders();
+        $bordes->getDiagonal()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        $bordes->getDiagonal()->getColor()->setRGB('808080');
+        $bordes->setDiagonalDirection(\PhpOffice\PhpSpreadsheet\Style\Borders::DIAGONAL_UP);
     }
 
     // La fila 27 es la franja en blanco entre las firmas y la segunda tabla
@@ -435,9 +518,9 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
         \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
     );
 
-    // Pie del modelo: toda la fila (A49:Q49) combinada, con el texto a la
-    // derecha en negrita e itálica. Se libera antes L49:Q49 del modelo para
-    // no dejar dos combinados solapados (Excel repara el archivo si los hay).
+    // Pie del modelo: en la misma línea va la numeración de la hoja a la
+    // izquierda ("Página X de Y", igual que el SC-4-09) y el texto del modelo
+    // a la derecha, dentro de L49:Q49, que es el combinado de la plantilla.
     $textoPie = trim((string)$hoja->getCell('L49')->getValue());
     if ($textoPie === '') {
         $textoPie = 'Modelo 350.0 T. Impresiones UnicornioSoftware';
@@ -445,20 +528,32 @@ function snc225_llenar_hoja($hoja, array $datos, array $anios, string $corte, ar
         $textoPie = str_replace('UnicornioSoftware', 'Impresiones UnicornioSoftware', $textoPie);
     }
     $fuentePie = $hoja->getStyle('L49')->getFont();
-    try {
-        $hoja->unmergeCells('L49:Q49');
-    } catch (\Throwable $e) {
-        // Si no estaba combinado se ignora.
+
+    $etiquetaPagina = ($pagina > 0 && $paginas > 0) ? 'Página ' . $pagina . ' de ' . $paginas : '';
+    $hoja->setCellValue('A49', $etiquetaPagina !== '' ? $etiquetaPagina : null);
+    if ($etiquetaPagina !== '') {
+        $hoja->getStyle('A49')->getFont()
+            ->setName($fuentePie->getName())
+            ->setSize($fuentePie->getSize())
+            ->setBold(true)
+            ->setItalic(true);
+        $hoja->getStyle('A49')->getAlignment()
+            ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT)
+            ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER)
+            ->setWrapText(false);
+        // Ancho suficiente para la etiqueta: las celdas B49 y C49 están
+        // vacías y sin bordes en el pie, así que se combinan con A49.
+        snc225_fusionar($hoja, 'A49:C49');
     }
-    $hoja->setCellValue('L49', null);
-    $hoja->setCellValue('A49', $textoPie);
-    $hoja->getStyle('A49')->getFont()
+
+    $hoja->setCellValue('L49', $textoPie);
+    $hoja->getStyle('L49')->getFont()
         ->setName($fuentePie->getName())
         ->setSize($fuentePie->getSize())
         ->setBold(true)
         ->setItalic(true);
-    snc225_fusionar($hoja, 'A49:Q49');
-    $hoja->getStyle('A49')->getAlignment()
+    snc225_fusionar($hoja, 'L49:Q49');
+    $hoja->getStyle('L49')->getAlignment()
         ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT)
         ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER)
         ->setWrapText(false);
@@ -622,7 +717,7 @@ function snc225_construir(PDO $pdo, int $id, string $corte, array $config, strin
             $hoja->setTitle(snc225_recortar($tituloHoja, 31 - strlen($sufijoHoja)) . $sufijoHoja);
         }
 
-        snc225_llenar_hoja($hoja, $datos, $aniosPagina, $corte, $config, $obs);
+        snc225_llenar_hoja($hoja, $datos, $aniosPagina, $corte, $config, $obs, $i + 1, count($paginas));
 
         if ($libroFinal === null) {
             $libroFinal = $libro;
@@ -935,6 +1030,16 @@ function snc225_word_bordes($hoja, int $r, int $c, int $span, int $vspan): array
  */
 function snc225_word_celda($celdaWord, $celdaXlsx, $st, string $alineacionDefecto = 'left', float $escala = 1.0): void
 {
+    // PhpWord no dibuja bordes diagonales: las columnas de año cruzadas en el
+    // Excel se marcan en el Word con el sello "////" para que no queden limpias.
+    $diagonalWord = (string)$st->getBorders()->getDiagonal()->getBorderStyle();
+    if ($diagonalWord !== '' && $diagonalWord !== \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE
+        && trim((string)$celdaXlsx->getValue()) === '') {
+        $celdaWord->addText('////', ['name' => 'Calibri', 'size' => 8, 'italic' => true],
+            ['alignment' => 'center', 'spaceBefore' => 0, 'spaceAfter' => 0]);
+        return;
+    }
+
     // En Word se aplica la misma alineación que en la vista: si la celda está
     // en "General", los números van a la derecha y el texto a la izquierda.
     $horiz = strtolower(trim((string)$st->getAlignment()->getHorizontal()));
@@ -982,6 +1087,146 @@ function snc225_word_celda($celdaWord, $celdaXlsx, $st, string $alineacionDefect
 }
 
 /**
+ * Cambia el sello "////" de las columnas de año cruzadas por el borde
+ * diagonal del Word (w:tr2bl), el mismo trazo que el Excel y el PDF.
+ *
+ * Solo toca celdas combinadas (con w:gridSpan): los meses vacíos de una
+ * columna usada no llevan gridSpan y conservan su sello.
+ */
+function snc225_word_diagonal(string $xml): string
+{
+    if (strpos($xml, '////') === false) {
+        return $xml;
+    }
+
+    $dom = new \DOMDocument();
+    $errorPrevio = libxml_use_internal_errors(true);
+    $cargado = $dom->loadXML($xml, LIBXML_NONET);
+    libxml_clear_errors();
+    libxml_use_internal_errors($errorPrevio);
+    if (!$cargado) {
+        return $xml; // si no se puede procesar, queda el sello como respaldo
+    }
+
+    $ns = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    $xp = new \DOMXPath($dom);
+    $xp->registerNamespace('w', $ns);
+
+    foreach ($xp->query('//w:tc') as $celda) {
+        $texto = '';
+        foreach ($xp->query('.//w:t', $celda) as $nodoTexto) {
+            $texto .= $nodoTexto->nodeValue;
+        }
+        if (trim($texto) !== '////') {
+            continue;
+        }
+        $props = $xp->query('./w:tcPr', $celda)->item(0);
+        if (!$props) {
+            continue;
+        }
+        // Las celdas del año cruzado ocupan varios meses (gridSpan > 1);
+        // los meses sueltos de una columna usada llevan gridSpan = 1.
+        $span = $xp->query('./w:gridSpan', $props)->item(0);
+        if (!$span || (int)$span->getAttributeNS($ns, 'val') < 2) {
+            continue;
+        }
+
+        foreach ($xp->query('.//w:t', $celda) as $nodoTexto) {
+            $nodoTexto->parentNode->removeChild($nodoTexto);
+        }
+
+        $bordes = $xp->query('./w:tcBorders', $props)->item(0);
+        if (!$bordes) {
+            $bordes = $dom->createElementNS($ns, 'w:tcBorders');
+            // Posición que exige el esquema: antes de sombreado, márgenes
+            // y alineación vertical.
+            $referencia = null;
+            foreach (['w:shd', 'w:tcMar', 'w:textDirection', 'w:tcFitText', 'w:vAlign', 'w:hideMark'] as $siguiente) {
+                $nodo = $xp->query('./' . $siguiente, $props)->item(0);
+                if ($nodo) {
+                    $referencia = $nodo;
+                    break;
+                }
+            }
+            $props->insertBefore($bordes, $referencia);
+        }
+
+        // WML llama tr2bl a la diagonal que sube de izquierda-abajo a
+        // derecha-arriba (la misma de Excel/PDF); bl2tr no existe en el
+        // esquema de Word y se descarta.
+        $diagonal = $dom->createElementNS($ns, 'w:tr2bl');
+        $diagonal->setAttributeNS($ns, 'w:val', 'single');
+        $diagonal->setAttributeNS($ns, 'w:sz', '4');
+        $diagonal->setAttributeNS($ns, 'w:space', '0');
+        $diagonal->setAttributeNS($ns, 'w:color', '808080');
+        $bordes->appendChild($diagonal);
+    }
+
+    return (string)$dom->saveXML();
+}
+
+/**
+ * Ajusta el .docx ya escrito: rejilla y ancho de cada tabla según el modelo
+ * y diagonal real en las celdas de año cruzado.
+ *
+ * @param array<int, array{anchos: int[], total: int}> $rejillas
+ */
+function snc225_word_ajustar(string $archivo, array $rejillas): void
+{
+    $zip = new \ZipArchive();
+    if (!is_file($archivo) || $zip->open($archivo) !== true) {
+        return;
+    }
+
+    $xml = (string)$zip->getFromName('word/document.xml');
+
+    // PhpWord arma la rejilla (tblGrid) con las celdas de la fila más ancha,
+    // que al tener combinados no coincide con las columnas del modelo; se
+    // reescribe la de cada tabla con sus anchos reales para que Word no
+    // deforme el modelo.
+    $iGrid = 0;
+    $xml = (string)preg_replace_callback(
+        '/<w:tblGrid>.*?<\/w:tblGrid>/s',
+        static function (array $m) use ($rejillas, &$iGrid): string {
+            $info = $rejillas[$iGrid] ?? null;
+            $iGrid++;
+            if ($info === null) {
+                return $m[0];
+            }
+            $rejilla = '<w:tblGrid>';
+            foreach ($info['anchos'] as $ancho) {
+                $rejilla .= '<w:gridCol w:w="' . $ancho . '" w:type="dxa"/>';
+            }
+
+            return $rejilla . '</w:tblGrid>';
+        },
+        $xml
+    );
+
+    $iTabla = 0;
+    $xml = (string)preg_replace_callback(
+        '/<w:tblW [^>]*\/>/',
+        static function (array $m) use ($rejillas, &$iTabla): string {
+            $info = $rejillas[$iTabla] ?? null;
+            $iTabla++;
+            if ($info === null) {
+                return $m[0];
+            }
+
+            return '<w:tblW w:w="' . $info['total'] . '" w:type="dxa"/>';
+        },
+        $xml
+    );
+
+    // Word sí admite bordes diagonales, pero PhpWord no los escribe: se
+    // convierten aquí los sellos de los años cruzados en la diagonal real.
+    $xml = snc225_word_diagonal($xml);
+
+    $zip->addFromString('word/document.xml', $xml);
+    $zip->close();
+}
+
+/**
  * Genera el .docx con PhpWord y lo envía al navegador.
  */
 function snc225_word_descargar_docx($spreadsheet, string $base): void
@@ -1010,48 +1255,8 @@ function snc225_word_descargar_docx($spreadsheet, string $base): void
     $temporal = tempnam(sys_get_temp_dir(), 'snc225_');
     $writer->save($temporal);
 
-    // PhpWord arma la rejilla (tblGrid) con las celdas de la fila más ancha,
-    // que al tener combinados no coincide con las columnas del modelo; se
-    // reescribe la de cada tabla con sus anchos reales para que Word no
-    // deforme el modelo.
-    $zip = new \ZipArchive();
-    if ($temporal !== false && $zip->open($temporal) === true) {
-        $xml = (string)$zip->getFromName('word/document.xml');
-
-        $iGrid = 0;
-        $xml = (string)preg_replace_callback(
-            '/<w:tblGrid>.*?<\/w:tblGrid>/s',
-            static function (array $m) use ($rejillas, &$iGrid): string {
-                $info = $rejillas[$iGrid] ?? null;
-                $iGrid++;
-                if ($info === null) {
-                    return $m[0];
-                }
-                $rejilla = '<w:tblGrid>';
-                foreach ($info['anchos'] as $ancho) {
-                    $rejilla .= '<w:gridCol w:w="' . $ancho . '" w:type="dxa"/>';
-                }
-                return $rejilla . '</w:tblGrid>';
-            },
-            $xml
-        );
-
-        $iTabla = 0;
-        $xml = (string)preg_replace_callback(
-            '/<w:tblW [^>]*\/>/',
-            static function (array $m) use ($rejillas, &$iTabla): string {
-                $info = $rejillas[$iTabla] ?? null;
-                $iTabla++;
-                if ($info === null) {
-                    return $m[0];
-                }
-                return '<w:tblW w:w="' . $info['total'] . '" w:type="dxa"/>';
-            },
-            $xml
-        );
-
-        $zip->addFromString('word/document.xml', $xml);
-        $zip->close();
+    if ($temporal !== false) {
+        snc225_word_ajustar($temporal, $rejillas);
     }
 
     if ($temporal !== false && is_file($temporal)) {
@@ -1433,6 +1638,17 @@ function snc225_html_celda_css($st, array $bordes, int $c, int $span, array $anc
     $color = (string)$fuente->getColor()->getRGB();
     if ($color !== '' && $color !== '000000' && $color !== 'FFFFFFFF') {
         $css .= 'color:#' . str_replace('FF', '', $color) . ';';
+    }
+
+    // Diagonal del año sin usar: el borde diagonal del Excel se dibuja en la
+    // vista, la impresión y el PDF como un degradado de una línea.
+    $diagonal = $st->getBorders()->getDiagonal();
+    $estiloDiag = (string)$diagonal->getBorderStyle();
+    if ($estiloDiag !== '' && $estiloDiag !== \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_NONE) {
+        $hacia = (string)$st->getBorders()->getDiagonalDirection() === \PhpOffice\PhpSpreadsheet\Style\Borders::DIAGONAL_DOWN
+            ? 'to top left' : 'to top right';
+        $css .= 'background-image:linear-gradient(' . $hacia
+            . ',transparent 49.6%,#808080 49.6%,#808080 50.4%,transparent 50.4%);';
     }
 
     if ($st->getFill()->getFillType() === 'solid') {

@@ -770,6 +770,200 @@ function snc125_barra_impresion(): string
     return $estilo . $barra . $script;
 }
 
+/**
+ * Página de la vista previa (se abre en pestaña aparte con window.open).
+ *
+ * Lleva el PDF embebido y la misma barra flotante del listado, con sus iconos
+ * (Imprimir / Cerrar). La barra se recupera de dos formas evidentes: con la
+ * pestaña superior, ahora rotulada, y acercando el puntero a la parte alta de
+ * la ventana. Mientras el PDF se está cargando no se oculta nunca.
+ */
+function snc125_vista_previa_html(): string
+{
+    $icono_imprimir = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+        . ' stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline>'
+        . '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>'
+        . '<rect x="6" y="14" width="12" height="8"></rect></svg>';
+    $icono_cerrar = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+        . ' stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line>'
+        . '<line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    $icono_asa = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"'
+        . ' stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>';
+
+    $html = <<<'HTML'
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vista previa · SC-4-09</title>
+<style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: #334155; font-family: Arial, Helvetica, sans-serif; overflow: hidden; }
+    #marcoPdf { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; background: #475569; }
+    #barraVista {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        padding: 0.625rem 1.25rem; display: flex; justify-content: center; align-items: center;
+        gap: 0.875rem; box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
+        border-bottom: 0.1875rem solid #1e40af; transition: transform 0.3s ease;
+    }
+    #barraVista.oculta { transform: translateY(-100%); }
+    #barraVista .rotulo { color: #e0e7ff; font-weight: bold; font-size: 0.8125rem; letter-spacing: 0.0312rem; }
+    #barraVista button {
+        display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5625rem 1.375rem;
+        color: #fff; border: none; border-radius: 0.375rem; font-size: 0.8125rem; font-weight: bold;
+        cursor: pointer; box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, 0.2);
+    }
+    #btnVistaImprimir { background: #22c55e; }
+    #btnVistaCerrar { background: #ef4444; }
+    /* Zona sensible de la parte alta: al acercar el puntero vuelve la barra. */
+    #sensor {
+        position: fixed; top: 0; left: 0; right: 0; height: 1.25rem; z-index: 12;
+        background: transparent; pointer-events: none;
+    }
+    /* Pestaña visible para recuperar la barra cuando está oculta. */
+    #asa {
+        position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 9;
+        height: 1.375rem; padding: 0 0.85rem; border: none; cursor: pointer;
+        display: flex; align-items: center; gap: 0.35rem;
+        background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #e0e7ff;
+        border-radius: 0 0 0.5rem 0.5rem; font-family: inherit; font-size: 0.6875rem;
+        font-weight: bold; letter-spacing: 0.0312rem; text-transform: uppercase;
+        box-shadow: 0 0.1875rem 0.5rem rgba(0, 0, 0, 0.45); transition: height 0.15s ease, background 0.15s ease;
+    }
+    #asa:hover { height: 1.75rem; background: linear-gradient(135deg, #2563eb, #3b82f6); color: #fff; }
+    #cargando {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 5;
+        display: flex; align-items: center; justify-content: center;
+        background: #0f172a; color: #e2e8f0; font-size: 0.95rem;
+    }
+    @media print { #barraVista, #asa, #sensor, #cargando { display: none !important; } }
+</style>
+</head>
+<body>
+<div id="sensor" title="Mostrar la barra"></div>
+<button type="button" id="asa" title="Mostrar la barra">__ASA__ VISTA PREVIA</button>
+<div id="cargando">Generando la vista previa…</div>
+<div id="barraVista">
+    <span class="rotulo">VISTA PREVIA · SC-4-09</span>
+    <button type="button" id="btnVistaImprimir" onclick="sncVistaImprimir()">__IMPRIMIR__ Imprimir</button>
+    <button type="button" id="btnVistaCerrar" onclick="window.close()">__CERRAR__ Cerrar</button>
+</div>
+<iframe id="marcoPdf" title="Vista previa SC-4-09" src="about:blank"></iframe>
+<script>
+function sncVistaImprimir() {
+    var marco = document.getElementById('marcoPdf');
+    try {
+        if (marco && marco.contentWindow) {
+            marco.contentWindow.focus();
+            marco.contentWindow.print();
+            return;
+        }
+    } catch (e) { /* el visor de PDF a veces no expone print() */ }
+    window.print();
+}
+
+(function () {
+    var barra = document.getElementById('barraVista');
+    var asa = document.getElementById('asa');
+    var sensor = document.getElementById('sensor');
+    var temporizador = null;
+    // Mientras el PDF está cargando la barra no se oculta.
+    var pdfListo = false;
+    var SEGUNDOS_VISIBLE = 6000;
+
+    function mostrarBarra() {
+        if (!barra) return;
+        barra.classList.remove('oculta');
+        if (sensor) sensor.style.pointerEvents = 'none';
+        clearTimeout(temporizador);
+        if (pdfListo) {
+            // Se oculta por la misma vía para que la franja superior quede
+            // activa y la barra se pueda recuperar.
+            temporizador = setTimeout(ocultarBarra, SEGUNDOS_VISIBLE);
+        }
+    }
+
+    function ocultarBarra() {
+        if (!pdfListo) return;
+        if (barra) barra.classList.add('oculta');
+        // Con la barra oculta la franja superior escucha el puntero para
+        // devolverla; con la barra visible no intercepta clics del PDF.
+        if (sensor) sensor.style.pointerEvents = 'auto';
+        clearTimeout(temporizador);
+    }
+
+    // El generador llama a esta función cuando el PDF ya está listo.
+    window.sncCargarPdf = function (url) {
+        var cargando = document.getElementById('cargando');
+        var marco = document.getElementById('marcoPdf');
+        var avisado = false;
+        // Se vuelve a "cargando": la barra queda fija mientras llega el PDF.
+        pdfListo = false;
+        mostrarBarra();
+
+        function terminado() {
+            if (avisado) return;
+            avisado = true;
+            if (cargando) cargando.style.display = 'none';
+            pdfListo = true;
+            mostrarBarra();
+        }
+
+        if (!marco) {
+            terminado();
+            return;
+        }
+        // La barra sigue visible hasta que el visor termina de cargar el PDF;
+        // si el visor no avisa, se libera a los 8 s.
+        marco.addEventListener('load', terminado);
+        marco.src = url;
+        setTimeout(terminado, 8000);
+    };
+
+    if (sensor) sensor.addEventListener('mouseenter', mostrarBarra);
+    if (asa) asa.addEventListener('mouseenter', mostrarBarra);
+    if (asa) asa.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        if (barra && barra.classList.contains('oculta')) {
+            mostrarBarra();
+        } else {
+            ocultarBarra();
+        }
+    });
+    if (barra) barra.addEventListener('mouseenter', function () {
+        clearTimeout(temporizador);
+        barra.classList.remove('oculta');
+    });
+    if (barra) barra.addEventListener('mouseleave', function () {
+        clearTimeout(temporizador);
+        if (pdfListo) {
+            temporizador = setTimeout(ocultarBarra, 3000);
+        }
+    });
+    document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') {
+            window.close();
+            return;
+        }
+        mostrarBarra();
+    });
+
+    mostrarBarra();
+})();
+</script>
+</body>
+</html>
+HTML;
+
+    return str_replace(
+        ['__ASA__', '__IMPRIMIR__', '__CERRAR__'],
+        [$icono_asa, $icono_imprimir, $icono_cerrar],
+        $html
+    );
+}
+
 /** Bloques del modelo en JSON, para pintarlo con jsPDF en el navegador. */
 function snc125_bloques_pdf(array $res, array $config, string $obs = '', string $fecha = ''): array
 {
