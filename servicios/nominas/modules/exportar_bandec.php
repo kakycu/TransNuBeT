@@ -783,7 +783,16 @@ if ($fechaPeriodo === '' && $periodoId !== '') {
 }
 $periodoStr = exportar_bandec_nombre_periodo($fechaPeriodo);
 
-$nombreArchivo = 'nomina_' . $tipoNomina . '_' . $periodoStr . '_' . date('Ymd_His');
+// Los dos formatos DBF se distinguen en el nombre: (v1) el de 3 columnas y
+// (v2) el de 5 columnas, igual que las plantillas v1-3col y v2-5col.
+$sufijoFormato = '';
+if ($formato === 'dbf') {
+    $sufijoFormato = '(v1)';
+} elseif ($formato === 'dbf5') {
+    $sufijoFormato = '(v2)';
+}
+
+$nombreArchivo = 'nomina_' . $tipoNomina . '_' . $periodoStr . '_' . date('Ymd_His') . $sufijoFormato;
 $archivoSalida = '';
 $success = false;
 
