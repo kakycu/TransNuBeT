@@ -1099,7 +1099,7 @@ if ($guardado_ok) {
         <div class="lic-card">
             <div class="lic-layout">
             <div class="lic-rail">
-                <img src="../images/favicon.png" alt="SiGesNom" class="lic-logo-img">
+                <img src="../images/favicon1.png" alt="SiGesNom" class="lic-logo-img">
             </div>
 
             <div class="lic-head">
