@@ -56,6 +56,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Reconstruye los logos del sistema si falta alguno (favicon.png, LogoTN.png,
+// LogoCorto.png), para que la portada nunca quede con una imagen rota.
+require_once __DIR__ . '/includes/logos_sistema.php';
+asegurar_logos_sistema();
+
 
 // Configuración de conexión (desde config.php)
 $host = DB_HOST;
@@ -664,7 +669,7 @@ $current_year = date('Y');
     <div class="modern-header">
         <div class="logo-area">
             <div class="logo-icon">
-                <img src="../images/LogoTN.png" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
+                <img src="../images/LogoTN.png?v=<?php echo @filemtime(__DIR__ . '/../images/LogoTN.png') ?: time(); ?>" alt="<?php echo htmlspecialchars($COMPANY_NAME); ?> Logo" 
                      style="width:100%; height:100%; object-fit: contain;"
                      onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon\'></i>';">
             </div>

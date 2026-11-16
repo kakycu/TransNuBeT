@@ -5,6 +5,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Garantiza que favicon.png, LogoTN.png y LogoCorto.png existan: si falta
+// alguno se reconstruye desde favicon.png o su copia de respaldo, para que
+// ninguna página quede con una imagen rota.
+require_once __DIR__ . '/logos_sistema.php';
+asegurar_logos_sistema();
+
 // Configuración por defecto (desde constantes centrales con fallback)
 if (!isset($config_empresa)) {
     $config_empresa = [
@@ -1176,7 +1182,7 @@ html.focus-mode .fluid-container {
     </button>
     <div class="sidebar-logo text-center">
         <div class="logo">
-            <img src="<?php echo $base_prefix; ?>../images/LogoTN.png" alt="Transnubet Logo" 
+            <img src="<?php echo $base_prefix; ?>../images/LogoTN.png?v=<?php echo @filemtime(__DIR__ . '/../../images/LogoTN.png') ?: time(); ?>" alt="Transnubet Logo" 
                  class="sidebar-logo-img"
                  onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon fa-2x mb-2\' style=\'color:var(--accent);\'></i>';"><br>
             <h3 class="sidebar-text"><?php echo htmlspecialchars($config_empresa['nombre_empresa']); ?></h3>

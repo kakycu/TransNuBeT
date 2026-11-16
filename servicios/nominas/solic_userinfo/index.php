@@ -33,8 +33,15 @@ header('Expires: 0');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Consulta de Salario - <?php echo htmlspecialchars(COMPANY_NAME, ENT_QUOTES, 'UTF-8'); ?></title>
-    <link rel="icon" type="image/png" sizes="64x64" href="/images/favicon_tn_64.png?v=1">
-    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon_tn_32.png?v=1">
+	
+<link rel="icon" href="data:image/svg+xml,
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<circle cx='28' cy='28' r='18' fill='%231E88E5'/>
+<circle cx='28' cy='28' r='12' fill='white'/>
+<path d='M41 41 L56 56' stroke='%231E88E5' stroke-width='6' stroke-linecap='round'/>
+<text x='28' y='34' font-size='14' font-family='Arial' font-weight='bold' text-anchor='middle' fill='%232E7D32'>$</text>
+</svg>">
+
     <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
     <script src="../js/sweetalert2.all.min.js"></script>
     <script src="../js/pdfmake.min.js"></script>
@@ -514,6 +521,25 @@ header('Expires: 0');
             -webkit-backdrop-filter: blur(0.1875rem);
         }
         .su-gate-overlay.abierta { display: flex; }
+		
+.gate-icono{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin:0 auto 20px auto;
+}
+
+.gate-icono img{
+    width:96px;
+    height:96px;
+    object-fit:contain;
+    filter:
+        drop-shadow(0 0 8px rgba(13,110,253,.6))
+        drop-shadow(0 0 16px rgba(13,110,253,.4))
+        drop-shadow(0 0 24px rgba(13,110,253,.3));
+}
+
+
         .gate-caja {
             width: min(26rem, 94vw);
             background: rgba(12, 22, 42, 0.92);
@@ -523,14 +549,7 @@ header('Expires: 0');
             padding: 2rem 1.75rem 1.75rem;
             text-align: center;
         }
-        .gate-icono {
-            width: 3.6rem; height: 3.6rem; margin: 0 auto 1rem;
-            display: flex; align-items: center; justify-content: center;
-            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-            border-radius: 50%;
-            box-shadow: 0 0.4rem 1.2rem rgba(var(--accent-rgb), 0.4);
-            font-size: 1.4rem; color: #fff;
-        }
+
         .gate-caja h1 { margin: 0 0 0.25rem; font-size: 1.18rem; color: #fff; }
         .gate-caja h2 { margin: 0 0 0.35rem; font-size: 0.92rem; font-weight: 600; color: var(--accent-light); letter-spacing: 0.03em; }
         .gate-caja .gate-slogan { margin: 0 0 1.35rem; font-size: 0.78rem; font-style: italic; color: rgba(180,210,255,0.55); }
@@ -997,7 +1016,7 @@ table.su-tabla #vacRepCabecera tr:nth-child(2) th { box-shadow: 0 0.125rem 0.25r
 <div class="su-sidebar-fondo" id="suSidebarFondo"></div>
 <aside class="su-sidebar" id="suSidebar">
     <div class="su-side-logo">
-        <a href="../../index.php" title="Regresar al inicio"><img src="../../images/LogoTN.png" alt="Logo"></a>
+        <a href="../../index.php" title="Regresar al inicio"><img src="../../images/LogoTN.png?v=<?php echo @filemtime(__DIR__ . '/../../images/LogoTN.png') ?: time(); ?>" alt="Logo"></a>
     </div>
     <div class="su-side-marca"><?php echo htmlspecialchars(COMPANY_NAME, ENT_QUOTES, 'UTF-8'); ?></div>
     <div class="su-side-cat">Navegación</div>
@@ -1353,7 +1372,9 @@ table.su-tabla #vacRepCabecera tr:nth-child(2) th { box-shadow: 0 0.125rem 0.25r
 <!-- ===================== PORTAL DE ACCESO (USUARIO / TRABAJADOR) ===================== -->
 <div class="su-gate-overlay<?php echo $su_autorizado ? '' : ' abierta'; ?>" id="suGateOverlay">
     <div class="gate-caja">
-        <div class="gate-icono"><i class="fas fa-lock"></i></div>
+        <div class="gate-icono">
+			<img src="../../images/logotrabajadores.png" alt="Trabajadores">
+		</div>
         <h1>Registro y Control de Salarios</h1>
         <h2><?php echo htmlspecialchars(COMPANY_NAME, ENT_QUOTES, 'UTF-8'); ?></h2>
         <p class="gate-slogan"><?php echo htmlspecialchars(SLOGAN, ENT_QUOTES, 'UTF-8'); ?></p>

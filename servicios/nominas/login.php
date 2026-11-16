@@ -56,6 +56,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Reconstruye los logos del sistema si falta alguno (favicon.png, LogoTN.png,
+// LogoCorto.png). Se hace también aquí porque el login no incluye el sidebar.
+require_once __DIR__ . '/includes/logos_sistema.php';
+asegurar_logos_sistema();
+
 
 // ============================================================
 // 1. VERIFICAR ESTADO DE MYSQL (capturando excepción)
@@ -2814,7 +2819,7 @@ body::after {
             </div>
             <div class="logo-right">
                 <div class="logo-icon2">
-                    <img src="../images/LogoTN.png" alt="Logo"
+                    <img src="../images/LogoTN.png?v=<?php echo @filemtime(__DIR__ . '/../images/LogoTN.png') ?: time(); ?>" alt="Logo"
                          style="width:100%; height:100%; object-fit: contain; border-radius: inherit;"
                          onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-cloud-moon\'></i>';">
                 </div>

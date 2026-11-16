@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // modules/configuracion.php - Configuraciones del Sistema
 require_once '../config/database.php';
 require_once __DIR__ . '/../includes/logger.php';
@@ -6,6 +6,7 @@ require_once '../config/mail.php';
 require_once '../includes/funciones.php';
 require_once __DIR__ . '/../includes/subsistemas.php';
 require_once __DIR__ . '/../includes/config_audit.php';
+require_once __DIR__ . '/../includes/logos_sistema.php';
 
 asegurarRecargosExtra($pdo);
 asegurarConvenioExtra($pdo);
@@ -256,6 +257,25 @@ if (file_exists($ruta_logo)) {
     $logo_base64 = 'data:image/' . $tipo . ';base64,' . base64_encode($data);
 }
 
+// Datos de un logo del sistema para la vista previa (dimensiones, peso y
+// versión para invalidar la caché del navegador al reemplazarlo).
+function datos_logo_sistema($ruta) {
+    if (!is_file($ruta)) {
+        return null;
+    }
+    $medidas = @getimagesize($ruta);
+    $kb = filesize($ruta) / 1024;
+    return [
+        'ancho'   => $medidas ? (int)$medidas[0] : 0,
+        'alto'    => $medidas ? (int)$medidas[1] : 0,
+        'kb'      => round($kb, 1),
+        'peso'    => $kb >= 1024
+            ? number_format($kb / 1024, 2, ',', '.') . ' MB'
+            : number_format($kb, 1, ',', '.') . ' KB',
+        'version' => @filemtime($ruta) ?: time(),
+    ];
+}
+
 // Procesar guardado de configuración
 // Tras un guardado exitoso se hace redirect (PRG) con el mensaje en la URL
 $mensaje = $_GET['msg'] ?? '';
@@ -428,6 +448,199 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
+    // Resultado del guardado de logos, para informarlo también en el guardado general.
+    $logos_error = null;
+    $logos_detalle = [];
+
+    if (isset($_POST['guardar_logos'])) {
+        // Los logos se guardan siempre con el mismo nombre y en la misma carpeta
+        // (servicios/images): todas las páginas los referencian con esos nombres,
+        // así que reemplazar el archivo cambia la imagen en toda la aplicación.
+        $dirLogos = realpath(__DIR__ . '/../../images');
+        $logos = [
+            'logo_normal' => [
+                'archivo' => 'LogoTN.png',
+                'campo'   => 'logo_normal_recortado',
+                'nombre'  => 'logo normal',
+            ],
+            'logo_corto' => [
+                'archivo' => 'LogoCorto.png',
+                'campo'   => 'logo_corto_recortado',
+                'nombre'  => 'logo corto',
+            ],
+        ];
+
+        try {
+            if (!permiso_puede('configuracion', 'editar')) {
+                throw new RuntimeException('Su rol no tiene permiso para cambiar los logos del sistema.');
+            }
+            if ($dirLogos === false || !is_dir($dirLogos)) {
+                throw new RuntimeException('No se encontró la carpeta de imágenes del sistema.');
+            }
+
+            // El guardado general también procesa los logos: en ese caso no hay
+            // queja si no se cambió ninguna imagen, solo se guardan los cambios.
+            $esGuardadoGlobal = isset($_POST['guardar_todo']);
+            $guardados = [];
+
+            foreach ($logos as $campoArchivo => $info) {
+                $rutaDestino = $dirLogos . DIRECTORY_SEPARATOR . $info['archivo'];
+                $datos  = null;
+                $origen = '';
+
+                // 0) Eliminación marcada desde el botón de la papelera.
+                $banderaEliminar = 'eliminar_' . $campoArchivo;
+                if (isset($_POST[$banderaEliminar]) && $_POST[$banderaEliminar] === '1') {
+                    // Al eliminar no se deja el sistema sin logo: se usa la mejor
+                    // imagen base disponible (favicon.png > favicon_respaldo.png >
+                    // PNG generado). Solo si ninguna funciona se conserva el logo.
+                    $defecto = logo_sistema_imagen_defecto($dirLogos);
+                    if ($defecto === null || !logo_sistema_escribir($rutaDestino, $defecto['datos'])) {
+                        throw new RuntimeException('No se pudo aplicar una imagen por defecto al ' . $info['nombre'] . '; se conservó el logo actual.');
+                    }
+
+                    $guardados[] = [
+                        'archivo' => $info['archivo'],
+                        'origen'  => $defecto['origen'] === 'generado' ? 'generado' : 'defecto',
+                    ];
+                    continue;
+                }
+
+                // 1) Imagen recortada: llega en base64 desde el modal de recorte.
+                $b64 = trim((string)($_POST[$info['campo']] ?? ''));
+                if ($b64 !== '') {
+                    if (strpos($b64, 'base64,') !== false) {
+                        $b64 = explode('base64,', $b64, 2)[1];
+                    }
+                    $b64 = str_replace(' ', '+', $b64);
+                    $datos = base64_decode($b64, true);
+                    $origen = 'recorte';
+                }
+                // 2) Archivo subido sin recortar.
+                elseif (isset($_FILES[$campoArchivo]) && in_array($_FILES[$campoArchivo]['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+                    throw new RuntimeException('El ' . $info['nombre'] . ' supera el tamaño máximo permitido por el servidor (2 MB).');
+                }
+                elseif (isset($_FILES[$campoArchivo]) && $_FILES[$campoArchivo]['error'] === UPLOAD_ERR_OK) {
+                    if ((int)$_FILES[$campoArchivo]['size'] > 2 * 1024 * 1024) {
+                        throw new RuntimeException('El ' . $info['nombre'] . ' no puede exceder los 2 MB.');
+                    }
+                    $datos = file_get_contents($_FILES[$campoArchivo]['tmp_name']);
+                    $origen = 'archivo';
+                }
+
+                if ($datos === null || $datos === '' || $datos === false) {
+                    continue; // Este logo no se cambió.
+                }
+
+                $medidas = @getimagesizefromstring($datos);
+                if (!$medidas) {
+                    throw new RuntimeException('El ' . $info['nombre'] . ' no es una imagen válida.');
+                }
+
+                $tiposPermitidos = [IMAGETYPE_PNG, IMAGETYPE_JPEG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+                if (!in_array((int)$medidas[2], $tiposPermitidos, true)) {
+                    throw new RuntimeException('El ' . $info['nombre'] . ' debe ser PNG, JPG, GIF o WEBP.');
+                }
+                if ((int)$medidas[0] < 16 || (int)$medidas[1] < 16) {
+                    throw new RuntimeException('El ' . $info['nombre'] . ' es demasiado pequeño (mínimo 16×16 px).');
+                }
+                if ((int)$medidas[0] * (int)$medidas[1] > 40000000) {
+                    throw new RuntimeException('El ' . $info['nombre'] . ' tiene demasiada resolución (máximo 40 megapíxeles).');
+                }
+
+                // Se normaliza a PNG conservando la transparencia y limitando el
+                // lado mayor a 1600 px, sin ampliar imágenes pequeñas.
+                $imagen = @imagecreatefromstring($datos);
+                if (!$imagen) {
+                    throw new RuntimeException('No se pudo procesar el ' . $info['nombre'] . '.');
+                }
+
+                $ancho = imagesx($imagen);
+                $alto  = imagesy($imagen);
+                $limite = 1600;
+                if (max($ancho, $alto) > $limite) {
+                    $factor      = $limite / max($ancho, $alto);
+                    $nuevoAncho  = max(1, (int)round($ancho * $factor));
+                    $nuevoAlto   = max(1, (int)round($alto * $factor));
+                    $redimension = imagecreatetruecolor($nuevoAncho, $nuevoAlto);
+                    imagealphablending($redimension, false);
+                    imagesavealpha($redimension, true);
+                    $transparente = imagecolorallocatealpha($redimension, 0, 0, 0, 127);
+                    imagefilledrectangle($redimension, 0, 0, $nuevoAncho, $nuevoAlto, $transparente);
+                    imagecopyresampled($redimension, $imagen, 0, 0, 0, 0, $nuevoAncho, $nuevoAlto, $ancho, $alto);
+                    imagedestroy($imagen);
+                    $imagen = $redimension;
+                } else {
+                    imagealphablending($imagen, false);
+                    imagesavealpha($imagen, true);
+                }
+
+                ob_start();
+                $png = imagepng($imagen, null, 6);
+                $contenidoPng = ob_get_clean();
+                imagedestroy($imagen);
+
+                if (!$png || $contenidoPng === '' || $contenidoPng === false) {
+                    throw new RuntimeException('No se pudo generar el ' . $info['nombre'] . '.');
+                }
+
+                // Escritura atómica: temporal en la misma carpeta y luego se
+                // reemplaza el archivo definitivo.
+                $temporal = $rutaDestino . '.tmp';
+                if (@file_put_contents($temporal, $contenidoPng) === false) {
+                    throw new RuntimeException('No se pudo escribir el ' . $info['nombre'] . ' en la carpeta de imágenes.');
+                }
+                if (!@rename($temporal, $rutaDestino)) {
+                    // Algunos equipos con Windows bloquean el reemplazo directo.
+                    $copiado = @copy($temporal, $rutaDestino);
+                    @unlink($temporal);
+                    if (!$copiado) {
+                        throw new RuntimeException('No se pudo guardar el ' . $info['nombre'] . ' (archivo bloqueado).');
+                    }
+                }
+
+                $guardados[] = ['archivo' => $info['archivo'], 'origen' => $origen];
+            }
+
+            if (empty($guardados)) {
+                if (!$esGuardadoGlobal) {
+                    throw new RuntimeException('No se seleccionó ninguna imagen nueva.');
+                }
+            } else {
+                logAction(
+                    'guardar_logos',
+                    'configuracion',
+                    'Logos del sistema actualizados',
+                    ['archivos' => $guardados],
+                    null,
+                    'success',
+                    null,
+                    $_SESSION['auth_provider'] ?? 'local'
+                );
+
+                $detalle = [];
+                foreach ($guardados as $cambio) {
+                    $sufijo = '';
+                    if ($cambio['origen'] === 'defecto') {
+                        $sufijo = ' (reemplazado por la imagen por defecto)';
+                    } elseif ($cambio['origen'] === 'generado') {
+                        $sufijo = ' (reemplazado por un logo generado por el sistema)';
+                    } elseif ($cambio['origen'] === 'eliminado') {
+                        $sufijo = ' (eliminado)';
+                    }
+                    $detalle[] = $cambio['archivo'] . $sufijo;
+                }
+                $mensaje = 'Logos actualizados: ' . implode(', ', $detalle);
+                $tipo_mensaje = 'success';
+                $logos_detalle = $detalle;
+            }
+        } catch (RuntimeException $e) {
+            $mensaje = 'Error al guardar los logos: ' . $e->getMessage();
+            $tipo_mensaje = 'error';
+            $logos_error = $e->getMessage();
+        }
+    }
+
     if (isset($_POST['guardar_datos_personal'])) {
         $params = [
             'jefe_proyecto', 'especialista_gestion', 'especialista_nominas',
@@ -608,17 +821,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     // Guardado general (botón flotante): se ejecuta junto a los triggers individuales
-    if (isset($_POST['guardar_todo']) && $tipo_mensaje === 'success') {
-        logAction('guardar_todo_configuracion', 'configuracion', 'Guardado general de configuración', ['secciones' => 'general, extraordinario (Ley y Convenio), cess, entidad, personal, bancaria, rangos, correo, google, sistema'], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
-        $mensaje = "Toda la configuración se ha guardado correctamente";
-        $tipo_mensaje = "success";
+    if (isset($_POST['guardar_todo'])) {
+        if ($logos_error !== null) {
+            $mensaje = 'Se guardó el resto de la configuración, pero los logos no se pudieron actualizar: ' . $logos_error;
+            $tipo_mensaje = 'error';
+        } elseif ($tipo_mensaje === 'success') {
+            logAction('guardar_todo_configuracion', 'configuracion', 'Guardado general de configuración', ['secciones' => 'general, extraordinario (Ley y Convenio), cess, entidad, logos, personal, bancaria, rangos, correo, google, sistema'], null, 'success', null, $_SESSION['auth_provider'] ?? 'local');
+            $mensaje = "Toda la configuración se ha guardado correctamente";
+            if (!empty($logos_detalle)) {
+                $mensaje .= '. Logos actualizados: ' . implode(', ', $logos_detalle);
+            }
+            $tipo_mensaje = "success";
+        }
     }
 }
 
 // PRG (Post/Redirect/Get): tras un guardado exitoso, recargar la página para
 // que los nuevos valores se apliquen (constantes, formularios, etc.)
 if ($tipo_mensaje === 'success' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $botones_refresh = ['guardar_config_general', 'guardar_trabajo_extraordinario', 'guardar_cess', 'guardar_datos_entidad', 'guardar_datos_personal', 'guardar_datos_bancarios', 'guardar_rangos', 'guardar_config_mail', 'guardar_config_google', 'guardar_config_sistema', 'guardar_todo'];
+    $botones_refresh = ['guardar_config_general', 'guardar_trabajo_extraordinario', 'guardar_cess', 'guardar_datos_entidad', 'guardar_logos', 'guardar_datos_personal', 'guardar_datos_bancarios', 'guardar_rangos', 'guardar_config_mail', 'guardar_config_google', 'guardar_config_sistema', 'guardar_todo'];
     foreach ($botones_refresh as $b) {
         if (isset($_POST[$b])) {
             $url = strtok($_SERVER['REQUEST_URI'], '?');
@@ -3085,6 +3306,106 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
             </div>
         </div>
 
+        <!-- Logos del Sistema -->
+        <?php
+        $logoNormalInfo = datos_logo_sistema(__DIR__ . '/../../images/LogoTN.png');
+        $logoCortoInfo  = datos_logo_sistema(__DIR__ . '/../../images/LogoCorto.png');
+        ?>
+        <div class="col-12 fade-in-up" style="animation-delay: 0.125s;">
+            <div class="glass-card">
+                <div class="p-3 border-bottom border-white-10">
+                    <h6 class="mb-0 fw-semibold card-collapse-title collapsed" data-bs-toggle="collapse" data-bs-target="#collapseLogos" aria-expanded="false" aria-controls="collapseLogos">
+                        <i class="fas fa-chevron-down collapse-chevron"></i><i class="fas fa-image me-2" style="color: #a78bfa;"></i> Logos del Sistema
+                    </h6>
+                </div>
+                <div id="collapseLogos" class="collapse">
+                <div class="p-4">
+                    <form method="POST" id="logosForm" enctype="multipart/form-data">
+                        <input type="hidden" name="logo_normal_recortado" id="logo_normal_recortado">
+                        <input type="hidden" name="logo_corto_recortado" id="logo_corto_recortado">
+                        <input type="hidden" name="eliminar_logo_normal" id="eliminar_logo_normal" value="">
+                        <input type="hidden" name="eliminar_logo_corto" id="eliminar_logo_corto" value="">
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label" for="logo_normal">Logo normal <span class="text-secondary fw-normal">(LogoTN.png)</span></label>
+                                <input type="file" class="form-control" name="logo_normal" id="logo_normal" accept="image/*" onchange="logoCargarImagen(this, 'logo_normal')">
+                                <small class="text-secondary">Se usa en el inicio de sesión, el menú lateral y la cabecera. PNG, JPG, GIF o WEBP. Máx. 2 MB.</small>
+                                <div class="mt-3 text-center" id="logo_normal_preview_container">
+                                    <?php if ($logoNormalInfo): ?>
+                                    <div class="position-relative d-inline-block">
+                                        <img src="../../images/LogoTN.png?v=<?php echo $logoNormalInfo['version']; ?>"
+                                             id="logo_normal_preview"
+                                             alt="Logo normal"
+                                             data-src-actual="../../images/LogoTN.png?v=<?php echo $logoNormalInfo['version']; ?>"
+                                             style="max-width:100%; max-height:9rem; object-fit:contain; background:rgba(255,255,255,0.06); padding:0.5rem; border-radius:0.5rem;">
+                                        <button type="button"
+                                                class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
+                                                style="border-radius:50%; width:30px; height:30px;"
+                                                onclick="logoEliminar(event, 'logo_normal')"
+                                                title="Eliminar logo"
+                                                data-tooltip="Eliminar logo"
+                                                data-tooltip-theme="danger">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-secondary d-block mt-1" id="logo_normal_info">
+                                        <?php echo $logoNormalInfo['ancho'] . ' × ' . $logoNormalInfo['alto']; ?> px · <?php echo $logoNormalInfo['peso']; ?>
+                                    </small>
+                                    <?php else: ?>
+                                    <img src="" id="logo_normal_preview" alt="Logo normal" class="d-none" style="max-width:100%; max-height:9rem; object-fit:contain; background:rgba(255,255,255,0.06); padding:0.5rem; border-radius:0.5rem;">
+                                    <small class="text-secondary d-block mt-1" id="logo_normal_info">No se encontró el archivo LogoTN.png</small>
+                                    <?php endif; ?>
+                                    <button type="button" class="btn-win btn-win-sm mt-2 d-none" id="logo_normal_descartar" onclick="logoDescartar('logo_normal')" title="Descartar la imagen seleccionada" data-tooltip="Descartar la imagen seleccionada" data-tooltip-theme="danger">
+                                        <i class="fas fa-undo me-1"></i> Descartar cambio
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label" for="logo_corto">Logo corto <span class="text-secondary fw-normal">(LogoCorto.png)</span></label>
+                                <input type="file" class="form-control" name="logo_corto" id="logo_corto" accept="image/*" onchange="logoCargarImagen(this, 'logo_corto')">
+                                <small class="text-secondary">Se usa en los reportes y modelos (Anexo 14, SNC, exportaciones). PNG, JPG, GIF o WEBP. Máx. 2 MB.</small>
+                                <div class="mt-3 text-center" id="logo_corto_preview_container">
+                                    <?php if ($logoCortoInfo): ?>
+                                    <div class="position-relative d-inline-block">
+                                        <img src="../../images/LogoCorto.png?v=<?php echo $logoCortoInfo['version']; ?>"
+                                             id="logo_corto_preview"
+                                             alt="Logo corto"
+                                             data-src-actual="../../images/LogoCorto.png?v=<?php echo $logoCortoInfo['version']; ?>"
+                                             style="max-width:100%; max-height:9rem; object-fit:contain; background:rgba(255,255,255,0.06); padding:0.5rem; border-radius:0.5rem;">
+                                        <button type="button"
+                                                class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
+                                                style="border-radius:50%; width:30px; height:30px;"
+                                                onclick="logoEliminar(event, 'logo_corto')"
+                                                title="Eliminar logo"
+                                                data-tooltip="Eliminar logo"
+                                                data-tooltip-theme="danger">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-secondary d-block mt-1" id="logo_corto_info">
+                                        <?php echo $logoCortoInfo['ancho'] . ' × ' . $logoCortoInfo['alto']; ?> px · <?php echo $logoCortoInfo['peso']; ?>
+                                    </small>
+                                    <?php else: ?>
+                                    <img src="" id="logo_corto_preview" alt="Logo corto" class="d-none" style="max-width:100%; max-height:9rem; object-fit:contain; background:rgba(255,255,255,0.06); padding:0.5rem; border-radius:0.5rem;">
+                                    <small class="text-secondary d-block mt-1" id="logo_corto_info">No se encontró el archivo LogoCorto.png</small>
+                                    <?php endif; ?>
+                                    <button type="button" class="btn-win btn-win-sm mt-2 d-none" id="logo_corto_descartar" onclick="logoDescartar('logo_corto')" title="Descartar la imagen seleccionada" data-tooltip="Descartar la imagen seleccionada" data-tooltip-theme="danger">
+                                        <i class="fas fa-undo me-1"></i> Descartar cambio
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-center mt-3">
+                            <button type="submit" name="guardar_logos" class="btn-win btn-win-primary" title="Guardar los logos del sistema" data-tooltip="Guardar los logos del sistema" data-tooltip-theme="success">
+                                <i class="fas fa-save me-1"></i> Guardar Logos
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Personal Autorizado -->
         <div class="col-12 fade-in-up" style="animation-delay: 0.13s;">
             <div class="glass-card">
@@ -3576,6 +3897,7 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Trabajo Extraordinario, Nocturnidad y Valores Pactados (Convenio Colectivo)</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Contribución Especial a la Seguridad Social (CESS)</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Datos de la Entidad</li>
+                    <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Logos del Sistema</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Personal Autorizado</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Información Bancaria</li>
                     <li><i class="fas fa-check-circle me-2" style="color: var(--color-success);"></i> Rangos de Impuesto (ISIP)</li>
@@ -3591,6 +3913,50 @@ $cfg_anio_cerrado = (bool)$pdo->query("SELECT COUNT(*) FROM cierres_periodo_nomi
                 <button type="button" class="btn-win btn-win-success" id="btnConfirmarGuardarTodo" title="Sí, guardar cambios" data-tooltip="Sí, guardar cambios" data-tooltip-theme="success">
                     <i class="fas fa-check me-1"></i> Sí, guardar cambios
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para recortar los logos -->
+<div class="modal fade" id="logoCropModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content modal-content-win">
+            <div class="modal-header modal-header-win">
+                <h5 class="modal-title"><i class="fas fa-crop-alt me-2" style="color: #60a5fa;"></i> Recortar imagen</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <div class="img-container" style="max-height: 500px; overflow: hidden;">
+                            <img id="logoImageToCrop" src="" alt="Imagen a recortar" style="max-width: 100%; display: block;">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center mb-3">
+                            <h6 class="mb-2">Vista previa</h6>
+                            <div class="preview-container" style="width: 16.25rem; height: 10.625rem; border-radius: 0.5rem;">
+                                <canvas id="logoPreviewCanvas" width="260" height="170" style="width: 100%; height: 100%; display: block;"></canvas>
+                            </div>
+                            <small class="text-secondary d-block mt-2"><i class="fas fa-info-circle me-1"></i> Se guarda en PNG conservando la transparencia.</small>
+                        </div>
+                        <div class="p-3" style="background: rgba(255,255,255,0.04); border-radius: 0.5rem;">
+                            <h6 class="mb-2">Controles</h6>
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn-win btn-win-sm" onclick="logoRotar(-90)"><i class="fas fa-undo-alt me-2"></i>Rotar izquierda 90°</button>
+                                <button type="button" class="btn-win btn-win-sm" onclick="logoRotar(90)"><i class="fas fa-redo-alt me-2"></i>Rotar derecha 90°</button>
+                                <button type="button" class="btn-win btn-win-sm" onclick="logoResetear()"><i class="fas fa-sync-alt me-2"></i>Resetear recorte</button>
+                                <button type="button" class="btn-win btn-win-sm" onclick="logoZoom(0.1)"><i class="fas fa-search-plus me-2"></i>Acercar</button>
+                                <button type="button" class="btn-win btn-win-sm" onclick="logoZoom(-0.1)"><i class="fas fa-search-minus me-2"></i>Alejar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-win">
+                <button type="button" class="btn-win" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i> Cancelar</button>
+                <button type="button" class="btn-win btn-win-primary" onclick="logoAplicarRecorte()"><i class="fas fa-check me-1"></i> Aplicar recorte</button>
             </div>
         </div>
     </div>
@@ -4876,6 +5242,486 @@ document.getElementById('btnProbarMail')?.addEventListener('click', function() {
 
 </script>
 
+<script>
+/* ==================== LOGOS DEL SISTEMA: CARGA Y RECORTE ==================== */
+let logoCropper = null;
+let logoPreviewCtx = null;
+let logoActual = null; // 'logo_normal' | 'logo_corto'
+let logoDataUrlOriginal = null; // imagen elegida sin recortar
+const LOGO_ESTADO_INICIAL = {};
+const LOGO_HTML_INICIAL = {};
+
+['logo_normal', 'logo_corto'].forEach(function (tipo) {
+    const img = document.getElementById(tipo + '_preview');
+    const info = document.getElementById(tipo + '_info');
+    const contenedor = document.getElementById(tipo + '_preview_container');
+    LOGO_ESTADO_INICIAL[tipo] = {
+        src: img ? img.getAttribute('src') : '',
+        info: info ? info.textContent.trim() : ''
+    };
+    LOGO_HTML_INICIAL[tipo] = contenedor ? contenedor.innerHTML : '';
+});
+
+function logoPesoDataUrl(dataUrl) {
+    const b64 = String(dataUrl).split(',')[1] || '';
+    const kb = (b64.length * 3 / 4) / 1024;
+    return kb >= 1024
+        ? (kb / 1024).toFixed(2).replace('.', ',') + ' MB'
+        : kb.toFixed(1).replace('.', ',') + ' KB';
+}
+
+function logoCargarImagen(input, tipo) {
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+
+    if (file.size > 2 * 1024 * 1024) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Imagen demasiado grande',
+            text: 'El logo no puede exceder los 2 MB.',
+            background: 'var(--panel)', color: 'var(--txt)'
+        });
+        input.value = '';
+        return;
+    }
+    if (!file.type.match('image.*')) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Archivo no válido',
+            text: 'Solo se permiten archivos de imagen (PNG, JPG, GIF o WEBP).',
+            background: 'var(--panel)', color: 'var(--txt)'
+        });
+        input.value = '';
+        return;
+    }
+
+    // Si este logo estaba marcado para eliminación, se descarta esa marca al
+    // elegir una imagen nueva (no se limpia el archivo recién seleccionado).
+    const banderaEliminar = document.getElementById('eliminar_' + tipo);
+    if (banderaEliminar && banderaEliminar.value === '1') {
+        logoRestaurarVista(tipo, false, false);
+    }
+
+    logoActual = tipo;
+
+    Swal.fire({
+        title: 'Cargando imagen...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        didOpen: function () { Swal.showLoading(); },
+        background: 'var(--panel)', color: 'var(--txt)'
+    });
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        logoDataUrlOriginal = e.target.result;
+        const imagen = document.getElementById('logoImageToCrop');
+        imagen.src = e.target.result;
+
+        imagen.onload = function () {
+            Swal.close();
+
+            const canvas = document.getElementById('logoPreviewCanvas');
+            logoPreviewCtx = canvas.getContext('2d');
+
+            if (logoCropper) {
+                logoCropper.destroy();
+            }
+
+            logoCropper = new Cropper(imagen, {
+                aspectRatio: NaN,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 1,
+                cropBoxResizable: true,
+                cropBoxMovable: true,
+                guides: true,
+                center: true,
+                highlight: true,
+                background: true,
+                responsive: true,
+                restore: true,
+                zoomable: true,
+                rotatable: true,
+                scalable: true,
+                wheelZoomRatio: 0.1,
+                minContainerWidth: 500,
+                minContainerHeight: 380,
+                crop: function () { logoActualizarPreview(); },
+                ready: function () { setTimeout(logoActualizarPreview, 100); }
+            });
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('logoCropModal')).show();
+        };
+
+        imagen.onerror = function () {
+            Swal.close();
+            Swal.fire({
+                icon: 'error',
+                title: 'Imagen no válida',
+                text: 'No se pudo leer el archivo seleccionado.',
+                background: 'var(--panel)', color: 'var(--txt)'
+            });
+            input.value = '';
+        };
+    };
+    reader.readAsDataURL(file);
+}
+
+function logoActualizarPreview() {
+    const canvas = document.getElementById('logoPreviewCanvas');
+    if (!logoCropper || !canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const ancho = canvas.width;
+    const alto = canvas.height;
+
+    ctx.fillStyle = '#2d2d2d';
+    ctx.fillRect(0, 0, ancho, alto);
+
+    try {
+        const recorte = logoCropper.getCroppedCanvas({
+            maxWidth: 600,
+            maxHeight: 600,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high'
+        });
+        if (!recorte || !recorte.width || !recorte.height) return;
+
+        const escala = Math.min(ancho / recorte.width, alto / recorte.height);
+        const w = recorte.width * escala;
+        const h = recorte.height * escala;
+        ctx.drawImage(recorte, (ancho - w) / 2, (alto - h) / 2, w, h);
+    } catch (e) {
+        console.error('Error actualizando la vista previa:', e);
+    }
+}
+
+function logoRotar(grados) {
+    if (!logoCropper) return;
+    logoCropper.rotate(grados);
+    setTimeout(logoActualizarPreview, 50);
+}
+
+function logoZoom(factor) {
+    if (!logoCropper) return;
+    logoCropper.zoom(factor);
+    setTimeout(logoActualizarPreview, 50);
+}
+
+function logoResetear() {
+    if (!logoCropper) return;
+    logoCropper.reset();
+    setTimeout(logoActualizarPreview, 50);
+}
+
+function logoLimpiarCropper() {
+    if (logoCropper) {
+        logoCropper.destroy();
+        logoCropper = null;
+    }
+    logoActual = null;
+}
+
+function logoAplicarRecorte() {
+    if (!logoCropper || !logoActual) return;
+    const tipo = logoActual;
+
+    // Si estaba marcado para eliminación, se restaura la vista antes de mostrar el recorte.
+    const banderaEliminar = document.getElementById('eliminar_' + tipo);
+    if (banderaEliminar && banderaEliminar.value === '1') {
+        logoRestaurarVista(tipo, false, false);
+    }
+
+    try {
+        const recorte = logoCropper.getCroppedCanvas({
+            maxWidth: 1400,
+            maxHeight: 1400,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high'
+        });
+
+        if (!recorte) {
+            throw new Error('No se pudo recortar la imagen');
+        }
+
+        const dataUrl = recorte.toDataURL('image/png');
+
+        document.getElementById(tipo + '_recortado').value = dataUrl;
+
+        const img = document.getElementById(tipo + '_preview');
+        if (img) {
+            img.src = dataUrl;
+            img.classList.remove('d-none');
+        }
+
+        const info = document.getElementById(tipo + '_info');
+        if (info) {
+            info.textContent = recorte.width + ' × ' + recorte.height + ' px · ' + logoPesoDataUrl(dataUrl) + ' (nuevo)';
+        }
+
+        const descartar = document.getElementById(tipo + '_descartar');
+        if (descartar) descartar.classList.remove('d-none');
+
+        const input = document.getElementById(tipo);
+        if (input) input.value = '';
+
+        logoDataUrlOriginal = null;
+
+        const contenedor = document.getElementById('logoCropModal');
+        if (contenedor) {
+            const modal = bootstrap.Modal.getInstance(contenedor);
+            if (modal) modal.hide();
+        }
+
+        logoLimpiarCropper();
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Imagen lista',
+            text: 'Recuerde pulsar «Guardar Logos» para aplicarla en el sistema.',
+            timer: 2600,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            background: 'var(--panel)', color: 'var(--txt)'
+        });
+    } catch (e) {
+        console.error('Error al recortar el logo:', e);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudo procesar la imagen. Intente nuevamente.',
+            background: 'var(--panel)', color: 'var(--txt)'
+        });
+    }
+}
+
+function logoDescartar(tipo) {
+    const oculto = document.getElementById(tipo + '_recortado');
+    if (oculto) oculto.value = '';
+
+    const img = document.getElementById(tipo + '_preview');
+    const info = document.getElementById(tipo + '_info');
+    const estado = LOGO_ESTADO_INICIAL[tipo] || { src: '', info: '' };
+
+    if (img) {
+        img.src = estado.src;
+        if (!estado.src) img.classList.add('d-none');
+    }
+    if (info) info.textContent = estado.info;
+
+    const descartar = document.getElementById(tipo + '_descartar');
+    if (descartar) descartar.classList.add('d-none');
+
+    const input = document.getElementById(tipo);
+    if (input) input.value = '';
+}
+
+/* ==================== ELIMINACIÓN DE LOGOS ==================== */
+
+function logoEliminar(event, tipo) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const nombre = tipo === 'logo_normal' ? 'logo normal' : 'logo corto';
+
+    Swal.fire({
+        title: '¿Eliminar logo?',
+        html: '<div style="text-align:left;">Esta acción eliminará el <strong>' + nombre + '</strong> actual del sistema. ¿Está seguro?</div>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: '<i class="fas fa-trash me-1"></i> Sí, eliminar',
+        cancelButtonText: '<i class="fas fa-times me-1"></i> Cancelar',
+        reverseButtons: true,
+        background: 'var(--panel)',
+        color: 'var(--txt)'
+    }).then(function (result) {
+        if (result.isConfirmed) {
+            logoMarcarEliminacion(tipo);
+        }
+    });
+
+    return false;
+}
+
+function logoMarcarEliminacion(tipo) {
+    const nombre = tipo === 'logo_normal' ? 'logo normal' : 'logo corto';
+    const etiqueta = tipo === 'logo_normal' ? 'Logo normal' : 'Logo corto';
+
+    const bandera = document.getElementById('eliminar_' + tipo);
+    if (bandera) bandera.value = '1';
+
+    const oculto = document.getElementById(tipo + '_recortado');
+    if (oculto) oculto.value = '';
+
+    const input = document.getElementById(tipo);
+    if (input) input.value = '';
+
+    const contenedor = document.getElementById(tipo + '_preview_container');
+    if (contenedor) {
+        contenedor.innerHTML =
+            '<div class="alert alert-warning border-warning p-3 shadow-sm text-start">' +
+                '<div class="d-flex align-items-center">' +
+                    '<div class="flex-shrink-0"><i class="fas fa-trash-alt fa-2x text-warning"></i></div>' +
+                    '<div class="flex-grow-1 ms-3">' +
+                        '<h6 class="mb-1 fw-bold text-warning"><i class="fas fa-clock me-1"></i> Eliminación pendiente</h6>' +
+                        '<p class="mb-2">El ' + nombre + ' será eliminado al guardar la configuración.</p>' +
+                        '<small class="text-secondary d-block mb-2"><i class="fas fa-image me-1"></i> Se usará la imagen por defecto del sistema.</small>' +
+                        '<div class="d-flex gap-2 flex-wrap">' +
+                            '<button type="button" class="btn btn-sm btn-outline-warning" onclick="logoCancelarEliminacion(\'' + tipo + '\')">' +
+                                '<i class="fas fa-undo me-1"></i> Cancelar eliminación' +
+                            '</button>' +
+                            '<button type="button" class="btn btn-sm btn-light" onclick="logoMostrarAyudaEliminacion(\'' + tipo + '\')">' +
+                                '<i class="fas fa-question-circle me-1"></i> Ayuda' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="progress mt-3" style="height:4px;">' +
+                    '<div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" style="width:100%"></div>' +
+                '</div>' +
+                '<small class="text-secondary d-block mt-2"><i class="fas fa-info-circle me-1"></i> Recuerde guardar los cambios</small>' +
+            '</div>';
+    }
+
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: etiqueta + ' marcado para eliminación',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        background: 'var(--panel)',
+        color: 'var(--txt)'
+    });
+}
+
+function logoCancelarEliminacion(tipo) {
+    // Sin confirmación adicional: al cancelar se restaura la vista previa.
+    logoRestaurarVista(tipo, true, true);
+}
+
+/* Devuelve la vista previa a su estado original y descarta la eliminación pendiente. */
+function logoRestaurarVista(tipo, avisar, limpiarArchivo) {
+    const bandera = document.getElementById('eliminar_' + tipo);
+    if (bandera) bandera.value = '';
+
+    const contenedor = document.getElementById(tipo + '_preview_container');
+    if (contenedor) {
+        contenedor.innerHTML = LOGO_HTML_INICIAL[tipo] || '';
+
+        const img = document.getElementById(tipo + '_preview');
+        const info = document.getElementById(tipo + '_info');
+        const estado = LOGO_ESTADO_INICIAL[tipo] || { src: '', info: '' };
+
+        if (img) {
+            img.src = estado.src;
+            if (!estado.src) img.classList.add('d-none');
+        }
+        if (info) info.textContent = estado.info;
+    }
+
+    const oculto = document.getElementById(tipo + '_recortado');
+    if (oculto) oculto.value = '';
+
+    if (limpiarArchivo !== false) {
+        const input = document.getElementById(tipo);
+        if (input) input.value = '';
+    }
+
+    if (avisar) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'info',
+            title: 'Eliminación cancelada',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true,
+            background: 'var(--panel)',
+            color: 'var(--txt)'
+        });
+    }
+}
+
+function logoMostrarAyudaEliminacion(tipo) {
+    const esNormal = tipo === 'logo_normal';
+
+    Swal.fire({
+        icon: 'info',
+        title: '¿Cómo funciona la eliminación del logo?',
+        html:
+            '<div style="text-align: left; font-size: 14px;">' +
+                '<div class="d-flex align-items-center mb-3">' +
+                    '<i class="fas fa-image fa-2x text-primary me-3"></i>' +
+                    '<div>' +
+                        '<p class="mb-0"><strong>Logo ' + (esNormal ? 'normal (LogoTN.png)' : 'corto (LogoCorto.png)') + '</strong></p>' +
+                        '<small class="text-secondary">' + (esNormal
+                            ? 'Se usa en el inicio de sesión, el menú lateral y la cabecera.'
+                            : 'Se usa en los reportes y modelos (Anexo 14, SNC y exportaciones).') + '</small>' +
+                    '</div>' +
+                '</div>' +
+                '<p><strong>Proceso de eliminación en dos pasos:</strong></p>' +
+                '<div class="alert alert-light border mb-3">' +
+                    '<div class="d-flex align-items-center mb-2"><span class="badge bg-warning me-2">1</span><strong>Marcar para eliminación</strong></div>' +
+                    '<p class="mb-0">El logo se marca pero no se elimina inmediatamente.</p>' +
+                    '<small class="text-secondary">Esto permite cancelar la acción antes de guardar.</small>' +
+                '</div>' +
+                '<div class="alert alert-light border mb-3">' +
+                    '<div class="d-flex align-items-center mb-2"><span class="badge bg-primary me-2">2</span><strong>Guardar configuración</strong></div>' +
+                    '<p class="mb-0">La eliminación se completa al guardar los cambios y el logo queda con la imagen por defecto del sistema (<code>favicon.png</code> o su copia de respaldo).</p>' +
+                    '<small class="text-secondary">Puede usar «Guardar Logos» o «Guardar toda la Configuración». Después puede subir un logo propio cuando quiera.</small>' +
+                '</div>' +
+                '<div class="alert alert-info mb-0">' +
+                    '<i class="fas fa-lightbulb me-2"></i><strong>Puede cancelar</strong> la eliminación en cualquier momento antes de guardar, con «Cancelar eliminación».' +
+                '</div>' +
+            '</div>',
+        confirmButtonText: '<i class="fas fa-check me-1"></i> Entendido',
+        width: 500,
+        background: 'var(--panel)',
+        color: 'var(--txt)'
+    });
+}
+
+/* Si se cancela el recorte, la imagen elegida se conserva y se guardará tal cual.
+   Si se aplicó el recorte, el campo oculto ya tiene la imagen recortada. */
+(function () {
+    const modal = document.getElementById('logoCropModal');
+    if (!modal) return;
+    modal.addEventListener('hidden.bs.modal', function () {
+        const tipo = logoActual;
+
+        if (tipo) {
+            const oculto = document.getElementById(tipo + '_recortado');
+            const sinRecorte = logoDataUrlOriginal && oculto && oculto.value === '';
+
+            if (sinRecorte) {
+                const img = document.getElementById(tipo + '_preview');
+                if (img) {
+                    img.src = logoDataUrlOriginal;
+                    img.classList.remove('d-none');
+                }
+                const info = document.getElementById(tipo + '_info');
+                if (info) {
+                    info.textContent = 'Imagen seleccionada sin recortar · ' + logoPesoDataUrl(logoDataUrlOriginal);
+                }
+                const descartar = document.getElementById(tipo + '_descartar');
+                if (descartar) descartar.classList.remove('d-none');
+            }
+        }
+
+        logoDataUrlOriginal = null;
+        logoLimpiarCropper();
+    });
+})();
+</script>
+
 <!-- Botones flotantes de navegación rápida -->
 <style>
 .scroll-quick-btns { position: fixed; right:1.25rem; bottom:1.25rem; display: flex; flex-direction: column; gap:0.625rem; z-index: 950; }
@@ -4973,9 +5819,11 @@ function recargarConfiguracion() {
     if (!confirmar) return;
 
     confirmar.addEventListener('click', function () {
-        var formIds = ['configGeneralForm', 'extraordinarioForm', 'cessForm', 'rangosForm', 'datosEntidadForm', 'datosPersonalForm', 'bancariaForm', 'mailForm', 'googleForm', 'sistemaForm'];
+        var formIds = ['configGeneralForm', 'extraordinarioForm', 'cessForm', 'rangosForm', 'datosEntidadForm', 'logosForm', 'datosPersonalForm', 'bancariaForm', 'mailForm', 'googleForm', 'sistemaForm'];
         var hiddenForm = document.createElement('form');
         hiddenForm.method = 'POST';
+        // Necesario para que viajen los archivos de los logos.
+        hiddenForm.enctype = 'multipart/form-data';
         hiddenForm.style.display = 'none';
         document.body.appendChild(hiddenForm);
 
@@ -4987,6 +5835,25 @@ function recargarConfiguracion() {
                 var el = elements[i];
                 if (!el.name) continue;
                 if (el.type === 'submit' || el.type === 'button' || el.tagName === 'FIELDSET') continue;
+
+                // Los campos de archivo no se pueden copiar como texto: se agregan
+                // como inputs de archivo con los mismos nombres.
+                if (el.type === 'file') {
+                    if (el.files && el.files.length) {
+                        var fileInput = document.createElement('input');
+                        fileInput.type = 'file';
+                        fileInput.name = el.name;
+                        fileInput.style.display = 'none';
+                        var dt = new DataTransfer();
+                        for (var k = 0; k < el.files.length; k++) {
+                            dt.items.add(el.files[k]);
+                        }
+                        fileInput.files = dt.files;
+                        hiddenForm.appendChild(fileInput);
+                    }
+                    continue;
+                }
+
                 var inp = document.createElement('input');
                 inp.type = 'hidden';
                 inp.name = el.name;
@@ -5074,7 +5941,13 @@ function recargarConfiguracion() {
     var btn = document.getElementById('btnToggleAllCards');
     var texto = document.getElementById('btnToggleAllCardsTexto');
     if (!btn || !texto) return;
-    var selectores = ['#collapseDB', '#collapseConfigGeneral', '#collapseExtraordinario', '#collapseCess', '#collapseTasas', '#collapseDatosEntidad', '#collapsePersonal', '#collapseBancaria', '#collapseMail', '#collapseRangos'];
+    // Los selectores se toman del DOM: así quedan incluidas todas las tarjetas
+    // colapsables (Cierres de Nóminas, Logos del Sistema, Google, Seguridad…)
+    // y las que se agreguen en el futuro, sin mantener una lista a mano.
+    var selectores = Array.prototype.map.call(
+        document.querySelectorAll('.card-collapse-title[data-bs-target]'),
+        function (t) { return t.getAttribute('data-bs-target'); }
+    ).filter(function (sel, i, arr) { return arr.indexOf(sel) === i; });
 
     function todosAbiertos() {
         return selectores.every(function (sel) {

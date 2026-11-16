@@ -148,8 +148,9 @@ if (php_sapi_name() !== 'cli') {
             session_destroy();
         }
         $dir_script_lic = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-        $niveles_lic    = max(0, substr_count($dir_script_lic, '/') - 1);
-        $destino_lic    = str_repeat('../', $niveles_lic) . 'licencia.php';
+        // BASE_URL apunta siempre a la raíz del módulo (servicios/nominas), así
+        // que la redirección funciona desde modules/, ajax/, includes/, etc.
+        $destino_lic    = BASE_URL . '/licencia.php';
         header('Location: ' . $destino_lic);
         exit;
     }
@@ -164,8 +165,10 @@ if (!empty($_SESSION['sesion_bloqueada']) && !defined('BLOQUEO_SESION_PERMITIDO'
     $permitidas = ['bloquear_sesion.php', 'logout.php', 'login.php', 'verif_pass_lookscreen.php', 'limpiar_bloqueo.php'];
     if (!in_array($pagina_actual, $permitidas)) {
         $dir_script  = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-        $niveles     = max(0, substr_count($dir_script, '/') - 1);
-        $destino     = str_repeat('../', $niveles) . 'includes/bloquear_sesion.php';
+        // Ruta absoluta a la raíz del módulo: antes se calculaban niveles con
+        // substr_count(), lo que apuntaba un directorio de más desde modules/
+        // (redirigía a servicios/includes/bloquear_sesion.php, que no existe).
+        $destino     = BASE_URL . '/includes/bloquear_sesion.php';
         header('Location: ' . $destino);
         exit;
     }
@@ -323,8 +326,8 @@ if (!empty($_SESSION['logged_in']) && !defined('BLOQUEO_SESION_PERMITIDO')) {
                 $_SESSION['bloqueo_motivo']          = 'inactividad';
 
                 $idle_dir  = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-                $idle_niv  = max(0, substr_count($idle_dir, '/') - 1);
-                $idle_dest = str_repeat('../', $idle_niv) . 'includes/bloquear_sesion.php';
+                // BASE_URL es la raíz del módulo, independiente de la subcarpeta actual.
+                $idle_dest = BASE_URL . '/includes/bloquear_sesion.php';
 
                 if ($idle_es_ajax) {
                     header('Content-Type: application/json; charset=utf-8');
@@ -366,8 +369,7 @@ if (!empty($_SESSION['logged_in']) && !defined('MANTENIMIENTO_PERMITIDO')) {
             $_SESSION['bloqueo_motivo'] = $mnt_motivo;
 
             $mnt_dir  = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-            $mnt_niv  = max(0, substr_count($mnt_dir, '/') - 1);
-            $mnt_dest = str_repeat('../', $mnt_niv) . 'mantenimiento.php?motivo=' . urlencode($mnt_motivo);
+            $mnt_dest = BASE_URL . '/mantenimiento.php?motivo=' . urlencode($mnt_motivo);
 
             if ($mnt_es_ajax) {
                 header('Content-Type: application/json; charset=utf-8');
