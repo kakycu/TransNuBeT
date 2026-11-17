@@ -389,6 +389,7 @@ $ecosistema = [
         'icono'   => 'fa-solid fa-money-check-dollar',
         'url'     => $base . '/nominas/',
         'etiqueta'=> 'Módulo de nóminas',
+        'imagen'  => $base . '/images/nominas.png',
     ],
     [
         'titulo'  => 'Facturación Electrónica',
@@ -396,6 +397,34 @@ $ecosistema = [
         'icono'   => 'fa-solid fa-file-invoice-dollar',
         'url'     => $base . '/facturacion/index.php',
         'etiqueta'=> 'Módulo de facturación',
+        'imagen'  => $base . '/images/facturacion.png',
+    ],
+    [
+        'titulo'  => 'Gestión de Costos',
+        'texto'   => 'Fichas de costo, gastos operativos, márgenes y proyecciones para controlar la rentabilidad.',
+        'icono'   => 'fa-solid fa-calculator',
+        'url'     => $base . '/costos/login.php',
+        'etiqueta'=> 'Módulo de costos',
+        'imagen'  => $base . '/images/costos.png',
+        'pendiente' => true,
+    ],
+    [
+        'titulo'  => 'Inventarios',
+        'texto'   => 'Control de stock, entradas y salidas, alertas de inventario mínimo y gestión de proveedores.',
+        'icono'   => 'fa-solid fa-boxes-stacked',
+        'url'     => $base . '/inventarios/login.php',
+        'etiqueta'=> 'Módulo de inventarios',
+        'imagen'  => $base . '/images/inventario.png',
+        'pendiente' => true,
+    ],
+    [
+        'titulo'  => 'Administración',
+        'texto'   => 'Usuarios, roles, parámetros globales, auditoría y configuración del sistema en un solo panel.',
+        'icono'   => 'fa-solid fa-user-shield',
+        'url'     => $base . '/administracion/index.php',
+        'etiqueta'=> 'Módulo de administración',
+        'imagen'  => $base . '/images/admin.png',
+        'pendiente' => true,
     ],
     [
         'titulo'  => 'Panel del Servidor',
@@ -1034,6 +1063,31 @@ $servicios = [
         box-shadow: var(--card-hover-shadow);
         outline: none;
     }
+    /* Miniatura del subsistema: siempre visible, alineada con el icono para no
+       tapar el título ni la descripción. */
+    .card-media {
+        position: absolute; top: 1.35rem; right: 1.35rem; z-index: 1;
+        width: 5.5rem; height: 3.6rem; border-radius: .8rem;
+        overflow: hidden;
+        border: 1px solid var(--border-strong);
+        box-shadow: 0 .6rem 1.4rem rgba(0, 0, 0, .35);
+        pointer-events: none;
+    }
+    .card-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+    /* Fondo del card destacado: muestra la imagen del subsistema que se señala. */
+    .card.is-featured { --featured-img: none; }
+    .card.is-featured::before {
+        content: "";
+        position: absolute; inset: 0; z-index: 0;
+        background-image: var(--featured-img);
+        background-size: cover; background-position: center;
+        opacity: 0;
+        transition: opacity .35s ease;
+        pointer-events: none;
+    }
+    .card.is-featured.is-preview::before { opacity: .3; }
+    .card.is-featured > * { position: relative; z-index: 1; }
     .card-icon {
         display: grid; place-items: center;
         width: 2.8rem; height: 2.8rem; border-radius: .8rem;
@@ -1190,6 +1244,20 @@ $servicios = [
     .footer-list a { display: inline-flex; align-items: center; gap: .5rem; }
     .footer-list i { width: 1rem; text-align: center; color: var(--subtle); font-size: .8rem; transition: color .15s; }
     .footer-list a:hover i { color: var(--cyan); }
+    /* Aviso para módulos del pie cuya página todavía no existe. */
+    .aviso-modulo {
+        position: fixed; left: 50%; bottom: 1.5rem; z-index: 10000;
+        display: flex; align-items: center; gap: .6rem;
+        max-width: calc(100vw - 2rem); padding: .75rem 1rem;
+        border-radius: .8rem; border: 1px solid var(--border);
+        background: rgba(15, 23, 42, .96); color: #e2e8f0;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, .45); font-size: .82rem;
+        opacity: 0; pointer-events: none;
+        transform: translateX(-50%) translateY(1rem);
+        transition: opacity .2s ease, transform .2s ease;
+    }
+    .aviso-modulo.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .aviso-modulo i { color: var(--cyan); }
 
     .footer-contact p { margin-bottom: 1rem; }
     .footer-contact a { display: inline-flex; align-items: center; gap: .5rem; }
@@ -1588,9 +1656,9 @@ $servicios = [
     .intro-bar {
         position: absolute;
         left: 50%;
-        bottom: max(4.5rem, 11vh);
-        width: min(40vmin, 280px);
-        height: 2px;
+        bottom: max(2.25rem, 5vh);
+        width: min(64vmin, 520px);
+        height: 3px;
         transform: translateX(-50%);
         background: rgba(255, 255, 255, .14);
         border-radius: 2px;
@@ -1619,6 +1687,11 @@ $servicios = [
         backdrop-filter: blur(8px);
         transition: background .2s ease, border-color .2s ease, color .2s ease;
     }
+    @media (max-width: 520px) {
+        /* En pantallas estrechas el botón sube para no pisar la barra. */
+        .intro-skip { top: max(1rem, 2vh); bottom: auto; right: 1rem; }
+        .intro-bar { bottom: max(1.25rem, 3vh); width: min(82vw, 360px); }
+    }
     .intro-skip:hover,
     .intro-skip:focus-visible {
         background: rgba(255, 255, 255, .12);
@@ -1634,7 +1707,7 @@ $servicios = [
     }
 </style>
 </head>
-<body>
+<body id="top">
 <!-- Intro animada: piezas del logo en images/anim. Se retira sola y se puede
      saltar; con «prefers-reduced-motion» no se muestra. El comportamiento
      está al pie del documento, junto al resto de scripts. -->
@@ -1669,8 +1742,10 @@ $servicios = [
             </span>
         </a>
         <nav class="nav-links" aria-label="Secciones">
+            <a href="#top"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
             <a href="#ecosistema"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Ecosistema</a>
             <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
+            <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
             <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
             <a href="<?= $base ?>/explorer.php"><i class="fa-solid fa-user-pen" aria-hidden="true"></i> Autor</a>
         </nav>
@@ -1693,8 +1768,10 @@ $servicios = [
          fila de píldoras desplazable dentro del propio header fijo. -->
     <div class="wrap">
         <nav class="mobile-nav" aria-label="Secciones">
+            <a href="#top"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
             <a href="#ecosistema"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Ecosistema</a>
             <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
+            <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
             <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
             <a href="<?= $base ?>/explorer.php"><i class="fa-solid fa-user-pen" aria-hidden="true"></i> Autor</a>
         </nav>
@@ -1898,19 +1975,24 @@ $servicios = [
 
         <div class="grid">
             <?php foreach ($ecosistema as $item): ?>
-                <a class="card reveal<?= !empty($item['destacada']) ? ' is-featured' : '' ?>" href="<?= htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') ?>">
+                <a class="card reveal<?= !empty($item['destacada']) ? ' is-featured' : '' ?>" href="<?= htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') ?>"<?= !empty($item['pendiente']) ? ' data-modulo-pendiente="' . htmlspecialchars($item['titulo'], ENT_QUOTES, 'UTF-8') . '"' : '' ?><?= !empty($item['imagen']) ? ' data-preview-img="' . htmlspecialchars($item['imagen'], ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
                     <?php if (!empty($item['destacada'])): ?>
                         <span class="featured-flag"><i class="fa-solid fa-star" aria-hidden="true"></i> Punto de entrada</span>
                     <?php endif; ?>
+                    <?php if (!empty($item['imagen'])): ?>
+                    <span class="card-media" aria-hidden="true"><img src="<?= htmlspecialchars($item['imagen'], ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy"></span>
+                    <?php endif; ?>
                     <span class="card-icon"><i class="<?= htmlspecialchars($item['icono'], ENT_QUOTES, 'UTF-8') ?>"></i></span>
                     <h3><?= htmlspecialchars($item['titulo'], ENT_QUOTES, 'UTF-8') ?></h3>
-                    <p><?= htmlspecialchars($item['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                    <p class="card-desc"><?= htmlspecialchars($item['texto'], ENT_QUOTES, 'UTF-8') ?></p>
                     <?php if (!empty($item['destacada'])): ?>
                         <ul class="card-chips">
                             <li><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</li>
                             <li><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</li>
                             <li><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Reportes</li>
                             <li><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</li>
+                            <li><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</li>
+                            <li><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</li>
                         </ul>
                     <?php endif; ?>
                     <span class="card-foot">
@@ -2024,6 +2106,9 @@ $servicios = [
                 <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
                 <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
                 <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
+                <li><a href="<?= $base ?>/costos/login.php" data-modulo-pendiente="Costos"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
+                <li><a href="<?= $base ?>/inventarios/login.php" data-modulo-pendiente="Inventarios"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
+                <li><a href="<?= $base ?>/administracion/index.php" data-modulo-pendiente="Administración"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
                 <li><a href="<?= $base ?>/phpinfo/"><i class="fa-solid fa-server" aria-hidden="true"></i> Servidor Info PHP</a></li>
                 <li><a href="<?= $base ?>/InstalarBD/InstalarBD.php"><i class="fa-solid fa-database" aria-hidden="true"></i> Instalador de BD</a></li>
             </ul>
@@ -2262,6 +2347,70 @@ $servicios = [
         // Red de seguridad: aunque falle un paso, la portada queda libre.
         esperar(terminar, 14000);
         esperar(function () { mostrarCapa(0); }, 220);
+    })();
+
+    // Al señalar una tarjeta de subsistema, su imagen pasa al fondo del card
+    // destacado «Punto de entrada»; al salir se retira.
+    (function () {
+        var destacada = document.querySelector('.card.is-featured');
+        if (!destacada) { return; }
+        var tarjetas = document.querySelectorAll('[data-preview-img]');
+        var descDestacada = destacada.querySelector('.card-desc');
+        var textoOriginal = descDestacada ? descDestacada.textContent : '';
+
+        function mostrar(url, texto) {
+            destacada.style.setProperty('--featured-img', 'url("' + url + '")');
+            destacada.classList.add('is-preview');
+            if (descDestacada && texto) { descDestacada.textContent = texto; }
+        }
+
+        function limpiar() {
+            destacada.classList.remove('is-preview');
+            destacada.style.removeProperty('--featured-img');
+            if (descDestacada) { descDestacada.textContent = textoOriginal; }
+        }
+
+        for (var i = 0; i < tarjetas.length; i++) {
+            (function (tarjeta) {
+                var url = tarjeta.getAttribute('data-preview-img');
+                var desc = tarjeta.querySelector('.card-desc');
+                var texto = desc ? desc.textContent : '';
+                tarjeta.addEventListener('mouseenter', function () { mostrar(url, texto); });
+                tarjeta.addEventListener('mouseleave', limpiar);
+                tarjeta.addEventListener('focus', function () { mostrar(url, texto); });
+                tarjeta.addEventListener('blur', limpiar);
+            })(tarjetas[i]);
+        }
+    })();
+
+    // Los enlaces del pie a módulos que aún no existen avisan en el sitio en
+    // lugar de llevar a un 404. Al publicar el módulo, quitar el atributo
+    // data-modulo-pendiente y el enlace funciona sin tocar nada más.
+    (function () {
+        var aviso = null;
+        var temporizador = null;
+
+        function mostrarAviso(nombre) {
+            if (!aviso) {
+                aviso = document.createElement('div');
+                aviso.className = 'aviso-modulo';
+                aviso.setAttribute('role', 'status');
+                aviso.innerHTML = '<i class="fa-solid fa-circle-info" aria-hidden="true"></i><span></span>';
+                document.body.appendChild(aviso);
+            }
+            aviso.querySelector('span').textContent = 'El módulo ' + nombre + ' todavía no está disponible.';
+            aviso.classList.add('is-on');
+            window.clearTimeout(temporizador);
+            temporizador = window.setTimeout(function () { aviso.classList.remove('is-on'); }, 4000);
+        }
+
+        var enlaces = document.querySelectorAll('[data-modulo-pendiente]');
+        for (var i = 0; i < enlaces.length; i++) {
+            enlaces[i].addEventListener('click', function (e) {
+                e.preventDefault();
+                mostrarAviso(this.getAttribute('data-modulo-pendiente'));
+            });
+        }
     })();
 </script>
 </body>

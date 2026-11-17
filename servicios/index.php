@@ -1709,9 +1709,6 @@ function showModuleWelcome(card) {
                         <li>Soporte técnico prioritario</li>
                     </ul>
                 </div>
-                <p style="margin-top: 15px; font-size: 0.85rem; color: #94a3b8;">
-                    <i class="fas fa-clock"></i> Último acceso: Hoy a las ${new Date().toLocaleTimeString()}
-                </p>
             </div>
         `,
         background: '#0f172a',

@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>USBWebserverUnicornio · Panel de Información</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
 
     <link href="../css/bootstrap.min.css" rel="stylesheet">
     <link href="../css/font-awesome6.4.0/css/all.min.css" rel="stylesheet">
