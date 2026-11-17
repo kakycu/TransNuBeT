@@ -1,14 +1,24 @@
 <?php
 /* Lanzador local de Serial Generador (GUI / TUI) */
 
+// El panel puede estar en root/phpinfo o en root/servicios/phpinfo: se sube
+// hasta la carpeta que contiene herramientas/, no se asume una profundidad.
+$raizEntorno = __DIR__;
+for ($i = 0; $i < 5; $i++) {
+    $raizEntorno = dirname($raizEntorno);
+    if (is_dir($raizEntorno . '/herramientas')) {
+        break;
+    }
+}
+
 $modos = [
     'gui' => [
         'etiqueta' => 'GUI (aplicación de escritorio)',
-        'ruta'     => dirname(__DIR__, 2) . '/herramientas/Serial Generator/VB6/Licencia_SISGESNOM/Licencia_SISGESNOM.exe',
+        'ruta'     => $raizEntorno . '/herramientas/Serial Generator/VB6/Licencia_SISGESNOM/Licencia_SISGESNOM.exe',
     ],
     'tui' => [
         'etiqueta' => 'TUI (terminal)',
-        'ruta'     => dirname(__DIR__, 2) . '/herramientas/Serial Generator/Terminal/Licencia_SISGESNOM.cmd',
+        'ruta'     => $raizEntorno . '/herramientas/Serial Generator/Terminal/Licencia_SISGESNOM.cmd',
     ],
 ];
 

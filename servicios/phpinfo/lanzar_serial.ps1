@@ -6,8 +6,13 @@
 
 $ErrorActionPreference = 'Stop'
 
-# ...\TRANSNUBET  (este script vive en ...\root\phpinfo)
-$raiz   = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+# ...\TRANSNUBET  (el script puede vivir en root\phpinfo o en
+# root\servicios\phpinfo: se sube hasta encontrar herramientas\).
+$raiz = $PSScriptRoot
+for ($i = 0; $i -lt 5; $i++) {
+    $raiz = Split-Path -Parent $raiz
+    if (Test-Path (Join-Path $raiz 'herramientas')) { break }
+}
 $exeGui = Join-Path $raiz 'herramientas\Serial Generator\VB6\Licencia_SISGESNOM\Licencia_SISGESNOM.exe'
 $cmdTui = Join-Path $raiz 'herramientas\Serial Generator\Terminal\Licencia_SISGESNOM.cmd'
 
