@@ -1083,7 +1083,7 @@ $servicios = [
         background-image: var(--featured-img);
         background-size: cover; background-position: center;
         opacity: 0;
-        transition: opacity .35s ease;
+        transition: opacity .2s ease;
         pointer-events: none;
     }
     .card.is-featured.is-preview::before { opacity: .3; }
@@ -1588,7 +1588,7 @@ $servicios = [
         place-items: center;
         opacity: 0;
         transform: scale(.92) translateY(10px);
-        transition: opacity .55s ease, transform .85s cubic-bezier(.2, .75, .2, 1);
+        transition: opacity .7s ease, transform 1.15s cubic-bezier(.16, .84, .24, 1);
         will-change: opacity, transform;
         pointer-events: none;
     }
@@ -1605,13 +1605,13 @@ $servicios = [
     .intro-layer[data-paso="3"] img { left: 5%;  top: 40%; width: 66%; }
     .intro-layer[data-paso="4"] img { left: 55%; top: 18%; width: 44%; }
     .intro-layer[data-paso="5"] img { left: 12%; top: 74%; width: 78%; }
-    /* Entradas: el círculo solo funde, el resto llega desde un costado y la
-       barra SiGesNom cae desde arriba hasta su sitio. */
-    .intro-layer[data-paso="1"] { transform: scale(.96); }
-    .intro-layer[data-paso="2"] { transform: translateX(18%) scale(.94); }
-    .intro-layer[data-paso="3"] { transform: translateX(-18%) scale(.94); }
-    .intro-layer[data-paso="4"] { transform: translateX(18%) scale(.94); }
-    .intro-layer[data-paso="5"] { transform: translateY(-26%) scale(.94); }
+    /* Entradas: cada pieza recorre una trayectoria larga desde fuera del
+       escenario (el círculo llega desde el fondo) hasta su sitio en el logo. */
+    .intro-layer[data-paso="1"] { transform: scale(.5); }
+    .intro-layer[data-paso="2"] { transform: translateX(135%) scale(.68); }
+    .intro-layer[data-paso="3"] { transform: translateX(-135%) scale(.68); }
+    .intro-layer[data-paso="4"] { transform: translateX(135%) scale(.68); }
+    .intro-layer[data-paso="5"] { transform: translateY(-185%) scale(.68); }
     .intro-layer.is-on { opacity: 1; transform: translate(0, 0) scale(1); }
     /* Al entrar el logo completo se retiran las piezas para que no asomen por
        los bordes transparentes de final.png. */
@@ -2302,9 +2302,26 @@ $servicios = [
             if (barra) { barra.style.width = Math.round((paso / pasos) * 100) + '%'; }
         }
 
+        // Vuela el logo final hasta el logo del topbar mientras la intro se
+        // desvanece, para que ambos queden alineados en el relevo.
+        function volarAlLogo() {
+            if (!capaFinal || !capaFinal.classList.contains('is-on')) { return; }
+            var destino = document.querySelector('.site-header .brand-logo');
+            if (!destino) { return; }
+            var desde = capaFinal.getBoundingClientRect();
+            var hasta = destino.getBoundingClientRect();
+            if (!desde.width || !hasta.width) { return; }
+            var escala = hasta.width / desde.width;
+            var dx = (hasta.left + hasta.width / 2) - (desde.left + desde.width / 2);
+            var dy = (hasta.top + hasta.height / 2) - (desde.top + desde.height / 2);
+            capaFinal.style.transition = 'transform .65s cubic-bezier(.4, 0, .2, 1)';
+            capaFinal.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + escala + ')';
+        }
+
         function terminar() {
             if (terminado) { return; }
             terminado = true;
+            volarAlLogo();
             for (var i = 0; i < temporizadores.length; i++) {
                 window.clearTimeout(temporizadores[i]);
             }
@@ -2332,11 +2349,12 @@ $servicios = [
 
         function mostrarCapa(indice) {
             if (terminado) { return; }
-            if (indice >= capas.length) { mostrarFinal(); return; }
+            // Pausa larga tras la última pieza antes de revelar final.png.
+            if (indice >= capas.length) { esperar(mostrarFinal, 1000); return; }
             var capa = capas[indice];
             capa.classList.add('is-on');
             pintar(indice + 1);
-            esperar(function () { mostrarCapa(indice + 1); }, 620);
+            esperar(function () { mostrarCapa(indice + 1); }, 820);
         }
 
         if (saltar) { saltar.addEventListener('click', terminar); }
