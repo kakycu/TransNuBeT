@@ -1471,9 +1471,192 @@ $servicios = [
         .float-card, .mock-bars span, .pay-fill { animation: none !important; }
         .faq-item:hover { transform: none; }
     }
+
+    /* ===== Intro animada: piezas del logo (images/anim) =====
+       Secuencia: cada pieza entra con un fundido y, al final, aparece el logo
+       completo con un destello transversal recortado por su propia silueta. */
+    html.intro-lock { overflow: hidden; }
+    .intro {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(120% 120% at 50% 26%, #111c38 0%, #070a12 56%, #03050a 100%);
+        transition: opacity .8s ease, visibility .8s ease;
+    }
+    .intro.is-out { opacity: 0; visibility: hidden; }
+    .intro-stage {
+        position: relative;
+        width: min(92vmin, 760px);
+        aspect-ratio: 429 / 440;
+        display: grid;
+        place-items: center;
+        isolation: isolate;
+    }
+    .intro-halo {
+        position: absolute;
+        z-index: 0;
+        width: 78%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(36, 214, 255, .34) 0%, rgba(109, 93, 252, .20) 44%, rgba(109, 93, 252, 0) 70%);
+        filter: blur(10px);
+        opacity: 0;
+        transform: scale(.72);
+        transition: opacity 1s ease, transform 1.4s cubic-bezier(.22, .8, .24, 1);
+    }
+    .intro.is-final .intro-halo { opacity: 1; transform: scale(1); animation: introHalo 4s ease-in-out 1.2s infinite; }
+    @keyframes introHalo {
+        0%, 100% { opacity: .82; transform: scale(1); }
+        50%      { opacity: 1;   transform: scale(1.06); }
+    }
+    .intro-layer,
+    .intro-final {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        opacity: 0;
+        transform: scale(.92) translateY(10px);
+        transition: opacity .55s ease, transform .85s cubic-bezier(.2, .75, .2, 1);
+        will-change: opacity, transform;
+        pointer-events: none;
+    }
+    .intro-layer img {
+        position: absolute;
+        height: auto;
+        max-width: none;
+        max-height: none;
+        filter: drop-shadow(0 24px 46px rgba(0, 0, 0, .62));
+    }
+    /* Cada pieza queda en el sitio que ocupa dentro del logo final. */
+    .intro-layer[data-paso="1"] img { left: 0;   top: 0;  width: 100%; }
+    .intro-layer[data-paso="2"] img { left: 3%;  top: 7%; width: 78%; }
+    .intro-layer[data-paso="3"] img { left: 5%;  top: 40%; width: 66%; }
+    .intro-layer[data-paso="4"] img { left: 55%; top: 18%; width: 44%; }
+    .intro-layer[data-paso="5"] img { left: 12%; top: 74%; width: 78%; }
+    /* Entradas: el círculo solo funde, el resto llega desde un costado y la
+       barra SiGesNom cae desde arriba hasta su sitio. */
+    .intro-layer[data-paso="1"] { transform: scale(.96); }
+    .intro-layer[data-paso="2"] { transform: translateX(18%) scale(.94); }
+    .intro-layer[data-paso="3"] { transform: translateX(-18%) scale(.94); }
+    .intro-layer[data-paso="4"] { transform: translateX(18%) scale(.94); }
+    .intro-layer[data-paso="5"] { transform: translateY(-26%) scale(.94); }
+    .intro-layer.is-on { opacity: 1; transform: translate(0, 0) scale(1); }
+    /* Al entrar el logo completo se retiran las piezas para que no asomen por
+       los bordes transparentes de final.png. */
+    .intro.is-final .intro-layer { opacity: 0; transition: opacity .3s ease; }
+    .intro-final { z-index: 2; transform: scale(.92) translateY(8px); }
+    .intro-logo { position: relative; width: 100%; }
+    .intro-logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 30px 70px rgba(0, 0, 0, .66)); }
+    .intro-final.is-on { opacity: 1; transform: scale(1) translateY(0); }
+    .intro-final.is-on .intro-logo { animation: introLogoIn 1.15s cubic-bezier(.2, .72, .2, 1) both; }
+    @keyframes introLogoIn {
+        0%   { transform: scale(.84); filter: brightness(1.45) saturate(1.15); }
+        60%  { transform: scale(1.03); }
+        100% { transform: scale(1); filter: none; }
+    }
+    .intro-sheen {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        background-image: linear-gradient(105deg,
+            rgba(255, 255, 255, 0) 40%,
+            rgba(255, 255, 255, .32) 46%,
+            rgba(255, 255, 255, .95) 50%,
+            rgba(140, 235, 255, .85) 54%,
+            rgba(255, 255, 255, 0) 60%);
+        background-size: 260% 100%;
+        background-position: 135% 0;
+        background-repeat: no-repeat;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        mix-blend-mode: screen;
+    }
+    .intro.is-sheen .intro-sheen { opacity: 1; animation: introSheen 1.4s cubic-bezier(.4, 0, .5, 1) 2; }
+    @keyframes introSheen {
+        0%   { background-position: 135% 0; }
+        100% { background-position: -45% 0; }
+    }
+    .intro-bar {
+        position: absolute;
+        left: 50%;
+        bottom: max(4.5rem, 11vh);
+        width: min(40vmin, 280px);
+        height: 2px;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, .14);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .intro-bar span {
+        display: block;
+        width: 0;
+        height: 100%;
+        background: linear-gradient(90deg, #24d6ff, #6d5dfc);
+        transition: width .35s ease;
+    }
+    .intro-skip {
+        position: absolute;
+        right: max(1rem, 2vw);
+        bottom: max(1rem, 2vh);
+        padding: .5rem .95rem;
+        font: inherit;
+        font-size: .8rem;
+        color: #cfd6ff;
+        background: rgba(255, 255, 255, .06);
+        border: 1px solid rgba(255, 255, 255, .18);
+        border-radius: 999px;
+        cursor: pointer;
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+        transition: background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .intro-skip:hover,
+    .intro-skip:focus-visible {
+        background: rgba(255, 255, 255, .12);
+        border-color: rgba(36, 214, 255, .5);
+        color: #fff;
+        outline: none;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .intro-layer, .intro-final, .intro-halo { transition-duration: .01ms !important; }
+        .intro-final.is-on .intro-logo,
+        .intro.is-sheen .intro-sheen,
+        .intro.is-final .intro-halo { animation: none !important; }
+    }
 </style>
 </head>
 <body>
+<!-- Intro animada: piezas del logo en images/anim. Se retira sola y se puede
+     saltar; con «prefers-reduced-motion» no se muestra. El comportamiento
+     está al pie del documento, junto al resto de scripts. -->
+<div class="intro" id="introAnim">
+    <div class="intro-stage">
+        <div class="intro-halo"></div>
+        <div class="intro-layer" data-paso="1"><img src="/images/anim/01_Circulo.png" alt="" width="498" height="490" decoding="async"></div>
+        <div class="intro-layer" data-paso="2"><img src="/images/anim/02_Unicornio.png" alt="" width="456" height="303" decoding="async"></div>
+        <div class="intro-layer" data-paso="3"><img src="/images/anim/03_Trabajadores.png" alt="" width="446" height="319" decoding="async"></div>
+        <div class="intro-layer" data-paso="4"><img src="/images/anim/04_Elementos_Nomina.png" alt="" width="412" height="372" decoding="async"></div>
+        <div class="intro-layer" data-paso="5"><img src="/images/anim/05_Logo_SiGesNom.png" alt="" width="546" height="183" decoding="async"></div>
+        <div class="intro-final">
+            <div class="intro-logo">
+                <img src="/images/anim/final.png" alt="UnicornioSoftware Cuba" width="429" height="440" decoding="async">
+                <span class="intro-sheen" aria-hidden="true" style="-webkit-mask-image:url('/images/anim/final.png');mask-image:url('/images/anim/final.png');"></span>
+            </div>
+        </div>
+    </div>
+    <div class="intro-bar" aria-hidden="true"><span id="introBar"></span></div>
+    <button type="button" class="intro-skip" id="introSkip">Saltar intro</button>
+</div>
+<script>document.documentElement.classList.add('intro-lock');</script>
 <a class="skip" href="#contenido"><i class="fa-solid fa-arrow-down"></i> Saltar al contenido</a>
 <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
 
@@ -2005,6 +2188,80 @@ $servicios = [
                 if (alerta) { alerta.remove(); }
             });
         }
+    })();
+</script>
+
+<script>
+    // ===== Intro animada: piezas del logo =====
+    // Secuencia: cada pieza entra en su posición y se queda; al completarse el
+    // logo aparece final.png con un destello transversal recortado por su
+    // silueta. Es decorativa: se puede saltar y nunca debe bloquear la portada.
+    (function () {
+        var intro = document.getElementById('introAnim');
+        if (!intro) { return; }
+        var raiz = document.documentElement;
+        var barra = document.getElementById('introBar');
+        var saltar = document.getElementById('introSkip');
+        var capas = intro.querySelectorAll('.intro-layer');
+        var capaFinal = intro.querySelector('.intro-final');
+        var pasos = capas.length + 1;
+        var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var terminado = false;
+        var temporizadores = [];
+
+        function esperar(fn, ms) {
+            temporizadores.push(window.setTimeout(fn, ms));
+        }
+
+        function pintar(paso) {
+            if (barra) { barra.style.width = Math.round((paso / pasos) * 100) + '%'; }
+        }
+
+        function terminar() {
+            if (terminado) { return; }
+            terminado = true;
+            for (var i = 0; i < temporizadores.length; i++) {
+                window.clearTimeout(temporizadores[i]);
+            }
+            temporizadores = [];
+            if (barra) { barra.style.width = '100%'; }
+            intro.classList.add('is-out');
+            raiz.classList.remove('intro-lock');
+            window.setTimeout(function () {
+                if (intro.parentNode) { intro.parentNode.removeChild(intro); }
+            }, 900);
+        }
+
+        if (reducido) { terminar(); return; }
+
+        function mostrarFinal() {
+            if (terminado) { return; }
+            pintar(pasos);
+            intro.classList.add('is-final');
+            if (capaFinal) { capaFinal.classList.add('is-on'); }
+            esperar(function () {
+                if (!terminado) { intro.classList.add('is-sheen'); }
+            }, 1050);
+            esperar(terminar, 4100);
+        }
+
+        function mostrarCapa(indice) {
+            if (terminado) { return; }
+            if (indice >= capas.length) { mostrarFinal(); return; }
+            var capa = capas[indice];
+            capa.classList.add('is-on');
+            pintar(indice + 1);
+            esperar(function () { mostrarCapa(indice + 1); }, 620);
+        }
+
+        if (saltar) { saltar.addEventListener('click', terminar); }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { terminar(); }
+        });
+
+        // Red de seguridad: aunque falle un paso, la portada queda libre.
+        esperar(terminar, 14000);
+        esperar(function () { mostrarCapa(0); }, 220);
     })();
 </script>
 </body>
