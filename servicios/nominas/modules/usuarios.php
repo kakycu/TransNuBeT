@@ -448,8 +448,34 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
             cursor: zoom-in;
         }
         #tablaUsuarios .avatar-small:hover {
-            transform: scale(2.6);
-            box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.45);
+            transform: scale(1.12);
+            box-shadow: 0 0 0 0.125rem rgba(96, 165, 250, 0.65), 0 0.5rem 1.5rem rgba(0,0,0,0.45);
+        }
+
+        /* Visor de imagen de usuario */
+        #modalImagenUsuario .modal-content {
+            background: rgba(18, 18, 26, 0.98);
+            border: 0.0625rem solid rgba(96, 165, 250, 0.3);
+            border-radius: 1.25rem;
+            overflow: hidden;
+        }
+        #modalImagenUsuario .modal-header {
+            background: linear-gradient(90deg, var(--panel), var(--panel-2));
+            border-bottom: 0.0625rem solid rgba(96, 165, 250, 0.3);
+        }
+        #modalImagenUsuario .modal-title { font-size: 0.95rem; color: #ffffff; }
+        #modalImagenUsuario .modal-body {
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0b0b12;
+        }
+        #modalImagenUsuario .modal-imagen-usuario {
+            display: block;
+            max-width: 100%;
+            max-height: calc(100vh - 13rem);
+            object-fit: contain;
         }
         #tablaUsuarios .avatar-iniciales {
             width:2rem;
@@ -937,7 +963,17 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
         font-size: 0.65rem !important;
     }
     #tablaUsuarios .avatar-small:hover {
-        transform: scale(1.8);
+        transform: scale(1.1);
+    }
+
+    #modalImagenUsuario .modal-imagen-usuario {
+        max-height: calc(100vh - 6.5rem);
+    }
+    #modalImagenUsuario .modal-title {
+        font-size: 0.85rem;
+    }
+    #modalImagenUsuario .modal-body {
+        padding: 0;
     }
     #tablaUsuarios .badge {
         font-size: 0.62rem !important;
@@ -1572,7 +1608,7 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
 <tr data-id="<?php echo $usr['id']; ?>" data-rol="<?php echo htmlspecialchars($usr['rol_nombre'] ?? ''); ?>" data-estado="<?php echo $usr['activo']; ?>">
     <td class="text-center">
         <?php if ($foto_existe): ?>
-            <img src="<?php echo $foto_url; ?>" class="avatar-small" style="width:2rem; height:2rem; border-radius: 50%; object-fit: cover;">
+            <img src="<?php echo $foto_url; ?>" class="avatar-small" style="width:2rem; height:2rem; border-radius: 50%; object-fit: cover;" onclick="verImagenUsuario(this)" data-usuario="<?php echo htmlspecialchars($nombre_completo); ?>" title="Ampliar imagen" data-tooltip="Ampliar imagen" data-tooltip-theme="primary" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();verImagenUsuario(this);}">
         <?php else: ?>
             <div class="avatar-iniciales"><?php echo $iniciales; ?></div>
         <?php endif; ?>
@@ -1799,6 +1835,21 @@ $es_rol_admin = (permiso_rol_codigo() === 'Admin');
     </div>
 </div>
 
+<!-- Visor de imagen del usuario -->
+<div class="modal fade" id="modalImagenUsuario" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header d-flex align-items-center justify-content-between">
+                <h5 class="modal-title"><i class="fas fa-image me-2"></i><span id="modalImagenUsuarioTitle">Imagen del usuario</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Cerrar" data-tooltip="Cerrar" data-tooltip-theme="danger"></button>
+            </div>
+            <div class="modal-body">
+                <img id="modalImagenUsuarioImg" class="modal-imagen-usuario" src="" alt="Imagen del usuario">
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="../js/jquery-3.6.0.min.js"></script>
 <script src="../js/bootstrap5.3.0/bootstrap.bundle.min.js"></script>
 <script src="../js/sweetalert211.js"></script>
@@ -1839,6 +1890,30 @@ setInterval(updateClock, 1000); updateClock();
 
 // Gestión de Usuarios
 let cropperUsuario = null, previewCanvasUsuario = null, previewCtxUsuario = null;
+
+function verImagenUsuario(img) {
+    if (!img) return;
+    const src = img.getAttribute('src');
+    if (!src) return;
+    const modalEl = document.getElementById('modalImagenUsuario');
+    const modalImg = document.getElementById('modalImagenUsuarioImg');
+    const titulo = document.getElementById('modalImagenUsuarioTitle');
+    if (!modalEl || !modalImg) return;
+    const nombre = img.dataset.usuario || 'Imagen del usuario';
+    modalImg.src = src;
+    modalImg.alt = nombre;
+    if (titulo) titulo.textContent = nombre;
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('modalImagenUsuario');
+    if (!modalEl) return;
+    modalEl.addEventListener('hidden.bs.modal', function () {
+        const modalImg = document.getElementById('modalImagenUsuarioImg');
+        if (modalImg) modalImg.removeAttribute('src');
+    });
+});
 
 function validarNombreCampo(valor, feedbackId, minLength = 3) {
     const limpio = valor.trim();
