@@ -2127,7 +2127,7 @@ $servicios = [
                     <i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Ir al inicio
                 </button>
                 <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php">
-                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Iniciar sesión
+                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Explorar subsistemas
                 </a>
             </div>
         </div>

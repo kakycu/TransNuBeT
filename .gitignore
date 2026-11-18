@@ -24,6 +24,7 @@ Desktop.ini
 .env
 .env.*
 *.local
+**/.tool_token
 **/nominas/config.php
 correo_privado.php
 opencode.json
