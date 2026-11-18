@@ -550,6 +550,28 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
             animation: none;
         }
 
+        /* Portada bloqueada mientras no se cierre la bienvenida: las tarjetas se
+           atenúan y no responden hasta pulsar "Explorar Subsistemas". Se usa
+           filter (no opacity) porque animate.css vuelve a poner opacity: 1 al
+           terminar fadeInUp. */
+        .subsystems-grid.is-locked .subsystem-card {
+            pointer-events: none;
+            cursor: default;
+            filter: grayscale(0.45) brightness(0.62);
+        }
+
+        .subsystems-grid.is-locked .subsystem-card .access-badge {
+            background: rgba(100, 116, 139, 0.3);
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .subsystems-grid.is-locked .subsystem-card .access-badge:hover,
+        .subsystems-grid.is-locked .subsystem-card:hover:not(.disabled) {
+            transform: none;
+            box-shadow: none;
+        }
+
         .subsystem-card::before {
             content: '';
             position: absolute;
@@ -1388,12 +1410,14 @@ $lic_raiz_huella = licencia_fingerprint_equipo();
         </div>
     </div>
 
-    <div class="subsystems-grid">
+    <!-- Las tarjetas nacen bloqueadas: se habilitan cuando se cierra el aviso de
+         bienvenida con "Explorar Subsistemas" (ver desbloquearSubsistemas). -->
+    <div class="subsystems-grid is-locked" id="subsistemasGrid" aria-busy="true">
         <!-- Nóminas (código 0001) -->
         <div class="subsystem-card <?php echo !$server_ok ? 'disabled' : ''; ?> animate__animated animate__fadeInUp" 
              data-module="nominas" 
              data-name="Nóminas" 
-             data-url="/nominas/index.php" 
+             data-url="<?php echo BASE_URL; ?>/index.php" 
              data-activo="<?php echo isset($sub_estados['0001']) ? $sub_estados['0001'] : 0; ?>">
             <div class="card-image-container">
                 <img src="images/nominas.png" alt="Nóminas"
@@ -1825,17 +1849,33 @@ function accessModule(url, moduleName, moduleActivo) {
     });
 }
 
+// ============ BLOQUEO DE LA PORTADA ============
+// La portada carga con las tarjetas bloqueadas (is-locked en el HTML) y solo
+// se habilitan al cerrar el aviso de bienvenida o cualquier modal informativo.
+function portadaBloqueada() {
+    const grid = document.getElementById('subsistemasGrid');
+    return !!grid && grid.classList.contains('is-locked');
+}
+
+function desbloquearSubsistemas() {
+    const grid = document.getElementById('subsistemasGrid');
+    if (!grid) return;
+    grid.classList.remove('is-locked');
+    grid.removeAttribute('aria-busy');
+}
+
 // ============ EVENTOS DE TARJETAS ============
 document.querySelectorAll('.subsystem-card').forEach(card => {
     card.addEventListener('click', (e) => {
         if (e.target.closest('.access-badge')) return;
         if (isRedirecting) return;
+        if (portadaBloqueada()) return;
         if (card.classList.contains('disabled')) return;
         showModuleWelcome(card);
     });
     
     card.addEventListener('mouseenter', () => {
-        if (!card.classList.contains('disabled')) {
+        if (!card.classList.contains('disabled') && !portadaBloqueada()) {
             card.style.cursor = 'pointer';
         } else {
             card.style.cursor = 'default';
@@ -1847,6 +1887,7 @@ document.querySelectorAll('.access-badge').forEach(badge => {
     badge.addEventListener('click', (e) => {
         e.stopPropagation();
         if (isRedirecting) return;
+        if (portadaBloqueada()) return;
         const card = badge.closest('.subsystem-card');
         if (card.classList.contains('disabled')) return;
         showModuleWelcome(card);
@@ -1948,11 +1989,16 @@ if (serverStatusDot) {
 }
 
 // ============ BIENVENIDA ============
+// Las tarjetas permanecen bloqueadas hasta que se pulsa "Explorar Subsistemas":
+// el aviso no se cierra al hacer clic fuera ni con Esc.
 function mostrarBienvenida() {
-    const justRedirected = sessionStorage.getItem('justRedirected');
-    if (!justRedirected) {
-        setTimeout(() => {
-            Swal.fire({
+    if (typeof Swal === 'undefined') {
+        // Sin la librería no habría forma de cerrar el aviso: se libera la portada.
+        desbloquearSubsistemas();
+        return;
+    }
+    setTimeout(() => {
+        Swal.fire({
                 title: '✨ Bienvenido al Ecosistema Financiero de <?php echo htmlspecialchars($COMPANY_NAME); ?>',
                 html: '<span style="font-size:0.95rem;">Centro de Control Empresarial <?php echo htmlspecialchars($SITE_VERSION); ?><br><br><span style="animation: blink 1s step-start infinite; font-weight: 700; color: #3b82f6;">🔽 SELECCIONE UNO DE LOS SUBSISTEMAS A UTILIZAR.</span><br><br><i class="fas fa-chart-line"></i> Nóminas | <i class="fas fa-file-invoice-dollar"></i> Facturación<br><i class="fas fa-chart-pie"></i> Costos | <i class="fas fa-boxes"></i> Inventarios | <i class="fas fa-user-cog"></i> Administración</span>',
                 icon: 'info',
@@ -1962,6 +2008,10 @@ function mostrarBienvenida() {
                 confirmButtonColor: '#2563eb',
                 confirmButtonText: '<i class="fas fa-rocket"></i> Explorar Subsistemas',
                 backdrop: `rgba(0,0,0,0.75)`,
+                // Solo se cierra con el botón: ni clic fuera ni Esc. Hasta que no
+                // se pulse, las tarjetas de subsistemas siguen bloqueadas.
+                allowOutsideClick: false,
+                allowEscapeKey: false,
                 showClass: { popup: 'animate__animated animate__fadeInDown' },
                 didOpen: () => {
                     if (!document.querySelector('#blink-style')) {
@@ -1991,9 +2041,12 @@ function mostrarBienvenida() {
                         }
                     }
                 }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    desbloquearSubsistemas();
+                }
             });
         }, 300);
-    }
     sessionStorage.removeItem('justRedirected');
 }
 
@@ -2200,7 +2253,7 @@ function mostrarEstadoLicencia() {
 
                 // Acción para "salarios": abrir la consulta pública en pestaña nueva
                 if (servicio === 'salarios') {
-                    window.open('/nominas/solic_userinfo/', '_blank');
+                    window.open('<?php echo BASE_URL; ?>/solic_userinfo/', '_blank');
                 } else if (servicio === 'charangon') {
                     // Abrir fcostocharangon/ en pestaña nueva
                     window.open('fcostoCharangon/', '_blank');
@@ -2250,6 +2303,16 @@ document.addEventListener('DOMContentLoaded', () => {
     isRedirecting = false;
     hideLoading();
     updateServerStatusUI();
+
+    // Red de seguridad: si por un error la bienvenida no llegara a abrirse, la
+    // portada no puede quedarse bloqueada para siempre. Con un aviso abierto no
+    // se libera: la liberación depende de pulsar "Explorar Subsistemas".
+    setTimeout(() => {
+        if (!portadaBloqueada()) return;
+        const avisoAbierto = (typeof Swal !== 'undefined' && Swal.isVisible())
+            || document.getElementById('modalIndex').style.display === 'flex';
+        if (!avisoAbierto) desbloquearSubsistemas();
+    }, 8000);
     
     // Verificación en línea sobre el banner "Ecosistema Financiero" (sin modal).
     // Tras un "Verificar Estado" manual ya se mostró la secuencia: no repetir tras el reload.
@@ -2264,6 +2327,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     mostrarBienvenida();
                 }
             } else {
+                // Sin MySQL las tarjetas ya están deshabilitadas desde PHP; se
+                // retira el bloqueo de la portada para no sumar otra capa.
+                desbloquearSubsistemas();
                 Swal.fire({
                     title: '⚠️ Error de Conexión',
                     html: `
@@ -2612,6 +2678,9 @@ function abrirModalIndex(tipo, htmlOverride, licOverride) {
 function cerrarModalIndex() {
     modalIndexActual = null;
     document.getElementById('modalIndex').style.display = 'none';
+    // Si la portada seguía bloqueada por un aviso (por ejemplo el de licencia),
+    // al cerrarlo se habilitan las tarjetas.
+    desbloquearSubsistemas();
 }
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') cerrarModalIndex();
