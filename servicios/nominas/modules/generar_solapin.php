@@ -30,9 +30,9 @@ if ($empleado_id <= 0) {
 }
 
 // Ruta física para guardar de forma temporal
-$carpeta = $_SERVER['DOCUMENT_ROOT'] . '/nominas/solapines/';
+$carpeta = BASE_PATH . '/solapines/';
 $archivo_fisico = $carpeta . 'solapin_' . $empleado_id . '.png';
-$url_relativa = '/nominas/solapines/solapin_' . $empleado_id . '.png';
+$url_relativa = url('solapines/solapin_' . $empleado_id . '.png');
 
 // Si es una petición AJAX (para obtener el enlace de descarga o visualización dinámica)
 if (isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')) {

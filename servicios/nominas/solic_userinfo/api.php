@@ -232,7 +232,7 @@ try {
         }
 
         session_regenerate_id(true);
-        json_salida(['success' => true, 'url' => '/nominas/dashboard.php']);
+        json_salida(['success' => true, 'url' => BASE_URL . '/dashboard.php']);
     }
 
     // El resto de las acciones exigen acceso previamente verificado

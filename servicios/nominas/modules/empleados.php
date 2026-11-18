@@ -918,7 +918,7 @@ function procesarFotoArchivoDesdeBase64($base64Data, $id_trabajador = null, $rut
         return $ruta_actual;
     }
     
-    $carpeta = $_SERVER['DOCUMENT_ROOT'] . '/nominas/assets/imagenes/trabajadores/';
+    $carpeta = BASE_PATH . '/assets/imagenes/trabajadores/';
     if (!is_dir($carpeta)) {
         mkdir($carpeta, 0777, true);
     }
@@ -928,8 +928,8 @@ function procesarFotoArchivoDesdeBase64($base64Data, $id_trabajador = null, $rut
     $ruta_relativa = 'assets/imagenes/trabajadores/' . $nombre_archivo;
     
     if (file_put_contents($ruta_completa, $imagen_decodificada)) {
-        if ($ruta_actual && file_exists($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $ruta_actual)) {
-            unlink($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $ruta_actual);
+        if ($ruta_actual && file_exists(BASE_PATH . '/' . ltrim($ruta_actual, '/'))) {
+            unlink(BASE_PATH . '/' . ltrim($ruta_actual, '/'));
         }
         return $ruta_relativa;
     }
@@ -1268,8 +1268,8 @@ $stmt->execute([$id_nuevo]);
                             if (isset($_POST['imagen_recortada']) && !empty($_POST['imagen_recortada'])) {
                                 $foto_ruta = procesarFotoArchivoDesdeBase64($_POST['imagen_recortada'], $id, $foto_actual);
                             } elseif (isset($_POST['eliminar_foto']) && $_POST['eliminar_foto'] == '1') {
-                                if ($foto_actual && file_exists($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_actual)) {
-                                    unlink($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_actual);
+                                if ($foto_actual && file_exists(BASE_PATH . '/' . ltrim($foto_actual, '/'))) {
+                                    unlink(BASE_PATH . '/' . ltrim($foto_actual, '/'));
                                 }
                                 $foto_ruta = null;
                             }
@@ -1378,8 +1378,8 @@ $stmt->execute([$id]);
             $stmt = $pdo->prepare("SELECT foto_ruta FROM trabajadores WHERE id = ?");
             $stmt->execute([$id]);
             $foto_ruta = $stmt->fetchColumn();
-            if ($foto_ruta && file_exists($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_ruta)) {
-                unlink($_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $foto_ruta);
+            if ($foto_ruta && file_exists(BASE_PATH . '/' . ltrim($foto_ruta, '/'))) {
+                unlink(BASE_PATH . '/' . ltrim($foto_ruta, '/'));
             }
             $stmt = $pdo->prepare("DELETE FROM trabajadores WHERE id = ?");
             $stmt->execute([$id]);

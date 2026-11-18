@@ -425,7 +425,7 @@ footer {
                 <button onclick="history.back()" class="btn btn-outline">
                     <i class="fa-solid fa-arrow-left"></i>&nbsp;Regresar
                 </button>
-                <a href="/nominas/index.php" class="btn btn-primary">
+                <a href="/servicios/nominas/index.php" class="btn btn-primary">
                     <i class="fa-solid fa-key"></i>&nbsp;Acceder al Sistema
                 </a>
                 <a href="/soporte.php" class="btn btn-outline">

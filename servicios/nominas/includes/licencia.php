@@ -900,7 +900,7 @@ if (isset($_SERVER['SCRIPT_FILENAME'])
     $dir_activa  = ($dir_datos !== null) && licencia_activada();
     $dir_estado  = licencia_etiqueta_estado($dir_datos, 'LICENCIA ', $dir_activa);
     $dir_vence   = licencia_texto_vencimiento($dir_datos);
-    $dir_destino = $dir_activa ? '/nominas/login.php' : '/nominas/licencia.php';
+    $dir_destino = $dir_activa ? '../login.php' : '../licencia.php';
     $dir_boton   = $dir_activa ? 'Ir al sistema' : 'Registrar licencia';
     $dir_titulo  = $dir_activa ? 'Acceso restringido' : 'Licencia no activa';
     $dir_aviso   = 'Este archivo es un <b>módulo interno</b> del sistema de licencias y no se abre directamente desde el navegador.';
@@ -925,7 +925,7 @@ if (isset($_SERVER['SCRIPT_FILENAME'])
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title><?php echo htmlspecialchars($dir_titulo); ?></title>
-        <link rel="stylesheet" href="/nominas/css/font-awesome6.4.0/css/all.min.css">
+        <link rel="stylesheet" href="../css/font-awesome6.4.0/css/all.min.css">
         <style>
             body {
                 margin: 0;

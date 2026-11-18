@@ -47,7 +47,7 @@ function generarSolapinConPlantilla($empleado_id, $pdo, $ruta_salida = null) {
     $plantilla_path = __DIR__ . '/../assets/imagenes/Solapin TransNuBet.png';
     
     if (!file_exists($plantilla_path)) {
-        $plantilla_path = $_SERVER['DOCUMENT_ROOT'] . '/nominas/assets/imagenes/Solapin TransNuBet.png';
+        $plantilla_path = BASE_PATH . '/assets/imagenes/Solapin TransNuBet.png';
     }
     
     if (!file_exists($plantilla_path)) {
@@ -240,7 +240,7 @@ if ($usar_ttf && $fuente_a_usar && file_exists($fuente_a_usar)) {
 
 	// Intentar cargar la foto registrada del trabajador
 	if (!empty($emp['foto_ruta'])) {
-		$ruta_foto = $_SERVER['DOCUMENT_ROOT'] . '/nominas/' . $emp['foto_ruta'];
+		$ruta_foto = BASE_PATH . '/' . ltrim($emp['foto_ruta'], '/');
 	}
 
 	// Si no tiene foto registrada o si el archivo físico no existe, usar la imagen por defecto
@@ -249,7 +249,7 @@ if ($usar_ttf && $fuente_a_usar && file_exists($fuente_a_usar)) {
 		
 		// Ruta alternativa de respaldo en caso de variaciones del servidor web
 		if (!file_exists($ruta_foto)) {
-			$ruta_foto = $_SERVER['DOCUMENT_ROOT'] . '/nominas/assets/imagenes/noFoto.png';
+			$ruta_foto = BASE_PATH . '/assets/imagenes/noFoto.png';
 		}
 	}
 
@@ -420,13 +420,13 @@ if ($empleado_id <= 0) {
     exit;
 }
 
-$carpeta = $_SERVER['DOCUMENT_ROOT'] . '/nominas/solapines/';
+$carpeta = BASE_PATH . '/solapines/';
 if (!file_exists($carpeta)) {
     mkdir($carpeta, 0777, true);
 }
 
 $archivo_fisico = $carpeta . 'solapin_' . $empleado_id . '.png';
-$url_relativa = '/nominas/solapines/solapin_' . $empleado_id . '.png';
+$url_relativa = url('solapines/solapin_' . $empleado_id . '.png');
 
 if (isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')) {
     header('Content-Type: application/json');

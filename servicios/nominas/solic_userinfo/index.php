@@ -1022,9 +1022,9 @@ table.su-tabla #vacRepCabecera tr:nth-child(2) th { box-shadow: 0 0.125rem 0.25r
     <div class="su-side-cat">Navegación</div>
     <nav class="su-side-nav">
         <?php if ($su_autorizado && $su_tipo === 'usuario'): ?>
-        <a href="/nominas/dashboard.php" data-tooltip-theme="info" data-ir-dashboard="1" title="Ir al Dashboard del sistema"><i class="fas fa-gauge-high"></i> Ir al Dashboard</a>
+        <a href="<?php echo BASE_URL; ?>/dashboard.php" data-tooltip-theme="info" data-ir-dashboard="1" title="Ir al Dashboard del sistema"><i class="fas fa-gauge-high"></i> Ir al Dashboard</a>
         <?php else: ?>
-        <a href="/nominas/index.php" data-tooltip-theme="info"><i class="fas fa-right-to-bracket"></i> Logearse en el Sistema</a>
+        <a href="<?php echo BASE_URL; ?>/index.php" data-tooltip-theme="info"><i class="fas fa-right-to-bracket"></i> Logearse en el Sistema</a>
         <?php endif; ?>
         <a href="../../index.php"><i class="fas fa-house"></i> Inicio</a>
         <a href="index.php" id="navSalario" class="activa" data-vista-interna="1" title="Listado de salarios devengados"><i class="fas fa-money-bill-trend-up"></i> Consultar Salario</a>
@@ -2067,7 +2067,7 @@ table.su-tabla #vacRepCabecera tr:nth-child(2) th { box-shadow: 0 0.125rem 0.25r
     }
 
     var PRINT_TOOLBAR_HTML = '<style>#auto-hide-toolbar{transition:transform 0.3s ease}#auto-hide-toolbar.hidden{transform:translateY(-100%)}</style>'
-        + '<link rel="stylesheet" href="/nominas/css/font-awesome6.4.0/css/all.min.css">'
+        + '<link rel="stylesheet" href="<?php echo BASE_URL; ?>/css/font-awesome6.4.0/css/all.min.css">'
         + '<div id="auto-hide-toolbar" class="no-print" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#0e7490,#0891b2);padding:0.625rem 1.25rem;display:flex;justify-content:center;align-items:center;gap:0.875rem;box-shadow:0 0.25rem 1rem rgba(0,0,0,0.35);font-family:Arial,sans-serif;border-bottom:0.1875rem solid #06b6d4;">'
         + '<span style="color:#cffafe;font-weight:bold;font-size:0.8125rem;"><i class="fas fa-eye"></i> VISTA PREVIA DE IMPRESIÓN</span>'
         + '<button onclick="window.print()" title="Imprimir documento" style="padding:0.5625rem 1.375rem;background:#22c55e;color:#fff;border:none;border-radius:0.375rem;font-size:0.8125rem;font-weight:bold;cursor:pointer;"><i class="fas fa-print"></i> Imprimir</button>'

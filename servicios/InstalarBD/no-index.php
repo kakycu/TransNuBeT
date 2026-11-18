@@ -416,7 +416,7 @@ footer {
                     <div class="section-title">Accesos disponibles</div>
                     <div class="links-grid">
                         <a class="btn btn-success" href="/instalarbd/InstalarBD.php"><i class="fa-solid fa-rocket"></i>&nbsp;Instalar BD</a>
-                        <a class="btn btn-primary" href="/nominas/index.php"><i class="fa-solid fa-key"></i>&nbsp;Acceder al Sistema</a>
+                        <a class="btn btn-primary" href="/servicios/nominas/index.php"><i class="fa-solid fa-key"></i>&nbsp;Acceder al Sistema</a>
                     </div>
                 </div>
             </div>

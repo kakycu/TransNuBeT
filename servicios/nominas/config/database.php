@@ -6,6 +6,12 @@
 // Si no existe config.php, mostrar el aviso de configuración no encontrada
 // y redirigir al instalador (sin lanzar error fatal).
 if (!file_exists(__DIR__ . '/../config.php')) {
+    // Raíz del módulo calculada en tiempo de ejecución: funciona tanto en
+    // /servicios/nominas/ (local) como en /nominas/ (producción).
+    $dbv_dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+    if (preg_match('#/(modules|config|includes|ajax|solic_userinfo)$#i', $dbv_dir)) {
+        $dbv_dir = dirname($dbv_dir);
+    }
     header('Content-Type: text/html; charset=utf-8');
     ?>
     <!DOCTYPE html>
@@ -14,8 +20,8 @@ if (!file_exists(__DIR__ . '/../config.php')) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
         <title>Sistema sin configurar</title>
-        <link rel="stylesheet" href="/nominas/css/font-awesome6.4.0/css/all.min.css">
-        <script src="/nominas/js/sweetalert2.all.min.js"></script>
+        <link rel="stylesheet" href="<?php echo $dbv_dir; ?>/css/font-awesome6.4.0/css/all.min.css">
+        <script src="<?php echo $dbv_dir; ?>/js/sweetalert2.all.min.js"></script>
         <style>
             body {
                 margin:0;
@@ -43,8 +49,8 @@ if (!file_exists(__DIR__ . '/../config.php')) {
             backdrop: 'rgba(0,0,0,0.85)'
         }).then(function (result) {
             if (result.isConfirmed) {
-                var w = window.open('/InstalarBD/InstalarBD.php', '_blank');
-                if (!w) { window.location.href = '/InstalarBD/InstalarBD.php'; }
+                var w = window.open('<?php echo $dbv_dir; ?>/../InstalarBD/InstalarBD.php', '_blank');
+                if (!w) { window.location.href = '<?php echo $dbv_dir; ?>/../InstalarBD/InstalarBD.php'; }
             }
         });
         </script>
@@ -82,8 +88,8 @@ if (php_sapi_name() !== 'cli') {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
             <title>Aplicación en mantenimiento</title>
-            <link rel="stylesheet" href="/nominas/css/font-awesome6.4.0/css/all.min.css">
-            <script src="/nominas/js/sweetalert2.all.min.js"></script>
+            <link rel="stylesheet" href="<?php echo BASE_URL; ?>/css/font-awesome6.4.0/css/all.min.css">
+            <script src="<?php echo BASE_URL; ?>/js/sweetalert2.all.min.js"></script>
             <style>
                 body {
                     margin:0;

@@ -5622,7 +5622,7 @@ function checkDatabaseStatus() {
     if (btnClose) {
         btnClose.addEventListener('click', function (e) {
             e.preventDefault();
-            window.location.href = '/nominas/index.php';
+            window.location.href = '<?php echo BASE_URL; ?>/index.php';
         });
     }
 
@@ -5774,7 +5774,7 @@ function checkDatabaseStatus() {
                 closeMenu();
 
                 if (servicio === 'salarios') {
-                    window.open('/nominas/solic_userinfo/', '_blank');
+                    window.open('<?php echo BASE_URL; ?>/solic_userinfo/', '_blank');
                 } else if (servicio === 'contacto') {
                     window.open('/contacto.php', '_blank');
                 } else if (servicio === 'sobre-autor') {

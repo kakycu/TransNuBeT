@@ -18,8 +18,8 @@ if (!is_file(__DIR__ . '/includes/licencia.php')) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Aplicación en mantenimiento</title>
-        <link rel="stylesheet" href="/nominas/css/font-awesome6.4.0/css/all.min.css">
-        <script src="/nominas/js/sweetalert2.all.min.js"></script>
+        <link rel="stylesheet" href="css/font-awesome6.4.0/css/all.min.css">
+        <script src="js/sweetalert2.all.min.js"></script>
         <style>
             body {
                 margin:0;

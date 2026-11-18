@@ -52,7 +52,7 @@ try {
         'execution_time' => number_format(microtime(true) - $start, 4) . ' s',
         
         // Información del Servidor (PC)
-        'server_os'      => php_uname('s') . ' ' . php_uname('r') . ' ' . . php_uname('v'), // Ej: Windows NT 10.0
+        'server_os'      => php_uname('s') . ' ' . php_uname('r') . ' ' . php_uname('v'), // Ej: Windows NT 10.0
         'php_version'    => PHP_VERSION,
         'server_time'    => date('Y-m-d H:i:s'),
         'system_uptime'  => getSystemUptime(),
