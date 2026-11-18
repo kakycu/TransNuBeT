@@ -7,7 +7,7 @@
 ## Entorno de desarrollo
 
 - **USBWebServer:** `C:\Users\kakyc\Desktop\TRANSNUBET` (servidor Apache local; `http://localhost`, DocumentRoot `C:\Users\kakyc\Desktop\TRANSNUBET\root`, config en `Apache2\conf\httpd.conf`)
-- Proyecto PHP: `nominas/` (raíz web: `C:\Users\kakyc\Desktop\TRANSNUBET\root\nominas`)
+- Proyecto PHP: `servicios/nominas/` (ruta local: `C:\Users\kakyc\Desktop\TRANSNUBET\root\servicios\nominas`, URL: `http://localhost/servicios/nominas/`)
 - MySQL local: `localhost`, usuario `root`, `frl8110kaky`, BD `TransNuBeT_nomina`
 - **Binario MySQL:** `C:\Users\kakyc\Desktop\TRANSNUBET\mysql\bin\mysqld_usbwv8.exe`
 - **NO hay cliente MySQL CLI** (`mysql.exe`) en esta instalación. El MCP de MySQL (`@benborla29/mcp-server-mysql`) tiene habilitadas las operaciones de escritura (`ALLOW_INSERT/UPDATE/DELETE/DDL_OPERATION=true` en `opencode.json`), por lo que se puede usar directamente para INSERT/UPDATE/DELETE y DDL; si el MCP no estuviera disponible, escribir con un script PHP con PDO ejecutado con `php.exe`.
@@ -19,5 +19,9 @@
 - Validar sintaxis PHP: `& "C:\Users\kakyc\Desktop\TRANSNUBET\php\php.exe" -l <archivo>`
 - Lint recursivo de un directorio:
   ```powershell
-  Get-ChildItem -Path nominas -Recurse -Filter *.php | ForEach-Object { & "C:\Users\kakyc\Desktop\TRANSNUBET\php\php.exe" -l $_.FullName } 2>&1 | Select-String "No syntax errors" -NotMatch
+  Get-ChildItem -Path servicios\nominas -Recurse -Filter *.php | ForEach-Object { & "C:\Users\kakyc\Desktop\TRANSNUBET\php\php.exe" -l $_.FullName } 2>&1 | Select-String "No syntax errors" -NotMatch
   ```
+
+## Pruebas en navegador
+
+- Usar el **navegador integrado de OpenCode** (`tools.browser.*`) cuando esté disponible; si no, verificar con `curl.exe` / `Invoke-WebRequest` o un script PHP CLI. Ya **no** se usa Playwright MCP.
