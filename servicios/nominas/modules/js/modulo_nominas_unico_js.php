@@ -2750,6 +2750,26 @@ $('#btnSeleccionarTodosAuto').on('click', function() {
         });
         return;
     }
+
+    // Si ya estaban todos marcados, el botón desmarca; si no, marca todos.
+    var todosMarcados = trabajadoresDisponibles.every(function(t) {
+        return trabajadoresSeleccionadosAuto.some(function(s) { return s.id == t.id; });
+    });
+
+    if (todosMarcados) {
+        trabajadoresSeleccionadosAuto = [];
+        renderAutoWorkerList();
+        Swal.fire({
+            title: '<i class="fas fa-times-circle me-2"></i> Selección vacía',
+            html: 'Se desmarcaron todos los trabajadores disponibles.',
+            icon: 'info',
+            timer: 2000,
+            showConfirmButton: false,
+            background: '#1a1a2e',
+            color: '#ffffff'
+        });
+        return;
+    }
     
     trabajadoresSeleccionadosAuto = [];
     
@@ -3984,6 +4004,9 @@ function renderAutoWorkerList(idsEnNomina) {
         });
     }
     
+    var todosAutoSeleccionados = trabajadoresDisponibles.length > 0 && trabajadoresDisponibles.every(function(t) {
+        return trabajadoresSeleccionadosAuto.some(function(s) { return s.id == t.id; });
+    });
     var totalTrabajadoresSistema = trabajadores.length;
     var totalEnNomina = idsEnNomina.length;
     var disponiblesCount = trabajadoresDisponibles.length;
@@ -4043,7 +4066,9 @@ function renderAutoWorkerList(idsEnNomina) {
         html += `<div class="mb-2 d-flex justify-content-between align-items-center">
                     <strong><i class="fas fa-user-plus me-1" style="color: 1;"></i> Trabajadores DISPONIBLES para agregar (${trabajadoresDisponibles.length}):</strong>
                     <button type="button" class="btn-seleccionar-todos-sm" style="background: rgba(16, 185, 129, 0.15); border: 0.0625rem solid 1; border-radius: 0.375rem; padding:0.25rem 0.625rem; font-size:0.7rem; color: #10b981;">
-                        <i class="fas fa-check-double me-1"></i> Seleccionar todos
+                        ${todosAutoSeleccionados
+                            ? '<i class="fas fa-times me-1"></i> Deseleccionar todos'
+                            : '<i class="fas fa-check-double me-1"></i> Seleccionar todos'}
                     </button>
                 </div>`;
         
@@ -4118,6 +4143,12 @@ function renderAutoWorkerList(idsEnNomina) {
     }
     
     $('#autoWorkerList').html(html);
+    var $btnTodosAuto = $('#btnSeleccionarTodosAuto');
+    $btnTodosAuto.html(todosAutoSeleccionados
+        ? '<i class="fas fa-times me-2"></i>Deseleccionar todos'
+        : '<i class="fas fa-check-double me-2"></i>Seleccionar todos disponibles');
+    var tooltipBtnTodos = todosAutoSeleccionados ? 'Deseleccionar todos los disponibles' : 'Seleccionar todos disponibles';
+    $btnTodosAuto.attr('title', tooltipBtnTodos).attr('data-tooltip', tooltipBtnTodos);
     $('#selectedAutoCount').text(trabajadoresSeleccionadosAuto.length);
     $('#btnConfirmarAgregarAuto').prop('disabled', trabajadoresSeleccionadosAuto.length === 0);
 }
