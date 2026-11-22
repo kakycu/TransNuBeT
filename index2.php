@@ -774,19 +774,18 @@ $faq = [
     .integraciones-block{margin-top:2.5rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
     .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;text-align:center;margin:0 0 .5rem}
     .integraciones-block > p{text-align:center;color:#6b7280;font-size:.75rem;line-height:1.5;margin:0 0 2rem;font-family:'Inter',sans-serif}
-    .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
-    .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
-    .integracion-item i{font-size:1.8rem;line-height:1}
-    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:inherit}
-    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.72rem;color:#6b7280;line-height:1.3}
+    .integraciones-grid{display:flex;flex-wrap:nowrap;justify-content:space-between;gap:1rem;overflow-x:auto;padding-bottom:.25rem}
+    .integracion-item{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
+    .integracion-item i{font-size:1.7rem;line-height:1}
+    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:inherit;white-space:nowrap}
+    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.68rem;color:#6b7280;line-height:1.3}
     .integracion-item:hover{color:#fff}
     .integracion-item.int-wa:hover{color:#25D366}
     .integracion-item.int-cian:hover{color:var(--cian)}
     .integracion-item.int-fuego:hover{color:var(--fuego)}
     .integracion-item.int-drive:hover{color:var(--fuego)}
     .integracion-item.int-excel:hover{color:#21A366}
-    @media(max-width:1023px){.integracion-item{flex-basis:calc(33.333% - 1rem)}}
-    @media(max-width:639px){.integracion-item{flex-basis:calc(50% - 1rem)}}
+    @media(max-width:900px){.integraciones-grid{justify-content:flex-start}.integracion-item{flex:0 0 120px}}
     .escena {
         position: relative; justify-self: center;
         width: min(100%, 32rem);
@@ -890,19 +889,18 @@ $faq = [
     .integraciones-block{margin-top:2.5rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
     .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;text-align:center;margin:0 0 .5rem}
     .integraciones-block > p{text-align:center;color:#6b7280;font-size:.75rem;line-height:1.5;margin:0 0 2rem;font-family:'Inter',sans-serif}
-    .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
-    .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
-    .integracion-item i{font-size:1.8rem;line-height:1}
-    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:inherit}
-    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.72rem;color:#6b7280;line-height:1.3}
+    .integraciones-grid{display:flex;flex-wrap:nowrap;justify-content:space-between;gap:1rem;overflow-x:auto;padding-bottom:.25rem}
+    .integracion-item{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
+    .integracion-item i{font-size:1.7rem;line-height:1}
+    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:inherit;white-space:nowrap}
+    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.68rem;color:#6b7280;line-height:1.3}
     .integracion-item:hover{color:#fff}
     .integracion-item.int-wa:hover{color:#25D366}
     .integracion-item.int-cian:hover{color:var(--cian)}
     .integracion-item.int-fuego:hover{color:var(--fuego)}
     .integracion-item.int-drive:hover{color:var(--fuego)}
     .integracion-item.int-excel:hover{color:#21A366}
-    @media(max-width:1023px){.integracion-item{flex-basis:calc(33.333% - 1rem)}}
-    @media(max-width:639px){.integracion-item{flex-basis:calc(50% - 1rem)}}
+    @media(max-width:900px){.integraciones-grid{justify-content:flex-start}.integracion-item{flex:0 0 120px}}
     .escena { margin-top: 3.25rem; }
     }
     @media (max-width: 40rem) {
@@ -1674,19 +1672,18 @@ $faq = [
     .integraciones-block{margin-top:2.5rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
     .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;text-align:center;margin:0 0 .5rem}
     .integraciones-block > p{text-align:center;color:#6b7280;font-size:.75rem;line-height:1.5;margin:0 0 2rem;font-family:'Inter',sans-serif}
-    .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
-    .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
-    .integracion-item i{font-size:1.8rem;line-height:1}
-    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:inherit}
-    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.72rem;color:#6b7280;line-height:1.3}
+    .integraciones-grid{display:flex;flex-wrap:nowrap;justify-content:space-between;gap:1rem;overflow-x:auto;padding-bottom:.25rem}
+    .integracion-item{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
+    .integracion-item i{font-size:1.7rem;line-height:1}
+    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:inherit;white-space:nowrap}
+    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.68rem;color:#6b7280;line-height:1.3}
     .integracion-item:hover{color:#fff}
     .integracion-item.int-wa:hover{color:#25D366}
     .integracion-item.int-cian:hover{color:var(--cian)}
     .integracion-item.int-fuego:hover{color:var(--fuego)}
     .integracion-item.int-drive:hover{color:var(--fuego)}
     .integracion-item.int-excel:hover{color:#21A366}
-    @media(max-width:1023px){.integracion-item{flex-basis:calc(33.333% - 1rem)}}
-    @media(max-width:639px){.integracion-item{flex-basis:calc(50% - 1rem)}}
+    @media(max-width:900px){.integraciones-grid{justify-content:flex-start}.integracion-item{flex:0 0 120px}}
     .escena { animation: none; }
         .pantalla, .movil, .escena::before { transform: none; }
         .btn:hover, .card:hover, .serv:hover, .paso:hover, .equipo-card:hover { transform: none; }
