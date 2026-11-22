@@ -31,6 +31,7 @@ ErrorDocument 403 /servicios/403.php
     RewriteRule ^images/ - [L,NC]
 
     # Carpetas del sistema que se movieron a servicios/
+    RewriteRule ^css/styleindex\.css$ - [L,NC]
     RewriteRule ^(assets|css|js|images|lib|Documentos|fcostoAdhesivo|fcostoCharangon|InstalarBD|facturacion|nominas|phpinfo)(/.*)?$ /servicios/$1$2 [R=301,L,NC]
 
     # Paginas sueltas del sistema
