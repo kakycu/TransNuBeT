@@ -1463,6 +1463,15 @@ $faq = [
                 <button type="button" class="pill" data-slide="1" style="--brillo: 0, 200, 83" aria-label="Ver Facturación en el monitor">
                     <span class="dot" aria-hidden="true"></span> 02. Facturación
                 </button>
+                <button type="button" class="pill" data-slide="2" style="--brillo: 255, 167, 38" aria-label="Ver Costos en el monitor">
+                    <span class="dot" aria-hidden="true"></span> 03. Costos
+                </button>
+                <button type="button" class="pill" data-slide="3" style="--brillo: 139, 92, 246" aria-label="Ver Inventarios en el monitor">
+                    <span class="dot" aria-hidden="true"></span> 04. Inventarios
+                </button>
+                <button type="button" class="pill" data-slide="4" style="--brillo: 0, 212, 255" aria-label="Ver Administración en el monitor">
+                    <span class="dot" aria-hidden="true"></span> 05. Administración
+                </button>
             </div>
 
             <div class="diapo is-on" style="--brillo: 37, 99, 235">
@@ -1510,6 +1519,87 @@ $faq = [
                         <div>
                             <strong>Subsistema de Facturación · SisGeFac</strong>
                             <span>Factura, contrata, cotiza. Controla todas tus ventas</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="diapo" style="--brillo: 255, 167, 38">
+                <div class="pantalla">
+                    <img src="/servicios/images/costos.png"
+                         width="1024" height="1024" alt="Panel del subsistema de Costos" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/servicios/images/costos.png"
+                         width="1024" height="1024" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/servicios/images/costos.png"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Costos</strong>
+                            <span>Controla gastos, centros de costo y análisis de tu operación</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="diapo" style="--brillo: 139, 92, 246">
+                <div class="pantalla">
+                    <img src="/servicios/images/inventario.png"
+                         width="1024" height="1024" alt="Panel del subsistema de Inventarios" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/servicios/images/inventario.png"
+                         width="1024" height="1024" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/servicios/images/inventario.png"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Inventarios</strong>
+                            <span>Gestiona almacenes, existencias y movimientos en tiempo real</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="diapo" style="--brillo: 0, 212, 255">
+                <div class="pantalla">
+                    <img src="/servicios/images/admin.png"
+                         width="1024" height="1024" alt="Panel del subsistema de Administración" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/servicios/images/admin.png"
+                         width="1024" height="1024" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/servicios/images/admin.png"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Administración</strong>
+                            <span>Configura usuarios, permisos y parámetros del sistema</span>
                         </div>
                     </div>
                     <a class="chip-btn" href="#ecosistema">
@@ -3001,7 +3091,7 @@ $faq = [
     if (diapos.length < 2) { return; }
     var capas = [document.getElementById('heroFondoA'), document.getElementById('heroFondoB')];
     /* Mismo par de imágenes para móvil, tablet y PC: cada opción tiene la suya. */
-    var fondos = ['/images/nominas-hero.webp', '/images/hero.webp'];
+    var fondos = ['/images/nominas-hero.webp', '/images/hero.webp', '/images/costos.webp', '/images/inventarios.webp', '/images/administracion.webp'];
     var actual = 0, capa = 0, timer = null;
 
     /* Precarga para que el fundido entre sin parpadeos. */

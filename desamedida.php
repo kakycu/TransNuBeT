@@ -1004,6 +1004,13 @@
                 <i class="fas fa-arrow-right text-xs text-[#25D366] transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true"></i>
             </a>
 
+            <a href="/index.php"
+               class="group inline-flex items-center justify-center gap-3 font-exo font-bold uppercase tracking-wider px-8 py-4 rounded-sm border border-acero text-gray-200 transition-all duration-300 hover:border-cian hover:text-white hover:-translate-y-1">
+                <i class="fa-solid fa-house text-cian text-sm" aria-hidden="true"></i>
+                <span>Volver al inicio</span>
+                <i class="fas fa-arrow-left text-xs text-cian transition-transform duration-300 group-hover:-translate-x-1" aria-hidden="true"></i>
+            </a>
+
         </div>
 
         <!-- Badges de confianza -->

@@ -97,6 +97,8 @@
     .btn-cian:hover{background:#33dcff;box-shadow:0 20px 36px -14px rgba(0,212,255,.9);}
     .btn-ghost{background:rgba(255,255,255,.02);color:var(--gris);border-color:rgba(255,255,255,.14);}
     .btn-ghost:hover{color:var(--txt);border-color:rgba(0,212,255,.45);background:rgba(0,212,255,.05);}
+    .btn-verde{background:#25D366;color:#0A0F1A;box-shadow:0 14px 30px -14px rgba(37,211,102,.75);}
+    .btn-verde:hover{background:#2be06f;box-shadow:0 20px 36px -14px rgba(37,211,102,.9);}
     .btn-sm{padding:.6rem 1rem;font-size:.68rem;}
 
     .scroll-progress{position:fixed;inset:0 0 auto 0;height:3px;z-index:60;background:rgba(255,255,255,.04);pointer-events:none;}
@@ -431,7 +433,7 @@
                     <img src="/images/franklin-ramos-lamadrid.jpg" alt="Retrato de Franklin Ramos Lamadrid, fundador de UnicornioSoftware" width="720" height="720" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-300 ease-out group-hover:scale-[1.04]">
                     <div class="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#05080f] via-[#05080f]/75 to-transparent" aria-hidden="true"></div>
                     <div class="absolute inset-x-0 bottom-0 p-6">
-                        <h3 class="font-bebas text-2xl text-white tracking-wider leading-tight">FRANKLIN RAMOS LAMADRID</h3>
+                        <h3 class="font-bebas text-2xl text-white tracking-wider leading-tight">Franklin Ramos Lamadrid (Kaky)</h3>
                         <p class="text-fuego text-[11px] font-exo font-bold uppercase tracking-widest mt-1 mb-4">Fundador · Maestría y Desarrollo</p>
                         <button type="button" data-maestro-open="modal-maestro-franklin" class="flex w-full items-center justify-between gap-2 font-exo font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-sm border border-fuego/40 text-fuego bg-black/40 hover:bg-fuego hover:text-abismo transition-colors duration-300">
                             Conocer al maestro
@@ -598,8 +600,9 @@
                 <h2 class="bebas">CONVERTIMOS TU IDEA EN UNA SOLUCIÓN TECNOLGICA.</h2>
                 <p>Conversemos sobre lo que necesitas. Te ayudamos a definir el alcance, la mejor aproximación y los próximos pasos para construirlo.</p>
                 <div class="hero-acciones">
-                    <a class="btn btn-fuego" href="/desamedida.php"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> Solicitar software a medida</a>
+                    <a class="btn btn-verde" href="/desamedida.php"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> Solicitar software a medida</a>
                     <a class="btn btn-ghost" href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contactar con UnicornioSoftware</a>
+                    <a class="btn-outline-fuego" href="/index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la Página principal</a>
                 </div>
             </div>
         </div>
