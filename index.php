@@ -463,9 +463,9 @@ $faq = [
 <title>UnicornioSoftware Cuba · SOFTWARE PARA TRANSFORMAR TU NEGOCIO</title>
 <meta name="description" content="Facturación, nóminas, costos e inventarios en una plataforma que corre en tu propia red. UnicornioSoftware Cuba.">
 <link rel="icon" type="image/png" href="/images/logo.png">
-<link rel="stylesheet" href="<?= $base ?>/css/font-awesome6.4.0/css/all.min.css">
-<link rel="stylesheet" href="<?= $base ?>/assets/fonts/fuentes.css">
-<link rel="stylesheet" href="<?= $base ?>/assets/css/portada-licencia.css">
+<link rel="stylesheet" href="/css/font-awesome6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/assets/fonts/fuentes.css">
+<link rel="stylesheet" href="/css/portada-licencia.css">
 <link rel="stylesheet" href="/css/styleindex.css">
 <script>document.documentElement.classList.add('js');</script>
 </head>
@@ -703,17 +703,17 @@ $faq = [
 
             <div class="diapo" style="--brillo: 255, 167, 38">
                 <div class="pantalla">
-                    <img src="/servicios/images/costos.png"
+                    <img src="/images/costos.png"
                          width="1024" height="1024" alt="Panel del subsistema de Costos" loading="lazy" decoding="async">
                 </div>
                 <div class="movil">
-                    <img src="/servicios/images/costos.png"
+                    <img src="/images/costos.png"
                          width="1024" height="1024" alt="" loading="lazy" decoding="async">
                 </div>
                 <div class="ficha">
                     <div class="chip">
                         <span class="chip-icono">
-                            <img src="/servicios/images/costos.png"
+                            <img src="/images/costos.png"
                                  width="40" height="40" alt="" loading="lazy" decoding="async">
                         </span>
                         <div>
@@ -730,17 +730,17 @@ $faq = [
 
             <div class="diapo" style="--brillo: 139, 92, 246">
                 <div class="pantalla">
-                    <img src="/servicios/images/inventario.png"
+                    <img src="/images/inventario.png"
                          width="1024" height="1024" alt="Panel del subsistema de Inventarios" loading="lazy" decoding="async">
                 </div>
                 <div class="movil">
-                    <img src="/servicios/images/inventario.png"
+                    <img src="/images/inventario.png"
                          width="1024" height="1024" alt="" loading="lazy" decoding="async">
                 </div>
                 <div class="ficha">
                     <div class="chip">
                         <span class="chip-icono">
-                            <img src="/servicios/images/inventario.png"
+                            <img src="/images/inventario.png"
                                  width="40" height="40" alt="" loading="lazy" decoding="async">
                         </span>
                         <div>
@@ -757,17 +757,17 @@ $faq = [
 
             <div class="diapo" style="--brillo: 0, 212, 255">
                 <div class="pantalla">
-                    <img src="/servicios/images/admin.png"
+                    <img src="/images/admin.png"
                          width="1024" height="1024" alt="Panel del subsistema de Administración" loading="lazy" decoding="async">
                 </div>
                 <div class="movil">
-                    <img src="/servicios/images/admin.png"
+                    <img src="/images/admin.png"
                          width="1024" height="1024" alt="" loading="lazy" decoding="async">
                 </div>
                 <div class="ficha">
                     <div class="chip">
                         <span class="chip-icono">
-                            <img src="/servicios/images/admin.png"
+                            <img src="/images/admin.png"
                                  width="40" height="40" alt="" loading="lazy" decoding="async">
                         </span>
                         <div>
@@ -1272,7 +1272,7 @@ $faq = [
                         <span class="plan-price-currency">USD</span>
                         <span class="plan-price-period">/mes</span>
                     </div>
-                    <p class="plan-price-cup" data-usd="15">(Aprox. 14.400 CUP a la tasa del día)</p>
+                    <p class="plan-price-cup" data-usd="15">(calculando...)</p>
                     <hr class="plan-divider">
                     <ul class="plan-features">
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>1 módulo principal a elegir</span></li>
@@ -1295,7 +1295,7 @@ $faq = [
                         <span class="plan-price-currency">USD</span>
                         <span class="plan-price-period">/mes</span>
                     </div>
-                    <p class="plan-price-cup" data-usd="30">(Aprox. 28.800 CUP a la tasa del día)</p>
+                    <p class="plan-price-cup" data-usd="30">(calculando...)</p>
                     <hr class="plan-divider">
                     <ul class="plan-features">
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Hasta 3 módulos del ecosistema SiGesEmp</span></li>
@@ -1318,7 +1318,7 @@ $faq = [
                         <span class="plan-price-currency">USD</span>
                         <span class="plan-price-period">/mes</span>
                     </div>
-                    <p class="plan-price-cup" data-usd="50">(Aprox. 48.000 CUP a la tasa del día)</p>
+                    <p class="plan-price-cup" data-usd="50">(calculando...)</p>
                     <hr class="plan-divider">
                     <ul class="plan-features">
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Todos los módulos de SiGesEmp</span></li>
@@ -1690,6 +1690,9 @@ $faq = [
 <!-- ===== Estado de la licencia ===== -->
 <div class="lic-overlay" id="estadoLicencia" hidden>
     <div class="lic-modal" role="dialog" aria-modal="true" aria-labelledby="edoLicTitulo">
+        <button type="button" class="lic-modal-x" data-estado-lic-close aria-label="Cerrar">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
         <div class="lic-modal-head">
             <span class="lic-modal-icon"><i class="fa-solid fa-key" aria-hidden="true"></i></span>
             <div>

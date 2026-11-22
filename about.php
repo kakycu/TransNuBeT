@@ -1,4 +1,4 @@
-<?php $base = '/servicios'; ?>
+﻿<?php $base = '/servicios'; ?>
 <!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 
@@ -7,12 +7,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sobre nosotros | UnicornioSoftware</title>
     <meta name="description"
-        content="Conoce a UnicornioSoftware: equipo, experiencia, metodología y las soluciones que construimos para negocios y organizaciones en Cuba.">
+        content="Conoce a UnicornioSoftware: equipo, experiencia, metodologÃ­a y las soluciones que construimos para negocios y organizaciones en Cuba.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="/about.php">
     <meta property="og:site_name" content="UnicornioSoftware">
     <meta property="og:title" content="Sobre nosotros | UnicornioSoftware">
-    <meta property="og:description" content="El equipo detrás de UnicornioSoftware. Experiencia técnica, metodología clara y soluciones adaptadas a necesidades reales.">
+    <meta property="og:description" content="El equipo detrÃ¡s de UnicornioSoftware. Experiencia tÃ©cnica, metodologÃ­a clara y soluciones adaptadas a necesidades reales.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Sobre nosotros | UnicornioSoftware">
     <meta name="twitter:description" content="Conoce al equipo, la trayectoria y la forma de trabajo de UnicornioSoftware.">
@@ -277,7 +277,7 @@
             <img src="/images/logo.png" alt="UnicornioSoftware Cuba">
             <span class="marca-txt">
                 <b><i>UNICORNIO</i><em>SOFTWARE</em></b>
-                <small>Cuba · Gestión empresarial</small>
+                <small>Cuba Â· GestiÃ³n empresarial</small>
             </span>
         </a>
 
@@ -285,8 +285,8 @@
             <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
             <a href="#historia"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Historia</a>
             <a href="#equipo"><i class="fa-solid fa-users" aria-hidden="true"></i> Equipo</a>
-            <a href="#especializacion"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Especialización</a>
-            <a href="#metodologia"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Metodología</a>
+            <a href="#especializacion"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> EspecializaciÃ³n</a>
+            <a href="#metodologia"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> MetodologÃ­a</a>
             <a href="#soluciones"><i class="fa-solid fa-cubes" aria-hidden="true"></i> Soluciones</a>
         </div>
 
@@ -294,18 +294,18 @@
             <div class="nav-login" id="navLogin">
                 <button type="button" class="btn btn-cian btn-sm" id="navLoginBtn"
                         aria-haspopup="true" aria-expanded="false" aria-controls="navLoginMenu">
-                    <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Iniciar sesión
+                    <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Iniciar sesiÃ³n
                     <i class="fa-solid fa-chevron-down nav-login-caret" aria-hidden="true"></i>
                 </button>
                 <div class="nav-login-menu" id="navLoginMenu" role="menu" aria-labelledby="navLoginBtn">
-                    <a role="menuitem" href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
-                    <a role="menuitem" href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
+                    <a role="menuitem" href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> NÃ³minas</a>
+                    <a role="menuitem" href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> FacturaciÃ³n</a>
                     <a role="menuitem" href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a>
                     <a role="menuitem" href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a>
-                    <a role="menuitem" href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a>
+                    <a role="menuitem" href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> AdministraciÃ³n</a>
                 </div>
             </div>
-            <button type="button" class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">
+            <button type="button" class="menu-btn" id="menuBtn" aria-label="Abrir menÃº" aria-expanded="false">
                 <i class="fa-solid fa-bars" aria-hidden="true"></i>
             </button>
         </div>
@@ -315,15 +315,15 @@
         <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
         <a href="#historia"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Historia</a>
         <a href="#equipo"><i class="fa-solid fa-users" aria-hidden="true"></i> Equipo</a>
-        <a href="#especializacion"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Especialización</a>
-        <a href="#metodologia"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Metodología</a>
+        <a href="#especializacion"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> EspecializaciÃ³n</a>
+        <a href="#metodologia"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> MetodologÃ­a</a>
         <a href="#soluciones"><i class="fa-solid fa-cubes" aria-hidden="true"></i> Soluciones</a>
-        <span class="menu-movil-titulo">Iniciar sesión</span>
-        <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
-        <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
+        <span class="menu-movil-titulo">Iniciar sesiÃ³n</span>
+        <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> NÃ³minas</a>
+        <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> FacturaciÃ³n</a>
         <a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a>
         <a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a>
-        <a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a>
+        <a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> AdministraciÃ³n</a>
     </div>
 </nav>
 
@@ -332,13 +332,13 @@
         <div class="wrap about-hero-grid">
             <div class="about-hero-copy">
                 <p class="about-kicker">Sobre nosotros</p>
-                <h1 class="bebas">EL TALENTO<br><span>DETRÁS DE CADA SOLUCIÓN.</span></h1>
-                <p>UnicornioSoftware nace de la experiencia de profesionales dedicados al desarrollo de software, herramientas empresariales y soluciones digitales adaptadas a necesidades reales. Unimos conocimiento técnico y visión práctica para construir tecnología útil, confiable y cercana a quienes la usan.</p>
-                <a href="/index.php" class="btn-outline-fuego btn-volver"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la Página principal</a>
+                <h1 class="bebas">EL TALENTO<br><span>DETRÃS DE CADA SOLUCIÃ“N.</span></h1>
+                <p>UnicornioSoftware nace de la experiencia de profesionales dedicados al desarrollo de software, herramientas empresariales y soluciones digitales adaptadas a necesidades reales. Unimos conocimiento tÃ©cnico y visiÃ³n prÃ¡ctica para construir tecnologÃ­a Ãºtil, confiable y cercana a quienes la usan.</p>
+                <a href="/index.php" class="btn-outline-fuego btn-volver"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la PÃ¡gina principal</a>
             </div>
             <div class="about-hero-brand">
                 <div class="about-hero-logo-wrap">
-                    <img src="/servicios/images/sigesnom.png" alt="Logo UnicornioSoftware" class="about-hero-logo" width="1024" height="1024" loading="eager" decoding="async">
+                    <img src="/images/sigesnom.png" alt="Logo UnicornioSoftware" class="about-hero-logo" width="1024" height="1024" loading="eager" decoding="async">
                 </div>
             </div>
         </div>
@@ -348,31 +348,31 @@
         <div class="wrap">
             <div class="sec-head reveal">
                 <span class="eyebrow">Nuestra historia</span>
-                <h2 class="bebas">DE LA EXPERIENCIA TÉCNICA A LA VISIÓN EMPRESARIAL</h2>
-                <p>UnicornioSoftware surge de la unión entre experiencia técnica y una visión clara: crear software que funcione de verdad para las personas y los negocios que lo necesitan.</p>
+                <h2 class="bebas">DE LA EXPERIENCIA TÃ‰CNICA A LA VISIÃ“N EMPRESARIAL</h2>
+                <p>UnicornioSoftware surge de la uniÃ³n entre experiencia tÃ©cnica y una visiÃ³n clara: crear software que funcione de verdad para las personas y los negocios que lo necesitan.</p>
             </div>
             <div class="historia-grid">
                 <div class="historia-texto reveal">
-                    <p>Antes de consolidar el ecosistema actual, nuestro equipo venía trabajando en el desarrollo de aplicaciones, sistemas de gestión y soluciones adaptadas a distintos contextos operativos. Esa experiencia nos permitió entender un problema común: muchos negocios necesitaban herramientas diseñadas para su realidad, no programas genéricos difíciles de adaptar.</p>
-                    <p>De ahí nace el <strong>Ecosistema Financiero</strong>, nuestro conjunto de aplicaciones, como respuesta práctica a necesidades concretas de facturación, nóminas, costos, inventarios y administración. La idea siempre fue la misma: poner la tecnología al servicio del trabajo diario, con datos bajo control del cliente y una operación clara.</p>
-                    <p>Hoy combinamos el desarrollo de productos propios con soluciones a medida, manteniendo un enfoque sencillo: escuchar, diseñar con criterio y entregar software que aporte valor real.</p>
-                    <div class="cita">"Donde tu visión toma forma."</div>
+                    <p>Antes de consolidar el ecosistema actual, nuestro equipo venÃ­a trabajando en el desarrollo de aplicaciones, sistemas de gestiÃ³n y soluciones adaptadas a distintos contextos operativos. Esa experiencia nos permitiÃ³ entender un problema comÃºn: muchos negocios necesitaban herramientas diseÃ±adas para su realidad, no programas genÃ©ricos difÃ­ciles de adaptar.</p>
+                    <p>De ahÃ­ nace el <strong>Ecosistema Financiero</strong>, nuestro conjunto de aplicaciones, como respuesta prÃ¡ctica a necesidades concretas de facturaciÃ³n, nÃ³minas, costos, inventarios y administraciÃ³n. La idea siempre fue la misma: poner la tecnologÃ­a al servicio del trabajo diario, con datos bajo control del cliente y una operaciÃ³n clara.</p>
+                    <p>Hoy combinamos el desarrollo de productos propios con soluciones a medida, manteniendo un enfoque sencillo: escuchar, diseÃ±ar con criterio y entregar software que aporte valor real.</p>
+                    <div class="cita">"Donde tu visiÃ³n toma forma."</div>
                 </div>
                 <div class="hitos reveal">
                     <article class="hito">
                         <p class="hito-k">Origen</p>
                         <h3>Problemas reales, soluciones propias</h3>
-                        <p>Identificamos necesidades concretas de gestión en negocios y organizaciones, y decidimos construir software adaptado a ese contexto.</p>
+                        <p>Identificamos necesidades concretas de gestiÃ³n en negocios y organizaciones, y decidimos construir software adaptado a ese contexto.</p>
                     </article>
                     <article class="hito">
-                        <p class="hito-k">Primeros módulos</p>
+                        <p class="hito-k">Primeros mÃ³dulos</p>
                         <h3>Un ecosistema que crece por utilidad</h3>
-                        <p>Facturación, nóminas, costos e inventarios se consolidaron como módulos prácticos, pensados para trabajar en la red local del cliente.</p>
+                        <p>FacturaciÃ³n, nÃ³minas, costos e inventarios se consolidaron como mÃ³dulos prÃ¡cticos, pensados para trabajar en la red local del cliente.</p>
                     </article>
                     <article class="hito">
-                        <p class="hito-k">Expansión</p>
+                        <p class="hito-k">ExpansiÃ³n</p>
                         <h3>Productos propios y desarrollo a medida</h3>
-                        <p>Ampliamos el trabajo hacia nuevas soluciones, mejoras continuas y proyectos personalizados según los procesos de cada cliente.</p>
+                        <p>Ampliamos el trabajo hacia nuevas soluciones, mejoras continuas y proyectos personalizados segÃºn los procesos de cada cliente.</p>
                     </article>
                 </div>
             </div>
@@ -381,9 +381,9 @@
     <section class="sec" id="equipo">
         <div class="wrap">
             <div class="sec-head reveal">
-                <span class="eyebrow">Quiénes la hacen posible</span>
-                <h2 class="bebas">EL EQUIPO DETRÁS DE UNICORNIOSOFTWARE</h2>
-                <p>Un equipo que combina ingeniería, diseño y cercanía para construir software útil, mantenerlo y hacerlo crecer junto a cada proyecto.</p>
+                <span class="eyebrow">QuiÃ©nes la hacen posible</span>
+                <h2 class="bebas">EL EQUIPO DETRÃS DE UNICORNIOSOFTWARE</h2>
+                <p>Un equipo que combina ingenierÃ­a, diseÃ±o y cercanÃ­a para construir software Ãºtil, mantenerlo y hacerlo crecer junto a cada proyecto.</p>
             </div>
 
             <div class="equipo-card reveal" data-spotlight style="--card-sheen: rgba(255, 107, 0, .18); margin-top:2.5rem;">
@@ -392,24 +392,24 @@
                     <div class="pilares">
                         <div class="pilar">
                             <span class="pilar-ico is-fuego"><i class="fa-solid fa-code" aria-hidden="true"></i></span>
-                            <h3>Ingeniería y arquitectura</h3>
+                            <h3>IngenierÃ­a y arquitectura</h3>
                             <p>Diseamos sistemas de escritorio, bases de datos locales y aplicaciones web con foco en estabilidad, mantenimiento y uso real.</p>
                         </div>
                         <div class="pilar">
                             <span class="pilar-ico is-cian"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
-                            <h3>Diseño y experiencia</h3>
+                            <h3>DiseÃ±o y experiencia</h3>
                             <p>Creamos interfaces claras para simplificar tareas complejas y hacer que el software se adapte al ritmo de trabajo del negocio.</p>
                         </div>
                         <div class="pilar">
                             <span class="pilar-ico is-fuego"><i class="fa-solid fa-headset" aria-hidden="true"></i></span>
                             <h3>Cercana y soporte</h3>
-                            <p>Acompaamos a cada cliente con trato directo, comunicación clara y respuestas giles durante la implementación y el uso diario.</p>
+                            <p>Acompaamos a cada cliente con trato directo, comunicaciÃ³n clara y respuestas giles durante la implementaciÃ³n y el uso diario.</p>
                         </div>
                     </div>
                     <div class="compromiso">
                         <div>
-                            <h4>Compromiso y visión</h4>
-                            <p>Conocemos el contexto local y construimos soluciones pensando en la operación real: datos bajo control, procesos claros y tecnología que resuelve.</p>
+                            <h4>Compromiso y visiÃ³n</h4>
+                            <p>Conocemos el contexto local y construimos soluciones pensando en la operaciÃ³n real: datos bajo control, procesos claros y tecnologÃ­a que resuelve.</p>
                         </div>
                         <a class="btn-outline-fuego" href="<?= $base ?>/soporte.php">
                             <i class="fa-solid fa-headset" aria-hidden="true"></i> Hablar con soporte
@@ -425,7 +425,7 @@
                 <span class="text-fuego font-exo font-bold uppercase tracking-widest text-sm">Quienes la hacen posible</span>
                 <h2 class="font-bebas text-2xl sm:text-4xl md:text-6xl lg:text-7xl text-white mt-2 tracking-wider">LOS MAESTROS DE LA FORJA</h2>
                 <div class="w-20 h-1 bg-fuego mx-auto rounded-full mt-4 mb-4"></div>
-                <p class="text-gray-400 mt-4 max-w-2xl mx-auto">Dos trayectorias profesionales, una misma visión: construir tecnología que transforme ideas en soluciones.</p>
+                <p class="text-gray-400 mt-4 max-w-2xl mx-auto">Dos trayectorias profesionales, una misma visiÃ³n: construir tecnologÃ­a que transforme ideas en soluciones.</p>
             </div>
 
             <div class="flex flex-col sm:flex-row items-center justify-center gap-8 reveal">
@@ -434,7 +434,7 @@
                     <div class="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#05080f] via-[#05080f]/75 to-transparent" aria-hidden="true"></div>
                     <div class="absolute inset-x-0 bottom-0 p-6">
                         <h3 class="font-bebas text-2xl text-white tracking-wider leading-tight">Franklin Ramos Lamadrid (Kaky)</h3>
-                        <p class="text-fuego text-[11px] font-exo font-bold uppercase tracking-widest mt-1 mb-4">Fundador · Maestría y Desarrollo</p>
+                        <p class="text-fuego text-[11px] font-exo font-bold uppercase tracking-widest mt-1 mb-4">Fundador Â· MaestrÃ­a y Desarrollo</p>
                         <button type="button" data-maestro-open="modal-maestro-franklin" class="flex w-full items-center justify-between gap-2 font-exo font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-sm border border-fuego/40 text-fuego bg-black/40 hover:bg-fuego hover:text-abismo transition-colors duration-300">
                             Conocer al maestro
                             <i class="fas fa-plus text-[10px] transition-transform duration-300 group-hover:rotate-45" aria-hidden="true"></i>
@@ -455,18 +455,19 @@
                 <div class="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
                     <img src="/images/franklin-ramos-lamadrid.jpg" alt="" width="720" height="720" loading="lazy" decoding="async" class="w-28 h-28 sm:w-32 sm:h-32 rounded-xl object-cover object-top border border-fuego/30 shrink-0">
                     <div class="text-center sm:text-left">
-                        <p class="text-fuego text-[11px] font-exo font-black uppercase tracking-widest mb-1">Fundador · Ingeniería y Desarrollo</p>
+                        <p class="text-fuego text-[11px] font-exo font-black uppercase tracking-widest mb-1">Fundador Â· IngenierÃ­a y Desarrollo</p>
                         <h3 id="maestro-franklin-nombre" class="font-bebas text-3xl text-white tracking-wider">FRANKLIN RAMOS LAMADRID</h3>
+						<h3 id="maestro-franklin-nombre" class="font-bebas text-3xl text-g text-indigo-400 tracking-wider">Kaky</h3>
                     </div>
                 </div>
             </div>
             <div class="overflow-y-auto overscroll-contain px-6 sm:px-8 pb-2 maestro-modal-scroll">
 <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
-    <p>Master en Ciencias Informáticas con más de una década de experiencia en desarrollo de software, videojuegos, simulación y dirección de proyectos tecnológicos.</p>
-    <p>Desarrollador full-stack con amplia experiencia en el diseño y desarrollo de interfaces de usuario, así como en la implementación de arquitecturas escalables y eficientes para sistemas empresariales. Mi enfoque principal es crear soluciones tecnológicas que no solo sean funcionales, sino también intuitivas y atractivas para los usuarios finales.</p>
-    <p>Entre mis proyectos destacados se encuentra el Sistema de Gestión Empresarial, una plataforma integral diseñada para optimizar la gestión de clientes, inventarios y facturación. Este sistema combina tecnologías modernas como React para el frontend, Node.js para el backend y MongoDB como base de datos, lo que permite una experiencia de usuario fluida y un rendimiento óptimo en entornos empresariales.</p>
-    <p>Su trayectoria se forjó en estudios de desarrollo, la academia y proyectos especializados — Vertical Soft Studios, Virtual Games Creations, Cátedra de Ciencias Informáticas y en la Universidad de Camagüey, dirigiendo equipos y definiendo arquitecturas de productos.</p>
-    <p>Hoy aplica esa experiencia al diseño, desarrollo y evolución de las soluciones de UnicornioSoftware.</p>
+    <p>Master en Ciencias InformÃ¡ticas con mÃ¡s de una dÃ©cada de experiencia en desarrollo de software, videojuegos, simulaciÃ³n y direcciÃ³n de proyectos tecnolÃ³gicos.</p>
+    <p>Desarrollador full-stack con amplia experiencia en el diseÃ±o y desarrollo de interfaces de usuario, asÃ­ como en la implementaciÃ³n de arquitecturas escalables y eficientes para sistemas empresariales. Mi enfoque principal es crear soluciones tecnolÃ³gicas que no solo sean funcionales, sino tambiÃ©n intuitivas y atractivas para los usuarios finales.</p>
+    <p>Entre mis proyectos destacados se encuentra el Sistema de GestiÃ³n Empresarial, una plataforma integral diseÃ±ada para optimizar la gestiÃ³n de clientes, inventarios y facturaciÃ³n. Este sistema combina tecnologÃ­as modernas como React para el frontend, Node.js para el backend y MongoDB como base de datos, lo que permite una experiencia de usuario fluida y un rendimiento Ã³ptimo en entornos empresariales.</p>
+    <p>Su trayectoria se forjÃ³ en estudios de desarrollo, la academia y proyectos especializados â€” Vertical Soft Studios, Virtual Games Creations, CÃ¡tedra de Ciencias InformÃ¡ticas y en la Universidad de CamagÃ¼ey, dirigiendo equipos y definiendo arquitecturas de productos.</p>
+    <p>Hoy aplica esa experiencia al diseÃ±o, desarrollo y evoluciÃ³n de las soluciones de UnicornioSoftware.</p>
 </div>
             </div>
             <div class="maestro-modal-footer mt-8 pt-6 border-t border-acero/50 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -487,16 +488,16 @@
             <div class="sec-head reveal">
                 <span class="eyebrow">Capacidades</span>
                 <h2 class="bebas">REAS DE ESPECIALIZACIN</h2>
-                <p>Conocimiento tcnico y enfoque prctico que respaldan cada solución que desarrollamos.</p>
+                <p>Conocimiento tcnico y enfoque prctico que respaldan cada soluciÃ³n que desarrollamos.</p>
             </div>
             <div class="grid">
                 <article class="card reveal destacada" data-spotlight style="--card-sheen: rgba(255, 107, 0, .22)">
                     <span class="card__sheen" aria-hidden="true"></span>
                     <div class="card-head">
                         <span class="card-ico"><i class="fa-solid fa-code" aria-hidden="true"></i></span>
-                        <div><h3>Ingeniería de software</h3><p class="card-sub">Arquitectura y desarrollo</p></div>
+                        <div><h3>IngenierÃ­a de software</h3><p class="card-sub">Arquitectura y desarrollo</p></div>
                     </div>
-                    <p>Diseño y desarrollo de aplicaciones empresariales, bases de datos, módulos de gestión y soluciones personalizadas según el proceso de cada negocio.</p>
+                    <p>DiseÃ±o y desarrollo de aplicaciones empresariales, bases de datos, mÃ³dulos de gestiÃ³n y soluciones personalizadas segÃºn el proceso de cada negocio.</p>
                 </article>
                 <article class="card reveal" data-spotlight style="--card-sheen: rgba(0, 212, 255, .18)">
                     <span class="card__sheen" aria-hidden="true"></span>
@@ -504,15 +505,15 @@
                         <span class="card-ico"><i class="fa-solid fa-globe" aria-hidden="true"></i></span>
                         <div><h3>Aplicaciones web</h3><p class="card-sub">Sistemas en red</p></div>
                     </div>
-                    <p>Plataformas y paneles accesibles desde el navegador, pensados para equipos de trabajo, control operativo y acceso seguro en la red local o según el proyecto.</p>
+                    <p>Plataformas y paneles accesibles desde el navegador, pensados para equipos de trabajo, control operativo y acceso seguro en la red local o segÃºn el proyecto.</p>
                 </article>
                 <article class="card reveal destacada" data-spotlight style="--card-sheen: rgba(255, 107, 0, .22)">
                     <span class="card__sheen" aria-hidden="true"></span>
                     <div class="card-head">
                         <span class="card-ico"><i class="fa-solid fa-database" aria-hidden="true"></i></span>
-                        <div><h3>Datos y automatización</h3><p class="card-sub">Información confiable</p></div>
+                        <div><h3>Datos y automatizaciÃ³n</h3><p class="card-sub">InformaciÃ³n confiable</p></div>
                     </div>
-                    <p>Modelado de datos, reportes, control de operaciones y automatización de tareas para reducir errores y ganar visibilidad sobre el negocio.</p>
+                    <p>Modelado de datos, reportes, control de operaciones y automatizaciÃ³n de tareas para reducir errores y ganar visibilidad sobre el negocio.</p>
                 </article>
                 <article class="card reveal" data-spotlight style="--card-sheen: rgba(0, 212, 255, .18)">
                     <span class="card__sheen" aria-hidden="true"></span>
@@ -520,7 +521,7 @@
                         <span class="card-ico"><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i></span>
                         <div><h3>Apps y experiencias interactivas</h3><p class="card-sub">Ms all del escritorio</p></div>
                     </div>
-                    <p>Desarrollo de aplicaciones móviles y experiencias interactivas cuando el proyecto lo requiere, con tecnologías adaptadas al objetivo y al contexto de uso.</p>
+                    <p>Desarrollo de aplicaciones mÃ³viles y experiencias interactivas cuando el proyecto lo requiere, con tecnologÃ­as adaptadas al objetivo y al contexto de uso.</p>
                 </article>
                 <article class="card reveal destacada" data-spotlight style="--card-sheen: rgba(255, 107, 0, .22)">
                     <span class="card__sheen" aria-hidden="true"></span>
@@ -528,15 +529,15 @@
                         <span class="card-ico"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span>
                         <div><h3>Seguridad y control local</h3><p class="card-sub">Datos del cliente</p></div>
                     </div>
-                    <p>Soluciones pensadas para que la información operativa permanezca bajo control del cliente, con arquitectura definida según las necesidades de cada instalación.</p>
+                    <p>Soluciones pensadas para que la informaciÃ³n operativa permanezca bajo control del cliente, con arquitectura definida segÃºn las necesidades de cada instalaciÃ³n.</p>
                 </article>
                 <article class="card reveal" data-spotlight style="--card-sheen: rgba(0, 212, 255, .18)">
                     <span class="card__sheen" aria-hidden="true"></span>
                     <div class="card-head">
                         <span class="card-ico"><i class="fa-solid fa-compass-drafting" aria-hidden="true"></i></span>
-                        <div><h3>Dirección de proyectos</h3><p class="card-sub">Del problema a la solución</p></div>
+                        <div><h3>DirecciÃ³n de proyectos</h3><p class="card-sub">Del problema a la soluciÃ³n</p></div>
                     </div>
-                    <p>Acompaamiento en el análisis, definición del alcance, planificación y evolución del producto para que la solución crezca con el negocio.</p>
+                    <p>Acompaamiento en el anÃ¡lisis, definiciÃ³n del alcance, planificaciÃ³n y evoluciÃ³n del producto para que la soluciÃ³n crezca con el negocio.</p>
                 </article>
             </div>
         </div>
@@ -544,17 +545,17 @@
     <section class="sec" id="metodologia">
         <div class="wrap">
             <div class="sec-head reveal">
-                <span class="eyebrow">Metodología</span>
+                <span class="eyebrow">MetodologÃ­a</span>
                 <h2 class="bebas">DE LA NECESIDAD AL SISTEMA</h2>
-                <p>Un proceso claro para transformar un problema real en una solución tecnolgica til y sostenible.</p>
+                <p>Un proceso claro para transformar un problema real en una soluciÃ³n tecnolgica til y sostenible.</p>
             </div>
             <div class="pasos">
-                <article class="paso reveal"><div class="paso-num">01</div><h3>Anlisis de necesidades</h3><p>Entendemos el problema real, el contexto operativo y las restricciones del proyecto antes de proponer una solución.</p></article>
-                <article class="paso reveal"><div class="paso-num">02</div><h3>Diseño de la solución</h3><p>Definimos la estructura, los flujos, los datos y el modelo de funcionamiento ms adecuado para el negocio.</p></article>
-                <article class="paso reveal"><div class="paso-num">03</div><h3>Desarrollo iterativo</h3><p>Construimos por entregas visibles, con retroalimentación constante para ajustar a tiempo lo que haga falta.</p></article>
-                <article class="paso reveal"><div class="paso-num">04</div><h3>Pruebas y calidad</h3><p>Validamos funcionalidad, rendimiento y usabilidad antes de poner el sistema en producción.</p></article>
-                <article class="paso reveal"><div class="paso-num">05</div><h3>Implementación</h3><p>Instalamos, configuramos, capacitamos al equipo y acompaamos el arranque operativo.</p></article>
-                <article class="paso reveal"><div class="paso-num">06</div><h3>Evolución y soporte</h3><p>Corregimos, mejoramos y adaptamos el software a medida que el negocio cambia o crece.</p></article>
+                <article class="paso reveal"><div class="paso-num">01</div><h3>Anlisis de necesidades</h3><p>Entendemos el problema real, el contexto operativo y las restricciones del proyecto antes de proponer una soluciÃ³n.</p></article>
+                <article class="paso reveal"><div class="paso-num">02</div><h3>DiseÃ±o de la soluciÃ³n</h3><p>Definimos la estructura, los flujos, los datos y el modelo de funcionamiento ms adecuado para el negocio.</p></article>
+                <article class="paso reveal"><div class="paso-num">03</div><h3>Desarrollo iterativo</h3><p>Construimos por entregas visibles, con retroalimentaciÃ³n constante para ajustar a tiempo lo que haga falta.</p></article>
+                <article class="paso reveal"><div class="paso-num">04</div><h3>Pruebas y calidad</h3><p>Validamos funcionalidad, rendimiento y usabilidad antes de poner el sistema en producciÃ³n.</p></article>
+                <article class="paso reveal"><div class="paso-num">05</div><h3>ImplementaciÃ³n</h3><p>Instalamos, configuramos, capacitamos al equipo y acompaamos el arranque operativo.</p></article>
+                <article class="paso reveal"><div class="paso-num">06</div><h3>EvoluciÃ³n y soporte</h3><p>Corregimos, mejoramos y adaptamos el software a medida que el negocio cambia o crece.</p></article>
             </div>
         </div>
     </section>
@@ -564,28 +565,28 @@
             <div class="sec-head reveal">
                 <span class="eyebrow">Lo que construimos</span>
                 <h2 class="bebas">NUESTRAS LNEAS DE TRABAJO</h2>
-                <p>Dos formas de aportar valor: productos propios para la gestión diaria y desarrollos a medida para necesidades especficas.</p>
+                <p>Dos formas de aportar valor: productos propios para la gestiÃ³n diaria y desarrollos a medida para necesidades especficas.</p>
             </div>
             <div class="dos-lineas">
                 <article class="linea is-fuego reveal">
                     <p class="linea-k">Lnea de productos  Ecosistema</p>
                     <h3>Ecosistema Financiero</h3>
-                    <p>Familia de aplicaciones para la gestión empresarial: nóminas, facturación, costos, inventarios y administración, pensadas para operar en la red local del cliente.</p>
+                    <p>Familia de aplicaciones para la gestiÃ³n empresarial: nÃ³minas, facturaciÃ³n, costos, inventarios y administraciÃ³n, pensadas para operar en la red local del cliente.</p>
                     <ul>
-                        <li><strong style="color:#fff">Soberana de datos:</strong> la información operativa permanece bajo resguardo del cliente.</li>
-                        <li><strong style="color:#fff">Operatividad local:</strong> módulos diseados para funcionar con estabilidad en el entorno real del negocio.</li>
-                        <li><strong style="color:#fff">Especialización práctica:</strong> cada módulo resuelve un rea concreta de la gestión.</li>
+                        <li><strong style="color:#fff">Soberana de datos:</strong> la informaciÃ³n operativa permanece bajo resguardo del cliente.</li>
+                        <li><strong style="color:#fff">Operatividad local:</strong> mÃ³dulos diseados para funcionar con estabilidad en el entorno real del negocio.</li>
+                        <li><strong style="color:#fff">EspecializaciÃ³n prÃ¡ctica:</strong> cada mÃ³dulo resuelve un rea concreta de la gestiÃ³n.</li>
                     </ul>
                     <a href="<?= $base ?>/index.php">Explorar el ecosistema &rarr;</a>
                 </article>
                 <article class="linea reveal">
                     <p class="linea-k">Lnea de servicios  A medida</p>
                     <h3>Software personalizado</h3>
-                    <p>Diseamos y desarrollamos soluciones especficas cuando el proyecto requiere un flujo, una integración o una experiencia que no resuelve un producto estndar.</p>
+                    <p>Diseamos y desarrollamos soluciones especficas cuando el proyecto requiere un flujo, una integraciÃ³n o una experiencia que no resuelve un producto estndar.</p>
                     <ul>
                         <li><strong style="color:#fff">Anlisis real:</strong> partimos del proceso del cliente, no de una plantilla genrica.</li>
-                        <li><strong style="color:#fff">Arquitectura adecuada:</strong> elegimos la tecnología según el objetivo, el contexto y el mantenimiento.</li>
-                        <li><strong style="color:#fff">Acompaamiento:</strong> desde la idea inicial hasta la implementación y evolución.</li>
+                        <li><strong style="color:#fff">Arquitectura adecuada:</strong> elegimos la tecnologÃ­a segÃºn el objetivo, el contexto y el mantenimiento.</li>
+                        <li><strong style="color:#fff">Acompaamiento:</strong> desde la idea inicial hasta la implementaciÃ³n y evoluciÃ³n.</li>
                     </ul>
                     <a href="/desamedida.php">Ver desarrollo a medida &rarr;</a>
                 </article>
@@ -597,12 +598,12 @@
         <div class="wrap">
             <div class="cta reveal">
                 <span class="eyebrow">Tienes un proyecto en mente?</span>
-                <h2 class="bebas">CONVERTIMOS TU IDEA EN UNA SOLUCIÓN TECNOLGICA.</h2>
-                <p>Conversemos sobre lo que necesitas. Te ayudamos a definir el alcance, la mejor aproximación y los próximos pasos para construirlo.</p>
+                <h2 class="bebas">CONVERTIMOS TU IDEA EN UNA SOLUCIÃ“N TECNOLGICA.</h2>
+                <p>Conversemos sobre lo que necesitas. Te ayudamos a definir el alcance, la mejor aproximaciÃ³n y los prÃ³ximos pasos para construirlo.</p>
                 <div class="hero-acciones">
                     <a class="btn btn-verde" href="/desamedida.php"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> Solicitar software a medida</a>
                     <a class="btn btn-ghost" href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contactar con UnicornioSoftware</a>
-                    <a class="btn-outline-fuego" href="/index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la Página principal</a>
+                    <a class="btn-outline-fuego" href="/index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la PÃ¡gina principal</a>
                 </div>
             </div>
         </div>
@@ -616,19 +617,19 @@
                     <img src="/images/logo.png" alt="">
                     <span class="bebas" style="font-size:1.5rem"><i style="font-style:normal;color:var(--cian)">UNICORNIO</i><i style="font-style:normal;color:var(--fuego)">SOFTWARE</i></span>
                 </div>
-                <p>Entorno de Aplicaciones Web de UnicornioSoftware&#174; Cuba. Kaky&#174;. Facturación, nóminas, costos e inventarios en tu propia red.</p>
-                <p style="margin-top:.6rem;color:var(--gris-2);font-style:italic">&laquo;Donde tu visión toma forma&raquo;</p>
+                <p>Entorno de Aplicaciones Web de UnicornioSoftware&#174; Cuba. Kaky&#174;. FacturaciÃ³n, nÃ³minas, costos e inventarios en tu propia red.</p>
+                <p style="margin-top:.6rem;color:var(--gris-2);font-style:italic">&laquo;Donde tu visiÃ³n toma forma&raquo;</p>
             </div>
 
             <nav aria-label="Enlaces del pie">
                 <h4>Explorar</h4>
                 <ul class="pie-lista">
                     <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
-                    <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
-                    <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
+                    <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> NÃ³minas</a></li>
+                    <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> FacturaciÃ³n</a></li>
                     <li><a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
                     <li><a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
-                    <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
+                    <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> AdministraciÃ³n</a></li>
                 </ul>
             </nav>
 
@@ -641,7 +642,7 @@
             </div>
 
             <div>
-                <h4>Síguenos</h4>
+                <h4>SÃ­guenos</h4>
                 <div class="pie-social">
                     <a href="https://www.facebook.com/unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
                     <a href="https://www.x.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)">
@@ -669,10 +670,10 @@
 </footer>
 
 <div class="scroll-fabs">
-    <button type="button" class="scroll-fab" id="btnScrollTop" title="Ir hasta arriba" aria-label="Ir hasta arriba de la página">
+    <button type="button" class="scroll-fab" id="btnScrollTop" title="Ir hasta arriba" aria-label="Ir hasta arriba de la pÃ¡gina">
         <i class="fa-solid fa-angles-up" aria-hidden="true"></i>
     </button>
-    <button type="button" class="scroll-fab" id="btnScrollBottom" title="Ir hasta abajo" aria-label="Ir hasta abajo de la página">
+    <button type="button" class="scroll-fab" id="btnScrollBottom" title="Ir hasta abajo" aria-label="Ir hasta abajo de la pÃ¡gina">
         <i class="fa-solid fa-angles-down" aria-hidden="true"></i>
     </button>
 </div>
@@ -685,7 +686,7 @@
             }, { threshold: 0.15 });
             document.querySelectorAll('.reveal').forEach(function (el) { observer.observe(el); });
         });
-/* Botones flotantes: arriba / abajo según la posición de lectura */
+/* Botones flotantes: arriba / abajo segÃºn la posiciÃ³n de lectura */
 (function () {
     var arriba = document.getElementById('btnScrollTop');
     var abajo = document.getElementById('btnScrollBottom');
@@ -709,7 +710,7 @@
     window.addEventListener('resize', actualizar);
     actualizar();
 })();
-/* Men móvil */
+/* Men mÃ³vil */
 (function () {
     var btn = document.getElementById('menuBtn');
     var menu = document.getElementById('menuMovil');
@@ -787,7 +788,7 @@
         }
     });
 })();
-/* Enlaces del topbar a las secciones de esta página */
+/* Enlaces del topbar a las secciones de esta pÃ¡gina */
 (function () {
     var enlaces = document.querySelectorAll('nav.nav a[href^="#"]');
     enlaces.forEach(function (enlace) {
