@@ -771,9 +771,9 @@ $faq = [
     .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
     .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
     @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
-    .integraciones-block{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
-    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gris-3);text-align:center;margin:0 0 .5rem}
-    .integraciones-block > p{text-align:center;color:var(--gris-3);font-size:.78rem;line-height:1.5;margin:0 0 1.75rem}
+    .integraciones-block{margin-top:2.5rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
+    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;text-align:center;margin:0 0 .5rem}
+    .integraciones-block > p{text-align:center;color:#6b7280;font-size:.75rem;line-height:1.5;margin:0 0 2rem;font-family:'Inter',sans-serif}
     .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
     .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
     .integracion-item i{font-size:1.8rem;line-height:1}
@@ -887,9 +887,9 @@ $faq = [
     .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
     .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
     @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
-    .integraciones-block{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
-    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gris-3);text-align:center;margin:0 0 .5rem}
-    .integraciones-block > p{text-align:center;color:var(--gris-3);font-size:.78rem;line-height:1.5;margin:0 0 1.75rem}
+    .integraciones-block{margin-top:2.5rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
+    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;text-align:center;margin:0 0 .5rem}
+    .integraciones-block > p{text-align:center;color:#6b7280;font-size:.75rem;line-height:1.5;margin:0 0 2rem;font-family:'Inter',sans-serif}
     .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
     .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
     .integracion-item i{font-size:1.8rem;line-height:1}
@@ -1173,6 +1173,49 @@ $faq = [
     .precios-link i{color:var(--cian);margin-top:.15rem;}
     .precios-link span{font-size:.88rem;color:var(--gris-2);line-height:1.5;}
     .precios-link strong{display:block;font-family:"Exo 2",sans-serif;color:var(--txt);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem;}
+    
+    /* ===== Ingeniería (estilo CyberForja) ===== */
+    #servicios{position:relative;overflow:hidden;padding:2rem 0 4rem;background:var(--abismo);isolation:isolate}
+    @media(min-width:640px){#servicios{padding:3rem 0 4rem}}
+    @media(min-width:768px){#servicios{padding:4rem 0 4rem}}
+    #servicios .ing-wrap{max-width:80rem;margin:0 auto;padding:0 1.5rem;position:relative;z-index:10}
+    @media(min-width:1024px){#servicios .ing-wrap{padding:0 2rem}}
+    #servicios .ing-eyebrow{color:var(--cian);font-family:'Exo 2',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-size:.75rem}
+    @media(min-width:640px){#servicios .ing-eyebrow{font-size:.875rem}}
+    #servicios .ing-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.05em;color:#fff;margin:.25rem 0 .5rem;line-height:1}
+    @media(min-width:640px){#servicios .ing-title{font-size:1.875rem}}
+    @media(min-width:768px){#servicios .ing-title{font-size:3rem}}
+    #servicios .ing-line{width:4rem;height:.25rem;background:var(--cian);border-radius:9999px;margin-bottom:.75rem}
+    #servicios .ing-desc{font-family:'Inter',sans-serif;color:#d1d5db;font-size:.75rem;line-height:1.625;max-width:48rem}
+    @media(min-width:640px){#servicios .ing-desc{font-size:.875rem}}
+    @media(min-width:768px){#servicios .ing-desc{font-size:1rem}}
+    #servicios .ing-grid{display:grid;grid-template-columns:1fr;gap:1rem;margin-top:2.5rem}
+    @media(min-width:640px){#servicios .ing-grid{grid-template-columns:repeat(2,1fr);gap:1.25rem}}
+    @media(min-width:1024px){#servicios .ing-grid{grid-template-columns:repeat(4,1fr)}}
+    #servicios .ing-card{position:relative;overflow:hidden;border-radius:.75rem;padding:1.25rem;background:#080d17;border:1px solid rgba(255,255,255,.08);transition:all .3s ease}
+    #servicios .ing-card:hover{transform:translateY(-4px)}
+    #servicios .ing-card.cian:hover{border-color:rgba(0,212,255,.4)}
+    #servicios .ing-card.fuego:hover{border-color:rgba(255,107,0,.4)}
+    #servicios .ing-icon{width:2.5rem;height:2.5rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;position:relative;z-index:10;font-size:1rem}
+    #servicios .ing-icon.cian{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);color:var(--cian)}
+    #servicios .ing-icon.fuego{background:rgba(255,107,0,.1);border:1px solid rgba(255,107,0,.2);color:var(--fuego)}
+    #servicios .ing-card h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:1rem;color:#fff;margin:0 0 .375rem;text-transform:uppercase;letter-spacing:.025em;position:relative;z-index:10}
+    #servicios .ing-card p{font-family:'Inter',sans-serif;color:#9ca3af;font-size:.75rem;line-height:1.625;margin:0;position:relative;z-index:10}
+    @media(min-width:640px){#servicios .ing-card p{font-size:.875rem}}
+    #servicios .card__sheen{position:absolute;inset:0;pointer-events:none;z-index:1;opacity:0;background:radial-gradient(290px circle at var(--pointer-x,50%) var(--pointer-y,50%),var(--card-sheen,rgba(0,212,255,.18)),transparent 75%);transition:opacity .22s ease}
+    #servicios .ing-card:hover .card__sheen{opacity:1}
+    #servicios .circuit-bg{position:absolute;inset:0;z-index:0;opacity:.12;pointer-events:none;overflow:hidden}
+    #servicios .circuit-radial{position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 60% 60% at 70% 40%,rgba(0,212,255,.04) 0%,transparent 70%)}
+    .circuit-line-cian,.circuit-line-cian-delay,.circuit-line-fuego,.circuit-line-fuego-slow{stroke-dasharray:240;stroke-dashoffset:240;animation:flow-pulse-circuit 7s linear infinite}
+    .circuit-line-cian{animation-duration:5.5s}
+    .circuit-line-cian-delay{animation-duration:7.5s;animation-delay:2.2s}
+    .circuit-line-fuego{animation-duration:6.5s;animation-delay:1.2s}
+    .circuit-line-fuego-slow{animation-duration:9.5s;animation-delay:3.2s}
+    @keyframes flow-pulse-circuit{0%{stroke-dashoffset:480;opacity:.08}12%{opacity:.75}25%{opacity:.08}100%{stroke-dashoffset:0;opacity:.08}}
+    #servicios::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(to bottom,transparent 0%,rgba(0,212,255,.01) 45%,rgba(255,107,0,.02) 50%,rgba(0,212,255,.01) 55%,transparent 100%);background-size:100% 200%;pointer-events:none;animation:radar-sweep 14s cubic-bezier(.4,0,.2,1) infinite}
+    @keyframes radar-sweep{0%{background-position:0% -100%}100%{background-position:0% 100%}}
+    @media(prefers-reduced-motion:reduce){.circuit-line-cian,.circuit-line-cian-delay,.circuit-line-fuego,.circuit-line-fuego-slow,#servicios::after{animation:none}}
+
     /* ===== FAQ ===== */
     details.faq {
         background: var(--tarjeta);
@@ -1628,9 +1671,9 @@ $faq = [
     .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
     .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
     @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
-    .integraciones-block{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
-    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gris-3);text-align:center;margin:0 0 .5rem}
-    .integraciones-block > p{text-align:center;color:var(--gris-3);font-size:.78rem;line-height:1.5;margin:0 0 1.75rem}
+    .integraciones-block{margin-top:2.5rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
+    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;text-align:center;margin:0 0 .5rem}
+    .integraciones-block > p{text-align:center;color:#6b7280;font-size:.75rem;line-height:1.5;margin:0 0 2rem;font-family:'Inter',sans-serif}
     .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
     .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
     .integracion-item i{font-size:1.8rem;line-height:1}
@@ -2160,86 +2203,108 @@ $faq = [
     </section>
 
     <!-- ===== Servicios / plataforma ===== -->
-    <section class="sec" id="servicios">
-        <div class="wrap">
-            <div class="sec-head reveal">
-                <span class="eyebrow">Bajo el capó</span>
-                <h2 class="bebas">La plataforma</h2>
-                <p>Un stack local probado en producción: Apache, PHP y MySQL, con respaldo y soporte del equipo que lo construyó.</p>
+        <section id="servicios">
+        <div class="circuit-bg">
+            <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+                <defs>
+                    <pattern id="circuit-grid-pattern-index2" width="60" height="60" patternUnits="userSpaceOnUse">
+                        <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(30, 41, 59, 0.7)" stroke-width="1"></path>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#circuit-grid-pattern-index2)"></rect>
+                <g stroke="none" fill="none" stroke-linecap="round">
+                    <path class="circuit-line-cian" d="M -100 120 L 500 120 L 560 180 L 1100 180 L 1160 120 L 2200 120" stroke="#00D4FF" stroke-width="1.5"></path>
+                    <path class="circuit-line-cian-delay" d="M 180 -100 L 180 500 L 300 620 L 300 1500" stroke="#00D4FF" stroke-width="1.5"></path>
+                    <path class="circuit-line-fuego" d="M 960 -100 L 960 400 L 1020 460 L 1020 1500" stroke="#FF6B00" stroke-width="1.5"></path>
+                    <path class="circuit-line-fuego-slow" d="M -100 840 L 1400 840 L 1460 780 L 2200 780" stroke="#FF6B00" stroke-width="1.5"></path>
+                </g>
+            </svg>
+        </div>
+        <div class="circuit-radial"></div>
+
+        <div class="ing-wrap">
+            <div class="reveal" style="max-width:48rem;margin-bottom:2.5rem">
+                <span class="ing-eyebrow">Nuestra ingeniería</span>
+                <h2 class="ing-title">NUESTRA INGENIERÍA.</h2>
+                <div class="ing-line"></div>
+                <p class="ing-desc">
+                    Elegimos la arquitectura y las herramientas según las necesidades de cada proyecto, priorizando utilidad, seguridad y mantenimiento.
+                </p>
             </div>
 
-                        <div class="metrics" role="list" aria-label="Indicadores de la plataforma" style="padding:0 0 1.5rem">
-                <div class="metric" role="listitem">
-                    <i class="fa-solid fa-cubes" aria-hidden="true"></i>
-                    <div><b><?= count($ecosistema) ?></b><span>Módulos de gestión</span></div>
+            <div class="ing-grid">
+                <div data-spotlight="true" style="--card-sheen:rgba(0,212,255,0.18);" class="ing-card cian reveal">
+                    <div class="card__sheen" aria-hidden="true"></div>
+                    <div class="ing-icon cian"><i class="fas fa-hand-pointer"></i></div>
+                    <h3>Interfaces claras</h3>
+                    <p>Diseñadas para las tareas de quienes utilizan el sistema en su día a día.</p>
                 </div>
-                <div class="metric" role="listitem">
-                    <i class="fa-brands fa-php" aria-hidden="true"></i>
-                    <div><b>PHP <?= htmlspecialchars($phpVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Servidor local</span></div>
+
+                <div data-spotlight="true" style="--card-sheen:rgba(255,107,0,0.18);" class="ing-card fuego reveal">
+                    <div class="card__sheen" aria-hidden="true"></div>
+                    <div class="ing-icon fuego"><i class="fas fa-layer-group"></i></div>
+                    <h3>Arquitectura adecuada</h3>
+                    <p>Soluciones locales, web o móviles según los requisitos reales del proyecto.</p>
                 </div>
-                <div class="metric" role="listitem">
-                    <i class="fa-solid fa-database" aria-hidden="true"></i>
-                    <div><b>MySQL <?= htmlspecialchars($mysqlVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Base de datos</span></div>
+
+                <div data-spotlight="true" style="--card-sheen:rgba(0,212,255,0.18);" class="ing-card cian reveal">
+                    <div class="card__sheen" aria-hidden="true"></div>
+                    <div class="ing-icon cian"><i class="fas fa-shield-halved"></i></div>
+                    <h3>Protección de datos</h3>
+                    <p>Control de accesos y respaldos automáticos según las necesidades del negocio.</p>
                 </div>
-                <div class="metric" role="listitem">
-                    <i class="fa-solid fa-server" aria-hidden="true"></i>
-                    <div><b>Apache <?= htmlspecialchars($apacheVersion, ENT_QUOTES, 'UTF-8') ?></b><span>HTTPD</span></div>
+
+                <div data-spotlight="true" style="--card-sheen:rgba(255,107,0,0.18);" class="ing-card fuego reveal">
+                    <div class="card__sheen" aria-hidden="true"></div>
+                    <div class="ing-icon fuego"><i class="fas fa-arrow-trend-up"></i></div>
+                    <h3>Evolución del software</h3>
+                    <p>Mejoras y nuevas funcionalidades continuas durante todo su ciclo de vida.</p>
                 </div>
-                <div class="metric" role="listitem">
-                    <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
-                    <div><b><?= htmlspecialchars($phpmyadminVersion, ENT_QUOTES, 'UTF-8') ?></b><span>phpMyAdmin</span></div>
-                </div>
-                <div class="metric" role="listitem">
-                    <i class="fa-solid fa-headset" aria-hidden="true"></i>
-                    <div><b>24/7</b><span>Soporte técnico</span></div>
-                </div>
-            </div>
-<div class="serv-grid">
-                <?php foreach ($servicios as $srv): ?>
-                <div class="serv reveal">
-                    <i class="<?= htmlspecialchars($srv['icono'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i>
-                    <div>
-                        <strong><?= htmlspecialchars($srv['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
-                        <p><?= htmlspecialchars($srv['texto'], ENT_QUOTES, 'UTF-8') ?></p>
-                    </div>
-                </div>
-                <?php endforeach; ?>
             </div>
 
-                        <div class="db-health reveal">
-                <div class="db-health-head">
-                    <i class="fa-solid fa-heart-pulse" aria-hidden="true"></i>
-                    <span>Salud de la Base de Datos (<?= htmlspecialchars($dbName !== '' ? $dbName : 'No conectada', ENT_QUOTES, 'UTF-8') ?>)</span>
+            <div class="integraciones-block reveal">
+                <h3>Integraciones disponibles en nuestros productos de gestión</h3>
+                <p>No todas aplican a cada producto: las de Reven están verificadas; en desarrollos a medida se definen con el cliente.</p>
+                <div class="integraciones-grid">
+                    <div class="integracion-item int-wa">
+                        <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                        <span class="int-name">WhatsApp</span>
+                        <span class="int-desc">Comprobantes y soporte</span>
+                    </div>
+                    <div class="integracion-item int-cian">
+                        <i class="fas fa-qrcode" aria-hidden="true"></i>
+                        <span class="int-name">Transfermóvil</span>
+                        <span class="int-desc">Cobros por QR</span>
+                    </div>
+                    <div class="integracion-item int-cian">
+                        <i class="fas fa-qrcode" aria-hidden="true"></i>
+                        <span class="int-name">EnZona</span>
+                        <span class="int-desc">Cobros por QR</span>
+                    </div>
+                    <div class="integracion-item int-fuego">
+                        <i class="fab fa-google-drive" aria-hidden="true"></i>
+                        <span class="int-name">Google Drive</span>
+                        <span class="int-desc">Respaldos remotos</span>
+                    </div>
+                    <div class="integracion-item int-cian">
+                        <i class="fas fa-barcode" aria-hidden="true"></i>
+                        <span class="int-name">Lectores USB</span>
+                        <span class="int-desc">Ópticos y cámara</span>
+                    </div>
+                    <div class="integracion-item int-fuego">
+                        <i class="fas fa-print" aria-hidden="true"></i>
+                        <span class="int-name">Térmicas</span>
+                        <span class="int-desc">Tickets 58 y 80 mm</span>
+                    </div>
+                    <div class="integracion-item int-excel">
+                        <i class="fas fa-file-excel" aria-hidden="true"></i>
+                        <span class="int-name">Excel</span>
+                        <span class="int-desc">Importación de datos</span>
+                    </div>
                 </div>
-                <div class="db-health-grid">
-                    <div class="db-health-item">
-                        <i class="fa-solid fa-database" style="color:var(--cian)" aria-hidden="true"></i>
-                        <b><?= htmlspecialchars($dbSize, ENT_QUOTES, 'UTF-8') ?></b>
-                        <span>Tamaño BD</span>
-                    </div>
-                    <div class="db-health-item">
-                        <i class="fa-solid fa-table" style="color:#4ade80" aria-hidden="true"></i>
-                        <b><?= htmlspecialchars($dbTables, ENT_QUOTES, 'UTF-8') ?></b>
-                        <span>Tablas</span>
-                    </div>
-                    <div class="db-health-item" title="<?= htmlspecialchars($dbUptimeTitle, ENT_QUOTES, 'UTF-8') ?>">
-                        <i class="fa-solid fa-clock" style="color:#fbbf24" aria-hidden="true"></i>
-                        <b><?= htmlspecialchars($dbUptime, ENT_QUOTES, 'UTF-8') ?></b>
-                        <span>Uptime MySQL</span>
-                    </div>
-                </div>
-            </div>
-<div class="lic-acciones reveal" style="margin-top:1.6rem">
-                <a class="btn btn-ghost btn-sm" href="<?= $base ?>/phpinfo/">
-                    <i class="fa-solid fa-server" aria-hidden="true"></i> Estado del servidor
-                </a>
-                <a class="btn btn-ghost btn-sm" href="<?= $base ?>/InstalarBD/InstalarBD.php">
-                    <i class="fa-solid fa-database" aria-hidden="true"></i> Instalador de base de datos
-                </a>
             </div>
         </div>
     </section>
-
     <!-- ===== Precios ===== -->
     <section class="sec" id="precios">
         <div class="wrap">
