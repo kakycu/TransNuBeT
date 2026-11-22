@@ -603,7 +603,7 @@ $faq = [
     }
     .menu-btn:hover { color: var(--txt); border-color: var(--fuego); }
     .menu-movil { display: none; border-top: 1px solid var(--acero); background: var(--abismo); }
-    .menu-movil.is-open { display: block; }
+    .menu-movil.is-open { display: block; max-height: calc(100dvh - var(--nav-h, 70px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
     .menu-movil a {
         display: block; padding: .9rem 1.5rem;
         font-family: "Exo 2", sans-serif; font-size: .8rem; font-weight: 700;
