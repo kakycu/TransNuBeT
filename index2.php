@@ -241,24 +241,32 @@ $servicios = [
 
 $faq = [
     [
-        'p' => '¿De dónde salen los datos que muestra esta portada?',
-        'r' => 'Se leen en cada carga desde tus bases locales: facturación (<code>tbl_fact</code>) y nóminas (<code>cierres_periodo_nomina</code>), del último mes. Si ese mes no tiene movimiento, se toma el último mes con datos y se indica cuál es. No hay cifras de ejemplo.',
+        'p' => '¿Qué es UnicornioSoftware?',
+        'r' => 'Es un grupo de programación y desarrollo de software, patrocinado por el Ms.C. Franklin Ramos Lamadrid. Se dedica a crear soluciones tecnológicas, herramientas empresariales y plataformas digitales adaptadas a las necesidades reales de los negocios, combinando experiencia técnica, visión práctica y acompañamiento cercano.',
     ],
     [
-        'p' => '¿Y si MySQL está apagado?',
-        'r' => 'La portada se abre igual. Los módulos que dependen de la base esperan a que el servicio vuelva, y nunca se inventan cifras.',
+        'p' => '¿Qué es SiGesEmp?',
+        'r' => 'SiGesEmp es un conjunto de aplicaciones para tu negocio, diseñado para integrar y simplificar la gestión diaria. Reúne módulos como facturación, nóminas, costos, inventarios y administración, permitiendo trabajar con información organizada en una misma plataforma y con mayor control de cada proceso.',
+    ],
+    [
+        'p' => '¿Cómo funciona la licencia del sistema?',
+        'r' => 'La licencia se guarda cifrada y solo en este equipo. Desde la portada puedes <a href="#licencia-estado">revisar su estado</a>, introducir una llave serial, importar un archivo <code>.lic</code> o solicitar la licencia por correo, sin salir del sistema.',
+    ],
+    [
+        'p' => '¿Qué pasa si la licencia vence?',
+        'r' => 'Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida. Todo el trámite de activación o renovación se realiza desde la portada, de forma rápida y sin perder la información de tu equipo.',
     ],
     [
         'p' => '¿Necesito internet para usar el sistema?',
-        'r' => 'No. Todo corre en tu equipo o en la red local: Apache, PHP y MySQL. Los datos no salen de esa red.',
+        'r' => 'No. El sistema corre en tu propio equipo o en tu red local con Apache, PHP y MySQL. Tus datos se mantienen dentro de tu red.',
     ],
     [
-        'p' => '¿Cómo empiezo si el equipo es nuevo?',
-        'r' => 'Entra al <a href="' . $base . '/InstalarBD/InstalarBD.php">Instalador de base de datos</a>, crea el esquema y después abre el Ecosistema Financiero. Si ya tienes datos, salta ese paso.',
+        'p' => '¿Pueden desarrollar algo a la medida de mi negocio?',
+        'r' => 'Sí. Además de la plataforma, desarrollamos software a medida: herramientas internas, plataformas completas, sitios web, APIs e integraciones. Conoce más en <a href="/desamedida.php">Software a medida</a> o en <a href="/about.php">Sobre nosotros</a>.',
     ],
     [
-        'p' => '¿Cómo pido soporte?',
-        'r' => 'Escribe a <a href="mailto:kakycu@gmail.com">kakycu@gmail.com</a> o llama al <a href="tel:+5352712861">+53 5 2712861</a>, de lunes a viernes de 8:00 a 17:00.',
+        'p' => '¿Cómo puedo empezar o solicitar soporte?',
+        'r' => 'Si el equipo es nuevo, puedes comenzar por el <a href="' . $base . '/InstalarBD/InstalarBD.php">Instalador de base de datos</a>. Para soporte o consultas, escribe a <a href="mailto:kakycu@gmail.com">kakycu@gmail.com</a> o llama al <a href="tel:+5352712861">+53 5 2712861</a>.',
     ],
 ];
 ?>
@@ -397,12 +405,12 @@ $faq = [
     }
     .nav-links { display: none; align-items: center; gap: 1.4rem; }
     .nav-links a {
-        font-family: "Exo 2", sans-serif; font-size: .78rem; font-weight: 700;
+        font-family: "Exo 2", sans-serif; font-size: .84rem; font-weight: 700;
         text-transform: uppercase; letter-spacing: .08em; color: var(--gris-2);
         transition: color .2s;
     }
     .nav-links a:hover, .nav-links a:focus-visible { color: var(--txt); }
-    .nav-links a i { margin-right: .38rem; color: var(--gris-3); font-size: .78em; transition: color .2s; }
+    .nav-links a i { margin-right: .38rem; color: var(--gris-3); font-size: 1rem; transition: color .2s; }
     .nav-links a:hover i, .nav-links a:focus-visible i { color: var(--cian); }
     .nav-acc { display: flex; align-items: center; gap: .6rem; }
     .nav-acc .btn { display: none; }
@@ -462,7 +470,7 @@ $faq = [
     @media (min-width: 900px) {
         /* Nueve enlaces: primero compactos y sin iconos, luego con más aire. */
         .nav-links { display: flex; gap: .8rem; }
-        .nav-links a { font-size: .64rem; letter-spacing: .05em; white-space: nowrap; }
+        .nav-links a { font-size: .7rem; letter-spacing: .05em; white-space: nowrap; }
         .nav-links a i { display: none; }
         .nav-acc .btn { display: inline-flex; }
         .nav-login { display: block; }
@@ -471,12 +479,12 @@ $faq = [
     }
     @media (min-width: 1180px) {
         .nav-links { gap: .7rem; }
-        .nav-links a { font-size: .64rem; letter-spacing: .04em; }
-        .nav-links a i { display: inline-block; margin-right: .24rem; font-size: .68em; }
+        .nav-links a { font-size: .72rem; letter-spacing: .04em; }
+        .nav-links a i { display: inline-block; margin-right: .24rem; font-size: .95rem; }
     }
     @media (min-width: 1400px) {
         .nav-links { gap: .85rem; }
-        .nav-links a { font-size: .68rem; }
+        .nav-links a { font-size: .76rem; }
     }
 
     /* ===== Hero ===== */
@@ -530,6 +538,9 @@ $faq = [
     }
     .hero-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; margin-top: 1.8rem; }
     .hero-acciones .btn { flex: 0 0 auto; }
+    .hero-scroll { position:absolute; left:50%; bottom:1.5rem; z-index:5; color:rgba(255,255,255,.55); font-size:1.6rem; line-height:1; text-decoration:none; animation:hero-flecha 2.4s cubic-bezier(.45,0,.55,1) infinite; transition:color .2s; }
+    .hero-scroll:hover, .hero-scroll:focus-visible { color:var(--cian); }
+    @keyframes hero-flecha { 0%,100%{transform:translateX(-50%) translateY(0);opacity:.55} 50%{transform:translateX(-50%) translateY(8px);opacity:1} }
     .tags {
         display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem;
         margin-top: 1.9rem;
@@ -574,7 +585,7 @@ $faq = [
         padding: 8px; border-radius: 18px;
         background: #0f141d;
         border: 1.5px solid rgba(255, 255, 255, .18);
-        transform: translateZ(120px) rotateY(-14deg);
+        transform: translateZ(120px) rotateY(-14deg) rotateZ(-1.5deg);
         transform-style: preserve-3d;
         box-shadow:
             0 0 0 1px rgba(var(--brillo), .4),
@@ -591,12 +602,12 @@ $faq = [
         position: absolute; right: 1%; bottom: -10%; width: 21%; aspect-ratio: 9 / 19;
         padding: .35rem; border-radius: 1.6rem; background: #0c1017; z-index: 50;
         border: 1.5px solid rgba(255, 255, 255, .18);
-        transform: translateZ(280px) rotateY(-8deg);
+        transform: translateZ(280px) rotateY(-8deg) rotateZ(2deg);
         box-shadow: -24px 24px 45px rgba(0, 0, 0, .92), 0 0 0 1px rgba(var(--brillo), .4), 0 0 24px rgba(var(--brillo), .3);
     }
     .movil img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 1.25rem; }
     .ficha {
-        position: absolute; left: .75rem; bottom: -1.75rem; z-index: 60;
+        position: absolute; left: -1.25rem; bottom: -1.75rem; z-index: 60;
         display: flex; flex-direction: column; align-items: flex-start; gap: .4rem;
         max-width: 82%; transform: translateZ(300px);
     }
@@ -632,7 +643,7 @@ $faq = [
     }
     @media (max-width: 40rem) {
         .movil { width: 24%; bottom: -8%; }
-        .ficha { left: .5rem; bottom: -1.4rem; max-width: 92%; }
+        .ficha { left: -.5rem; bottom: -1.4rem; max-width: 92%; }
         .escena-nav { justify-content: flex-start; }
         .hero-acciones { gap: .45rem; }
         .hero-acciones .btn {
@@ -1111,8 +1122,11 @@ $faq = [
         background: linear-gradient(90deg, var(--cian), var(--fuego));
         transition: width .35s ease;
     }
-    .intro-skip {
+    .intro-acciones {
         position: absolute; right: max(1rem, 2vw); bottom: max(1rem, 2vh);
+        display: flex; flex-direction: column; gap: .5rem; align-items: flex-end;
+    }
+    .intro-skip {
         padding: .5rem .95rem; font: inherit; font-size: .8rem;
         font-family: "Exo 2", sans-serif; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
         color: #cfd6ff;
@@ -1129,7 +1143,7 @@ $faq = [
         color: #fff; outline: none;
     }
     @media (max-width: 520px) {
-        .intro-skip { top: max(1rem, 2vh); bottom: auto; right: 1rem; }
+        .intro-acciones { top: max(1rem, 2vh); bottom: auto; right: 1rem; }
         .intro-bar { bottom: max(1.25rem, 3vh); width: min(82vw, 360px); }
     }
 
@@ -1325,9 +1339,12 @@ $faq = [
         </div>
     </div>
     <div class="intro-bar" aria-hidden="true"><span id="introBar"></span></div>
-    <button type="button" class="intro-skip" id="introSkip">Saltar intro</button>
+    <div class="intro-acciones">
+        <button type="button" class="intro-skip" id="introNoMostrar">No volver a mostrar intro</button>
+        <button type="button" class="intro-skip" id="introSkip">Saltar intro</button>
+    </div>
 </div>
-<script>document.documentElement.classList.add('intro-lock');</script>
+<script>(function(){var i=document.getElementById('introAnim');if(localStorage.getItem('introOculta')==='1'){if(i)i.classList.add('is-out');}else{document.documentElement.classList.add('intro-lock');}})();</script>
 
 <!-- ===== Barra de progreso de lectura ===== -->
 <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
@@ -1352,7 +1369,6 @@ $faq = [
             <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
             <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
             <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
-            <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
         </div>
 
         <div class="nav-acc">
@@ -1395,7 +1411,6 @@ $faq = [
         <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
         <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
         <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
-        <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
         <span class="menu-movil-titulo">Iniciar sesión</span>
         <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
         <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
@@ -1505,6 +1520,7 @@ $faq = [
             </div>
         </div>
     </div>
+    <a href="#ecosistema" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
 </header>
 
 <main>
@@ -1589,7 +1605,7 @@ $faq = [
                         desde herramientas internas hasta plataformas completas.
                     </p>
                     <div class="hero-acciones" style="margin-top:1.4rem">
-                        <a class="btn btn-fuego" href="<?= $base ?>/soporte.php">
+                        <a class="btn btn-fuego" href="/desamedida.php">
                             <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Contar mi proyecto
                         </a>
                     </div>
@@ -1677,11 +1693,7 @@ $faq = [
                         Todo el trámite —activar, renovar, importar un archivo <code>.lic</code> o pedir la
                         licencia por correo— se hace aquí mismo, sin salir de la portada.
                     </p>
-                    <div class="lic-acciones">
-                        <a class="btn btn-cian btn-sm" href="<?= $base ?>/nominas/login.php">
-                            <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar al sistema
-                        </a>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -1725,7 +1737,7 @@ $faq = [
             <div class="sec-head reveal">
                 <span class="eyebrow">Antes de entrar</span>
                 <h2 class="bebas">Preguntas frecuentes</h2>
-                <p>Lo que conviene saber sobre los datos, la conexión y el soporte de la plataforma.</p>
+                <p>Respuestas rápidas sobre UnicornioSoftware, SiGesEmp, la licencia, los módulos y cómo empezar.</p>
             </div>
 
             <div class="faq-lista">
@@ -2854,6 +2866,7 @@ $faq = [
     var raiz = document.documentElement;
     var barra = document.getElementById('introBar');
     var saltar = document.getElementById('introSkip');
+    var noMostrar = document.getElementById('introNoMostrar');
     var capas = intro.querySelectorAll('.intro-layer');
     var capaFinal = intro.querySelector('.intro-final');
     var pasos = capas.length + 1;
@@ -2862,7 +2875,7 @@ $faq = [
     var temporizadores = [];
 
     // Si la página vuelve de tramitar la licencia, no se repite la intro.
-    if (intro.classList.contains('is-out')) {
+    if (intro.classList.contains('is-out') || localStorage.getItem('introOculta') === '1') {
         raiz.classList.remove('intro-lock');
         if (intro.parentNode) { intro.parentNode.removeChild(intro); }
         return;
@@ -2920,6 +2933,7 @@ $faq = [
     }
 
     if (saltar) { saltar.addEventListener('click', terminar); }
+    if (noMostrar) { noMostrar.addEventListener('click', function () { try { localStorage.setItem('introOculta', '1'); } catch (e) {} terminar(); }); }
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && !terminado) { terminar(); }
     });

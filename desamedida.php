@@ -527,6 +527,9 @@
     #servicios .card.reveal.is-in { opacity: 1; transform: none; }
     #servicios .card.reveal.active:hover,
     #servicios .card.reveal.is-in:hover { transform: translateY(-6px); }
+    .hero-scroll { position:absolute; left:50%; bottom:1.5rem; z-index:20; color:rgba(255,255,255,.55); font-size:1.6rem; line-height:1; text-decoration:none; animation:hero-flecha 2.4s cubic-bezier(.45,0,.55,1) infinite; transition:color .2s; }
+    .hero-scroll:hover, .hero-scroll:focus-visible { color:#00d4ff; }
+    @keyframes hero-flecha { 0%,100%{transform:translateX(-50%) translateY(0);opacity:.55} 50%{transform:translateX(-50%) translateY(8px);opacity:1} }
     </style>
 </head>
 
@@ -625,8 +628,8 @@
             </p>
             <div class="flex flex-col sm:flex-row gap-4">
                 <a href="/servicios/contacto.php" id="btn-medida-contacto"
-                    class="pulso-brasas inline-flex items-center justify-center font-exo font-black text-sm md:text-base uppercase tracking-wider px-7 py-3.5 rounded-sm bg-fuego text-[#0A0F1A] w-full sm:w-auto transition-all duration-300 hover:-translate-y-1">
-                    Cuéntanos tu proyecto
+                    class="pulso-brasas inline-flex items-center justify-center gap-2 font-exo font-black text-sm md:text-base uppercase tracking-wider px-7 py-3.5 rounded-sm bg-fuego text-[#0A0F1A] w-full sm:w-auto transition-all duration-300 hover:-translate-y-1">
+                    <i class="fa-solid fa-comment-dots" aria-hidden="true"></i> Cuéntanos tu proyecto
                 </a>
 				<a href="https://api.whatsapp.com/send?phone=5352712861&amp;text=Hola%20%F0%9F%91%8B%2C%20quiero%20conversar%20sobre%20un%20proyecto%20de%20software%20a%20medida.%0A%0A%F0%9F%93%8C%20*Detalles%20del%20proyecto*%3A%0A%E2%80%A2%20Tipo%20de%20software%3A%20%0A%E2%80%A2%20Funcionalidades%20clave%3A%20%0A%E2%80%A2%20Plazo%20estimado%3A%20%0A%E2%80%A2%20Presupuesto%20aproximado%3A%20%0A%0A%F0%9F%92%A1%20%C2%BFMe%20ayudas%20a%20definir%20la%20mejor%20soluci%C3%B3n%3F%20%C2%A1Gracias!%20%F0%9F%99%8C"
 				   target="_blank"
@@ -656,12 +659,13 @@
 						<i class="fa-solid fa-house text-cian text-base" aria-hidden="true"></i>
 					</span>
 					<span class="flex items-center gap-2">
+						<i class="fas fa-arrow-left text-xs text-cian transition-transform duration-300 group-hover:-translate-x-1" aria-hidden="true"></i>
 						Volver al inicio
-						<i class="fas fa-arrow-right text-xs text-cian transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true"></i>
 					</span>
 				</a>
             </div>
         </div>
+        <a href="#servicios" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
     </header>
 
     <main>

@@ -166,6 +166,9 @@
     .about-hero h1 span{color:var(--cian);}
     .about-hero p{max-width:42rem;color:var(--gris-2);font-size:1.05rem;line-height:1.8;margin:0 auto;}
     .about-hero .btn-volver{margin-top:2rem;}
+    .hero-scroll{position:absolute;left:50%;bottom:1.5rem;z-index:5;color:rgba(255,255,255,.55);font-size:1.6rem;line-height:1;text-decoration:none;animation:hero-flecha 2.4s cubic-bezier(.45,0,.55,1) infinite;transition:color .2s;}
+    .hero-scroll:hover,.hero-scroll:focus-visible{color:var(--cian);}
+    @keyframes hero-flecha{0%,100%{transform:translateX(-50%) translateY(0);opacity:.55}50%{transform:translateX(-50%) translateY(8px);opacity:1}}
     @media(min-width:900px){.about-hero-grid{grid-template-columns:1fr minmax(280px,420px);gap:3rem;}.about-hero-copy{text-align:left;}.about-hero h1,.about-hero p{margin-left:0;margin-right:0;}.about-hero-brand{justify-content:flex-end;}}
 
     .grid{display:grid;gap:1rem;margin-top:2.5rem;grid-template-columns:minmax(0,1fr);}
@@ -337,6 +340,7 @@
                 </div>
             </div>
         </div>
+        <a href="#historia" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
     </section>
     <section class="sec" id="historia">
         <div class="wrap">
@@ -428,7 +432,7 @@
                     <div class="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#05080f] via-[#05080f]/75 to-transparent" aria-hidden="true"></div>
                     <div class="absolute inset-x-0 bottom-0 p-6">
                         <h3 class="font-bebas text-2xl text-white tracking-wider leading-tight">FRANKLIN RAMOS LAMADRID</h3>
-                        <p class="text-fuego text-[11px] font-exo font-bold uppercase tracking-widest mt-1 mb-4">Fundador · Ingeniería y Desarrollo</p>
+                        <p class="text-fuego text-[11px] font-exo font-bold uppercase tracking-widest mt-1 mb-4">Fundador · Maestría y Desarrollo</p>
                         <button type="button" data-maestro-open="modal-maestro-franklin" class="flex w-full items-center justify-between gap-2 font-exo font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-sm border border-fuego/40 text-fuego bg-black/40 hover:bg-fuego hover:text-abismo transition-colors duration-300">
                             Conocer al maestro
                             <i class="fas fa-plus text-[10px] transition-transform duration-300 group-hover:rotate-45" aria-hidden="true"></i>
@@ -456,7 +460,7 @@
             </div>
             <div class="overflow-y-auto overscroll-contain px-6 sm:px-8 pb-2 maestro-modal-scroll">
 <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
-    <p>Ingeniero en Ciencias Informáticas con más de una década de experiencia en desarrollo de software, videojuegos, simulación y dirección de proyectos tecnológicos.</p>
+    <p>Master en Ciencias Informáticas con más de una década de experiencia en desarrollo de software, videojuegos, simulación y dirección de proyectos tecnológicos.</p>
     <p>Desarrollador full-stack con amplia experiencia en el diseño y desarrollo de interfaces de usuario, así como en la implementación de arquitecturas escalables y eficientes para sistemas empresariales. Mi enfoque principal es crear soluciones tecnológicas que no solo sean funcionales, sino también intuitivas y atractivas para los usuarios finales.</p>
     <p>Entre mis proyectos destacados se encuentra el Sistema de Gestión Empresarial, una plataforma integral diseñada para optimizar la gestión de clientes, inventarios y facturación. Este sistema combina tecnologías modernas como React para el frontend, Node.js para el backend y MongoDB como base de datos, lo que permite una experiencia de usuario fluida y un rendimiento óptimo en entornos empresariales.</p>
     <p>Su trayectoria se forjó en estudios de desarrollo, la academia y proyectos especializados — Vertical Soft Studios, Virtual Games Creations, Cátedra de Ciencias Informáticas y en la Universidad de Camagüey, dirigiendo equipos y definiendo arquitecturas de productos.</p>
