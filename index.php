@@ -1,382 +1,21 @@
-<?php
+﻿<?php
 /**
- * Landing público del Entorno de Aplicaciones Web de UnicornioSoftware® Cuba.
+ * Portada alternativa (index2.php) con el lenguaje visual de cyberforja.com:
+ * fondo abismo, acentos cian y fuego, titulares en Bebas Neue, etiquetas y
+ * botones en Exo 2, y el monitor en perspectiva con móvil y ficha del producto.
  *
- * Vive en la raíz del sitio para que http://localhost/ muestre esta portada.
- * Todo el sistema (portada de servicios, nóminas, facturación, paneles…) quedó
- * bajo /servicios/. Los enlaces antiguos sin /servicios/ se redirigen desde el
- * .htaccess de la raíz.
- *
- * Estilos: tokens del tema NeuroAI (fondo #070a12, superficies glass, acento
- * violeta #6d5dfc y cian #24d6ff, tipografía Inter).
- *
- * La tarjeta del hero muestra cifras reales del último mes leídas de las bases
- * locales (facturación y nóminas). Si MySQL está apagado no se inventan datos:
- * se usa el último resultado guardado, indicando su fecha, o «sin conexión».
+ * Es una página independiente: no reutiliza el CSS de index.php. Todas las
+ * imágenes viven en /images (hero*, nominas-* y facturacion-*) y no se hace
+ * ninguna petición externa.
  */
-
-/* ============================================================================
- * Datos reales del último mes.
- *
- * Consultas de solo lectura, cortas y tolerantes a fallos: si el motor está
- * apagado la portada se dibuja igual y avisa en la propia tarjeta.
- * ========================================================================== */
 
 date_default_timezone_set('America/Havana');
 
-function landing_mes_nombre(int $mes): string
-{
-    $meses = [1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-    return $meses[$mes] ?? '';
-}
-
-function landing_num(float $n): string
-{
-    return number_format($n, 0, ',', ' ');
-}
-
-/** Cifra compacta para las tarjetas pequeñas (128450 → «128,5 mil»). */
-function landing_num_corto(float $n): string
-{
-    $abs = abs($n);
-    if ($abs >= 1000000) {
-        return number_format($n / 1000000, 2, ',', '') . ' M';
-    }
-    if ($abs >= 100000) {
-        return number_format($n / 1000, 1, ',', '') . ' mil';
-    }
-    return landing_num($n);
-}
-
-/** Credenciales desde el config.php de cada módulo, sin incluirlo. */
-function landing_bd_config(string $archivo): array
-{
-    $cfg = [];
-    if (!is_readable($archivo)) {
-        return $cfg;
-    }
-    $texto = (string)file_get_contents($archivo);
-    foreach (['DB_HOST', 'DB_USER', 'DB_PASS', 'DB_NAME'] as $clave) {
-        if (preg_match("/define\\(\\s*'" . $clave . "'\\s*,\\s*'([^']*)'\\s*\\)/", $texto, $m)) {
-            $cfg[$clave] = $m[1];
-        }
-    }
-    return $cfg;
-}
-
-/**
- * Comprueba el puerto antes de crear el PDO. Con MySQL apagado, intentar
- * conectar desde Apache tumba el proceso hijo en este stack (Windows + PHP
- * 8.1); el sondeo de socket evita ese camino y responde al instante.
- */
-function landing_bd_abierto(string $host, int $puerto, float $timeout = 0.6): bool
-{
-    if ($host === '' || strcasecmp($host, 'localhost') === 0) {
-        $host = '127.0.0.1';
-    }
-    $socket = @fsockopen($host, $puerto, $errno, $errstr, $timeout);
-    if (!is_resource($socket)) {
-        return false;
-    }
-    fclose($socket);
-    return true;
-}
-
-/** Conexión corta: si MySQL no responde devuelve null sin romper la portada. */
-function landing_bd(?array $cfg): ?PDO
-{
-    if (!$cfg || empty($cfg['DB_NAME'])) {
-        return null;
-    }
-
-    $host = trim((string)($cfg['DB_HOST'] ?? 'localhost'));
-    $puerto = 3306;
-    if (preg_match('/^(.*?)[;\s]*port\s*=\s*(\d+)/i', $host, $m)) {
-        $host = trim($m[1], " ;\t") ?: 'localhost';
-        $puerto = (int)$m[2];
-    }
-
-    if (!landing_bd_abierto($host, $puerto)) {
-        return null;
-    }
-
-    try {
-        return new PDO(
-            'mysql:host=' . ($host ?: 'localhost') . ';port=' . $puerto . ';dbname=' . $cfg['DB_NAME'] . ';charset=utf8mb4',
-            $cfg['DB_USER'] ?: 'root',
-            $cfg['DB_PASS'] ?? '',
-            [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]
-        );
-    } catch (Throwable $e) {
-        return null;
-    }
-}
-
-function landing_snapshot_ruta(): string
-{
-    return rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'unicornio_landing_datos.json';
-}
-
-function landing_snapshot_leer(): array
-{
-    $ruta = landing_snapshot_ruta();
-    if (!is_readable($ruta)) {
-        return [];
-    }
-    $json = json_decode((string)file_get_contents($ruta), true);
-    return is_array($json) ? $json : [];
-}
-
-function landing_snapshot_guardar(array $datos): void
-{
-    @file_put_contents(
-        landing_snapshot_ruta(),
-        json_encode($datos, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
-        LOCK_EX
-    );
-}
-
-/** Facturación del mes indicado, serie de 8 meses y última factura emitida. */
-function landing_facturacion(?PDO $pdo, int $anio, int $mes): array
-{
-    $datos = [
-        'ok' => false, 'fuente' => 'vivo',
-        'anio' => $anio, 'mes' => $mes,
-        'etiqueta' => landing_mes_nombre($mes) . ' ' . $anio,
-        'mes_corto' => substr(landing_mes_nombre($mes), 0, 3),
-        'exacto' => true,
-        'total' => 0.0, 'facturas' => 0, 'cobrado' => 0.0,
-        'variacion' => null, 'mes_anterior' => '',
-        'serie' => [], 'ultima' => null,
-        'generado' => date('Y-m-d H:i'),
-    ];
-
-    if (!$pdo) {
-        return $datos;
-    }
-
-    $inicio = sprintf('%04d-%02d-01 00:00:00', $anio, $mes);
-    $fin = (new DateTimeImmutable($inicio))->modify('+1 month')->format('Y-m-d 00:00:00');
-
-    $totales = static function (PDO $pdo, string $desde, string $hasta): array {
-        $st = $pdo->prepare(
-            "SELECT COUNT(*) AS facturas,
-                    COALESCE(SUM(total_general), 0) AS total,
-                    COALESCE(SUM(CASE WHEN estado = 'PAGADA'
-                                       OR (estado = 'CERRADA' AND fecha_pago IS NOT NULL AND fecha_pago <> '')
-                                      THEN total_general ELSE 0 END), 0) AS cobrado
-               FROM tbl_fact
-              WHERE fecha_emision >= ? AND fecha_emision < ?
-                AND estado <> 'ANULADA'"
-        );
-        $st->execute([$desde, $hasta]);
-        return $st->fetch() ?: [];
-    };
-
-    try {
-        $fila = $totales($pdo, $inicio, $fin);
-    } catch (Throwable $e) {
-        return $datos;
-    }
-
-    // Si el mes pasado no dejó facturas se usa el último mes con movimiento y
-    // se avisa en la etiqueta, igual que nóminas hace con el último cierre.
-    if ((int)($fila['facturas'] ?? 0) === 0) {
-        try {
-            $ultimo = $pdo->query(
-                "SELECT DATE_FORMAT(fecha_emision, '%Y-%m') AS ym
-                   FROM tbl_fact
-                  WHERE estado <> 'ANULADA'
-                  ORDER BY fecha_emision DESC
-                  LIMIT 1"
-            )->fetchColumn();
-
-            if ($ultimo) {
-                [$anioUlt, $mesUlt] = array_map('intval', explode('-', (string)$ultimo));
-                if ($anioUlt !== $anio || $mesUlt !== $mes) {
-                    $anio = $anioUlt;
-                    $mes = $mesUlt;
-                    $inicio = sprintf('%04d-%02d-01 00:00:00', $anio, $mes);
-                    $fin = (new DateTimeImmutable($inicio))->modify('+1 month')->format('Y-m-d 00:00:00');
-                    $datos['anio'] = $anio;
-                    $datos['mes'] = $mes;
-                    $datos['etiqueta'] = landing_mes_nombre($mes) . ' ' . $anio;
-                    $datos['mes_corto'] = substr(landing_mes_nombre($mes), 0, 3);
-                    $datos['exacto'] = false;
-                    $fila = $totales($pdo, $inicio, $fin);
-                }
-            }
-        } catch (Throwable $e) {
-        }
-    }
-
-    $datos['total'] = (float)($fila['total'] ?? 0);
-    $datos['facturas'] = (int)($fila['facturas'] ?? 0);
-    $datos['cobrado'] = (float)($fila['cobrado'] ?? 0);
-    $datos['ok'] = true;
-
-    try {
-        $st = $pdo->prepare(
-            "SELECT f.no_fact, f.fecha_emision, f.estado, f.total_general, c.nombre AS cliente
-               FROM tbl_fact f
-               LEFT JOIN clasif_clientes c ON c.id = f.cliente_id
-              ORDER BY f.fecha_emision DESC, f.id DESC
-              LIMIT 1"
-        );
-        $st->execute();
-        $datos['ultima'] = $st->fetch() ?: null;
-    } catch (Throwable $e) {
-    }
-
-    $desdeSerie = (new DateTimeImmutable($inicio))->modify('-7 months');
-    $porMes = [];
-    try {
-        $st = $pdo->prepare(
-            "SELECT DATE_FORMAT(fecha_emision, '%Y-%m') AS ym,
-                    COALESCE(SUM(total_general), 0) AS total
-               FROM tbl_fact
-              WHERE fecha_emision >= ? AND fecha_emision < ?
-                AND estado <> 'ANULADA'
-              GROUP BY ym"
-        );
-        $st->execute([$desdeSerie->format('Y-m-01 00:00:00'), $fin]);
-        foreach ($st->fetchAll() as $f) {
-            $porMes[$f['ym']] = (float)$f['total'];
-        }
-    } catch (Throwable $e) {
-    }
-
-    for ($i = 0; $i < 8; $i++) {
-        $m = $desdeSerie->modify('+' . $i . ' months');
-        $clave = $m->format('Y-m');
-        $datos['serie'][] = [
-            'clave' => $clave,
-            'etiqueta' => substr(landing_mes_nombre((int)$m->format('n')), 0, 3),
-            'total' => $porMes[$clave] ?? 0.0,
-        ];
-    }
-
-    // El penúltimo punto de la serie es el mes anterior al consultado.
-    $anterior = $datos['serie'][6]['total'] ?? null;
-    if ($anterior !== null && $anterior > 0) {
-        $datos['variacion'] = round((($datos['total'] - $anterior) / $anterior) * 100, 1);
-        $datos['mes_anterior'] = $datos['serie'][6]['etiqueta'];
-    }
-
-    return $datos;
-}
-
-/** Nómina del mes indicado; si aún no hay cierre, el último periodo cerrado. */
-function landing_nominas(?PDO $pdo, int $anio, int $mes): array
-{
-    $datos = [
-        'ok' => false, 'fuente' => 'vivo',
-        'anio' => $anio, 'mes' => $mes,
-        'etiqueta' => landing_mes_nombre($mes) . ' ' . $anio,
-        'mes_corto' => substr(landing_mes_nombre($mes), 0, 3),
-        'bruto' => 0.0, 'deducciones' => 0.0, 'neto' => 0.0,
-        'trabajadores' => 0, 'exacto' => true,
-        'generado' => date('Y-m-d H:i'),
-    ];
-
-    if (!$pdo) {
-        return $datos;
-    }
-
-    $sql = "SELECT periodo_anio, periodo_mes, total_devengado, total_deducciones,
-                   total_neto, total_trabajadores, fecha_cierre
-              FROM cierres_periodo_nomina
-             WHERE tipo = 1 AND estado = 'cerrado'";
-
-    try {
-        $st = $pdo->prepare($sql . ' AND periodo_anio = ? AND periodo_mes = ? LIMIT 1');
-        $st->execute([$anio, $mes]);
-        $fila = $st->fetch();
-
-        if (!$fila) {
-            $st = $pdo->query($sql . ' ORDER BY periodo_anio DESC, periodo_mes DESC LIMIT 1');
-            $fila = $st->fetch();
-            $datos['exacto'] = false;
-        }
-    } catch (Throwable $e) {
-        return $datos;
-    }
-
-    if (!$fila) {
-        return $datos;
-    }
-
-    $datos['anio'] = (int)$fila['periodo_anio'];
-    $datos['mes'] = (int)$fila['periodo_mes'];
-    $datos['etiqueta'] = landing_mes_nombre($datos['mes']) . ' ' . $datos['anio'];
-    $datos['mes_corto'] = substr(landing_mes_nombre($datos['mes']), 0, 3);
-    $datos['bruto'] = (float)$fila['total_devengado'];
-    $datos['deducciones'] = (float)$fila['total_deducciones'];
-    $datos['neto'] = $fila['total_neto'] !== null
-        ? (float)$fila['total_neto']
-        : max(0, $datos['bruto'] - $datos['deducciones']);
-    $datos['trabajadores'] = (int)$fila['total_trabajadores'];
-    $datos['ok'] = true;
-
-    return $datos;
-}
-
-$ref = new DateTimeImmutable('first day of last month');
-$refAnio = (int)$ref->format('Y');
-$refMes = (int)$ref->format('n');
-
-$pdoFacturacion = landing_bd(landing_bd_config(__DIR__ . '/servicios/facturacion/config.php'));
-$pdoNominas = landing_bd(landing_bd_config(__DIR__ . '/servicios/nominas/config.php'));
-
-$snapshot = landing_snapshot_leer();
-
-$facturacion = landing_facturacion($pdoFacturacion, $refAnio, $refMes);
-$nominas = landing_nominas($pdoNominas, $refAnio, $refMes);
-
-$factVivo = $facturacion['ok'];
-$nomVivo = $nominas['ok'];
-
-if (!$factVivo && !empty($snapshot['facturacion']['ok'])) {
-    $facturacion = $snapshot['facturacion'];
-    $facturacion['fuente'] = 'guardado';
-}
-if (!$nomVivo && !empty($snapshot['nominas']['ok'])) {
-    $nominas = $snapshot['nominas'];
-    $nominas['fuente'] = 'guardado';
-}
-
-// La caché solo se reescribe con lecturas en vivo: un dato guardado nunca se
-// presenta como actual ni renueva su fecha.
-if ($factVivo || $nomVivo) {
-    landing_snapshot_guardar([
-        'guardado' => date('Y-m-d H:i'),
-        'facturacion' => $factVivo ? $facturacion : ($snapshot['facturacion'] ?? null),
-        'nominas' => $nomVivo ? $nominas : ($snapshot['nominas'] ?? null),
-    ]);
-}
-
-$bdEstado = ($factVivo && $nomVivo)
-    ? 'online'
-    : (($factVivo || $nomVivo) ? 'parcial' : 'offline');
-$desdeGuardado = ($facturacion['fuente'] === 'guardado' || $nominas['fuente'] === 'guardado');
-$faltante = !$facturacion['ok'] ? 'facturación' : (!$nominas['ok'] ? 'nóminas' : '');
-$datosGuardados = $snapshot['guardado'] ?? null;
-
-$serieMax = 0.0;
-foreach ($facturacion['serie'] as $punto) {
-    $serieMax = max($serieMax, (float)$punto['total']);
-}
-
-$anio = (int)date('Y');
 $base = '/servicios';
 
-/* Estado de la licencia local.
- * Se reutiliza el mismo módulo que emplea /servicios/nominas/licencia.php
- * (sin base de datos) para ofrecer la renovación desde la propia portada. */
+/* ---------------------------------------------------------------------------
+ * Estado de la licencia local (mismo módulo que usa el resto del sistema).
+ * ------------------------------------------------------------------------- */
 $licenciaArchivo = __DIR__ . '/servicios/nominas/includes/licencia.php';
 $licenciaDatos   = null;
 $licenciaActiva  = false;
@@ -385,21 +24,198 @@ if (is_file($licenciaArchivo)) {
     $licenciaDatos  = licencia_leer();
     $licenciaActiva = licencia_activada();
 }
-$licenciaTitulo = $licenciaActiva
-    ? 'Licencia activa hasta ' . licencia_texto_vencimiento($licenciaDatos) . '. Puedes revisarla o renovarla.'
-    : 'Activa o renueva la licencia del sistema.';
+/* Versión de MySQL/Apache/phpMyAdmin y salud BD (misma lógica que servicios/phpinfo) */
+$mysqlVersionDisplay = 'No disponible';
+$apacheVersion = 'No detectado';
+$phpmyadminVersion = 'No detectado';
+$dbHost = '127.0.0.1';
+$dbUser = 'root';
+$dbPass = '';
+$dbName = '';
+$dbConnected = false;
+$dbConn = null;
+$dbSize = '0 MB';
+$dbTables = '0';
+$dbUptime = 'Sin datos';
+$dbUptimeTitle = 'Servidor MySQL no disponible';
 
-/* ============================================================================
- * Activación / renovación de licencia en la propia portada.
- * El formulario se envía a este mismo archivo: no hace falta salir a
- * /servicios/nominas/licencia.php para registrar o renovar la licencia.
- * ======================================================================== */
-$licForm = array(
+$configNominas = __DIR__ . '/servicios/nominas/config.php';
+if (is_file($configNominas)) {
+    $cfg = file_get_contents($configNominas);
+    if (preg_match("/define\\s*\\(\\s*['\\\"]DB_HOST['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbHost = $m[1];
+    if (preg_match("/define\\s*\\(\\s*['\\\"]DB_USER['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbUser = $m[1];
+    if (preg_match("/define\\s*\\(\\s*['\\\"]DB_PASS['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbPass = $m[1];
+    if (preg_match("/define\\s*\\(\\s*['\\\"]DB_NAME['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbName = $m[1];
+}
+
+$phpVersionDisplay = phpversion();
+if (function_exists('apache_get_version')) {
+    $apacheRaw = apache_get_version();
+    if (is_string($apacheRaw) && preg_match('/Apache\/([0-9\.]+)/', $apacheRaw, $matches)) $apacheVersion = $matches[1];
+} elseif (isset($_SERVER['SERVER_SOFTWARE']) && preg_match('/([0-9\.]+)/', (string)$_SERVER['SERVER_SOFTWARE'], $matches)) {
+    $apacheVersion = $matches[1];
+}
+
+$rutaPMAEncontrada = '';
+$dirActual = __DIR__;
+for ($i = 0; $i < 5; $i++) {
+    if (file_exists($dirActual . '/USBWebserver.exe') || file_exists($dirActual . '/usbwebserver.exe')) {
+        $rutaPMAEncontrada = $dirActual . '/phpmyadmin';
+        break;
+    }
+    $dirActual = dirname($dirActual);
+    if ($dirActual === '/' || $dirActual === '\\' || $dirActual === '') break;
+}
+if ($rutaPMAEncontrada === '') {
+    foreach ([dirname(__DIR__) . '/phpmyadmin', dirname(dirname(__DIR__)) . '/phpmyadmin', 'C:/USBWebserver/phpmyadmin'] as $ruta) {
+        if (is_dir($ruta)) { $rutaPMAEncontrada = $ruta; break; }
+    }
+}
+if ($rutaPMAEncontrada !== '' && is_dir($rutaPMAEncontrada)) {
+    $readmePath = $rutaPMAEncontrada . '/README';
+    $composerPath = $rutaPMAEncontrada . '/composer.json';
+    if (file_exists($readmePath)) {
+        $content = file_get_contents($readmePath);
+        if (is_string($content) && preg_match('/Version ([0-9]+\.[0-9]+\.[0-9]+)/i', $content, $m)) $phpmyadminVersion = $m[1];
+    } elseif (file_exists($composerPath)) {
+        $content = file_get_contents($composerPath);
+        if (is_string($content) && preg_match('/"version":\s*"([^"]+)"/', $content, $m)) $phpmyadminVersion = $m[1];
+    }
+}
+
+if (!function_exists('BD_shell_disabled')) {
+    function BD_shell_disabled(string $fn): bool {
+        $disabled = array_map('trim', explode(',', strtolower((string)ini_get('disable_functions'))));
+        return in_array(strtolower($fn), $disabled, true);
+    }
+}
+if (!function_exists('BD_mysql_start_from_sql')) {
+    function BD_mysql_start_from_sql($conn): ?int {
+        if (!($conn instanceof mysqli)) return null;
+        foreach (["SHOW GLOBAL STATUS LIKE 'Uptime'", "SELECT VARIABLE_VALUE AS Value FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'UPTIME'", "SELECT VARIABLE_VALUE AS Value FROM performance_schema.global_status WHERE VARIABLE_NAME = 'UPTIME'"] as $sql) {
+            try {
+                $res = @mysqli_query($conn, $sql);
+                if (!($res instanceof mysqli_result)) continue;
+                $row = @mysqli_fetch_assoc($res);
+                @mysqli_free_result($res);
+                if (!$row) continue;
+                $valor = null;
+                foreach (['Value','VARIABLE_VALUE','Uptime','UPTIME'] as $clave) { if (isset($row[$clave]) && $row[$clave] !== '') { $valor = $row[$clave]; break; } }
+                if ($valor === null) { $valores = array_values($row); $valor = end($valores); }
+                if ($valor !== null && is_numeric($valor)) return max(0, (int)$valor);
+            } catch (Throwable $e) {}
+        }
+        return null;
+    }
+}
+if (!function_exists('BD_parse_wmi_date')) {
+    function BD_parse_wmi_date(string $valor): ?int {
+        if (!preg_match('/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\.\d+([+-])(\d{3})$/', $valor, $m)) return null;
+        $local = gmmktime((int)$m[4], (int)$m[5], (int)$m[6], (int)$m[2], (int)$m[3], (int)$m[1]);
+        if ($local === false) return null;
+        $offset = ($m[7] === '+' ? 1 : -1) * ((int)$m[8] * 60);
+        return $local - $offset;
+    }
+}
+if (!function_exists('BD_mysql_start_from_pidfile')) {
+    function BD_mysql_start_from_pidfile(): ?int {
+        $candidatos = [dirname(__DIR__, 2) . '/mysql/my.ini', dirname(__DIR__) . '/mysql/my.ini', 'C:/Users/kakyc/Desktop/sistemas/mysql/my.ini', 'C:/USBWebserver/mysql/my.ini', 'C:/xampp/mysql/bin/my.ini'];
+        $datadirs = [];
+        foreach ($candidatos as $ini) {
+            if (!is_file($ini)) continue;
+            $contenido = (string)@file_get_contents($ini);
+            if (preg_match('/^\s*datadir\s*=\s*"?([^"\r\n]+)"?/mi', $contenido, $m)) $datadirs[] = str_replace('\\\\', '\\', trim($m[1]));
+            $datadirs[] = dirname($ini) . '/data';
+        }
+        $mejor = null;
+        foreach (array_unique($datadirs) as $dir) {
+            if (!is_dir($dir)) continue;
+            foreach ((array)glob(rtrim($dir, "/\\") . '/*.pid') as $pidFile) {
+                $ts = @filemtime($pidFile);
+                if ($ts === false) continue;
+                if ($mejor === null || $ts > $mejor) $mejor = $ts;
+            }
+        }
+        return $mejor;
+    }
+}
+if (!function_exists('BD_mysql_start_from_os')) {
+    function BD_mysql_start_from_os(): ?int {
+        if (stripos(PHP_OS_FAMILY, 'Windows') !== false) {
+            if (!BD_shell_disabled('shell_exec') && function_exists('shell_exec')) {
+                $wmic = @shell_exec('wmic process where "name like \'%mysqld%\'" get CreationDate /format:list 2>nul');
+                if (is_string($wmic) && preg_match_all('/(\d{14}\.\d{6}[+-]\d{3})/', $wmic, $m)) {
+                    $mejor = null;
+                    foreach ($m[1] as $fecha) { $ts = BD_parse_wmi_date($fecha); if ($ts !== null && ($mejor === null || $ts < $mejor)) $mejor = $ts; }
+                    if ($mejor !== null) return $mejor;
+                }
+            }
+            return BD_mysql_start_from_pidfile();
+        }
+        return BD_mysql_start_from_pidfile();
+    }
+}
+if (!function_exists('BD_mysql_uptime')) {
+    function BD_mysql_uptime($conn): int {
+        $desdeSql = BD_mysql_start_from_sql($conn);
+        if ($desdeSql !== null) return $desdeSql;
+        $start = BD_mysql_start_from_os();
+        if ($start !== null && $start > 0) return max(0, time() - $start);
+        return 0;
+    }
+}
+if (!function_exists('BD_formato_uptime')) {
+    function BD_formato_uptime(int $segundos): string {
+        $segundos = max(0, $segundos);
+        $dias = intdiv($segundos, 86400);
+        $horas = intdiv($segundos % 86400, 3600);
+        $minutos = intdiv($segundos % 3600, 60);
+        if ($dias > 0) return $dias . 'd ' . $horas . 'h ' . $minutos . 'm';
+        if ($horas > 0) return $horas . 'h ' . $minutos . 'm';
+        if ($minutos > 0) return $minutos . 'm';
+        return 'menos de 1 min';
+    }
+}
+
+if (function_exists('mysqli_connect')) {
+    try {
+        $dbConn = @mysqli_connect($dbHost, $dbUser, $dbPass);
+        if ($dbConn) {
+            $dbConnected = true;
+            $info = mysqli_get_server_info($dbConn);
+            if (is_string($info) && $info !== '') $mysqlVersionDisplay = $info;
+            if ($dbName !== '') {
+                @mysqli_select_db($dbConn, $dbName);
+                try {
+                    $res = @mysqli_query($dbConn, "SELECT SUM(data_length + index_length) AS size FROM information_schema.TABLES WHERE table_schema = '" . mysqli_real_escape_string($dbConn, $dbName) . "'");
+                    if ($res && $row = mysqli_fetch_assoc($res)) $dbSize = round(((float)($row['size'] ?? 0)) / (1024 * 1024), 2) . ' MB';
+                } catch (Throwable $e) {}
+                try {
+                    $res = @mysqli_query($dbConn, "SELECT COUNT(*) AS total FROM information_schema.TABLES WHERE table_schema = '" . mysqli_real_escape_string($dbConn, $dbName) . "'");
+                    if ($res && $row = mysqli_fetch_assoc($res)) $dbTables = (string)($row['total'] ?? '0');
+                } catch (Throwable $e) {}
+            }
+            $uptimeSeg = BD_mysql_uptime($dbConn);
+            $dbUptime = BD_formato_uptime($uptimeSeg);
+            if ($uptimeSeg >= 0) $dbUptimeTitle = 'Activo desde ' . date('d/m/Y H:i:s T', time() - $uptimeSeg) . ' · ' . number_format($uptimeSeg) . ' segundos';
+            @mysqli_close($dbConn);
+        }
+    } catch (Throwable $e) {
+        $mysqlVersionDisplay = 'No disponible';
+        if ($dbConn instanceof mysqli) { @mysqli_close($dbConn); }
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ * Activación y renovación de la licencia desde esta misma portada.
+ * Misma lógica que index.php: se procesa por POST antes de pintar la página.
+ * ------------------------------------------------------------------------- */
+$licForm = [
     'nombre'  => ($licenciaDatos !== null) ? (string)$licenciaDatos['registro'] : '',
     'usuario' => ($licenciaDatos !== null) ? (string)$licenciaDatos['usuario']  : '',
     'serial'  => '',
     'texto'   => '',
-);
+];
 $licError        = '';
 $licAviso        = '';
 $licAvisoTipo    = '';
@@ -417,7 +233,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['licencia_accion']) &&
     $licForm['texto']   = isset($_POST['licencia_texto']) ? (string)$_POST['licencia_texto'] : '';
 
     if ($licAccion === 'examinar_texto') {
-        // Verifica el texto pegado: si es válido rellena los campos.
         $verif = licencia_texto_verificar($licForm['texto']);
         if ($verif['ok']) {
             $licForm['nombre']  = $verif['datos']['registro'];
@@ -434,7 +249,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['licencia_accion']) &&
             }
         }
     } elseif ($licAccion === 'examinar_archivo') {
-        // Importa los datos de un archivo .lic, sin instalarlo todavía.
         $licAvisoTipo = 'error';
         if (empty($_FILES['archivo_lic']['tmp_name'])
             || (($_FILES['archivo_lic']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK)) {
@@ -462,7 +276,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['licencia_accion']) &&
             }
         }
     } else {
-        // Activación o renovación manual con la llave serial.
         if ($licForm['nombre'] === '') {
             $licError = 'Debe indicar el <b>Nombre de Registro</b>.';
         } elseif ($licForm['usuario'] === '') {
@@ -472,7 +285,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['licencia_accion']) &&
         } elseif (!licencia_validar_serial($licForm['nombre'], $licForm['usuario'], $licForm['serial'])) {
             $licError = 'La <b>Llave Serial</b> no corresponde a los datos de registro introducidos.';
         } else {
-            // Si ya había una licencia vigente, se reemplaza (renovación).
             $guardado = licencia_guardar($licForm['nombre'], $licForm['usuario'], $licForm['serial'], null, $licenciaActiva);
             if ($guardado === false) {
                 $licError = 'No se pudo guardar la licencia en este equipo. Compruebe que la aplicación tiene permisos de escritura.';
@@ -499,11 +311,6 @@ if ($licOk) {
     $licenciaEstadoTxt = 'Este equipo aún no tiene licencia. Introduzca la llave serial para activarla.';
 }
 
-// La intro de la portada no se repite cuando la página se recarga para
-// tramitar la licencia: el usuario debe ver el modal sin esperar la animación.
-$introSaltar = $licModalAbierto;
-
-/* Resumen del estado de la licencia para el panel «Estado de la licencia». */
 if ($licenciaActiva) {
     $licEdoNombre = 'Activa';
     $licEdoTono   = 'is-ok';
@@ -521,1631 +328,152 @@ if ($licenciaActiva) {
     $licEdoTono   = 'is-off';
     $licEdoIcono  = 'fa-circle-minus';
 }
-$licEdoRegistro = ($licenciaDatos !== null) ? (string)$licenciaDatos['registro'] : '';
-$licEdoUsuario  = ($licenciaDatos !== null) ? (string)$licenciaDatos['usuario']  : '';
-$licEdoTipo     = ($licenciaDatos !== null && isset($licenciaDatos['info']['nombre'])) ? (string)$licenciaDatos['info']['nombre'] : '';
+
+$licRegistro = ($licenciaDatos !== null) ? (string)$licenciaDatos['registro'] : '';
+$licUsuario  = ($licenciaDatos !== null) ? (string)$licenciaDatos['usuario']  : '';
+$licTipo     = ($licenciaDatos !== null && isset($licenciaDatos['info']['nombre'])) ? (string)$licenciaDatos['info']['nombre'] : '';
+$licVence    = ($licenciaDatos !== null) ? licencia_texto_vencimiento($licenciaDatos) : '';
+$licHuella   = function_exists('licencia_fingerprint_equipo') ? licencia_fingerprint_equipo() : '';
 $licEdoActivada = ($licenciaDatos !== null && !empty($licenciaDatos['fecha_activacion']))
     ? date('d/m/Y', (int)$licenciaDatos['fecha_activacion']) : '';
-$licEdoVence    = ($licenciaDatos !== null) ? licencia_texto_vencimiento($licenciaDatos) : '';
+$licEdoRegistro = $licRegistro;
+$licEdoUsuario  = $licUsuario;
+$licEdoTipo     = $licTipo;
+$licEdoVence    = $licVence;
 
+/* ---------------------------------------------------------------------------
+ * Contenido de la portada.
+ * ------------------------------------------------------------------------- */
 $ecosistema = [
     [
-        'titulo'  => 'Ecosistema Financiero',
-        'texto'   => 'Facturación, nóminas, costos e inventarios en un solo lugar: entra al sistema completo y elige el módulo que necesitas.',
-        'icono'   => 'fa-solid fa-wallet',
-        'url'     => $base . '/index.php',
-        'etiqueta'=> 'Portada del sistema',
+        'titulo'    => 'Ecosistema Financiero',
+        'texto'     => 'Facturación, nóminas, costos e inventarios en un solo lugar: entra al sistema completo y elige el módulo que necesitas.',
+        'icono'     => 'fa-solid fa-wallet',
+        'url'       => $base . '/index.php',
+        'etiqueta'  => 'Portada del sistema',
         'destacada' => true,
     ],
     [
-        'titulo'  => 'Gestión de Nóminas',
-        'texto'   => 'Cálculo de nóminas, cierres mensuales, vacaciones, contribuciones y exportaciones bancarias.',
-        'icono'   => 'fa-solid fa-money-check-dollar',
-        'url'     => $base . '/nominas/',
-        'etiqueta'=> 'Módulo de nóminas',
-        'imagen'  => $base . '/images/nominas.png',
+        'titulo'   => 'Gestión de Nóminas',
+        'texto'    => 'Cálculo de nóminas, cierres mensuales, vacaciones, contribuciones y exportaciones bancarias.',
+        'icono'    => 'fa-solid fa-money-check-dollar',
+        'url'      => $base . '/nominas/',
+        'etiqueta' => 'Módulo de nóminas',
     ],
     [
-        'titulo'  => 'Facturación Electrónica',
-        'texto'   => 'Emisión de facturas, clientes, servicios y reportes de cierre con control de usuarios.',
-        'icono'   => 'fa-solid fa-file-invoice-dollar',
-        'url'     => $base . '/facturacion/index.php',
-        'etiqueta'=> 'Módulo de facturación',
-        'imagen'  => $base . '/images/facturacion.png',
+        'titulo'   => 'Facturación Electrónica',
+        'texto'    => 'Emisión de facturas, clientes, servicios y reportes de cierre con control de usuarios.',
+        'icono'    => 'fa-solid fa-file-invoice-dollar',
+        'url'      => $base . '/facturacion/index.php',
+        'etiqueta' => 'Módulo de facturación',
     ],
     [
-        'titulo'  => 'Gestión de Costos',
-        'texto'   => 'Fichas de costo, gastos operativos, márgenes y proyecciones para controlar la rentabilidad.',
-        'icono'   => 'fa-solid fa-calculator',
-        'url'     => $base . '/costos/login.php',
-        'etiqueta'=> 'Módulo de costos',
-        'imagen'  => $base . '/images/costos.png',
-        'pendiente' => true,
+        'titulo'   => 'Gestión de Costos',
+        'texto'    => 'Fichas de costo, gastos operativos, márgenes y proyecciones para controlar la rentabilidad.',
+        'icono'    => 'fa-solid fa-calculator',
+        'url'      => $base . '/costos/login.php',
+        'etiqueta' => 'Módulo de costos',
     ],
     [
-        'titulo'  => 'Inventarios',
-        'texto'   => 'Control de stock, entradas y salidas, alertas de inventario mínimo y gestión de proveedores.',
-        'icono'   => 'fa-solid fa-boxes-stacked',
-        'url'     => $base . '/inventarios/login.php',
-        'etiqueta'=> 'Módulo de inventarios',
-        'imagen'  => $base . '/images/inventario.png',
-        'pendiente' => true,
+        'titulo'   => 'Inventarios',
+        'texto'    => 'Control de stock, entradas y salidas, alertas de inventario mínimo y gestión de proveedores.',
+        'icono'    => 'fa-solid fa-boxes-stacked',
+        'url'      => $base . '/inventarios/login.php',
+        'etiqueta' => 'Módulo de inventarios',
     ],
     [
-        'titulo'  => 'Administración',
-        'texto'   => 'Usuarios, roles, parámetros globales, auditoría y configuración del sistema en un solo panel.',
-        'icono'   => 'fa-solid fa-user-shield',
-        'url'     => $base . '/administracion/index.php',
-        'etiqueta'=> 'Módulo de administración',
-        'imagen'  => $base . '/images/admin.png',
-        'pendiente' => true,
+        'titulo'   => 'Administración',
+        'texto'    => 'Usuarios, roles, parámetros globales, auditoría y configuración del sistema en un solo panel.',
+        'icono'    => 'fa-solid fa-user-shield',
+        'url'      => $base . '/administracion/index.php',
+        'etiqueta' => 'Módulo de administración',
     ],
     [
-        'titulo'  => 'Panel del Servidor',
-        'texto'   => 'Estado de Apache, PHP y MySQL: versión, uptime real del motor y lanzadores de herramientas.',
-        'icono'   => 'fa-solid fa-server',
-        'url'     => $base . '/phpinfo/',
-        'etiqueta'=> 'Información del servidor',
+        'titulo'   => 'Panel del Servidor',
+        'texto'    => 'Estado de Apache, PHP y MySQL: versión, uptime real del motor y lanzadores de herramientas.',
+        'icono'    => 'fa-solid fa-server',
+        'url'      => $base . '/phpinfo/',
+        'etiqueta' => 'Información del servidor',
     ],
     [
-        'titulo'  => 'Instalador de Base de Datos',
-        'texto'   => 'Asistente para crear o restaurar la base de datos del sistema cuando se prepara un equipo nuevo.',
-        'icono'   => 'fa-solid fa-database',
-        'url'     => $base . '/InstalarBD/InstalarBD.php',
-        'etiqueta'=> 'Preparar el sistema',
+        'titulo'   => 'Instalador de Base de Datos',
+        'texto'    => 'Asistente para crear o restaurar la base de datos del sistema cuando se prepara un equipo nuevo.',
+        'icono'    => 'fa-solid fa-database',
+        'url'      => $base . '/InstalarBD/InstalarBD.php',
+        'etiqueta' => 'Preparar el sistema',
     ],
     [
-        'titulo'  => 'Soporte y Contacto',
-        'texto'   => 'Documentación de soporte, contacto directo y canales de atención para la operación diaria.',
-        'icono'   => 'fa-solid fa-headset',
-        'url'     => $base . '/soporte.php',
-        'etiqueta'=> 'Ayuda y contacto',
+        'titulo'   => 'Soporte y Contacto',
+        'texto'    => 'Documentación de soporte, contacto directo y canales de atención para la operación diaria.',
+        'icono'    => 'fa-solid fa-headset',
+        'url'      => $base . '/soporte.php',
+        'etiqueta' => 'Ayuda y contacto',
     ],
 ];
 
 $servicios = [
-    ['icono' => 'fa-solid fa-database',      'titulo' => 'Base de datos',   'texto' => 'Motor MySQL con integridad referencial, respaldo periódico y restauración confiable.'],
-    ['icono' => 'fa-brands fa-php',          'titulo' => 'PHP 8.1',         'texto' => 'Compatibilidad con el stack local y rendimiento estable para todos los módulos.'],
-    ['icono' => 'fa-solid fa-shield-halved', 'titulo' => 'Seguridad',       'texto' => 'Comunicación cifrada, autenticación reforzada y secretos fuera del código.'],
-    ['icono' => 'fa-solid fa-arrows-rotate', 'titulo' => 'Sincronización',  'texto' => 'Información siempre al día entre módulos, sin cálculos repetidos ni desfases.'],
-    ['icono' => 'fa-solid fa-clock',         'titulo' => 'Soporte 24/7',    'texto' => 'Acompañamiento continuo para la operación y resolución de incidencias.'],
-    ['icono' => 'fa-solid fa-lock',          'titulo' => 'Licencia local',  'texto' => 'Todo funciona en el equipo del cliente: los datos no salen de la red local.'],
+    ['icono' => 'fa-solid fa-database',      'titulo' => 'Base de datos',  'texto' => 'Motor MySQL con integridad referencial, respaldo periódico y restauración confiable.'],
+    ['icono' => 'fa-brands fa-php',          'titulo' => 'PHP ' . $phpVersionDisplay,        'texto' => 'Compatibilidad con el stack local y rendimiento estable para todos los módulos.'],
+    ['icono' => 'fa-solid fa-shield-halved', 'titulo' => 'Seguridad',      'texto' => 'Comunicación cifrada, autenticación reforzada y secretos fuera del código.'],
+    ['icono' => 'fa-solid fa-arrows-rotate', 'titulo' => 'Sincronización', 'texto' => 'Información siempre al día entre módulos, sin cálculos repetidos ni desfases.'],
+    ['icono' => 'fa-solid fa-clock',         'titulo' => 'Soporte 24/7',   'texto' => 'Acompañamiento continuo para la operación y resolución de incidencias.'],
+    ['icono' => 'fa-solid fa-lock',          'titulo' => 'Licencia local', 'texto' => 'Todo funciona en el equipo del cliente: los datos no salen de la red local.'],
+];
+
+$faq = [
+    [
+        'p' => '¿Qué es UnicornioSoftware?',
+        'r' => 'Es un grupo de programación y desarrollo de software, patrocinado por el Ms.C. Franklin Ramos Lamadrid. Se dedica a crear soluciones tecnológicas, herramientas empresariales y plataformas digitales adaptadas a las necesidades reales de los negocios, combinando experiencia técnica, visión práctica y acompañamiento cercano.',
+    ],
+    [
+        'p' => '¿Qué es SiGesEmp?',
+        'r' => 'SiGesEmp es un conjunto de aplicaciones para tu negocio, diseñado para integrar y simplificar la gestión diaria. Reúne módulos como facturación, nóminas, costos, inventarios y administración, permitiendo trabajar con información organizada en una misma plataforma y con mayor control de cada proceso.',
+    ],
+    [
+        'p' => '¿Cómo funciona la licencia del sistema?',
+        'r' => 'La licencia se guarda cifrada y solo en este equipo. Desde la portada puedes <a href="#licencia-estado">revisar su estado</a>, introducir una llave serial, importar un archivo <code>.lic</code> o solicitar la licencia por correo, sin salir del sistema.',
+    ],
+    [
+        'p' => '¿Qué pasa si la licencia vence?',
+        'r' => 'Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida. Todo el trámite de activación o renovación se realiza desde la portada, de forma rápida y sin perder la información de tu equipo.',
+    ],
+    [
+        'p' => '¿Cómo adquiero una licencia?',
+        'r' => 'Revisa los <a href="#precios">planes y precios</a> y elige el que mejor se adapte a tu negocio. Luego, desde la sección <a href="#licencia-estado">Estado de la licencia</a> puedes solicitarla por correo, recibir tu llave o archivo <code>.lic</code> y activarla en este mismo equipo. Si necesitas ayuda, escribe a <a href="mailto:kakycu@gmail.com">kakycu@gmail.com</a> o por WhatsApp al <a href="https://wa.me/5352712861">+53 5 2712861</a>.',
+    ],
+    [
+        'p' => '¿Necesito internet para usar el sistema?',
+        'r' => 'No. El sistema corre en tu propio equipo o en tu red local con Apache, PHP y MySQL. Tus datos se mantienen dentro de tu red.',
+    ],
+    [
+        'p' => '¿Pueden desarrollar algo a la medida de mi negocio?',
+        'r' => 'Sí. Además de la plataforma, desarrollamos software a medida: herramientas internas, plataformas completas, sitios web, APIs e integraciones. Conoce más en <a href="/desamedida.php">Software a medida</a> o en <a href="/about.php">Sobre nosotros</a>.',
+    ],
+    [
+        'p' => '¿Cómo puedo empezar o solicitar soporte?',
+        'r' => 'Si el equipo es nuevo, puedes comenzar por el <a href="' . $base . '/InstalarBD/InstalarBD.php">Instalador de base de datos</a>. Para soporte o consultas, escribe a <a href="mailto:kakycu@gmail.com">kakycu@gmail.com</a> o llama al <a href="tel:+5352712861">+53 5 2712861</a>.',
+    ],
 ];
 ?>
 <!DOCTYPE html>
-<html lang="es" data-bs-theme="dark">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Entorno de Aplicaciones Web de UnicornioSoftware® Cuba. Kaky®</title>
-<meta name="description" content="Entorno de Aplicaciones Web de UnicornioSoftware® Cuba. Kaky®. Facturación, nóminas y gestión en una plataforma local.">
+<title>UnicornioSoftware Cuba · SOFTWARE PARA TRANSFORMAR TU NEGOCIO</title>
+<meta name="description" content="Facturación, nóminas, costos e inventarios en una plataforma que corre en tu propia red. UnicornioSoftware Cuba.">
 <link rel="icon" type="image/png" href="/images/logo.png">
-<link rel="apple-touch-icon" href="/images/logo.png">
 <link rel="stylesheet" href="<?= $base ?>/css/font-awesome6.4.0/css/all.min.css">
-<!-- Tipografías del hero destacado (Bebas Neue para el titular, Exo 2 para cejilla,
-     botones y etiquetas). Si se prefiere no depender de Google, se pueden alojar en local. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:wght@600;700;800&display=swap">
-<script>
-    /* Aplica el tema guardado antes de pintar para que no haya parpadeo. */
-    (function () {
-        try {
-            var tema = localStorage.getItem('theme');
-            document.documentElement.setAttribute('data-bs-theme', tema === 'light' ? 'light' : 'dark');
-        } catch (e) {
-            document.documentElement.setAttribute('data-bs-theme', 'dark');
-        }
-    })();
-</script>
-<style>
-    /* ===== Tokens del tema (NeuroAI), oscuro por defecto ===== */
-    :root {
-        --bg:            #070a12;
-        --bg-soft:       #0b1020;
-        --surface:       rgba(18, 26, 45, .72);
-        --surface-strong:rgba(24, 33, 56, .82);
-        --surface-solid: #121a2d;
-        --tile:          rgba(255, 255, 255, .05);
-        --panel:         rgba(11, 16, 32, .82);
-        --header-bg:     rgba(7, 10, 18, .78);
-        --footer-bg:     rgba(9, 13, 24, .74);
-        --overlay-top:   rgba(7, 10, 18, .32);
-        --overlay-bottom:rgba(7, 10, 18, .78);
-        --fondo-imagen:  url("/images/fondo.jpg");
-        --fondo-opacidad: 1.55;
-        --shine:         rgba(255, 255, 255, .10);
-        --card-hover-border: rgba(255, 255, 255, .28);
-        --card-hover-shadow: 0 0 0 1px rgba(36, 214, 255, .12), 0 1.25rem 4rem rgba(109, 93, 252, .30);
-        --card-icon-color: #cfd6ff;
-        --card-top:      rgba(255, 255, 255, .05);
-        --card-bottom:   rgba(255, 255, 255, .015);
-        --destacada-top: rgba(109, 93, 252, .16);
-        --destacada-bottom: rgba(18, 26, 45, .72);
-        --border:        rgba(255, 255, 255, 0.12);
-        --border-strong: rgba(255, 255, 255, 0.18);
-        --txt:           #f7f9ff;
-        --muted:         #a8b3c7;
-        --subtle:        #7f8ba3;
-        --accent:        #6d5dfc;
-        --accent-soft:   rgba(109, 93, 252, 0.18);
-        --cyan:          #24d6ff;
-        --mint:          #2ee59d;
-        --radius:        .75rem;
-        --radius-lg:     1rem;
-        --shadow:        0 1.5rem 4rem rgba(0, 0, 0, .35);
-        --shadow-glow:   0 0 0 1px rgba(36, 214, 255, .08), 0 1.25rem 4rem rgba(109, 93, 252, .22);
-        --switch-bg:     rgba(255, 255, 255, .08);
-        --switch-border: rgba(255, 255, 255, .18);
-        --switch-thumb:  #232c38;
-        --switch-thumb-border: rgba(255, 255, 255, .22);
-        --switch-sun:    #8b9bb4;
-        --switch-moon:   #24d6ff;
-        --window-bg:     linear-gradient(180deg, rgba(26, 35, 58, .96), rgba(9, 13, 24, .97));
-        --window-line:   rgba(255, 255, 255, .08);
-        --chart-track:   rgba(255, 255, 255, .06);
-        --ded:           #ff8a76;
-        --danger:        #f87171;
-        --danger-txt:    #ffe1e1;
-        --danger-soft:   rgba(248, 113, 113, .12);
-        --danger-border: rgba(248, 113, 113, .34);
-        --warn:          #fbbf24;
-        --max:           72rem;
-    }
-    /* ===== Tema claro (mismo mecanismo que el panel phpinfo) ===== */
-    [data-bs-theme="light"] {
-        --bg:            #eef2fa;
-        --bg-soft:       #f7f9fd;
-        --surface:       rgba(255, 255, 255, .84);
-        --surface-strong:rgba(255, 255, 255, .96);
-        --surface-solid: #ffffff;
-        --tile:          rgba(15, 23, 42, .04);
-        --panel:         rgba(255, 255, 255, .76);
-        --header-bg:     rgba(255, 255, 255, .86);
-        --footer-bg:     rgba(255, 255, 255, .84);
-        --overlay-top:   rgba(238, 242, 250, .55);
-        --overlay-bottom:rgba(238, 242, 250, .92);
-        --fondo-imagen:  url("/images/fondo-dia.jpg");
-        --fondo-opacidad: 1.55;
-        --shine:         rgba(99, 90, 230, .26);
-        --card-hover-border: rgba(91, 75, 219, .5);
-        --card-hover-shadow: 0 0 0 1px rgba(14, 116, 144, .2), 0 1.1rem 2.8rem rgba(91, 75, 219, .30);
-        --card-icon-color: #4c3fd0;
-        --card-top:      rgba(255, 255, 255, .92);
-        --card-bottom:   rgba(255, 255, 255, .55);
-        --destacada-top: rgba(109, 93, 252, .12);
-        --destacada-bottom: rgba(255, 255, 255, .86);
-        --border:        rgba(15, 23, 42, 0.12);
-        --border-strong: rgba(15, 23, 42, 0.20);
-        --txt:           #101828;
-        --muted:         #475467;
-        --subtle:        #667085;
-        --accent:        #5b4bdb;
-        --accent-soft:   rgba(91, 75, 219, 0.12);
-        --cyan:          #0e7490;
-        --mint:          #047857;
-        --shadow:        0 1.5rem 4rem rgba(16, 24, 40, .12);
-        --shadow-glow:   0 0 0 1px rgba(14, 116, 144, .10), 0 1.25rem 4rem rgba(91, 75, 219, .16);
-        --switch-bg:     #e2e8f2;
-        --switch-border: #cfd7e4;
-        --switch-thumb:  #ffffff;
-        --switch-thumb-border: #cfd7e4;
-        --switch-sun:    #f59e0b;
-        --switch-moon:   #94a3b8;
-        --window-bg:     linear-gradient(180deg, #ffffff, #f1f5fd);
-        --window-line:   rgba(15, 23, 42, .09);
-        --chart-track:   rgba(15, 23, 42, .06);
-        --ded:           #c2410c;
-        --danger:        #b42318;
-        --danger-txt:    #7a271a;
-        --danger-soft:   rgba(180, 35, 24, .08);
-        --danger-border: rgba(180, 35, 24, .30);
-        --warn:          #a15c00;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    /* Que el navbar fijo no tape el título al saltar a una sección. */
-    section[id] { scroll-margin-top: 4.75rem; }
-    body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--txt);
-        font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        line-height: 1.6;
-        -webkit-font-smoothing: antialiased;
-    }
-    /* Fondo fotográfico (imagen descargada en /images/fondo.jpg) + capa de
-     * oscurecido y resplandores del tema para no perder legibilidad. */
-    body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: -2;
-        background: var(--fondo-imagen) center center / cover no-repeat;
-        opacity: var(--fondo-opacidad);
-        pointer-events: none;
-        transition: opacity .3s ease;
-    }
-    body::after {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        background:
-            radial-gradient(60rem 40rem at 15% -5%, rgba(36, 214, 255, .12), transparent 60%),
-            radial-gradient(55rem 38rem at 88% 0%, rgba(109, 93, 252, .18), transparent 60%),
-            linear-gradient(180deg, var(--overlay-top) 0%, var(--overlay-bottom) 85%);
-        pointer-events: none;
-    }
-    a { color: inherit; }
-    img { max-width: 100%; display: block; }
-    .skip {
-        position: absolute; top: .75rem; left: .75rem;
-        padding: .6rem .9rem; border-radius: .5rem;
-        background: var(--accent); color: #fff;
-        transform: translateY(-160%); transition: transform .2s;
-        z-index: 100;
-    }
-    .skip:focus { transform: translateY(0); }
-
-    .wrap { width: min(100% - 2.5rem, var(--max)); margin-inline: auto; }
-    .section { padding-block: clamp(3.5rem, 7vw, 6rem); }
-    .stack > * + * { margin-top: 1rem; }
-
-    /* ===== Barra superior ===== */
-    .site-header {
-        position: sticky; top: 0; z-index: 50;
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        background: var(--header-bg);
-        border-bottom: 1px solid var(--border);
-    }
-    .nav {
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 1rem; min-height: 4.25rem;
-    }
-    .brand { display: inline-flex; align-items: center; gap: .7rem; text-decoration: none; font-weight: 800; min-width: 0; }
-    .brand-logo {
-        width: 2.9rem; height: 2.9rem; flex: 0 0 auto;
-        object-fit: contain;
-        padding: .18rem;
-        border-radius: .7rem;
-        background: var(--tile);
-        border: 1px solid var(--border);
-    }
-    .brand-name { font-size: clamp(.76rem, 1.5vw, .92rem); line-height: 1.25; letter-spacing: -.01em; }
-    .brand-name small {
-        display: block;
-        font-size: clamp(.55rem, 1vw, .63rem);
-        font-weight: 600; letter-spacing: .06em;
-        color: var(--subtle);
-    }
-    .nav-links { display: none; align-items: center; gap: .25rem; }
-    .nav-links a {
-        display: inline-flex; align-items: center; gap: .42rem;
-        padding: .46rem .7rem; border-radius: .6rem;
-        text-decoration: none; color: var(--muted); font-size: .9rem; font-weight: 500;
-        transition: color .15s, background-color .15s;
-    }
-    .nav-links a i { font-size: .8rem; color: var(--subtle); transition: color .15s; }
-    .nav-links a:hover, .nav-links a:focus-visible { color: var(--txt); background: var(--tile); }
-    .nav-links a:hover i, .nav-links a:focus-visible i { color: var(--cyan); }
-
-    /* ===== Botones ===== */
-    .btn {
-        display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-        padding: .7rem 1.15rem; border-radius: .65rem;
-        border: 1px solid transparent; cursor: pointer;
-        font: inherit; font-weight: 700; font-size: .92rem;
-        text-decoration: none; white-space: nowrap;
-        transition: transform .15s, background .15s, border-color .15s, box-shadow .15s;
-    }
-    .btn:active { transform: translateY(1px); }
-    .btn-primary {
-        color: #fff;
-        background: linear-gradient(135deg, var(--accent) 0%, #5d4fd6 100%);
-        box-shadow: 0 .6rem 1.6rem rgba(109, 93, 252, .35);
-    }
-    .btn-primary:hover, .btn-primary:focus-visible {
-        transform: translateY(-1px);
-        box-shadow: 0 0 0 1px rgba(36, 214, 255, .08), 0 1.25rem 4rem rgba(109, 93, 252, .22);
-    }
-    .btn-glass {
-        color: var(--txt); background: var(--surface);
-        border-color: var(--border-strong);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-    }
-    .btn-glass:hover { border-color: var(--border-strong); background: var(--surface-strong); }
-    .btn-sm { padding: .55rem .9rem; font-size: .82rem; }
-
-    /* ===== Hero (texto + ventana de producto) ===== */
-    .hero { padding-block: clamp(3.25rem, 7vw, 5.5rem) clamp(2.25rem, 4vw, 3.25rem); }
-    .hero-grid {
-        display: grid; gap: clamp(2.25rem, 4vw, 3.5rem);
-        grid-template-columns: minmax(0, 1fr);
-        align-items: center;
-    }
-    .hero-copy { min-width: 0; }
-    .badge {
-        display: inline-flex; align-items: center; gap: .45rem;
-        padding: .38rem .8rem; border-radius: 999px;
-        border: 1px solid color-mix(in srgb, var(--cyan) 40%, transparent);
-        background: color-mix(in srgb, var(--cyan) 10%, transparent);
-        color: var(--txt); font-size: .76rem; font-weight: 700;
-        letter-spacing: .02em;
-    }
-    .badge .dot {
-        width: .45rem; height: .45rem; border-radius: 50%;
-        background: var(--mint); box-shadow: 0 0 0 .25rem rgba(46, 229, 157, .18);
-    }
-    h1 {
-        margin: 1.1rem 0 0;
-        font-size: clamp(2.2rem, 5.4vw, 3.5rem);
-        line-height: 1.05; letter-spacing: -.035em; font-weight: 800;
-        max-width: 17ch;
-        text-wrap: balance;
-    }
-    .text-gradient {
-        background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%);
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent; color: transparent;
-    }
-    .lead { margin-top: 1.15rem; max-width: 52ch; color: var(--muted); font-size: clamp(1rem, 1.5vw, 1.1rem); }
-    .hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.85rem; }
-    /* Tres accesos del hero en una sola fila: columnas iguales que encogen y
-     * dejan envolver la etiqueta antes que saltar de línea el botón completo. */
-    .hero-actions.hero-actions-3 {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: .6rem;
-    }
-    .hero-actions-3 .btn {
-        width: 100%; min-width: 0;
-        padding: .72rem .55rem;
-        font-size: .84rem; line-height: 1.25;
-        white-space: normal; text-align: center;
-    }
-    .hero-actions-3 .btn i { flex: 0 0 auto; }
-    @media (max-width: 30rem) {
-        .hero-actions.hero-actions-3 { grid-template-columns: 1fr; }
-    }
-
-    /* ===== Hero: titular y etiquetas (tipografía estilo cyberforja) ===== */
-    .hero-eyebrow {
-        display: block; margin-top: 1.05rem;
-        font-family: "Exo 2", "Inter", "Segoe UI", system-ui, sans-serif;
-        font-size: .76rem; font-weight: 800;
-        letter-spacing: .18em; text-transform: uppercase; color: var(--cyan);
-    }
-    .hero-eyebrow span { color: var(--subtle); font-weight: 600; }
-    .hero-titulo {
-        margin: .55rem 0 0; max-width: 40rem;
-        font-family: "Bebas Neue", "Oswald", Impact, "Arial Narrow", sans-serif;
-        font-size: clamp(2.4rem, 5.6vw, 3.9rem);
-        line-height: .95; letter-spacing: .015em; font-weight: 400;
-        color: var(--txt);
-    }
-    .hero-titulo span {
-        color: var(--cyan);
-        filter: drop-shadow(0 0 14px rgba(36, 214, 255, .28));
-    }
-    .hero-tags {
-        display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .85rem;
-        margin-top: 1.2rem;
-        font-family: "Exo 2", "Inter", "Segoe UI", system-ui, sans-serif;
-        font-size: .7rem; font-weight: 700;
-        letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
-    }
-    .hero-tags span { display: inline-flex; align-items: center; gap: .4rem; }
-    .hero-tags i { color: var(--cyan); font-size: .68rem; }
-    .hero-tags .sep { color: var(--border-strong); }
-    .hero-note {
-        display: flex; align-items: center; gap: .45rem;
-        margin-top: 1.25rem; color: var(--subtle); font-size: .8rem;
-    }
-    .hero-note i { color: var(--mint); }
-    /* Aviso de renovación / activación de licencia, destacado en ámbar
-     * para diferenciarlo de la nota mint del hero. */
-    .hero-note-licencia { margin-top: .5rem; color: var(--warn); }
-    .hero-note-licencia i { color: var(--warn); }
-    .hero-note-licencia a {
-        color: inherit; text-decoration: none;
-        border-bottom: 1px dashed currentColor;
-    }
-    .hero-note-licencia a:hover { filter: brightness(1.15); border-bottom-color: currentColor; }
-
-    /* ===== Panel de activación / renovación de licencia =====
-     * Se abre sobre la portada: todo el trámite ocurre en index.php. */
-    body.lic-abierto { overflow: hidden; }
-    .lic-overlay {
-        position: fixed; inset: 0; z-index: 130;
-        display: grid; place-items: center;
-        padding: 1rem; overflow-y: auto;
-        background: rgba(4, 7, 16, .72);
-        -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-    }
-    .lic-overlay[hidden] { display: none; }
-    .lic-modal {
-        position: relative; width: min(620px, 100%);
-        max-height: 92vh; overflow-y: auto;
-        padding: 1.6rem 1.6rem 1.4rem;
-        border-radius: 20px;
-        border: 1px solid var(--border-strong);
-        background: var(--surface-solid);
-        color: var(--txt);
-        box-shadow: 0 2rem 5rem rgba(0, 0, 0, .55);
-    }
-    .lic-modal-x {
-        position: absolute; top: .85rem; right: .85rem;
-        display: grid; place-items: center;
-        width: 2rem; height: 2rem; padding: 0;
-        border: 0; border-radius: .55rem;
-        background: transparent; color: var(--muted);
-        font-size: 1rem; cursor: pointer;
-    }
-    .lic-modal-x:hover { color: var(--txt); background: var(--tile); }
-    .lic-modal-head { display: flex; gap: .85rem; align-items: flex-start; padding-right: 2rem; }
-    .lic-modal-icon {
-        display: grid; place-items: center;
-        width: 2.6rem; height: 2.6rem; flex: 0 0 auto;
-        border-radius: .9rem; color: #fbbf24;
-        background: rgba(251, 191, 36, .12);
-        border: 1px solid rgba(251, 191, 36, .28);
-    }
-    .lic-modal-head h2 { margin: 0; font-size: 1.15rem; line-height: 1.25; }
-    .lic-modal-sub { margin: .3rem 0 0; color: var(--muted); font-size: .84rem; line-height: 1.45; }
-    .lic-form { display: grid; gap: .9rem; margin-top: 1.15rem; }
-    .lic-grid { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-    .lic-field { display: grid; gap: .35rem; font-size: .78rem; font-weight: 600; color: var(--muted); }
-    .lic-field input, .lic-alt textarea {
-        width: 100%; padding: .68rem .8rem;
-        border-radius: .7rem;
-        border: 1px solid var(--border-strong);
-        background: var(--tile); color: var(--txt);
-        font: inherit; font-size: .9rem; font-weight: 400;
-        outline: none;
-    }
-    .lic-field input:focus, .lic-alt textarea:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 .2rem var(--accent-soft);
-    }
-    .lic-fp { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .78rem; color: var(--muted); }
-    .lic-fp b { color: var(--txt); letter-spacing: .04em; }
-    .lic-modal-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .25rem; }
-    .lic-msg {
-        display: flex; gap: .6rem; align-items: flex-start;
-        margin-top: 1rem; padding: .7rem .85rem;
-        border-radius: .8rem; font-size: .84rem; line-height: 1.45;
-    }
-    .lic-msg-ok { background: rgba(46, 229, 157, .1); border: 1px solid rgba(46, 229, 157, .34); }
-    .lic-msg-error { background: var(--danger-soft); border: 1px solid var(--danger-border); color: var(--danger-txt); }
-    .lic-msg i { margin-top: .15rem; }
-    .lic-msg-ok i { color: var(--mint); }
-    .lic-msg-error i { color: var(--danger); }
-    .lic-alt { display: grid; gap: .6rem; margin-top: 1.15rem; }
-    .lic-alt details {
-        padding: .55rem .85rem;
-        border: 1px solid var(--border); border-radius: .8rem;
-        background: var(--tile);
-    }
-    .lic-alt summary { cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--muted); }
-    .lic-alt details[open] summary { margin-bottom: .65rem; color: var(--txt); }
-    .lic-alt form { display: grid; gap: .55rem; }
-    .lic-alt input[type="file"] { font-size: .8rem; color: var(--muted); }
-    .lic-alt textarea { resize: vertical; min-height: 4.6rem; }
-    .lic-ok {
-        display: flex; gap: .75rem; align-items: flex-start;
-        margin-top: 1.15rem; padding: .9rem 1rem;
-        border-radius: .9rem;
-        background: rgba(46, 229, 157, .1);
-        border: 1px solid rgba(46, 229, 157, .34);
-    }
-    .lic-ok i { color: var(--mint); font-size: 1.4rem; margin-top: .1rem; }
-    .lic-ok strong { display: block; font-size: .95rem; }
-    .lic-ok p { margin: .3rem 0 0; color: var(--muted); font-size: .85rem; }
-
-    /* ===== Solicitud de licencia por correo, dentro de la portada =====
-     * Mismo formulario y misma lógica que /servicios/nominas/licencia.php. */
-    .lic-solicitar { margin-top: 1.15rem; }
-    .lic-solicitar .btn { width: 100%; }
-    .sol-modal { width: min(760px, 100%); }
-    .sol-intro { margin: .95rem 0 0; color: var(--muted); font-size: .84rem; line-height: 1.5; }
-    .sol-intro b { color: var(--txt); }
-    .sol-form { display: grid; gap: .85rem; margin-top: 1rem; }
-    .sol-grid { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-    .sol-full { grid-column: 1 / -1; }
-    .sol-field { display: grid; gap: .35rem; font-size: .78rem; font-weight: 600; color: var(--muted); }
-    .sol-field input, .sol-field select {
-        width: 100%; padding: .68rem .8rem;
-        border-radius: .7rem;
-        border: 1px solid var(--border-strong);
-        background: var(--tile); color: var(--txt);
-        font: inherit; font-size: .9rem; font-weight: 400;
-        outline: none;
-    }
-    .sol-field select {
-        cursor: pointer;
-        background-color: var(--surface-solid);
-        color: var(--txt);
-    }
-    .sol-field select option {
-        background-color: var(--surface-solid);
-        color: var(--txt);
-    }
-    .sol-field input:focus, .sol-field select:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 .2rem var(--accent-soft);
-    }
-    .sol-field input:disabled {
-        opacity: .8; cursor: not-allowed;
-        font-family: ui-monospace, Consolas, monospace; letter-spacing: .06em;
-    }
-    .sol-field input.error, .sol-field select.error { border-color: var(--danger); }
-    .sol-feedback { font-size: .72rem; font-weight: 600; color: var(--muted); }
-    .sol-feedback:empty { display: none; }
-    .sol-feedback.ok { color: var(--mint); }
-    .sol-feedback.mal { color: var(--danger); }
-    .sol-huella-fila { display: flex; gap: .5rem; align-items: center; }
-    .sol-switch {
-        display: inline-flex; align-items: center; gap: .55rem;
-        font-size: .82rem; font-weight: 600; color: var(--txt); cursor: pointer;
-    }
-    .sol-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-    .sol-switch-track {
-        position: relative; flex: 0 0 auto;
-        width: 2.6rem; height: 1.45rem; border-radius: 999px;
-        border: 1px solid var(--border-strong); background: var(--tile);
-        transition: background .18s, border-color .18s;
-    }
-    .sol-switch-track::after {
-        content: ""; position: absolute; top: .18rem; left: .18rem;
-        width: 1rem; height: 1rem; border-radius: 50%;
-        background: var(--muted); transition: transform .18s, background .18s;
-    }
-    .sol-switch input:checked + .sol-switch-track {
-        background: rgba(46, 229, 157, .18); border-color: var(--mint);
-    }
-    .sol-switch input:checked + .sol-switch-track::after {
-        transform: translateX(1.15rem); background: var(--mint);
-    }
-    .sol-menu { position: relative; }
-    .sol-menu-lista {
-        position: absolute; bottom: calc(100% + .4rem); left: 0; z-index: 5;
-        display: grid; min-width: 12.5rem; padding: .35rem;
-        border-radius: .7rem; border: 1px solid var(--border-strong);
-        background: var(--surface-solid);
-        box-shadow: 0 .8rem 2rem rgba(0, 0, 0, .45);
-    }
-    .sol-menu-lista[hidden] { display: none; }
-    .sol-menu-lista button {
-        display: flex; gap: .5rem; align-items: center;
-        padding: .5rem .6rem; border: 0; border-radius: .5rem;
-        background: transparent; color: var(--txt);
-        font: inherit; font-size: .8rem; text-align: left; cursor: pointer;
-    }
-    .sol-menu-lista button:hover { background: var(--tile); }
-    .sol-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .3rem; }
-    @media (max-width: 34rem) { .sol-actions .btn { width: 100%; } }
-
-    /* ===== Estado de la licencia ===== */
-    .lic-estado-badge {
-        display: inline-flex; align-items: center; gap: .45rem;
-        margin-top: .45rem; padding: .3rem .7rem;
-        border-radius: 999px; font-size: .78rem; font-weight: 700;
-    }
-    .lic-estado-badge.is-ok {
-        color: var(--mint);
-        background: rgba(46, 229, 157, .12);
-        border: 1px solid rgba(46, 229, 157, .34);
-    }
-    .lic-estado-badge.is-warn {
-        color: var(--warn);
-        background: rgba(251, 191, 36, .12);
-        border: 1px solid rgba(251, 191, 36, .32);
-    }
-    .lic-estado-badge.is-off {
-        color: var(--muted);
-        background: var(--tile);
-        border: 1px solid var(--border-strong);
-    }
-    .lic-estado-lista { display: grid; gap: .5rem; margin: 1.1rem 0 0; }
-    .lic-estado-fila {
-        display: grid; grid-template-columns: minmax(8rem, 36%) 1fr;
-        gap: .75rem; align-items: baseline;
-        padding: .55rem .8rem; border-radius: .7rem;
-        background: var(--tile); border: 1px solid var(--border);
-        font-size: .84rem;
-    }
-    .lic-estado-fila dt { margin: 0; color: var(--muted); font-weight: 600; }
-    .lic-estado-fila dd { margin: 0; color: var(--txt); font-weight: 600; word-break: break-word; }
-    .lic-estado-fila dd.mono { font-family: ui-monospace, Consolas, monospace; letter-spacing: .04em; }
-    @media (max-width: 34rem) {
-        .lic-estado-fila { grid-template-columns: 1fr; gap: .2rem; }
-    }
-
-    /* Ventana de producto dibujada con CSS: da contexto visual al hero sin
-     * depender de capturas ni de imágenes que pesen. */
-    .hero-visual { position: relative; min-width: 0; }
-    .hero-visual::before {
-        content: "";
-        position: absolute; inset: 8% 2% -8% 4%;
-        background: radial-gradient(60% 60% at 65% 35%, rgba(109, 93, 252, .38), transparent 70%);
-        filter: blur(42px);
-        z-index: 0; pointer-events: none;
-    }
-    /* Las tarjetas flotantes se anclan a la ventana, no al bloque completo:
-     * así el aviso de conexión (en flujo) no las arrastra sobre el texto. */
-    .visual-stage { position: relative; }
-    .window {
-        position: relative; z-index: 1;
-        border-radius: 1.1rem; overflow: hidden;
-        background: var(--window-bg);
-        border: 1px solid var(--border-strong);
-        box-shadow: 0 2rem 5rem rgba(0, 0, 0, .45), 0 0 0 1px rgba(109, 93, 252, .14);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-        transform: rotateX(3deg) rotateY(-5deg);
-        transition: transform .5s cubic-bezier(.2, .7, .3, 1), box-shadow .5s;
-    }
-    .hero-visual:hover .window {
-        transform: rotateX(0) rotateY(0);
-        box-shadow: 0 2.4rem 6rem rgba(0, 0, 0, .5), 0 0 0 1px rgba(36, 214, 255, .22);
-    }
-    .window-bar {
-        display: flex; align-items: center; gap: .55rem;
-        padding: .7rem .9rem;
-        border-bottom: 1px solid var(--window-line);
-        background: var(--tile);
-    }
-    .window-dots { display: inline-flex; gap: .3rem; }
-    .window-dots i {
-        display: block; width: .5rem; height: .5rem; border-radius: 50%;
-        background: #ff5f57;
-    }
-    .window-dots i:nth-child(2) { background: #febc2e; }
-    .window-dots i:nth-child(3) { background: #28c840; }
-    .window-url {
-        flex: 1; min-width: 0;
-        display: inline-flex; align-items: center; gap: .4rem;
-        padding: .22rem .6rem; border-radius: 999px;
-        background: var(--chart-track);
-        color: var(--subtle); font-size: .64rem;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .window-url i { font-size: .55rem; color: var(--mint); }
-    .window-body { display: grid; gap: .85rem; padding: 1rem; }
-
-    .mock-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
-    .mock-kpi {
-        padding: .65rem .7rem; border-radius: .7rem;
-        background: var(--card-top);
-        border: 1px solid var(--window-line);
-    }
-    .mock-kpi small {
-        display: flex; align-items: center; gap: .35rem;
-        color: var(--subtle); font-size: .58rem; font-weight: 700;
-        letter-spacing: .05em; text-transform: uppercase;
-    }
-    .mock-kpi small i { color: var(--cyan); font-size: .58rem; }
-    .mock-kpi b { display: block; margin-top: .22rem; font-size: 1rem; letter-spacing: -.02em; }
-    .mock-kpi span { font-size: .6rem; font-weight: 700; color: var(--mint); }
-
-    .mock-chart {
-        display: grid; gap: .55rem;
-        padding: .8rem .85rem;
-        border-radius: .8rem;
-        background: var(--card-bottom);
-        border: 1px solid var(--window-line);
-    }
-    .mock-chart-head {
-        display: flex; align-items: center; justify-content: space-between;
-        font-size: .62rem; color: var(--subtle);
-    }
-    .mock-chart-head b { color: var(--txt); font-size: .72rem; }
-    .mock-bars {
-        display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-        align-items: end; gap: .35rem; height: 5rem;
-    }
-    .mock-bars span {
-        display: block; min-height: 3px; border-radius: .3rem .3rem .1rem .1rem;
-        background: linear-gradient(180deg, var(--cyan), var(--accent));
-        transform-origin: bottom;
-        animation: bar-in .9s cubic-bezier(.2, .8, .25, 1) backwards;
-    }
-    .mock-bars span:nth-child(1) { animation-delay: .05s; }
-    .mock-bars span:nth-child(2) { animation-delay: .1s; }
-    .mock-bars span:nth-child(3) { animation-delay: .15s; }
-    .mock-bars span:nth-child(4) { animation-delay: .2s; }
-    .mock-bars span:nth-child(5) { animation-delay: .25s; }
-    .mock-bars span:nth-child(6) { animation-delay: .3s; background: linear-gradient(180deg, var(--mint), var(--cyan)); }
-    .mock-bars span:nth-child(7) { animation-delay: .35s; }
-    .mock-bars span:nth-child(8) { animation-delay: .4s; }
-    /* Arranca ya visible: si el navegador congela la animación (pestaña en
-     * segundo plano, captura o impresión) las barras siguen mostrando el dato. */
-    @keyframes bar-in {
-        from { transform: scaleY(.55); opacity: .55; }
-        to   { transform: scaleY(1); opacity: 1; }
-    }
-
-    /* Gráfico de ingresos + tarjeta de nómina, uno al lado del otro. */
-    .mock-split {
-        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: .65rem; align-items: stretch;
-    }
-    .mock-split > * { min-width: 0; }
-    .mock-split .mock-chart { gap: .5rem; padding: .7rem; }
-    .mock-split .mock-chart-head { font-size: .58rem; }
-    .mock-split .mock-chart-head b { font-size: .66rem; }
-    .mock-split .mock-bars { gap: .25rem; height: 4.85rem; }
-
-    .mock-payroll {
-        display: grid; gap: .5rem; align-content: space-between;
-        padding: .7rem;
-        border-radius: .8rem;
-        background: var(--card-bottom);
-        border: 1px solid var(--window-line);
-    }
-    .mock-pay-head {
-        display: flex; align-items: baseline; justify-content: space-between; gap: .35rem;
-        font-size: .6rem; color: var(--subtle);
-    }
-    .mock-pay-head b { color: var(--txt); font-size: .64rem; font-weight: 700; }
-    .mock-pay-bars { display: grid; gap: .6rem; }
-    .mock-pay {
-        display: grid; grid-template-columns: minmax(0, 1fr) auto;
-        align-items: baseline; gap: .22rem .4rem;
-        font-size: .56rem; color: var(--subtle);
-    }
-    .mock-pay b { color: var(--txt); font-size: .64rem; letter-spacing: -.01em; }
-    .pay-track {
-        grid-column: 1 / -1;
-        display: block; height: .34rem; border-radius: 999px;
-        background: var(--chart-track); overflow: hidden;
-    }
-    .pay-fill {
-        display: block; height: 100%; border-radius: inherit;
-        width: var(--w, 60%);
-        transform-origin: left center;
-        animation: pay-in .9s cubic-bezier(.2, .8, .25, 1) backwards;
-    }
-    .mock-pay--bruto .pay-fill { background: linear-gradient(90deg, var(--accent), var(--cyan)); animation-delay: .12s; }
-    .mock-pay--ded .pay-fill   { background: var(--ded); animation-delay: .22s; }
-    .mock-pay--net .pay-fill   { background: linear-gradient(90deg, var(--cyan), var(--mint)); animation-delay: .32s; }
-    @keyframes pay-in {
-        from { transform: scaleX(.9); opacity: .4; }
-        to   { transform: scaleX(1); opacity: 1; }
-    }
-
-    .mock-rows { display: grid; gap: .45rem; }
-    .mock-row {
-        display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto;
-        align-items: center; gap: .55rem;
-        font-size: .64rem; color: var(--muted);
-    }
-    .mock-row i {
-        display: grid; place-items: center;
-        width: 1.6rem; height: 1.6rem; border-radius: .45rem;
-        background: var(--accent-soft); color: var(--cyan); font-size: .58rem;
-    }
-    .mock-row b { color: var(--txt); font-weight: 600; }
-    .mock-row em { font-style: normal; font-weight: 700; font-size: .6rem; color: var(--mint); }
-    .mock-row em.is-off { color: var(--ded); }
-
-    /* Estados de la tarjeta cuando MySQL no responde. */
-    .kpi-unit { font-size: .62em; font-weight: 600; color: var(--subtle); letter-spacing: 0; }
-    .mock-kpi span.is-off { color: var(--subtle); }
-    .mock-kpi span.is-down { color: var(--ded); }
-    .mock-empty {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: .4rem; min-height: 4.6rem; padding: .6rem;
-        border: 1px dashed var(--window-line); border-radius: .6rem;
-        color: var(--subtle); font-size: .58rem; text-align: center; line-height: 1.35;
-    }
-    .mock-empty i { font-size: .9rem; }
-    .mock-pay-foot { font-size: .53rem; color: var(--subtle); }
-    .window-status {
-        display: inline-flex; align-items: center; gap: .3rem;
-        padding: .2rem .5rem; border-radius: 999px;
-        background: var(--chart-track); border: 1px solid var(--window-line);
-        color: var(--muted); font-size: .56rem; font-weight: 700;
-        white-space: nowrap;
-    }
-    .window-status i { font-size: .42rem; }
-    .window-status.is-on i   { color: var(--mint); }
-    .window-status.is-warn i { color: #febc2e; }
-    .window-status.is-off i  { color: var(--ded); }
-    .alerta-bd {
-        position: relative; z-index: 5;
-        display: flex; align-items: flex-start; gap: .55rem;
-        max-width: 31rem; margin: 2.9rem auto 0;
-        padding: .75rem .8rem;
-        border-radius: .75rem;
-        background: rgba(220, 38, 38, .16);
-        border: 1px solid rgba(220, 38, 38, .55);
-        color: var(--txt);
-        font-size: .72rem; line-height: 1.45;
-        box-shadow: 0 .6rem 1.6rem rgba(0, 0, 0, .22);
-    }
-    .alerta-bd > i { color: var(--ded, #ef4444); flex: 0 0 auto; margin-top: .12rem; }
-    .alerta-bd p { margin: 0; flex: 1 1 auto; }
-    .alerta-bd b { color: var(--ded, #ef4444); }
-    .alerta-bd-cerrar {
-        flex: 0 0 auto; display: grid; place-items: center;
-        width: 1.45rem; height: 1.45rem; margin: -.1rem -.15rem 0 .1rem;
-        border: 0; border-radius: .35rem; background: transparent;
-        color: var(--muted); cursor: pointer;
-        transition: background .2s, color .2s;
-    }
-    .alerta-bd-cerrar:hover, .alerta-bd-cerrar:focus-visible {
-        background: rgba(220, 38, 38, .28); color: var(--txt);
-    }
-
-    .float-card {
-        position: absolute; z-index: 2;
-        display: inline-flex; align-items: center; gap: .55rem;
-        padding: .6rem .8rem; border-radius: .8rem;
-        background: var(--surface-strong); border: 1px solid var(--border-strong);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-        font-size: .68rem; color: var(--muted); white-space: nowrap;
-        animation: float-y 6s ease-in-out infinite;
-    }
-    .float-card b { display: block; color: var(--txt); font-size: .76rem; }
-    .float-icon {
-        display: grid; place-items: center;
-        width: 1.9rem; height: 1.9rem; border-radius: .55rem;
-        background: linear-gradient(135deg, var(--accent), var(--cyan));
-        color: #fff; font-size: .72rem;
-    }
-    .float-card--a { top: -1.1rem; right: -.75rem; }
-    .float-card--b { bottom: -1.2rem; left: -.75rem; animation-delay: -3s; }
-    .float-card--c { bottom: -1.2rem; right: -.75rem; animation-delay: -1.5s; }
-    .float-card--d { top: -3.4rem; left: -.75rem; animation-delay: -4.5s; }
-    .visual-floats { display: contents; }
-    @media (max-width: 979.98px) {
-        /* En una sola columna las tarjetas dejan de flotar: se leen como
-         * cuadrícula bajo la ventana y no tapan el texto ni el marco. */
-        .visual-floats {
-            display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: .5rem; margin-top: 1rem;
-        }
-        .visual-floats .float-card {
-            position: static; inset: auto;
-            white-space: normal; animation: none;
-        }
-        .visual-floats .float-card b { white-space: nowrap; }
-        .alerta-bd { margin-top: 1.1rem; }
-    }
-    @keyframes float-y {
-        0%, 100% { transform: translateY(0); }
-        50%      { transform: translateY(-.4rem); }
-    }
-
-    /* ===== Métricas ===== */
-    .metrics {
-        display: grid; gap: .8rem;
-        margin-top: clamp(2.5rem, 5vw, 3.75rem);
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .metric {
-        position: relative; overflow: hidden;
-        padding: 1.05rem 1.1rem;
-        border-radius: var(--radius-lg);
-        background: var(--surface);
-        border: 1px solid var(--border);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-        transition: border-color .18s ease, transform .18s ease;
-    }
-    .metric::before {
-        content: ""; position: absolute; inset: 0 0 auto; height: 1px;
-        background: linear-gradient(90deg, transparent, var(--accent), var(--cyan), transparent);
-        opacity: .75;
-    }
-    .metric:hover { border-color: var(--card-hover-border); transform: translateY(-2px); }
-    .metric i {
-        display: grid; place-items: center;
-        width: 1.85rem; height: 1.85rem; border-radius: .55rem;
-        background: var(--accent-soft); color: var(--cyan); font-size: .8rem;
-        margin-bottom: .6rem;
-    }
-    .metric b { display: block; font-size: clamp(1.1rem, 1.8vw, 1.3rem); letter-spacing: -.02em; line-height: 1.25; }
-    .metric span { color: var(--subtle); font-size: .75rem; }
-
-    /* ===== Títulos de sección ===== */
-    .eyebrow {
-        text-transform: uppercase; letter-spacing: .14em;
-        font-size: .72rem; font-weight: 800; color: var(--cyan);
-    }
-    h2 {
-        margin: .55rem 0 0;
-        font-size: clamp(1.7rem, 3.4vw, 2.4rem);
-        line-height: 1.15; letter-spacing: -.02em; font-weight: 800;
-    }
-    .section-head p { margin: .8rem 0 0; max-width: 62ch; color: var(--muted); }
-
-    /* ===== Tarjetas glass ===== */
-    .grid { display: grid; gap: 1.1rem; margin-top: 2rem; grid-template-columns: 1fr; }
-    .card {
-        position: relative; overflow: hidden;
-        display: flex; flex-direction: column;
-        padding: 1.35rem;
-        border-radius: var(--radius-lg);
-        background:
-            linear-gradient(180deg, var(--card-top), var(--card-bottom)),
-            var(--surface);
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-        text-decoration: none; color: inherit;
-        transition: border-color .18s, box-shadow .18s, transform .18s, background-color .18s;
-    }
-    /* Barrido de luz del tema NeuroAI: una franja diagonal cruza la tarjeta al
-     * pasar el ratón (::after de -130% a 135%, transición de .6s). */
-    .card::after {
-        content: "";
-        position: absolute; top: 0; left: -130%;
-        width: 55%; height: 100%;
-        background: linear-gradient(120deg, transparent, var(--shine), transparent);
-        transform: skew(-18deg);
-        transition: left .6s;
-        pointer-events: none;
-    }
-    a.card:hover::after, a.card:focus-visible::after { left: 135%; }
-    a.card:hover, a.card:focus-visible {
-        transform: translateY(-3px);
-        border-color: var(--card-hover-border);
-        box-shadow: var(--card-hover-shadow);
-        outline: none;
-    }
-    /* Miniatura del subsistema: siempre visible, alineada con el icono para no
-       tapar el título ni la descripción. */
-    .card-media {
-        position: absolute; top: 1.35rem; right: 1.35rem; z-index: 1;
-        width: 5.5rem; height: 3.6rem; border-radius: .8rem;
-        overflow: hidden;
-        border: 1px solid var(--border-strong);
-        box-shadow: 0 .6rem 1.4rem rgba(0, 0, 0, .35);
-        pointer-events: none;
-    }
-    .card-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
-
-    /* Fondo del card destacado: muestra la imagen del subsistema que se señala. */
-    .card.is-featured { --featured-img: none; }
-    .card.is-featured::before {
-        content: "";
-        position: absolute; inset: 0; z-index: 0;
-        background-image: var(--featured-img);
-        background-size: cover; background-position: center;
-        opacity: 0;
-        transition: opacity .2s ease;
-        pointer-events: none;
-    }
-    .card.is-featured.is-preview::before { opacity: .3; }
-    .card.is-featured > * { position: relative; z-index: 1; }
-    .card-icon {
-        display: grid; place-items: center;
-        width: 2.8rem; height: 2.8rem; border-radius: .8rem;
-        background: linear-gradient(135deg, rgba(109, 93, 252, .25), rgba(36, 214, 255, .14));
-        border: 1px solid var(--border-strong);
-        color: var(--card-icon-color); font-size: 1.1rem;
-        margin-bottom: 1rem;
-        transition: transform .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
-    }
-    /* En hover el icono toma el gradiente del tema: así el efecto se nota
-     * igual en modo oscuro y en modo claro. */
-    a.card:hover .card-icon, a.card:focus-visible .card-icon {
-        transform: translateY(-2px) scale(1.06);
-        background: linear-gradient(135deg, var(--accent), var(--cyan));
-        border-color: transparent;
-        color: #fff;
-    }
-    .card h3 { margin: 0; font-size: 1.08rem; letter-spacing: -.01em; transition: color .18s ease; }
-    a.card:hover h3, a.card:focus-visible h3 { color: var(--accent); }
-    .card p { margin: .55rem 0 0; color: var(--muted); font-size: .9rem; flex: 1; }
-    .card-foot {
-        display: flex; align-items: center; justify-content: space-between;
-        gap: .75rem; margin-top: 1.15rem;
-        color: var(--muted); font-size: .76rem;
-    }
-    .card-foot .arrow { color: var(--cyan); transition: transform .16s; }
-    a.card:hover .arrow { transform: translateX(.25rem); }
-    .card.is-featured {
-        background:
-            linear-gradient(180deg, var(--destacada-top), var(--destacada-bottom));
-        border-color: rgba(109, 93, 252, .45);
-        box-shadow: var(--shadow-glow);
-    }
-    .card.is-featured .card-icon {
-        background: linear-gradient(135deg, var(--accent), var(--cyan));
-        color: #fff;
-    }
-    .featured-flag {
-        align-self: flex-start;
-        display: inline-flex; align-items: center; gap: .35rem;
-        padding: .25rem .6rem; margin-bottom: .9rem;
-        border-radius: 999px;
-        background: linear-gradient(135deg, var(--accent), var(--cyan));
-        color: #fff; font-size: .62rem; font-weight: 800;
-        letter-spacing: .08em; text-transform: uppercase;
-    }
-    .card-chips {
-        list-style: none; display: flex; flex-wrap: wrap; gap: .4rem;
-        margin: 1rem 0 0; padding: 0;
-    }
-    .card-chips li {
-        display: inline-flex; align-items: center; gap: .35rem;
-        padding: .3rem .6rem; border-radius: .5rem;
-        background: var(--tile); border: 1px solid var(--border);
-        color: var(--muted); font-size: .72rem; font-weight: 600;
-    }
-    .card-chips i { color: var(--cyan); font-size: .68rem; }
-    .tag {
-        display: inline-flex; align-items: center; gap: .35rem;
-        padding: .2rem .55rem; border-radius: 999px;
-        background: var(--tile); border: 1px solid var(--border);
-        color: var(--muted); font-size: .68rem; font-weight: 700;
-    }
-
-    /* ===== Servicios ===== */
-    .features { display: grid; gap: 1rem; margin-top: 2rem; }
-    .feature {
-        position: relative;
-        padding: 1.4rem 1.35rem;
-        border-radius: var(--radius-lg);
-        background: var(--surface);
-        border: 1px solid var(--border);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-        transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
-    }
-    .feature:hover { transform: translateY(-2px); border-color: var(--card-hover-border); box-shadow: var(--shadow-glow); }
-    .feature i {
-        display: inline-grid; place-items: center;
-        width: 2.35rem; height: 2.35rem; border-radius: .65rem;
-        background: var(--accent-soft); border: 1px solid var(--border-strong);
-        color: var(--cyan); font-size: .95rem;
-    }
-    .feature h3 { margin: .75rem 0 0; font-size: .98rem; }
-    .feature p { margin: .4rem 0 0; color: var(--muted); font-size: .85rem; }
-
-    /* ===== CTA ===== */
-    .cta {
-        position: relative; overflow: hidden;
-        margin-top: 1rem; padding: clamp(2rem, 5vw, 3.25rem);
-        border-radius: 1.25rem;
-        background:
-            radial-gradient(30rem 18rem at 10% 0%, rgba(36, 214, 255, .16), transparent 60%),
-            radial-gradient(30rem 18rem at 90% 100%, rgba(109, 93, 252, .22), transparent 60%),
-            var(--surface);
-        border: 1px solid rgba(109, 93, 252, .32);
-        box-shadow: var(--shadow);
-    }
-    .cta::after {
-        content: ""; position: absolute; inset: 0 0 auto; height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(36, 214, 255, .55), rgba(109, 93, 252, .55), transparent);
-    }
-    .cta > * { position: relative; z-index: 1; }
-    .cta h2 { max-width: 24ch; }
-    .cta p { margin: .8rem 0 0; max-width: 60ch; color: var(--muted); }
-    /* El CTA cierra la página: sin el padding completo de .section para no
-     * dejar un hueco enorme entre los servicios y el bloque final. */
-    .cta-section { padding-block: 0 clamp(3.5rem, 6vw, 5rem); }
-
-    /* ===== Pie (estructura de la portada de facturación) =====
-     * Cuatro columnas: marca, enlaces, contacto con botones y redes + legal. */
-    .site-footer {
-        margin-top: clamp(3rem, 6vw, 5rem);
-        border-top: 1px solid rgba(109, 93, 252, .38);
-        background: var(--footer-bg);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, .35);
-        /* Interlineado compacto, como se pidió para todo el pie. */
-        line-height: 1;
-    }
-    .footer-grid {
-        display: grid;
-        gap: 2rem;
-        grid-template-columns: 1fr;
-        padding-block: clamp(2.5rem, 5vw, 3.5rem);
-    }
-    .footer-col { color: var(--muted); font-size: .86rem; min-width: 0; }
-    .footer-col h4 {
-        margin: 0 0 .9rem;
-        color: var(--txt);
-        font-size: .76rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: .12em;
-    }
-    .footer-col h4 i { color: var(--cyan); margin-right: .45rem; }
-    .footer-col p { margin: 0 0 .9rem; line-height: 1; }
-    .footer-col a { color: var(--muted); text-decoration: none; transition: color .15s; }
-    .footer-col a:hover, .footer-col a:focus-visible { color: var(--cyan); }
-
-    .footer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: .55rem; }
-    .footer-logo {
-        width: 3.4rem; height: 3.4rem; object-fit: contain;
-        padding: .22rem; margin-bottom: .35rem;
-        border-radius: .8rem;
-        background: var(--tile);
-        border: 1px solid var(--border);
-    }
-    .footer-brand strong { color: var(--txt); font-size: 1.02rem; letter-spacing: -.01em; }
-    .footer-brand small { color: var(--subtle); font-size: .72rem; }
-    .footer-slogan { color: var(--mint); font-weight: 700; font-size: .8rem; margin: 0; }
-
-    .footer-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .6rem; }
-    .footer-list a { display: inline-flex; align-items: center; gap: .5rem; }
-    .footer-list i { width: 1rem; text-align: center; color: var(--subtle); font-size: .8rem; transition: color .15s; }
-    .footer-list a:hover i { color: var(--cyan); }
-    /* Aviso para módulos del pie cuya página todavía no existe. */
-    .aviso-modulo {
-        position: fixed; left: 50%; bottom: 1.5rem; z-index: 10000;
-        display: flex; align-items: center; gap: .6rem;
-        max-width: calc(100vw - 2rem); padding: .75rem 1rem;
-        border-radius: .8rem; border: 1px solid var(--border);
-        background: rgba(15, 23, 42, .96); color: #e2e8f0;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, .45); font-size: .82rem;
-        opacity: 0; pointer-events: none;
-        transform: translateX(-50%) translateY(1rem);
-        transition: opacity .2s ease, transform .2s ease;
-    }
-    .aviso-modulo.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .aviso-modulo i { color: var(--cyan); }
-
-    .footer-contact p { margin-bottom: 1rem; }
-    .footer-contact a { display: inline-flex; align-items: center; gap: .5rem; }
-    .footer-contact i { color: var(--subtle); font-size: .8rem; width: 1rem; text-align: center; }
-    .footer-contact small { display: inline-flex; align-items: flex-start; gap: .5rem; color: var(--subtle); font-size: .76rem; line-height: 1; }
-    .footer-buttons { display: flex; flex-wrap: wrap; gap: .55rem; }
-    /* Los botones del pie no deben heredar el color de enlace de .footer-col a. */
-    .footer-col .btn { color: var(--txt); text-decoration: none; }
-    .footer-col .btn i { color: inherit; opacity: .9; }
-    .footer-buttons .btn-primary,
-    .footer-buttons .btn-primary:hover,
-    .footer-buttons .btn-primary:focus-visible { color: #fff; }
-
-    .social-links { display: flex; flex-wrap: wrap; gap: .55rem; }
-    .social-link {
-        display: inline-grid; place-items: center;
-        width: 2.4rem; height: 2.4rem;
-        border-radius: .7rem;
-        background: var(--tile);
-        border: 1px solid var(--border);
-        color: var(--muted); font-size: .92rem;
-        transition: transform .15s, color .15s, border-color .15s, background .15s;
-    }
-    .social-link:hover, .social-link:focus-visible {
-        transform: translateY(-2px);
-        color: #fff;
-        border-color: rgba(109, 93, 252, .6);
-        background: rgba(109, 93, 252, .22);
-        outline: none;
-    }
-    .footer-legal-title { margin-top: 1.4rem !important; }
-    .footer-legal-links { display: flex; flex-wrap: wrap; gap: .4rem .95rem; font-size: .78rem; }
-    .footer-legal-links a { display: inline-flex; align-items: center; gap: .35rem; }
-
-    .footer-bar {
-        border-top: 1px solid var(--border);
-        padding-block: 1rem;
-        color: var(--subtle);
-        font-size: .76rem;
-    }
-    .footer-bar .wrap { display: flex; flex-direction: column; gap: .3rem; }
-    .footer-bar i { color: var(--cyan); }
-
-    /* ===== Interruptor de tema (sol / luna), igual que el panel phpinfo ===== */
-    .theme-switch {
-        display: inline-flex; align-items: center;
-        padding: 0; background: transparent; border: 0;
-        line-height: 0; cursor: pointer; flex: 0 0 auto;
-    }
-    .theme-switch-track {
-        position: relative;
-        display: inline-flex; align-items: center; justify-content: space-between;
-        width: 64px; height: 32px; padding: 0 10px;
-        border-radius: 999px;
-        background-color: var(--switch-bg);
-        border: 1px solid var(--switch-border);
-        transition: background-color .25s ease, border-color .25s ease;
-    }
-    .theme-switch-icon {
-        position: relative; z-index: 1;
-        font-size: .8rem; color: var(--muted); opacity: .55;
-        transition: color .25s ease, opacity .25s ease;
-    }
-    .theme-switch-thumb {
-        position: absolute; top: 2px; left: 2px; z-index: 0;
-        width: 26px; height: 26px; border-radius: 50%;
-        background-color: var(--switch-thumb);
-        border: 1px solid var(--switch-thumb-border);
-        box-shadow: 0 2px 6px rgba(16, 24, 40, .35);
-        transition: transform .28s cubic-bezier(.4, .1, .3, 1), background-color .25s ease;
-    }
-    [data-bs-theme="light"] .theme-switch-thumb { transform: translateX(0); }
-    [data-bs-theme="dark"]  .theme-switch-thumb { transform: translateX(32px); }
-    [data-bs-theme="light"] .theme-switch-sun { color: var(--switch-sun); opacity: 1; }
-    [data-bs-theme="dark"]  .theme-switch-moon { color: var(--switch-moon); opacity: 1; }
-    [data-bs-theme="light"] .theme-switch-moon,
-    [data-bs-theme="dark"]  .theme-switch-sun { opacity: .45; }
-    .theme-switch:hover .theme-switch-track,
-    .theme-switch:focus-visible .theme-switch-track {
-        border-color: var(--switch-moon);
-        background-color: var(--accent-soft);
-    }
-    .theme-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 999px; }
-
-    /* ===== Botones flotantes: ir hasta arriba / ir hasta abajo ===== */
-    .scroll-fabs {
-        position: fixed;
-        right: 1.15rem;
-        bottom: 1.15rem;
-        z-index: 60;
-        display: flex;
-        flex-direction: column;
-        gap: .55rem;
-    }
-    .scroll-fab {
-        display: flex; align-items: center; justify-content: center;
-        width: 2.9rem; height: 2.9rem;
-        padding: 0;
-        border-radius: 50%;
-        background-color: var(--surface-strong);
-        color: var(--accent);
-        border: 1px solid var(--border);
-        box-shadow: 0 8px 20px -10px rgba(16, 24, 40, .55);
-        cursor: pointer;
-        opacity: 0; visibility: hidden;
-        transform: translateY(8px) scale(.92);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-        transition: opacity .2s ease, transform .2s ease, visibility .2s ease,
-                    background-color .2s ease, color .2s ease, border-color .2s ease;
-    }
-    .scroll-fab.is-visible { opacity: 1; visibility: visible; transform: none; }
-    .scroll-fab:hover { color: #fff; background-color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
-    .scroll-fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-
-    /* Agrupación del interruptor y el botón de acceso en el topbar */
-    .nav-acciones { display: flex; align-items: center; gap: .65rem; }
-
-    /* ===== Preguntas frecuentes (acordeón nativo) ===== */
-    .faq { display: grid; gap: .7rem; margin-top: 2rem; }
-    .faq-item {
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        /* Vidrio: fondo translucido + desenfoque para dejar ver la pagina. */
-        background: color-mix(in srgb, var(--surface) 72%, transparent);
-        backdrop-filter: blur(22px) saturate(135%); -webkit-backdrop-filter: blur(22px) saturate(135%);
-        overflow: hidden;
-        transition: border-color .18s ease, background-color .18s ease,
-                    transform .22s ease, box-shadow .22s ease;
-    }
-    .faq-item:hover {
-        border-color: var(--card-hover-border);
-        background: color-mix(in srgb, var(--surface-strong) 84%, transparent);
-        transform: translateY(-2px);
-        box-shadow: 0 .9rem 1.8rem rgba(0, 0, 0, .2);
-    }
-    .faq-item[open] {
-        border-color: var(--card-hover-border);
-        background: color-mix(in srgb, var(--surface-strong) 84%, transparent);
-    }
-    .faq-item summary {
-        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-        padding: 1.05rem 1.2rem;
-        cursor: pointer; list-style: none;
-        font-size: .95rem; font-weight: 700; color: var(--txt);
-    }
-    .faq-item summary::-webkit-details-marker { display: none; }
-    .faq-item summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-    .faq-item summary i {
-        flex: 0 0 auto; color: var(--cyan); font-size: .8rem;
-        transition: transform .2s ease, color .2s ease;
-    }
-    .faq-item:not([open]):hover summary i { transform: rotate(90deg); color: var(--accent); }
-    .faq-item[open] summary i { transform: rotate(45deg); }
-    .faq-body { padding: 0 1.2rem 1.15rem; color: var(--muted); font-size: .9rem; }
-    .faq-body p { margin: 0; }
-    .faq-body a {
-        color: var(--cyan); text-decoration: none;
-        border-bottom: 1px solid color-mix(in srgb, var(--cyan) 40%, transparent);
-    }
-    .faq-item code {
-        font-size: .82em; padding: .05rem .3rem; border-radius: .3rem;
-        background: var(--tile); border: 1px solid var(--border); color: var(--txt);
-    }
-
-    /* ===== Barra de progreso de lectura ===== */
-    .scroll-progress {
-        position: fixed; top: 0; left: 0; right: 0;
-        height: 2px; z-index: 70; pointer-events: none;
-    }
-    .scroll-progress span {
-        display: block; width: 0; height: 100%;
-        background: linear-gradient(90deg, var(--accent), var(--cyan));
-        box-shadow: 0 0 12px rgba(36, 214, 255, .55);
-    }
-
-    /* ===== Navegación compacta (tablet y móvil) ===== */
-    .mobile-nav {
-        display: flex; gap: .4rem;
-        padding-bottom: .7rem;
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-    .mobile-nav::-webkit-scrollbar { display: none; }
-    .mobile-nav a {
-        flex: 0 0 auto;
-        display: inline-flex; align-items: center; gap: .38rem;
-        padding: .36rem .7rem; border-radius: 999px;
-        background: var(--tile); border: 1px solid var(--border);
-        color: var(--muted); font-size: .75rem; font-weight: 600;
-        text-decoration: none; white-space: nowrap;
-        transition: color .15s, border-color .15s, background-color .15s;
-    }
-    .mobile-nav a i { color: var(--cyan); font-size: .68rem; }
-    .mobile-nav a:hover, .mobile-nav a:focus-visible {
-        color: var(--txt); border-color: var(--accent); background: var(--accent-soft);
-    }
-
-    /* ===== Aparición progresiva de bloques ===== */
-    .js-reveal .reveal {
-        opacity: 0; transform: translateY(16px);
-        transition: opacity .6s ease, transform .6s cubic-bezier(.2, .7, .3, 1);
-    }
-    .js-reveal .reveal.is-in { opacity: 1; transform: none; }
-    .js-reveal .grid > .reveal:nth-child(2),
-    .js-reveal .features > .reveal:nth-child(2) { transition-delay: .06s; }
-    .js-reveal .grid > .reveal:nth-child(3),
-    .js-reveal .features > .reveal:nth-child(3) { transition-delay: .12s; }
-    .js-reveal .grid > .reveal:nth-child(4),
-    .js-reveal .features > .reveal:nth-child(4) { transition-delay: .18s; }
-    .js-reveal .grid > .reveal:nth-child(5),
-    .js-reveal .features > .reveal:nth-child(5) { transition-delay: .24s; }
-    .js-reveal .grid > .reveal:nth-child(6),
-    .js-reveal .features > .reveal:nth-child(6) { transition-delay: .3s; }
-
-    /* ===== Responsive ===== */
-    @media (min-width: 640px) {
-        .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .card.is-featured { grid-column: span 2; }
-    }
-    /* Con dos columnas la última tarjeta quedaría sola: ocupa el ancho completo. */
-    @media (min-width: 640px) and (max-width: 1023px) {
-        .grid > .card:nth-child(6) { grid-column: span 2; }
-    }
-    @media (min-width: 720px) {
-        .footer-grid { grid-template-columns: 1.5fr 1fr 1.25fr 1fr; }
-        .footer-bar .wrap { flex-direction: row; align-items: center; justify-content: space-between; }
-    }
-    @media (min-width: 980px) {
-        .hero-grid { grid-template-columns: minmax(0, 1.03fr) minmax(0, .97fr); }
-    }
-    @media (min-width: 1024px) {
-        .nav-links { display: flex; }
-        .mobile-nav { display: none; }
-        .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        /* Bentor: la tarjeta destacada ocupa 2x2 y el resto rellena las celdas. */
-        .card.is-featured { grid-column: span 2; grid-row: span 2; padding: clamp(1.5rem, 2.2vw, 2rem); }
-        .card.is-featured h3 { font-size: 1.45rem; }
-        .card.is-featured p { max-width: 46ch; }
-        .card.is-featured .card-icon { width: 3.1rem; height: 3.1rem; font-size: 1.25rem; }
-        .features { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        .footer-grid { grid-template-columns: 1.6fr 1fr 1.3fr 1.1fr; }
-    }
-    @media (max-width: 979px) {
-        /* En una sola columna la ventana se centra y se limita para no dominar. */
-        .hero-visual { width: 100%; max-width: 30rem; margin-inline: auto; }
-    }
-    @media (max-width: 1023px) {
-        /* Compensa la barra de navegación compacta al saltar a una sección. */
-        section[id] { scroll-margin-top: 7.5rem; }
-    }
-    @media (max-width: 480px) {
-        /* En pantallas muy estrechas el nombre completo tiene que caber junto
-         * al interruptor de tema y al botón: se reducen logo y tipografía. */
-        .brand-logo { width: 2.35rem; height: 2.35rem; }
-        .brand-name { font-size: .68rem; }
-        .brand-name small { font-size: .49rem; letter-spacing: .02em; }
-        .btn-sm { padding: .5rem .6rem; font-size: .76rem; }
-        .btn-texto { display: none; }
-        .nav { gap: .5rem; }
-        .nav-acciones { gap: .45rem; }
-        .theme-switch-track { width: 50px; height: 26px; padding: 0 7px; }
-        .theme-switch-thumb { width: 20px; height: 20px; }
-        [data-bs-theme="dark"] .theme-switch-thumb { transform: translateX(24px); }
-        .theme-switch-icon { font-size: .68rem; }
-        .scroll-fabs { right: .8rem; bottom: .8rem; }
-        .scroll-fab { width: 2.55rem; height: 2.55rem; font-size: .9rem; }
-        /* La ventana cabe completa: se aprieta el par de tarjetas del mock. */
-        .mock-split { gap: .45rem; }
-        .mock-split .mock-chart, .mock-payroll { padding: .55rem; }
-        .mock-pay { font-size: .53rem; }
-        .mock-pay b { font-size: .6rem; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-        html { scroll-behavior: auto; }
-        * { transition: none !important; }
-        .card::after { display: none; }
-        .float-card, .mock-bars span, .pay-fill { animation: none !important; }
-        .faq-item:hover { transform: none; }
-    }
-
-    /* ===== Intro animada: piezas del logo (images/anim) =====
-       Secuencia: cada pieza entra con un fundido y, al final, aparece el logo
-       completo con un destello transversal recortado por su propia silueta. */
-    html.intro-lock { overflow: hidden; }
-    .intro {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: grid;
-        place-items: center;
-        background: radial-gradient(120% 120% at 50% 26%, #111c38 0%, #070a12 56%, #03050a 100%);
-        transition: opacity .8s ease, visibility .8s ease;
-    }
-    .intro.is-out { opacity: 0; visibility: hidden; }
-    .intro-stage {
-        position: relative;
-        width: min(92vmin, 760px);
-        aspect-ratio: 429 / 440;
-        display: grid;
-        place-items: center;
-        isolation: isolate;
-    }
-    .intro-halo {
-        position: absolute;
-        z-index: 0;
-        width: 78%;
-        aspect-ratio: 1;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(36, 214, 255, .34) 0%, rgba(109, 93, 252, .20) 44%, rgba(109, 93, 252, 0) 70%);
-        filter: blur(10px);
-        opacity: 0;
-        transform: scale(.72);
-        transition: opacity 1s ease, transform 1.4s cubic-bezier(.22, .8, .24, 1);
-    }
-    .intro.is-final .intro-halo { opacity: 1; transform: scale(1); animation: introHalo 4s ease-in-out 1.2s infinite; }
-    @keyframes introHalo {
-        0%, 100% { opacity: .82; transform: scale(1); }
-        50%      { opacity: 1;   transform: scale(1.06); }
-    }
-    .intro-layer,
-    .intro-final {
-        position: absolute;
-        inset: 0;
-        z-index: 1;
-        display: grid;
-        place-items: center;
-        opacity: 0;
-        transform: scale(.92) translateY(10px);
-        transition: opacity .7s ease, transform 1.15s cubic-bezier(.16, .84, .24, 1);
-        will-change: opacity, transform;
-        pointer-events: none;
-    }
-    .intro-layer img {
-        position: absolute;
-        height: auto;
-        max-width: none;
-        max-height: none;
-        filter: drop-shadow(0 24px 46px rgba(0, 0, 0, .62));
-    }
-    /* Cada pieza queda en el sitio que ocupa dentro del logo final. */
-    .intro-layer[data-paso="1"] img { left: 0;   top: 0;  width: 100%; }
-    .intro-layer[data-paso="2"] img { left: 3%;  top: 7%; width: 78%; }
-    .intro-layer[data-paso="3"] img { left: 5%;  top: 40%; width: 66%; }
-    .intro-layer[data-paso="4"] img { left: 55%; top: 18%; width: 44%; }
-    .intro-layer[data-paso="5"] img { left: 12%; top: 74%; width: 78%; }
-    /* Entradas: cada pieza recorre una trayectoria larga desde fuera del
-       escenario (el círculo llega desde el fondo) hasta su sitio en el logo. */
-    .intro-layer[data-paso="1"] { transform: scale(.5); }
-    .intro-layer[data-paso="2"] { transform: translateX(135%) scale(.68); }
-    .intro-layer[data-paso="3"] { transform: translateX(-135%) scale(.68); }
-    .intro-layer[data-paso="4"] { transform: translateX(135%) scale(.68); }
-    .intro-layer[data-paso="5"] { transform: translateY(-185%) scale(.68); }
-    .intro-layer.is-on { opacity: 1; transform: translate(0, 0) scale(1); }
-    /* Al entrar el logo completo se retiran las piezas para que no asomen por
-       los bordes transparentes de final.png. */
-    .intro.is-final .intro-layer { opacity: 0; transition: opacity .3s ease; }
-    .intro-final { z-index: 2; transform: scale(.92) translateY(8px); }
-    .intro-logo { position: relative; width: 100%; }
-    .intro-logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 30px 70px rgba(0, 0, 0, .66)); }
-    .intro-final.is-on { opacity: 1; transform: scale(1) translateY(0); }
-    .intro-final.is-on .intro-logo { animation: introLogoIn 1.15s cubic-bezier(.2, .72, .2, 1) both; }
-    @keyframes introLogoIn {
-        0%   { transform: scale(.84); filter: brightness(1.45) saturate(1.15); }
-        60%  { transform: scale(1.03); }
-        100% { transform: scale(1); filter: none; }
-    }
-    .intro-sheen {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        opacity: 0;
-        background-image: linear-gradient(105deg,
-            rgba(255, 255, 255, 0) 40%,
-            rgba(255, 255, 255, .32) 46%,
-            rgba(255, 255, 255, .95) 50%,
-            rgba(140, 235, 255, .85) 54%,
-            rgba(255, 255, 255, 0) 60%);
-        background-size: 260% 100%;
-        background-position: 135% 0;
-        background-repeat: no-repeat;
-        -webkit-mask-size: contain;
-        mask-size: contain;
-        -webkit-mask-repeat: no-repeat;
-        mask-repeat: no-repeat;
-        -webkit-mask-position: center;
-        mask-position: center;
-        mix-blend-mode: screen;
-    }
-    .intro.is-sheen .intro-sheen { opacity: 1; animation: introSheen 1.4s cubic-bezier(.4, 0, .5, 1) 2; }
-    @keyframes introSheen {
-        0%   { background-position: 135% 0; }
-        100% { background-position: -45% 0; }
-    }
-    .intro-bar {
-        position: absolute;
-        left: 50%;
-        bottom: max(2.25rem, 5vh);
-        width: min(64vmin, 520px);
-        height: 3px;
-        transform: translateX(-50%);
-        background: rgba(255, 255, 255, .14);
-        border-radius: 2px;
-        overflow: hidden;
-    }
-    .intro-bar span {
-        display: block;
-        width: 0;
-        height: 100%;
-        background: linear-gradient(90deg, #24d6ff, #6d5dfc);
-        transition: width .35s ease;
-    }
-    .intro-skip {
-        position: absolute;
-        right: max(1rem, 2vw);
-        bottom: max(1rem, 2vh);
-        padding: .5rem .95rem;
-        font: inherit;
-        font-size: .8rem;
-        color: #cfd6ff;
-        background: rgba(255, 255, 255, .06);
-        border: 1px solid rgba(255, 255, 255, .18);
-        border-radius: 999px;
-        cursor: pointer;
-        -webkit-backdrop-filter: blur(8px);
-        backdrop-filter: blur(8px);
-        transition: background .2s ease, border-color .2s ease, color .2s ease;
-    }
-    @media (max-width: 520px) {
-        /* En pantallas estrechas el botón sube para no pisar la barra. */
-        .intro-skip { top: max(1rem, 2vh); bottom: auto; right: 1rem; }
-        .intro-bar { bottom: max(1.25rem, 3vh); width: min(82vw, 360px); }
-    }
-    .intro-skip:hover,
-    .intro-skip:focus-visible {
-        background: rgba(255, 255, 255, .12);
-        border-color: rgba(36, 214, 255, .5);
-        color: #fff;
-        outline: none;
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .intro-layer, .intro-final, .intro-halo { transition-duration: .01ms !important; }
-        .intro-final.is-on .intro-logo,
-        .intro.is-sheen .intro-sheen,
-        .intro.is-final .intro-halo { animation: none !important; }
-    }
-</style>
+<link rel="stylesheet" href="<?= $base ?>/assets/fonts/fuentes.css">
+<link rel="stylesheet" href="<?= $base ?>/assets/css/portada-licencia.css">
+<link rel="stylesheet" href="/css/styleindex.css">
+<script>document.documentElement.classList.add('js');</script>
 </head>
-<body id="top">
+<body id="top" class="rv-mov">
+
 <!-- Intro animada: piezas del logo en images/anim. Se retira sola y se puede
-     saltar; con «prefers-reduced-motion» no se muestra. El comportamiento
-     está al pie del documento, junto al resto de scripts. -->
-<div class="intro<?= $introSaltar ? ' is-out' : '' ?>" id="introAnim">
+     saltar; con «prefers-reduced-motion» no se muestra. -->
+<div class="intro<?= $licModalAbierto ? ' is-out' : '' ?>" id="introAnim">
     <div class="intro-stage">
         <div class="intro-halo"></div>
         <div class="intro-layer" data-paso="1"><img src="/images/anim/01_Circulo.png" alt="" width="498" height="490" decoding="async"></div>
@@ -2161,454 +489,962 @@ $servicios = [
         </div>
     </div>
     <div class="intro-bar" aria-hidden="true"><span id="introBar"></span></div>
-    <button type="button" class="intro-skip" id="introSkip">Saltar intro</button>
+    <div class="intro-acciones">
+        <button type="button" class="intro-skip" id="introNoMostrar">No volver a mostrar intro</button>
+        <button type="button" class="intro-skip" id="introSkip">Saltar intro</button>
+    </div>
 </div>
-<?php if (!$introSaltar): ?><script>document.documentElement.classList.add('intro-lock');</script><?php endif; ?>
-<a class="skip" href="#contenido"><i class="fa-solid fa-arrow-down"></i> Saltar al contenido</a>
+<script>(function(){var i=document.getElementById('introAnim');if(localStorage.getItem('introOculta')==='1'){if(i)i.classList.add('is-out');}else{document.documentElement.classList.add('intro-lock');}})();</script>
+
+<!-- ===== Barra de progreso de lectura ===== -->
 <div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
 
-<header class="site-header">
-    <div class="wrap nav">
-        <a class="brand" href="/" title="Entorno de Aplicaciones Web de UnicornioSoftware® Cuba. Kaky®">
-            <img class="brand-logo" src="/images/logo.png" alt="UnicornioSoftware Cuba">
-            <span class="brand-name">Entorno de Aplicaciones Web
-                <small>de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup></small>
+<!-- ===== Navegación ===== -->
+<nav class="nav">
+    <div class="wrap nav-in">
+        <a class="marca" href="/index2.php" title="UnicornioSoftware Cuba">
+            <img src="/images/logo.png" alt="UnicornioSoftware Cuba">
+            <span class="marca-txt">
+                <b><i>UNICORNIO</i><em>SOFTWARE</em></b>
+                <small>Cuba · Gestión empresarial</small>
             </span>
         </a>
-        <nav class="nav-links" aria-label="Secciones">
-            <a href="#top"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-            <a href="#ecosistema"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Ecosistema</a>
-            <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
+
+        <div class="nav-links">
+            <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+            <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> Ecosistema</a>
+            <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> Ingeniería</a>
+            <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
+            <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
+            <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
+            <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Plataforma</a>
+            <div class="nav-drop" id="navLic">
+                <button type="button" class="nav-drop-toggle" id="navLicBtn" data-nav-scroll="#licencia-estado" aria-haspopup="true" aria-expanded="false" aria-controls="navLicMenu">
+                    <i class="fa-solid fa-key" aria-hidden="true"></i> Licencia
+                    <i class="fa-solid fa-chevron-down nav-drop-caret" aria-hidden="true"></i>
+                </button>
+                <div class="nav-drop-menu" id="navLicMenu" role="menu" aria-labelledby="navLicBtn">
+                    <button type="button" role="menuitem" data-lic-open><i class="fa-solid fa-key" aria-hidden="true"></i> Activar / Renovar</button>
+                    <button type="button" role="menuitem" data-estado-lic-open><i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa</button>
+                    <button type="button" role="menuitem" data-sol-open><i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo</button>
+                    <a role="menuitem" href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver Planes / Precios</a>
+                    <a role="menuitem" href="/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Solicitar Soporte</a>
+                </div>
+            </div>
             <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
-            <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
-            <a href="<?= $base ?>/explorer.php"><i class="fa-solid fa-user-pen" aria-hidden="true"></i> Autor</a>
-        </nav>
-        <div class="nav-acciones">
-            <button class="theme-switch" id="themeToggle" type="button" role="switch"
-                    aria-checked="true" aria-label="Cambiar entre tema claro y oscuro"
-                    title="Cambiar a tema claro">
-                <span class="theme-switch-track">
-                    <i class="fa-solid fa-sun theme-switch-icon theme-switch-sun" aria-hidden="true"></i>
-                    <i class="fa-solid fa-moon theme-switch-icon theme-switch-moon" aria-hidden="true"></i>
-                    <span class="theme-switch-thumb"></span>
-                </span>
+        </div>
+
+        <div class="nav-acc">
+            <div class="nav-login" id="navLogin">
+                <button type="button" class="btn btn-cian btn-sm" id="navLoginBtn"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="navLoginMenu">
+                    <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Iniciar sesión
+                    <i class="fa-solid fa-chevron-down nav-login-caret" aria-hidden="true"></i>
+                </button>
+                <div class="nav-login-menu" id="navLoginMenu" role="menu" aria-labelledby="navLoginBtn">
+                    <a role="menuitem" href="<?= $base ?>/nominas/login.php">
+                        <i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas
+                    </a>
+                    <a role="menuitem" href="<?= $base ?>/facturacion/login.php">
+                        <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación
+                    </a>
+                    <a role="menuitem" href="<?= $base ?>/costos/login.php">
+                        <i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos
+                    </a>
+                    <a role="menuitem" href="<?= $base ?>/inventarios/login.php">
+                        <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios
+                    </a>
+                    <a role="menuitem" href="<?= $base ?>/administracion/index.php">
+                        <i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración
+                    </a>
+                </div>
+            </div>
+            <button type="button" class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
             </button>
-            <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php" title="Explorar subsistemas">
-                <i class="fa-solid fa-arrow-right-to-bracket"></i> <span class="btn-texto">Explorar subsistemas</span>
-            </a>
         </div>
     </div>
-    <!-- En pantallas estrechas los enlaces del navbar no caben: pasan a una
-         fila de píldoras desplazable dentro del propio header fijo. -->
-    <div class="wrap">
-        <nav class="mobile-nav" aria-label="Secciones">
-            <a href="#top"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-            <a href="#ecosistema"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Ecosistema</a>
-            <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
-            <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
-            <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
-            <a href="<?= $base ?>/explorer.php"><i class="fa-solid fa-user-pen" aria-hidden="true"></i> Autor</a>
-        </nav>
+
+    <div class="menu-movil" id="menuMovil">
+        <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+        <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> Ecosistema</a>
+        <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> Ingeniería</a>
+        <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
+        <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
+        <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
+        <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Plataforma</a>
+        <span class="menu-movil-titulo">Licencia</span>
+        <button type="button" class="menu-movil-item" data-lic-open><i class="fa-solid fa-key" aria-hidden="true"></i> Activar / Renovar</button>
+        <button type="button" class="menu-movil-item" data-estado-lic-open><i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa</button>
+        <button type="button" class="menu-movil-item" data-sol-open><i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo</button>
+        <a href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver Planes / Precios</a>
+        <a href="/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Solicitar Soporte</a>
+        <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
+        <span class="menu-movil-titulo">Iniciar sesión</span>
+        <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
+        <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
+        <a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a>
+        <a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a>
+        <a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a>
     </div>
+</nav>
+
+<!-- ===== Hero ===== -->
+<header class="hero" id="inicio">
+    <div class="hero-fondo" aria-hidden="true">
+        <img class="is-on" id="heroFondoA" src="/images/nominas-hero.webp"
+             width="1376" height="768" alt="" fetchpriority="high" decoding="async">
+        <img id="heroFondoB" src="/images/hero.webp"
+             width="1376" height="768" alt="" loading="lazy" decoding="async">
+    </div>
+    <div class="hero-velo" aria-hidden="true"></div>
+
+    <div class="wrap hero-grid">
+        <div class="hero-copy">
+            <span class="eyebrow">UnicornioSoftware · Gestión empresarial <span>· Cuba</span></span>
+            <h1 class="bebas">SOFTWARE PARA <span>TRANSFORMAR TU NEGOCIO.</span></h1>
+            <p class="hero-bajada">
+                Facturación, nóminas, costos e inventarios en una plataforma que corre en tu propia red,
+                pensada para resolver el día a día real de tu operación.
+            </p>
+            <div class="hero-acciones">
+                <a class="btn btn-fuego" href="#ecosistema">
+                    <i class="fa-solid fa-layer-group" aria-hidden="true"></i> Explorar el ecosistema
+                </a>
+                <a class="btn btn-cian" href="/desamedida.php">
+                    <i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> Desarrollo a medida
+                </a>
+            </div>
+            <div class="tags">
+                <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Productos propios</span>
+                <span class="sep" aria-hidden="true">·</span>
+                <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Tecnología Aplicada</span>
+                <span class="sep" aria-hidden="true">·</span>
+                <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Soporte técnico</span>
+            </div>
+            <p style="margin-top:1rem;font-family:'Inter',sans-serif;font-size:.85rem;color:var(--gris-3);letter-spacing:.01em;"><i class="fa-solid fa-shield-halved" style="color:var(--cian);margin-right:.4rem" aria-hidden="true"></i>Instalación local &middot; sin dependencia de la nube &middot; respaldo periódico</p>
+            <p style="margin-top:.55rem;font-family:'Inter',sans-serif;font-size:.9rem;color:var(--gris-2);">¿Ya lo usas, licencia vencida? <button type="button" data-lic-open style="background:none;border:0;padding:0;color:var(--cian);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:4px;cursor:pointer;transition:color .2s;">Renueva o activa tu licencia</button>, <a href="#precios" style="color:var(--fuego);font-weight:600;text-decoration:underline;text-underline-offset:4px;transition:color .2s;">consulta precios</a></p>
+
+
+        </div>
+
+        <div class="escena">
+            <div class="escena-nav">
+                <button type="button" class="pill is-on" data-slide="0" style="--brillo: 37, 99, 235" aria-label="Ver Nóminas en el monitor">
+                    <span class="dot" aria-hidden="true"></span> Nóminas
+                </button>
+                <button type="button" class="pill" data-slide="1" style="--brillo: 0, 200, 83" aria-label="Ver Facturación en el monitor">
+                    <span class="dot" aria-hidden="true"></span> Facturación
+                </button>
+                <button type="button" class="pill" data-slide="2" style="--brillo: 255, 167, 38" aria-label="Ver Costos en el monitor">
+                    <span class="dot" aria-hidden="true"></span> Costos
+                </button>
+                <button type="button" class="pill" data-slide="3" style="--brillo: 139, 92, 246" aria-label="Ver Inventarios en el monitor">
+                    <span class="dot" aria-hidden="true"></span> Inventarios
+                </button>
+                <button type="button" class="pill" data-slide="4" style="--brillo: 0, 212, 255" aria-label="Ver Administración en el monitor">
+                    <span class="dot" aria-hidden="true"></span> Administración
+                </button>
+            </div>
+
+            <div class="diapo is-on" style="--brillo: 37, 99, 235">
+                <div class="pantalla">
+                    <img src="/images/nominas-monitor.webp"
+                         width="1672" height="940" alt="Panel del subsistema de nóminas SisGeNom" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/images/nominas-movil.webp"
+                         width="540" height="1054" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/images/nominas-icono.webp"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Nóminas · SisGeNom</strong>
+                            <span>Mantén todo en un solo lugar: nóminas, trabajadores, aportes, banco</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="diapo" style="--brillo: 0, 200, 83">
+                <div class="pantalla">
+                    <img src="/images/facturacion-monitor.webp"
+                         width="1672" height="940" alt="Panel del subsistema de facturación SisGeFac" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/images/facturacion-movil.webp"
+                         width="540" height="1054" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/images/facturacion-icono.webp"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Facturación · SisGeFac</strong>
+                            <span>Factura, contrata, cotiza. Controla todas tus ventas</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="diapo" style="--brillo: 255, 167, 38">
+                <div class="pantalla">
+                    <img src="/servicios/images/costos.png"
+                         width="1024" height="1024" alt="Panel del subsistema de Costos" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/servicios/images/costos.png"
+                         width="1024" height="1024" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/servicios/images/costos.png"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Costos</strong>
+                            <span>Controla gastos, centros de costo y análisis de tu operación</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="diapo" style="--brillo: 139, 92, 246">
+                <div class="pantalla">
+                    <img src="/servicios/images/inventario.png"
+                         width="1024" height="1024" alt="Panel del subsistema de Inventarios" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/servicios/images/inventario.png"
+                         width="1024" height="1024" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/servicios/images/inventario.png"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Inventarios</strong>
+                            <span>Gestiona almacenes, existencias y movimientos en tiempo real</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="diapo" style="--brillo: 0, 212, 255">
+                <div class="pantalla">
+                    <img src="/servicios/images/admin.png"
+                         width="1024" height="1024" alt="Panel del subsistema de Administración" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/servicios/images/admin.png"
+                         width="1024" height="1024" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/servicios/images/admin.png"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Administración</strong>
+                            <span>Configura usuarios, permisos y parámetros del sistema</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <a href="#ecosistema" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
 </header>
 
-<main id="contenido">
-    <!-- ===== Hero ===== -->
-    <section class="wrap hero">
-        <div class="hero-grid">
-            <div class="hero-copy">
-                <span class="badge"><span class="dot"></span> Plataforma local · v10.0.1</span>
-                <span class="hero-eyebrow">UnicornioSoftware · Gestión empresarial <span>· Cuba</span></span>
-                <h1 class="hero-titulo">SOFTWARE PARA <span>TRANSFORMAR TU NEGOCIO.</span></h1>
-                <p class="lead">
-                    Facturación, nóminas, costos e inventarios en una plataforma que corre en tu propia red,
-                    pensada para resolver el día a día real de tu operación.
-                </p>
-                <div class="hero-tags">
-                    <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Productos propios</span>
-                    <span class="sep" aria-hidden="true">·</span>
-                    <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Gestión a medida</span>
-                    <span class="sep" aria-hidden="true">·</span>
-                    <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Soporte técnico</span>
+    <!-- Strip de beneficios (estilo Reven/CyberForja) -->
+    <section class="reven-feats-strip" aria-label="Beneficios principales">
+        <div class="reven-feats-grid">
+            <div class="rv-ap reven-feat" style="--rv-i:0">
+                <div class="reven-feat-icon">
+                    <i class="fas fa-wifi" aria-hidden="true"></i>
                 </div>
-                <div class="hero-actions hero-actions-3">
-                    <a class="btn btn-primary" href="#ecosistema">
-                        <i class="fa-solid fa-layer-group"></i> Explorar el ecosistema
-                    </a>
-                    <button type="button" class="btn btn-glass" data-estado-lic-open>
-                        <i class="fa-solid fa-key"></i> Estado de la licencia
-                    </button>
-                    <a class="btn btn-glass" href="<?= $base ?>/phpinfo/">
-                        <i class="fa-solid fa-server"></i> Estado del servidor
-                    </a>
-                </div>
-                <p class="hero-note">
-                    <i class="fa-solid fa-shield-halved"></i>
-                    Instalación local · sin dependencia de la nube · respaldo periódico
-                </p>
-                <p class="hero-note hero-note-licencia">
-                    <i class="fa-solid fa-key"></i>
-                    <a href="<?= $base ?>/nominas/licencia.php<?= $licenciaActiva ? '?renovar=1' : '' ?>" data-lic-open
-                       title="<?= htmlspecialchars($licenciaTitulo, ENT_QUOTES, 'UTF-8') ?>">¿Ya lo usas, licencia vencida? Renueva o activa tu licencia.</a>
-                </p>
+                <p class="reven-feat-copy"><span class="reven-feat-title">Sin internet</span><span class="reven-feat-desc">Facturas, Vendes, Cotizas, Pagas Aunque Se Caiga La Red</span></p>
             </div>
-
-            <!-- Vista previa del sistema con datos reales del último mes. -->
-            <div class="hero-visual">
-                <div class="visual-stage">
-                <div class="window">
-                    <div class="window-bar">
-                        <span class="window-dots"><i></i><i></i><i></i></span>
-                        <span class="window-url"><i class="fa-solid fa-lock"></i> localhost/servicios/facturacion</span>
-                        <span class="window-status is-<?= $bdEstado === 'online' ? 'on' : ($bdEstado === 'parcial' ? 'warn' : 'off') ?>">
-                            <i class="fa-solid fa-circle" aria-hidden="true"></i><span>MySQL</span>
-                        </span>
-                    </div>
-                    <div class="window-body">
-                        <div class="mock-kpis">
-                            <div class="mock-kpi">
-                                <small><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturado</small>
-                                <b><?= $facturacion['ok'] ? landing_num_corto((float)$facturacion['total']) : '—' ?><span class="kpi-unit"> CUP</span></b>
-                                <?php if (!$facturacion['ok']): ?>
-                                    <span class="is-off">Sin conexión a MySQL</span>
-                                <?php elseif ($facturacion['variacion'] === null): ?>
-                                    <span>Sin mes anterior</span>
-                                <?php else: ?>
-                                    <span class="<?= $facturacion['variacion'] < 0 ? 'is-down' : '' ?>"><?= $facturacion['variacion'] >= 0 ? '+' : '−' ?><?= number_format(abs((float)$facturacion['variacion']), 1, ',', '') ?> % vs <?= htmlspecialchars((string)$facturacion['mes_anterior']) ?></span>
-                                <?php endif; ?>
-                            </div>
-                            <div class="mock-kpi">
-                                <small><i class="fa-solid fa-file-invoice" aria-hidden="true"></i> Facturas</small>
-                                <b><?= $facturacion['ok'] ? (int)$facturacion['facturas'] : '—' ?></b>
-                                <span><?= $facturacion['ok'] ? 'en ' . htmlspecialchars((string)$facturacion['mes_corto']) : 'Sin conexión' ?></span>
-                            </div>
-                        </div>
-                        <div class="mock-split">
-                            <div class="mock-chart">
-                                <div class="mock-chart-head"><span>Ingresos por mes</span><b><?= (int)$facturacion['anio'] ?></b></div>
-                                <?php if ($facturacion['ok'] && $serieMax > 0): ?>
-                                    <div class="mock-bars">
-                                        <?php foreach ($facturacion['serie'] as $punto): ?>
-                                            <?php $alto = max(4, (int)round(((float)$punto['total'] / $serieMax) * 100)); ?>
-                                            <span style="height: <?= $alto ?>%" title="<?= htmlspecialchars($punto['etiqueta'] . ' ' . substr((string)$punto['clave'], 0, 4) . ': ' . landing_num((float)$punto['total']) . ' CUP') ?>"></span>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="mock-empty">
-                                        <i class="fa-solid fa-chart-simple" aria-hidden="true"></i>
-                                        <span><?= $facturacion['ok'] ? 'Sin facturas en el periodo' : 'Sin datos de MySQL' ?></span>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="mock-payroll">
-                                <div class="mock-pay-head"><span>Nómina · <?= htmlspecialchars((string)$nominas['mes_corto']) ?></span><b><?= $nominas['ok'] ? 'CUP' : '—' ?></b></div>
-                                <?php if ($nominas['ok']): ?>
-                                    <?php
-                                        $brutoNom = max(0, (float)$nominas['bruto']);
-                                        $dedNom = max(0, (float)$nominas['deducciones']);
-                                        $netoNom = max(0, (float)$nominas['neto']);
-                                        $pctDed = $brutoNom > 0 ? (int)round($dedNom / $brutoNom * 100) : 0;
-                                        $pctNeto = $brutoNom > 0 ? (int)round($netoNom / $brutoNom * 100) : 0;
-                                    ?>
-                                    <div class="mock-pay-bars">
-                                        <div class="mock-pay mock-pay--bruto">
-                                            <span>Pagado bruto</span><b><?= landing_num($brutoNom) ?></b>
-                                            <span class="pay-track"><span class="pay-fill" style="--w: 100%"></span></span>
-                                        </div>
-                                        <div class="mock-pay mock-pay--ded">
-                                            <span>Deducciones</span><b><?= landing_num($dedNom) ?></b>
-                                            <span class="pay-track"><span class="pay-fill" style="--w: <?= $pctDed ?>%"></span></span>
-                                        </div>
-                                        <div class="mock-pay mock-pay--net">
-                                            <span>Cobrado real</span><b><?= landing_num($netoNom) ?></b>
-                                            <span class="pay-track"><span class="pay-fill" style="--w: <?= $pctNeto ?>%"></span></span>
-                                        </div>
-                                    </div>
-                                    <div class="mock-pay-foot"><?= (int)$nominas['trabajadores'] ?> trabajadores · <?= $nominas['exacto'] ? 'cierre del mes' : 'último cierre' ?></div>
-                                <?php else: ?>
-                                    <div class="mock-empty">
-                                        <i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i>
-                                        <span>Sin datos de MySQL</span>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="mock-rows">
-                            <div class="mock-row">
-                                <i class="fa-solid fa-check" aria-hidden="true"></i>
-                                <span><b>Nómina <?= htmlspecialchars((string)$nominas['etiqueta']) ?></b> · <?= $nominas['ok'] ? ($nominas['exacto'] ? 'cerrada' : 'último cierre') : 'sin datos' ?></span>
-                                <em class="<?= $nominas['ok'] ? '' : 'is-off' ?>"><?= $nominas['ok'] ? 'OK' : '—' ?></em>
-                            </div>
-                            <div class="mock-row">
-                                <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
-                                <span>
-                                    <?php if (!empty($facturacion['ultima'])): ?>
-                                        <b>Factura <?= htmlspecialchars((string)$facturacion['ultima']['no_fact']) ?></b> · <?= htmlspecialchars((string)($facturacion['ultima']['cliente'] ?? 'sin cliente')) ?>
-                                    <?php else: ?>
-                                        <b>Sin facturas emitidas</b> · <?= $facturacion['ok'] ? 'base vacía' : 'sin conexión' ?>
-                                    <?php endif; ?>
-                                </span>
-                                <em><?= !empty($facturacion['ultima']) ? htmlspecialchars(ucfirst(strtolower((string)$facturacion['ultima']['estado']))) : '—' ?></em>
-                            </div>
-                            <div class="mock-row">
-                                <i class="fa-solid fa-database" aria-hidden="true"></i>
-                                <span><b>MySQL</b> · <?= $bdEstado === 'online' ? 'conectado' : ($bdEstado === 'parcial' ? 'conexión parcial' : 'apagado') ?></span>
-                                <em class="<?= $bdEstado === 'online' ? '' : 'is-off' ?>"><?= $bdEstado === 'online' ? 'En línea' : 'Revisar' ?></em>
-                            </div>
-                        </div>
-                    </div>
+            <div class="rv-ap reven-feat" style="--rv-i:1">
+                <div class="reven-feat-icon">
+                    <i class="fas fa-desktop" aria-hidden="true"></i>
                 </div>
-                <div class="visual-floats">
-                    <?php if ($nominas['ok']): ?>
-                        <div class="float-card float-card--a">
-                            <span class="float-icon"><i class="fa-solid fa-sack-dollar" aria-hidden="true"></i></span>
-                            <span>Cobrado real<b><?= landing_num((float)$nominas['neto']) ?> CUP</b></span>
-                        </div>
-                        <div class="float-card float-card--d">
-                            <span class="float-icon"><i class="fa-solid fa-circle-minus" aria-hidden="true"></i></span>
-                            <span>Deducciones<b><?= landing_num((float)$nominas['deducciones']) ?> CUP</b></span>
-                        </div>
-                    <?php endif; ?>
-                    <div class="float-card float-card--b">
-                        <span class="float-icon"><i class="fa-solid fa-file-invoice" aria-hidden="true"></i></span>
-                        <span>Facturación<b><?= $facturacion['ok'] ? (int)$facturacion['facturas'] . ' facturas · ' . htmlspecialchars((string)$facturacion['mes_corto']) : 'sin conexión' ?></b></span>
-                    </div>
-                    <?php if ($nominas['ok']): ?>
-                        <div class="float-card float-card--c">
-                            <span class="float-icon"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i></span>
-                            <span>Nómina · <?= htmlspecialchars((string)$nominas['mes_corto']) ?><b><?= landing_num((float)$nominas['bruto']) ?> CUP</b></span>
-                        </div>
-                    <?php endif; ?>
+                <p class="reven-feat-copy"><span class="reven-feat-title">PC modesta</span><span class="reven-feat-desc">Windows 7 y 2 GB de RAM</span></p>
+            </div>
+            <div class="rv-ap reven-feat" style="--rv-i:2">
+                <div class="reven-feat-icon">
+                    <i class="fas fa-coins" aria-hidden="true"></i>
                 </div>
+                <p class="reven-feat-copy"><span class="reven-feat-title">CUP &middot; USD &middot; EUR</span><span class="reven-feat-desc">Con la tasa que tú decides</span></p>
+            </div>
+            <div class="rv-ap reven-feat" style="--rv-i:3">
+                <div class="reven-feat-icon">
+                    <i class="fas fa-gift" aria-hidden="true"></i>
                 </div>
-
-                <?php if ($desdeGuardado): ?>
-                    <div class="alerta-bd" role="alert">
-                        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-                        <p><b>MySQL está apagado.</b> Mostrando el último dato guardado el <?= htmlspecialchars((string)($datosGuardados ?? 'sin fecha')) ?>.</p>
-                        <button type="button" class="alerta-bd-cerrar" aria-label="Ocultar aviso"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                    </div>
-                <?php elseif ($bdEstado === 'parcial'): ?>
-                    <div class="alerta-bd" role="alert">
-                        <i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i>
-                        <p><b>Conexión parcial.</b> Sin datos de <?= htmlspecialchars($faltante) ?>; el resto se leyó al cargar.</p>
-                        <button type="button" class="alerta-bd-cerrar" aria-label="Ocultar aviso"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                    </div>
-                <?php elseif ($bdEstado === 'offline'): ?>
-                    <div class="alerta-bd" role="alert">
-                        <i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i>
-                        <p><b>MySQL está apagado.</b> Todavía no hay datos guardados para mostrar.</p>
-                        <button type="button" class="alerta-bd-cerrar" aria-label="Ocultar aviso"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                    </div>
-                <?php endif; ?>
+                <p class="reven-feat-copy"><span class="reven-feat-title">15 días gratis</span><span class="reven-feat-desc">Sin tarjeta ni registro</span></p>
             </div>
         </div>
+    </section>
 
-        <div class="metrics" role="list">
-            <div class="metric" role="listitem"><i class="fa-solid fa-cubes" aria-hidden="true"></i><b>4</b><span>Módulos de gestión</span></div>
-            <div class="metric" role="listitem"><i class="fa-brands fa-php" aria-hidden="true"></i><b>PHP 8.1</b><span>Servidor local</span></div>
-            <div class="metric" role="listitem"><i class="fa-solid fa-database" aria-hidden="true"></i><b>MySQL 5.7</b><span>Base de datos</span></div>
-            <div class="metric" role="listitem"><i class="fa-solid fa-headset" aria-hidden="true"></i><b>24/7</b><span>Soporte técnico</span></div>
-        </div>
-        </section>
-
+<main>
     <!-- ===== Ecosistema ===== -->
-    <section class="wrap section" id="ecosistema">
-        <div class="section-head reveal">
-            <span class="eyebrow">Opciones y servicios</span>
-            <h2>Elige por dónde entrar</h2>
-            <p>
-                Cada acceso abre una parte del sistema. Si es tu primera vez, empieza por el
-                <strong>Ecosistema Financiero</strong>: desde ahí llegas a todos los módulos.
-            </p>
-        </div>
+    <section class="sec" id="ecosistema">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">El ecosistema</span>
+                <h2 class="bebas">Todo el sistema, a un clic</h2>
+                <p>Facturación, nóminas, costos, inventarios y administración corriendo en tu propia red. Elige el módulo con el que quieres trabajar.</p>
+            </div>
 
-        <div class="grid">
-            <?php foreach ($ecosistema as $item): ?>
-                <a class="card reveal<?= !empty($item['destacada']) ? ' is-featured' : '' ?>" href="<?= htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') ?>"<?= !empty($item['pendiente']) ? ' data-modulo-pendiente="' . htmlspecialchars($item['titulo'], ENT_QUOTES, 'UTF-8') . '"' : '' ?><?= !empty($item['imagen']) ? ' data-preview-img="' . htmlspecialchars($item['imagen'], ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
-                    <?php if (!empty($item['destacada'])): ?>
-                        <span class="featured-flag"><i class="fa-solid fa-star" aria-hidden="true"></i> Punto de entrada</span>
-                    <?php endif; ?>
-                    <?php if (!empty($item['imagen'])): ?>
-                    <span class="card-media" aria-hidden="true"><img src="<?= htmlspecialchars($item['imagen'], ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy"></span>
-                    <?php endif; ?>
-                    <span class="card-icon"><i class="<?= htmlspecialchars($item['icono'], ENT_QUOTES, 'UTF-8') ?>"></i></span>
-                    <h3><?= htmlspecialchars($item['titulo'], ENT_QUOTES, 'UTF-8') ?></h3>
-                    <p class="card-desc"><?= htmlspecialchars($item['texto'], ENT_QUOTES, 'UTF-8') ?></p>
-                    <?php if (!empty($item['destacada'])): ?>
-                        <ul class="card-chips">
-                            <li><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</li>
-                            <li><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</li>
-                            <li><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Reportes</li>
-                            <li><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</li>
-                            <li><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</li>
-                            <li><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</li>
-                        </ul>
-                    <?php endif; ?>
-                    <span class="card-foot">
-                        <span class="tag"><?= htmlspecialchars($item['etiqueta'], ENT_QUOTES, 'UTF-8') ?></span>
-                        <i class="fa-solid fa-arrow-right arrow" aria-hidden="true"></i>
-                    </span>
-                </a>
-            <?php endforeach; ?>
+            <div class="grid">
+                <?php foreach ($ecosistema as $mod): ?>
+                <article class="card reveal<?= !empty($mod['destacada']) ? ' destacada' : '' ?>" data-spotlight
+                         style="--card-sheen: <?= !empty($mod['destacada']) ? 'rgba(255, 107, 0, .22)' : 'rgba(0, 212, 255, .18)' ?>">
+                    <span class="card__sheen" aria-hidden="true"></span>
+                    <div class="card-head">
+                        <span class="card-ico"><i class="<?= htmlspecialchars($mod['icono'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i></span>
+                        <div>
+                            <h3><?= htmlspecialchars($mod['titulo'], ENT_QUOTES, 'UTF-8') ?></h3>
+                            <p class="card-sub"><?= htmlspecialchars($mod['etiqueta'], ENT_QUOTES, 'UTF-8') ?></p>
+                        </div>
+                    </div>
+                    <p><?= htmlspecialchars($mod['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                    <a class="card-link" href="<?= htmlspecialchars($mod['url'], ENT_QUOTES, 'UTF-8') ?>">
+                        <span>Abrir módulo</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </article>
+                <?php endforeach; ?>
+            </div>
         </div>
     </section>
 
-    <!-- ===== Servicios ===== -->
-    <section class="wrap section" id="servicios">
-        <div class="section-head reveal">
-            <span class="eyebrow">Lo que incluye</span>
-            <h2>Servicios de la plataforma</h2>
-            <p>Una base técnica pensada para la operación diaria y para no depender de servicios externos.</p>
+    <!-- ===== Nuestra ingeniería ===== -->
+        <section id="servicios">
+        <div class="circuit-bg">
+            <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
+                <defs>
+                    <pattern id="circuit-grid-pattern-index2" width="60" height="60" patternUnits="userSpaceOnUse">
+                        <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(30, 41, 59, 0.7)" stroke-width="1"></path>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#circuit-grid-pattern-index2)"></rect>
+                <g stroke="none" fill="none" stroke-linecap="round">
+                    <path class="circuit-line-cian" d="M -100 120 L 500 120 L 560 180 L 1100 180 L 1160 120 L 2200 120" stroke="#00D4FF" stroke-width="1.5"></path>
+                    <path class="circuit-line-cian-delay" d="M 180 -100 L 180 500 L 300 620 L 300 1500" stroke="#00D4FF" stroke-width="1.5"></path>
+                    <path class="circuit-line-fuego" d="M 960 -100 L 960 400 L 1020 460 L 1020 1500" stroke="#FF6B00" stroke-width="1.5"></path>
+                    <path class="circuit-line-fuego-slow" d="M -100 840 L 1400 840 L 1460 780 L 2200 780" stroke="#FF6B00" stroke-width="1.5"></path>
+                </g>
+            </svg>
         </div>
+        <div class="circuit-radial"></div>
 
-        <div class="features">
-            <?php foreach ($servicios as $s): ?>
-                <div class="feature reveal">
-                    <i class="<?= htmlspecialchars($s['icono'], ENT_QUOTES, 'UTF-8') ?>"></i>
-                    <h3><?= htmlspecialchars($s['titulo'], ENT_QUOTES, 'UTF-8') ?></h3>
-                    <p><?= htmlspecialchars($s['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+        <div class="ing-wrap">
+            <div class="reveal" style="max-width:48rem;margin-bottom:2.5rem">
+                <span class="ing-eyebrow">Nuestra ingeniería</span>
+                <h2 class="ing-title">NUESTRA INGENIERÍA.</h2>
+                <div class="ing-line"></div>
+                <p class="ing-desc">
+                    Elegimos la arquitectura y las herramientas según las necesidades de cada proyecto, priorizando utilidad, seguridad y mantenimiento.
+                </p>
+            </div>
+
+            <div class="ing-grid">
+                <div data-spotlight="true" style="--card-sheen:rgba(0,212,255,0.18);" class="ing-card cian reveal">
+                    <div class="card__sheen" aria-hidden="true"></div>
+                    <div class="ing-icon cian"><i class="fas fa-hand-pointer"></i></div>
+                    <h3>Interfaces claras</h3>
+                    <p>Diseñadas para las tareas de quienes utilizan el sistema en su día a día.</p>
                 </div>
-            <?php endforeach; ?>
+
+                <div data-spotlight="true" style="--card-sheen:rgba(255,107,0,0.18);" class="ing-card fuego reveal">
+                    <div class="card__sheen" aria-hidden="true"></div>
+                    <div class="ing-icon fuego"><i class="fas fa-layer-group"></i></div>
+                    <h3>Arquitectura adecuada</h3>
+                    <p>Soluciones locales, web o móviles según los requisitos reales del proyecto.</p>
+                </div>
+
+                <div data-spotlight="true" style="--card-sheen:rgba(0,212,255,0.18);" class="ing-card cian reveal">
+                    <div class="card__sheen" aria-hidden="true"></div>
+                    <div class="ing-icon cian"><i class="fas fa-shield-halved"></i></div>
+                    <h3>Protección de datos</h3>
+                    <p>Control de accesos y respaldos automáticos según las necesidades del negocio.</p>
+                </div>
+
+                <div data-spotlight="true" style="--card-sheen:rgba(255,107,0,0.18);" class="ing-card fuego reveal">
+                    <div class="card__sheen" aria-hidden="true"></div>
+                    <div class="ing-icon fuego"><i class="fas fa-arrow-trend-up"></i></div>
+                    <h3>Evolución del software</h3>
+                    <p>Mejoras y nuevas funcionalidades continuas durante todo su ciclo de vida.</p>
+                </div>
+            </div>
+
+            <div class="integraciones-block reveal">
+                <h3>Integraciones disponibles en nuestros productos de gestión</h3>
+                <p>No todas aplican a cada producto: las de Reven están verificadas; en desarrollos a medida se definen con el cliente.</p>
+                <div class="integraciones-grid">
+                    <div class="integracion-item int-wa">
+                        <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                        <span class="int-name">WhatsApp</span>
+                        <span class="int-desc">Comprobantes y soporte</span>
+                    </div>
+                    <div class="integracion-item int-cian">
+                        <i class="fas fa-qrcode" aria-hidden="true"></i>
+                        <span class="int-name">Transfermóvil</span>
+                        <span class="int-desc">Cobros por QR</span>
+                    </div>
+                    <div class="integracion-item int-cian">
+                        <i class="fas fa-qrcode" aria-hidden="true"></i>
+                        <span class="int-name">EnZona</span>
+                        <span class="int-desc">Cobros por QR</span>
+                    </div>
+                    <div class="integracion-item int-fuego">
+                        <i class="fab fa-google-drive" aria-hidden="true"></i>
+                        <span class="int-name">Google Drive</span>
+                        <span class="int-desc">Respaldos remotos</span>
+                    </div>
+                    <div class="integracion-item int-cian">
+                        <i class="fas fa-barcode" aria-hidden="true"></i>
+                        <span class="int-name">Lectores USB</span>
+                        <span class="int-desc">Ópticos y cámara</span>
+                    </div>
+                    <div class="integracion-item int-fuego">
+                        <i class="fas fa-print" aria-hidden="true"></i>
+                        <span class="int-name">Térmicas</span>
+                        <span class="int-desc">Tickets 58 y 80 mm</span>
+                    </div>
+                    <div class="integracion-item int-excel">
+                        <i class="fas fa-file-excel" aria-hidden="true"></i>
+                        <span class="int-name">Excel</span>
+                        <span class="int-desc">Importación de datos</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ===== Ingeniería personalizada ===== -->
+    <section id="medida" class="medida-cf section-seam">
+        <div class="medida-cf__wrap">
+            <div class="medida-cf__head reveal">
+                <span class="medida-cf__eyebrow">Ingeniería personalizada</span>
+                <h2 class="medida-cf__title">SOFTWARE A MEDIDA.</h2>
+                <div class="medida-cf__rule" aria-hidden="true"></div>
+                <p class="medida-cf__desc">
+                    Analizamos tus procesos y desarrollamos aplicaciones adaptadas a tu organización, desde herramientas internas hasta plataformas completas.
+                </p>
+                <a href="/desamedida.php" id="btn-cta-medida" class="medida-cf__cta">
+                    Cuéntanos tu proyecto →
+                </a>
+            </div>
+
+            <div class="medida-cf__steps reveal">
+                <div class="medida-cf__grid">
+                    <div class="medida-cf__card">
+                        <span class="medida-cf__num is-fuego">01. ANALIZAMOS</span>
+                        <h4 class="medida-cf__card-title">Escuchamos y evaluamos</h4>
+                        <p class="medida-cf__card-desc">Entendemos tus procesos y objetivos para definir la arquitectura adecuada.</p>
+                    </div>
+                    <div class="medida-cf__card">
+                        <span class="medida-cf__num is-cian">02. DISEÑAMOS</span>
+                        <h4 class="medida-cf__card-title">Estructura y experiencia</h4>
+                        <p class="medida-cf__card-desc">Modelamos interfaces claras y flujos eficientes para los usuarios.</p>
+                    </div>
+                    <div class="medida-cf__card">
+                        <span class="medida-cf__num is-fuego">03. DESARROLLAMOS</span>
+                        <h4 class="medida-cf__card-title">Ingeniería sólida</h4>
+                        <p class="medida-cf__card-desc">Escribimos código limpio, seguro y optimizado para cada plataforma.</p>
+                    </div>
+                    <div class="medida-cf__card">
+                        <span class="medida-cf__num is-cian">04. IMPLEMENTAMOS</span>
+                        <h4 class="medida-cf__card-title">Puesta en marcha</h4>
+                        <p class="medida-cf__card-desc">Desplegamos el sistema y acompañamos su evolución continua.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
-    <!-- ===== Preguntas frecuentes ===== -->
-    <section class="wrap section" id="preguntas">
-        <div class="section-head reveal">
-            <span class="eyebrow">Antes de entrar</span>
-            <h2>Preguntas frecuentes</h2>
-            <p>Lo que conviene saber sobre los datos, la conexión y el soporte de la plataforma.</p>
-        </div>
+    <!-- ===== Nuestro proceso ===== -->
+    <section class="sec" id="proceso">
+        <div class="wrap">
+            <div class="proceso-head reveal">
+                <span class="eyebrow">Nuestro proceso</span>
+                <h2 class="bebas">Cómo trabajamos.</h2>
+                <div class="rule-fuego" aria-hidden="true"></div>
+                <p>Combinamos análisis, diseño y desarrollo para construir sistemas que puedan utilizarse, mantenerse y evolucionar.</p>
+            </div>
 
-        <div class="faq reveal">
-            <details class="faq-item">
-                <summary><span>¿De dónde salen los datos que muestra esta portada?</span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
-                <div class="faq-body"><p>Se leen en cada carga desde tus bases locales: facturación (<code>tbl_fact</code>) y nóminas (<code>cierres_periodo_nomina</code>), del último mes. Si ese mes no tiene movimiento, se toma el último mes con datos y se indica cuál es. No hay cifras de ejemplo.</p></div>
-            </details>
-            <details class="faq-item">
-                <summary><span>¿Y si MySQL está apagado?</span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
-                <div class="faq-body"><p>La portada se abre igual. La tarjeta muestra el último dato guardado con su fecha y hora, o «sin datos» si nunca se pudo consultar. Nunca se inventan cifras, y los módulos que dependen de la base esperan a que el servicio vuelva.</p></div>
-            </details>
-            <details class="faq-item">
-                <summary><span>¿Qué se consulta exactamente del último mes?</span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
-                <div class="faq-body"><p>De facturación: total facturado, número de facturas y la última emitida (sin contar anuladas). De nóminas: pagado bruto, deducciones y cobrado real del cierre mensual. Si el mes aún no está cerrado, se usa el último cierre y se indica cuál es.</p></div>
-            </details>
-            <details class="faq-item">
-                <summary><span>¿Necesito internet para usar el sistema?</span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
-                <div class="faq-body"><p>No. Todo corre en tu equipo o en la red local: Apache, PHP y MySQL. Los datos no salen de esa red.</p></div>
-            </details>
-            <details class="faq-item">
-                <summary><span>¿Estas consultas modifican la base de datos?</span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
-                <div class="faq-body"><p>No. Son consultas de solo lectura del mes anterior, sin escrituras ni tareas de mantenimiento.</p></div>
-            </details>
-            <details class="faq-item">
-                <summary><span>¿Cómo empiezo si el equipo es nuevo?</span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
-                <div class="faq-body"><p>Entra al <a href="<?= $base ?>/InstalarBD/InstalarBD.php">Instalador de base de datos</a>, crea el esquema y después abre el Ecosistema Financiero. Si ya tienes datos, salta ese paso.</p></div>
-            </details>
-            <details class="faq-item">
-                <summary><span>¿Cómo pido soporte?</span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
-                <div class="faq-body"><p>Escribe a <a href="mailto:kakycu@gmail.com">kakycu@gmail.com</a> o llama al <a href="tel:+5352712861">+53 5 2712861</a>, de lunes a viernes de 8:00 a 17:00.</p></div>
-            </details>
+            <div class="proceso-grid">
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">01</span>
+                        <h3>Escuchamos y analizamos</h3>
+                        <p>Entendemos las necesidades, el entorno de trabajo y los problemas concretos que debe resolver el software.</p>
+                    </div>
+                </div>
+                <div class="proc-paso is-fuego">
+                    <div>
+                        <span class="proc-num">02</span>
+                        <h3>Diseñamos la solución</h3>
+                        <p>Definimos las funcionalidades, la arquitectura de datos y la experiencia de usuario para garantizar simplicidad.</p>
+                    </div>
+                </div>
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">03</span>
+                        <h3>Desarrollamos</h3>
+                        <p>Construimos el sistema de manera progresiva, con entregas parciales para validar resultados en cada etapa.</p>
+                    </div>
+                </div>
+                <div class="proc-paso is-fuego">
+                    <div>
+                        <span class="proc-num">04</span>
+                        <h3>Probamos e implementamos</h3>
+                        <p>Validamos el funcionamiento con pruebas reales, corregimos incidencias y preparamos la puesta en marcha.</p>
+                    </div>
+                </div>
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">05</span>
+                        <h3>Acompañamos su evolución</h3>
+                        <p>Ofrecemos soporte técnico, capacitación y mejoras continuas según las condiciones acordadas para cada solución.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Quiénes somos ===== -->
+    <section class="sec" id="nosotros">
+        <div class="wrap">
+            <!-- Encabezado alineado a la izquierda, como en cyberforja -->
+            <div class="equipo-head reveal" data-anim="left">
+                <span class="eyebrow">Sobre UnicornioSoftware</span>
+                <h2 class="bebas">Quiénes somos.</h2>
+                <div class="rule-fuego" aria-hidden="true"></div>
+                <p>
+                    Somos un equipo que combina experiencia en software empresarial, simulación y
+                    desarrollo interactivo para crear soluciones propias y proyectos especializados.
+                </p>
+            </div>
+
+            <!-- Ficha corporativa: tres pilares técnicos + compromiso y visión -->
+            <div class="equipo-card reveal" data-spotlight style="--card-sheen: rgba(255, 107, 0, .18)">
+                <span class="card__sheen" aria-hidden="true"></span>
+
+                <div class="equipo-grid">
+                    <div class="pilares">
+                        <div class="pilar">
+                            <span class="pilar-ico is-fuego"><i class="fa-solid fa-code" aria-hidden="true"></i></span>
+                            <h3>Ingeniería y arquitectura</h3>
+                            <p>Más de una década diseñando sistemas de escritorio autónomos, bases de datos locales y servicios web escalables.</p>
+                        </div>
+                        <div class="pilar">
+                            <span class="pilar-ico is-cian"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+                            <h3>Diseño y experiencia</h3>
+                            <p>Interfaces pensadas para simplificar tareas complejas en el ritmo diario de trabajo comercial.</p>
+                        </div>
+                        <div class="pilar">
+                            <span class="pilar-ico is-fuego"><i class="fa-solid fa-headset" aria-hidden="true"></i></span>
+                            <h3>Cercanía y soporte</h3>
+                            <p>Trato directo con el equipo que construye el software, con atención cercana y respuestas ágiles.</p>
+                        </div>
+                    </div>
+
+                    <div class="compromiso">
+                        <div>
+                            <h4>Compromiso y visión</h4>
+                            <p>Conoce nuestra historia, cómo trabajamos cada desarrollo y la trayectoria que respalda a UnicornioSoftware.</p>
+                        </div>
+                        <a class="btn-outline-fuego" href="/about.php">
+                            <i class="fa-solid fa-users" aria-hidden="true"></i> Conoce nuestro equipo &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<section class="sec" id="plataforma">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Bajo el capó</span>
+                <h2 class="bebas">La plataforma</h2>
+                <p>Un stack local probado en producción: Apache, PHP y MySQL, con respaldo y soporte del equipo que lo construyó.</p>
+            </div>
+
+                        <div class="metrics" role="list" aria-label="Indicadores de la plataforma" style="padding:0 0 1.5rem">
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-cubes" aria-hidden="true"></i>
+                    <div><b><?= count($ecosistema) ?></b><span>Módulos de gestión</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-brands fa-php" aria-hidden="true"></i>
+                    <div><b>PHP <?= htmlspecialchars($phpVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Servidor local</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-database" aria-hidden="true"></i>
+                    <div><b>MySQL <?= htmlspecialchars($mysqlVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Base de datos</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-server" aria-hidden="true"></i>
+                    <div><b>Apache <?= htmlspecialchars($apacheVersion, ENT_QUOTES, 'UTF-8') ?></b><span>HTTPD</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+                    <div><b><?= htmlspecialchars($phpmyadminVersion, ENT_QUOTES, 'UTF-8') ?></b><span>phpMyAdmin</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-headset" aria-hidden="true"></i>
+                    <div><b>24/7</b><span>Soporte técnico</span></div>
+                </div>
+            </div>
+<div class="serv-grid">
+                <?php foreach ($servicios as $srv): ?>
+                <div class="serv reveal">
+                    <i class="<?= htmlspecialchars($srv['icono'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i>
+                    <div>
+                        <strong><?= htmlspecialchars($srv['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <p><?= htmlspecialchars($srv['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+                        <div class="db-health reveal">
+                <div class="db-health-head">
+                    <i class="fa-solid fa-heart-pulse" aria-hidden="true"></i>
+                    <span>Salud de la Base de Datos (<?= htmlspecialchars($dbName !== '' ? $dbName : 'No conectada', ENT_QUOTES, 'UTF-8') ?>)</span>
+                </div>
+                <div class="db-health-grid">
+                    <div class="db-health-item">
+                        <i class="fa-solid fa-database" style="color:var(--cian)" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbSize, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Tamaño BD</span>
+                    </div>
+                    <div class="db-health-item">
+                        <i class="fa-solid fa-table" style="color:#4ade80" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbTables, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Tablas</span>
+                    </div>
+                    <div class="db-health-item" title="<?= htmlspecialchars($dbUptimeTitle, ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="fa-solid fa-clock" style="color:#fbbf24" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbUptime, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Uptime MySQL</span>
+                    </div>
+                </div>
+            </div>
+<div class="lic-acciones reveal" style="margin-top:1.6rem">
+                <a class="btn btn-ghost btn-sm" href="<?= $base ?>/phpinfo/">
+                    <i class="fa-solid fa-server" aria-hidden="true"></i> Estado del servidor
+                </a>
+                <a class="btn btn-ghost btn-sm" href="<?= $base ?>/InstalarBD/InstalarBD.php">
+                    <i class="fa-solid fa-database" aria-hidden="true"></i> Instalador de base de datos
+                </a>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ===== Estado de la licencia ===== -->
+    <section class="sec" id="licencia-estado">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Registro del equipo</span>
+                <h2 class="bebas">Estado de la licencia</h2>
+                <p>La licencia se guarda cifrada y solo en este equipo. Aquí puedes revisar su estado y renovarla cuando haga falta.</p>
+            </div>
+
+            <div class="lic-grid">
+                <div class="panel reveal">
+                    <span class="badge-estado <?= $licEdoTono ?>">
+                        <i class="fa-solid <?= $licEdoIcono ?>" aria-hidden="true"></i> <?= htmlspecialchars($licEdoNombre, ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+
+                    <dl class="datos">
+                        <div class="dato">
+                            <dt>Nombre de registro</dt>
+                            <dd><?= $licRegistro !== '' ? htmlspecialchars($licRegistro, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Usuario del registro</dt>
+                            <dd><?= $licUsuario !== '' ? htmlspecialchars($licUsuario, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Tipo de licencia</dt>
+                            <dd><?= $licTipo !== '' ? htmlspecialchars($licTipo, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Vence</dt>
+                            <dd><?= $licVence !== '' ? htmlspecialchars($licVence, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Código de equipo</dt>
+                            <dd class="mono"><?= $licHuella !== '' ? htmlspecialchars($licHuella, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                    </dl>
+
+                    <div class="lic-acciones">
+                        <button type="button" class="btn btn-fuego btn-sm" data-lic-open>
+                            <i class="fa-solid fa-key" aria-hidden="true"></i> Activar o renovar
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-estado-lic-open>
+                            <i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-sol-open>
+                            <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo
+                        </button>
+                        <a class="btn btn-ghost btn-sm" href="<?= $base ?>/soporte.php">
+                            <i class="fa-solid fa-headset" aria-hidden="true"></i> Solicitar Soporte
+                        </a>
+                    </div>
+                </div>
+
+                <div class="panel reveal">
+                    <h3 class="bebas" style="font-size:1.7rem;text-transform:uppercase">Cómo funciona</h3>
+                    <p class="lic-nota" style="margin-top:.7rem">
+                        La llave serial se valida contra los datos de registro (<b>nombre</b> y <b>usuario</b>) y se
+                        guarda cifrada en el registro de Windows o en un archivo cifrado del disco. Así, la activación queda vinculada a este equipo y el sistema puede verificar su estado de forma segura.
+                    </p>
+                    <p class="lic-nota" style="margin-top:.9rem">
+                        Para renovar, solo debes introducir una llave nueva: la anterior se reemplaza sin perder los datos
+                        ni la configuración del sistema. Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida.
+                    </p>
+                    <p class="lic-nota" style="margin-top:.9rem">
+                        Todo el trámite —activar, renovar, importar un archivo <code>.lic</code> o solicitar la licencia por correo—
+                        se realiza aquí mismo, sin salir de la portada. Antes de activar, puedes revisar los planes disponibles y elegir el que mejor se adapte a tu negocio.
+                    </p>
+                    <div style="margin-top:1.25rem">
+                        <a class="btn btn-cian btn-sm" href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver planes y precios</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Precios ===== -->
+    <section class="sec" id="precios">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Precios</span>
+                <h2 class="bebas">Planes de licenciamiento</h2>
+                <p>Elige el plan que mejor se adapte al tamaño y ritmo de tu negocio. Activa tu licencia y pon SiGesEmp a trabajar para ti.</p>
+            </div>
+
+            <div class="precios-grid">
+                <article class="plan-card reveal">
+                    <h3 class="plan-name">Básico</h3>
+                    <p class="plan-desc">Para pequeños negocios que quieren ordenar su operación y empezar a trabajar con control.</p>
+                    <div class="plan-price">
+                        <span class="plan-amount">15</span>
+                        <span class="plan-currency">USD</span>
+                        <span class="plan-period">/mes</span>
+                    </div>
+                    <p class="plan-note">Licencia por equipo, con soporte inicial.</p>
+                    <hr class="plan-divider">
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>1 módulo principal a elegir</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>1 usuario administrador</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Trabajo local, sin internet</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Respaldo manual de la base de datos</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Soporte por correo y teléfono</span></li>
+                    </ul>
+                    <a href="#licencia-estado" class="plan-cta plan-cta-secondary"><i class="fa-solid fa-key" aria-hidden="true"></i> Activar licencia</a>
+                </article>
+
+                <article class="plan-card is-featured reveal">
+                    <span class="plan-badge"><i class="fa-solid fa-star" aria-hidden="true"></i> Más elegido</span>
+                    <h3 class="plan-name">Profesional</h3>
+                    <p class="plan-desc">Para negocios en crecimiento que necesitan integrar varios módulos y tener más control.</p>
+                    <div class="plan-price">
+                        <span class="plan-amount">30</span>
+                        <span class="plan-currency">USD</span>
+                        <span class="plan-period">/mes</span>
+                    </div>
+                    <p class="plan-note">Ideal para operaciones con varios procesos.</p>
+                    <hr class="plan-divider">
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Hasta 3 módulos del ecosistema SiGesEmp</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Usuarios y permisos por módulo</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Reportes y cierres operativos</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Respaldo local y exportación manual</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Soporte prioritario</span></li>
+                    </ul>
+                    <a href="#licencia-estado" class="plan-cta plan-cta-primary"><i class="fa-solid fa-rocket" aria-hidden="true"></i> Empezar ahora</a>
+                </article>
+
+                <article class="plan-card reveal">
+                    <h3 class="plan-name">Empresarial</h3>
+                    <p class="plan-desc">Para empresas que necesitan la plataforma completa, acompañamiento y mayor capacidad de operación.</p>
+                    <div class="plan-price">
+                        <span class="plan-amount">50</span>
+                        <span class="plan-currency">USD</span>
+                        <span class="plan-period">/mes</span>
+                    </div>
+                    <p class="plan-note">Pensado para gestión integral y crecimiento.</p>
+                    <hr class="plan-divider">
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Todos los módulos de SiGesEmp</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Usuarios y roles según tu operación</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Integración entre módulos y reportes completos</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Asistencia en puesta en marcha</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Soporte técnico y acompañamiento continuo</span></li>
+                    </ul>
+                    <a href="/desamedida.php" class="plan-cta plan-cta-secondary"><i class="fa-solid fa-comments" aria-hidden="true"></i> Solicitar propuesta</a>
+                </article>
+            </div>
+
+            <div class="precios-trial reveal">
+                <p><strong>¿Todavía no decides?</strong>Solicita una demostración o activa tu licencia cuando estés listo. Te orientamos según las necesidades de tu negocio.</p>
+                <a href="#licencia-estado" class="btn btn-cian btn-sm"><i class="fa-solid fa-key" aria-hidden="true"></i> Activar / renovar</a>
+            </div>
+
+            <div class="precios-links reveal">
+                <a href="#licencia-estado" class="precios-link">
+                    <i class="fa-solid fa-percent" aria-hidden="true"></i>
+                    <span><strong>Paga menos por ciclo</strong>Consulta opciones de pago semestral o anual y elige el plan que mejor te convenga.</span>
+                </a>
+                <a href="<?= $base ?>/contacto.php" class="precios-link">
+                    <i class="fa-solid fa-file-signature" aria-hidden="true"></i>
+                    <span><strong>Cómo contratar</strong>Habla con nuestro equipo y recibe orientación sobre el plan, la activación y la puesta en marcha.</span>
+                </a>
+                <a href="<?= $base ?>/contacto.php" class="precios-link">
+                    <i class="fa-solid fa-user-check" aria-hidden="true"></i>
+                    <span><strong>¿Te lo instalan?</strong>Busca un socio técnico acreditado en tu zona, con presupuesto acordado.</span>
+                </a>
+            </div>
+        </div>
+    </section>
+    <!-- ===== Preguntas frecuentes ===== -->
+    <section class="sec" id="preguntas">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Antes de entrar</span>
+                <h2 class="bebas">Preguntas frecuentes</h2>
+                <p>Respuestas rápidas sobre UnicornioSoftware, SiGesEmp, la licencia, los módulos y cómo empezar.</p>
+            </div>
+
+            <div class="faq-lista">
+                <?php foreach ($faq as $i => $f): ?>
+                <details class="faq reveal"<?= $i === 0 ? ' open' : '' ?>>
+                    <summary><span><?= htmlspecialchars($f['p'], ENT_QUOTES, 'UTF-8') ?></span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
+                    <div class="faq-body"><p><?= $f['r'] ?></p></div>
+                </details>
+                <?php endforeach; ?>
+            </div>
         </div>
     </section>
 
     <!-- ===== CTA ===== -->
-    <section class="wrap cta-section">
-        <div class="cta reveal">
-            <span class="eyebrow">Empieza ahora</span>
-            <h2>Todo el sistema, a un clic desde aquí</h2>
-            <p>
-                La portada del sistema reúne los accesos a cada módulo, el estado de la licencia
-                y la información de soporte de tu instalación.
-            </p>
-            <div class="hero-actions">
-                <a class="btn btn-primary" href="<?= $base ?>/index.php">
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Ir al Ecosistema Financiero
-                </a>
-                <a class="btn btn-glass" href="<?= $base ?>/soporte.php">
-                    <i class="fa-solid fa-headset"></i> Hablar con soporte
-                </a>
+    <section class="sec">
+        <div class="wrap">
+            <div class="cta reveal">
+                <span class="eyebrow">Empieza ahora</span>
+                <h2 class="bebas">Todo el sistema,<br>a un clic desde aquí</h2>
+                <p>La portada reúne los accesos a cada módulo, el estado de la licencia y la información de soporte de tu instalación.</p>
+                <div class="hero-acciones">
+                    <a class="btn btn-fuego" href="<?= $base ?>/index.php">
+                        <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Ir al Ecosistema Financiero
+                    </a>
+                    <a class="btn btn-ghost" href="<?= $base ?>/soporte.php">
+                        <i class="fa-solid fa-headset" aria-hidden="true"></i> Hablar con soporte
+                    </a>
+                    <a class="btn btn-ghost" href="#inicio">
+                        <i class="fa-solid fa-chevron-up" aria-hidden="true"></i> Regresar al Inicio
+                    </a>
+                </div>
             </div>
         </div>
     </section>
 </main>
 
-<footer class="site-footer">
-    <div class="wrap footer-grid">
+<!-- ===== Pie ===== -->
+<footer class="pie">
+    <div class="wrap">
+        <div class="pie-grid">
+            <div>
+                <div class="pie-marca">
+                    <img src="/images/logo.png" alt="">
+                    <span class="bebas" style="font-size:1.5rem"><i style="font-style:normal;color:var(--cian)">UNICORNIO</i><i style="font-style:normal;color:var(--fuego)">SOFTWARE</i></span>
+                </div>
+                <p>Entorno de Aplicaciones Web de UnicornioSoftware&#174; Cuba. Kaky&#174;. Facturación, nóminas, costos e inventarios en tu propia red.</p>
+                <p style="margin-top:.6rem;color:var(--gris-2);font-style:italic">&laquo;Donde tu visión toma forma&raquo;</p>
+            </div>
 
-        <!-- Columna 1: Marca -->
-        <div class="footer-col footer-brand">
-            <img class="footer-logo" src="/images/logo.png" alt="UnicornioSoftware Cuba">
-            <strong>Entorno de Aplicaciones Web</strong>
-            <small>de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup></small>
-            <p>
-                Facturación, nóminas y gestión en una plataforma local.<br>
-                &copy; <?= $anio ?> Todos los derechos reservados.
-            </p>
-            <p class="footer-slogan">«Donde tu visión toma forma»</p>
-        </div>
+            <nav aria-label="Enlaces del pie">
+                <h4>Explorar</h4>
+                <ul class="pie-lista">
+                    <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
+                    <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
+                    <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
+                    <li><a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
+                    <li><a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
+                    <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
+                </ul>
+            </nav>
 
-        <!-- Columna 2: Enlaces -->
-        <nav class="footer-col" aria-label="Enlaces del pie">
-            <h4><i class="fa-solid fa-compass" aria-hidden="true"></i> Explorar</h4>
-            <ul class="footer-list">
-                <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
-                <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
-                <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
-                <li><a href="<?= $base ?>/costos/login.php" data-modulo-pendiente="Costos"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
-                <li><a href="<?= $base ?>/inventarios/login.php" data-modulo-pendiente="Inventarios"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
-                <li><a href="<?= $base ?>/administracion/index.php" data-modulo-pendiente="Administración"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
-                <li><a href="<?= $base ?>/phpinfo/"><i class="fa-solid fa-server" aria-hidden="true"></i> Servidor Info PHP</a></li>
-                <li><a href="<?= $base ?>/InstalarBD/InstalarBD.php"><i class="fa-solid fa-database" aria-hidden="true"></i> Instalador de BD</a></li>
-            </ul>
-        </nav>
+            <div>
+                <h4>Contacto</h4>
+                <p><a href="mailto:kakycu@gmail.com"><i class="fa-solid fa-envelope" aria-hidden="true"></i> kakycu@gmail.com</a></p>
+                <p><a href="tel:+5352712861"><i class="fa-solid fa-phone" aria-hidden="true"></i> +53 5 2712861</a></p>
+                <p><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>Sábados: 9:00 AM - 1:00 PM</p>
+                <p><a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Centro de soporte</a></p>
+            </div>
 
-        <!-- Columna 3: Contacto -->
-        <div class="footer-col footer-contact">
-            <h4><i class="fa-solid fa-headset" aria-hidden="true"></i> Contacto</h4>
-            <p>
-                <a href="mailto:kakycu@gmail.com"><i class="fa-solid fa-envelope" aria-hidden="true"></i> kakycu@gmail.com</a><br>
-                <a href="tel:+5352712861"><i class="fa-solid fa-phone" aria-hidden="true"></i> +53 5 2712861</a><br>
-                <small><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>Sábados: 9:00 AM - 1:00 PM</small>
-            </p>
-            <div class="footer-buttons">
-                <button type="button" class="btn btn-glass btn-sm" id="irArriba">
-                    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Ir al inicio
-                </button>
-                <a class="btn btn-primary btn-sm" href="<?= $base ?>/index.php">
-                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Explorar subsistemas
-                </a>
+            <div>
+                <h4>Síguenos</h4>
+                <div class="pie-social">
+                    <a href="https://www.facebook.com/unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
+                    <a href="https://www.x.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true"><path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn"><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
+                    <a href="https://www.instagram.com/unicorniosoftcuba" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
+                    <a href="https://www.youtube.com/@unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a>
+                    <a href="https://api.whatsapp.com/send?phone=5352712861" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a>
+                </div>
+
+                <h4 class="pie-legal-title">Legal</h4>
+                <p class="pie-legal">
+                    <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
+                    <a href="<?= $base ?>/privacidad.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
+                    <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+                </p>
             </div>
         </div>
-
-        <!-- Columna 4: Redes sociales y legal -->
-        <div class="footer-col">
-            <h4><i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Síguenos</h4>
-            <div class="social-links">
-                <a class="social-link" href="https://www.facebook.com/unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://www.x.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)">
-                    <!-- La marca X no viene en el build de Font Awesome del proyecto: se dibuja con su SVG oficial. -->
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/></svg>
-                </a>
-                <a class="social-link" href="https://www.linkedin.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn"><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://www.instagram.com/unicorniosoftcuba" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://www.youtube.com/@unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a>
-                <a class="social-link" href="https://api.whatsapp.com/send?phone=5352712861" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a>
-            </div>
-            <h4 class="footer-legal-title"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i> Legal</h4>
-            <p class="footer-legal-links">
-                <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
-                <a href="<?= $base ?>/privacidad.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
-                <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
-            </p>
-        </div>
-    </div>
-
-    <div class="footer-bar">
-        <div class="wrap">
-            <span>&copy; <?= $anio ?> Entorno de Aplicaciones Web de UnicornioSoftware<sup>&reg;</sup> Cuba. Kaky<sup>&reg;</sup></span>
-            <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Plataforma local · v10.0.1</span>
+        <div class="pie-barra">
+            <span>© <?= date('Y') ?> UnicornioSoftware® Cuba. Todos los derechos reservados.</span>
+            <span>Licencia registrada · datos alojados en este equipo</span>
         </div>
     </div>
 </footer>
@@ -2617,270 +1453,13 @@ $servicios = [
 <div class="scroll-fabs">
     <button type="button" class="scroll-fab" id="btnScrollTop"
             title="Ir hasta arriba" aria-label="Ir hasta arriba de la página">
-        <i class="fa-solid fa-angles-up"></i>
+        <i class="fa-solid fa-angles-up" aria-hidden="true"></i>
     </button>
     <button type="button" class="scroll-fab" id="btnScrollBottom"
             title="Ir hasta abajo" aria-label="Ir hasta abajo de la página">
-        <i class="fa-solid fa-angles-down"></i>
+        <i class="fa-solid fa-angles-down" aria-hidden="true"></i>
     </button>
 </div>
-
-<script>
-    // Cambio de tema claro / oscuro (mismo mecanismo que el panel phpinfo).
-    (function () {
-        var boton = document.getElementById('themeToggle');
-        var raiz = document.documentElement;
-
-        function sincronizar(tema) {
-            var esDark = tema !== 'light';
-            if (boton) {
-                boton.setAttribute('aria-checked', esDark ? 'true' : 'false');
-                boton.title = esDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro';
-            }
-        }
-
-        sincronizar(raiz.getAttribute('data-bs-theme'));
-        if (boton) {
-            boton.addEventListener('click', function () {
-                var actual = raiz.getAttribute('data-bs-theme') === 'light' ? 'light' : 'dark';
-                var nuevo = actual === 'dark' ? 'light' : 'dark';
-                raiz.setAttribute('data-bs-theme', nuevo);
-                try { localStorage.setItem('theme', nuevo); } catch (e) {}
-                sincronizar(nuevo);
-            });
-        }
-    })();
-
-    // Botón "Ir al inicio" del pie y botones flotantes arriba/abajo.
-    (function () {
-        var botonPie = document.getElementById('irArriba');
-        var arriba = document.getElementById('btnScrollTop');
-        var abajo = document.getElementById('btnScrollBottom');
-
-        function irArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
-        function irAbajo() {
-            var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-            window.scrollTo({ top: max, behavior: 'smooth' });
-        }
-
-        if (botonPie) { botonPie.addEventListener('click', irArriba); }
-        if (arriba) { arriba.addEventListener('click', irArriba); }
-        if (abajo) { abajo.addEventListener('click', irAbajo); }
-
-        // Cada botón aparece solo cuando tiene sentido; de paso se alimenta la
-        // barra de progreso de lectura de la parte superior.
-        var progreso = document.getElementById('scrollProgress');
-        function actualizar() {
-            var y = window.scrollY || document.documentElement.scrollTop || 0;
-            var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-            if (arriba) { arriba.classList.toggle('is-visible', y > 140); }
-            if (abajo) { abajo.classList.toggle('is-visible', y < max - 140); }
-            if (progreso) {
-                progreso.style.width = (max > 0 ? Math.min(100, (y / max) * 100) : 0) + '%';
-            }
-        }
-        window.addEventListener('scroll', actualizar, { passive: true });
-        window.addEventListener('resize', actualizar);
-        actualizar();
-    })();
-
-    // Aparición progresiva: si no hay soporte o el usuario pidió menos
-    // movimiento, todo queda visible desde el principio.
-    (function () {
-        var elementos = document.querySelectorAll('.reveal');
-        if (!elementos.length) { return; }
-        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        function mostrarTodo() {
-            for (var i = 0; i < elementos.length; i++) {
-                elementos[i].classList.add('is-in');
-            }
-        }
-
-        if (reduce || !('IntersectionObserver' in window)) { mostrarTodo(); return; }
-
-        document.documentElement.classList.add('js-reveal');
-        var observador = new IntersectionObserver(function (entradas) {
-            entradas.forEach(function (entrada) {
-                if (entrada.isIntersecting) {
-                    entrada.target.classList.add('is-in');
-                    observador.unobserve(entrada.target);
-                }
-            });
-        }, { rootMargin: '0px 0px -8% 0px', threshold: .08 });
-        for (var i = 0; i < elementos.length; i++) {
-            observador.observe(elementos[i]);
-        }
-    })();
-
-    // Las alertas de conexión se pueden cerrar con su X; el aviso vuelve a
-    // aparecer al recargar mientras MySQL siga apagado.
-    (function () {
-        var botones = document.querySelectorAll('.alerta-bd-cerrar');
-        for (var i = 0; i < botones.length; i++) {
-            botones[i].addEventListener('click', function () {
-                var alerta = this.closest('.alerta-bd');
-                if (alerta) { alerta.remove(); }
-            });
-        }
-    })();
-</script>
-
-<script>
-    // ===== Intro animada: piezas del logo =====
-    // Secuencia: cada pieza entra en su posición y se queda; al completarse el
-    // logo aparece final.png con un destello transversal recortado por su
-    // silueta. Es decorativa: se puede saltar y nunca debe bloquear la portada.
-    (function () {
-        var intro = document.getElementById('introAnim');
-        if (!intro) { return; }
-        var raiz = document.documentElement;
-        var barra = document.getElementById('introBar');
-        var saltar = document.getElementById('introSkip');
-        var capas = intro.querySelectorAll('.intro-layer');
-        var capaFinal = intro.querySelector('.intro-final');
-        var pasos = capas.length + 1;
-        var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var terminado = false;
-        var temporizadores = [];
-
-        function esperar(fn, ms) {
-            temporizadores.push(window.setTimeout(fn, ms));
-        }
-
-        function pintar(paso) {
-            if (barra) { barra.style.width = Math.round((paso / pasos) * 100) + '%'; }
-        }
-
-        // Vuela el logo final hasta el logo del topbar mientras la intro se
-        // desvanece, para que ambos queden alineados en el relevo.
-        function volarAlLogo() {
-            if (!capaFinal || !capaFinal.classList.contains('is-on')) { return; }
-            var destino = document.querySelector('.site-header .brand-logo');
-            if (!destino) { return; }
-            var desde = capaFinal.getBoundingClientRect();
-            var hasta = destino.getBoundingClientRect();
-            if (!desde.width || !hasta.width) { return; }
-            var escala = hasta.width / desde.width;
-            var dx = (hasta.left + hasta.width / 2) - (desde.left + desde.width / 2);
-            var dy = (hasta.top + hasta.height / 2) - (desde.top + desde.height / 2);
-            capaFinal.style.transition = 'transform .65s cubic-bezier(.4, 0, .2, 1)';
-            capaFinal.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + escala + ')';
-        }
-
-        function terminar() {
-            if (terminado) { return; }
-            terminado = true;
-            volarAlLogo();
-            for (var i = 0; i < temporizadores.length; i++) {
-                window.clearTimeout(temporizadores[i]);
-            }
-            temporizadores = [];
-            if (barra) { barra.style.width = '100%'; }
-            intro.classList.add('is-out');
-            raiz.classList.remove('intro-lock');
-            window.setTimeout(function () {
-                if (intro.parentNode) { intro.parentNode.removeChild(intro); }
-            }, 900);
-        }
-
-        if (reducido || <?= $introSaltar ? 'true' : 'false' ?>) { terminar(); return; }
-
-        function mostrarFinal() {
-            if (terminado) { return; }
-            pintar(pasos);
-            intro.classList.add('is-final');
-            if (capaFinal) { capaFinal.classList.add('is-on'); }
-            esperar(function () {
-                if (!terminado) { intro.classList.add('is-sheen'); }
-            }, 1050);
-            esperar(terminar, 4100);
-        }
-
-        function mostrarCapa(indice) {
-            if (terminado) { return; }
-            // Pausa larga tras la última pieza antes de revelar final.png.
-            if (indice >= capas.length) { esperar(mostrarFinal, 1000); return; }
-            var capa = capas[indice];
-            capa.classList.add('is-on');
-            pintar(indice + 1);
-            esperar(function () { mostrarCapa(indice + 1); }, 820);
-        }
-
-        if (saltar) { saltar.addEventListener('click', terminar); }
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') { terminar(); }
-        });
-
-        // Red de seguridad: aunque falle un paso, la portada queda libre.
-        esperar(terminar, 14000);
-        esperar(function () { mostrarCapa(0); }, 220);
-    })();
-
-    // Al señalar una tarjeta de subsistema, su imagen pasa al fondo del card
-    // destacado «Punto de entrada»; al salir se retira.
-    (function () {
-        var destacada = document.querySelector('.card.is-featured');
-        if (!destacada) { return; }
-        var tarjetas = document.querySelectorAll('[data-preview-img]');
-        var descDestacada = destacada.querySelector('.card-desc');
-        var textoOriginal = descDestacada ? descDestacada.textContent : '';
-
-        function mostrar(url, texto) {
-            destacada.style.setProperty('--featured-img', 'url("' + url + '")');
-            destacada.classList.add('is-preview');
-            if (descDestacada && texto) { descDestacada.textContent = texto; }
-        }
-
-        function limpiar() {
-            destacada.classList.remove('is-preview');
-            destacada.style.removeProperty('--featured-img');
-            if (descDestacada) { descDestacada.textContent = textoOriginal; }
-        }
-
-        for (var i = 0; i < tarjetas.length; i++) {
-            (function (tarjeta) {
-                var url = tarjeta.getAttribute('data-preview-img');
-                var desc = tarjeta.querySelector('.card-desc');
-                var texto = desc ? desc.textContent : '';
-                tarjeta.addEventListener('mouseenter', function () { mostrar(url, texto); });
-                tarjeta.addEventListener('mouseleave', limpiar);
-                tarjeta.addEventListener('focus', function () { mostrar(url, texto); });
-                tarjeta.addEventListener('blur', limpiar);
-            })(tarjetas[i]);
-        }
-    })();
-
-    // Los enlaces del pie a módulos que aún no existen avisan en el sitio en
-    // lugar de llevar a un 404. Al publicar el módulo, quitar el atributo
-    // data-modulo-pendiente y el enlace funciona sin tocar nada más.
-    (function () {
-        var aviso = null;
-        var temporizador = null;
-
-        function mostrarAviso(nombre) {
-            if (!aviso) {
-                aviso = document.createElement('div');
-                aviso.className = 'aviso-modulo';
-                aviso.setAttribute('role', 'status');
-                aviso.innerHTML = '<i class="fa-solid fa-circle-info" aria-hidden="true"></i><span></span>';
-                document.body.appendChild(aviso);
-            }
-            aviso.querySelector('span').textContent = 'El módulo ' + nombre + ' todavía no está disponible.';
-            aviso.classList.add('is-on');
-            window.clearTimeout(temporizador);
-            temporizador = window.setTimeout(function () { aviso.classList.remove('is-on'); }, 4000);
-        }
-
-        var enlaces = document.querySelectorAll('[data-modulo-pendiente]');
-        for (var i = 0; i < enlaces.length; i++) {
-            enlaces[i].addEventListener('click', function (e) {
-                e.preventDefault();
-                mostrarAviso(this.getAttribute('data-modulo-pendiente'));
-            });
-        }
-    })();
-</script>
 
 <?php if (function_exists('licencia_fingerprint_equipo')): ?>
 <!-- ===== Activación / renovación de licencia, sin salir de la portada ===== -->
@@ -3100,9 +1679,6 @@ $servicios = [
 <!-- ===== Estado de la licencia ===== -->
 <div class="lic-overlay" id="estadoLicencia" hidden>
     <div class="lic-modal" role="dialog" aria-modal="true" aria-labelledby="edoLicTitulo">
-        <button type="button" class="lic-modal-x" data-estado-lic-close aria-label="Cerrar">
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-        </button>
         <div class="lic-modal-head">
             <span class="lic-modal-icon"><i class="fa-solid fa-key" aria-hidden="true"></i></span>
             <div>
@@ -3149,7 +1725,7 @@ $servicios = [
             <button type="button" class="btn btn-glass" data-estado-lic-ir="solicitud">
                 <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo
             </button>
-            <button type="button" class="btn btn-glass" data-estado-lic-close>Cerrar</button>
+            <button type="button" class="btn btn-glass" data-estado-lic-close><i class="fa-solid fa-xmark" aria-hidden="true"></i> Cerrar</button>
         </div>
     </div>
 </div>
@@ -3304,8 +1880,10 @@ $servicios = [
             .catch(function () { /* se conservan los valores escritos */ });
     }
 
+    var licEstabaAbierto = false;
     function abrir() {
-        if (licOverlay) { licOverlay.hidden = true; }
+        licEstabaAbierto = !!(licOverlay && !licOverlay.hidden);
+        if (licEstabaAbierto) { licOverlay.hidden = true; }
         overlay.hidden = false;
         document.body.classList.add('lic-abierto');
         limpiarAviso();
@@ -3318,11 +1896,13 @@ $servicios = [
         overlay.hidden = true;
         limpiarAviso();
         cerrarMenuEnvio();
-        if (licOverlay) {
+        if (licEstabaAbierto && licOverlay) {
             licOverlay.hidden = false;
             document.body.classList.add('lic-abierto');
         } else {
-            document.body.classList.remove('lic-abierto');
+            if (!document.querySelector('.lic-overlay:not([hidden])')) {
+                document.body.classList.remove('lic-abierto');
+            }
         }
     }
 
@@ -3781,5 +2361,339 @@ $servicios = [
 })();
 </script>
 <?php endif; ?>
+
+<script>
+/* Brillos sobre las tarjetas: el resplandor sigue al puntero. */
+(function () {
+    var tarjetas = document.querySelectorAll('[data-spotlight]');
+    function mover(e) {
+        var r = this.getBoundingClientRect();
+        this.style.setProperty('--pointer-x', (e.clientX - r.left) + 'px');
+        this.style.setProperty('--pointer-y', (e.clientY - r.top) + 'px');
+    }
+    for (var i = 0; i < tarjetas.length; i++) {
+        tarjetas[i].addEventListener('pointermove', mover);
+    }
+})();
+
+/* Intro animada: piezas del logo, destello final y salto con Escape o botón */
+(function () {
+    var intro = document.getElementById('introAnim');
+    if (!intro) { return; }
+    var raiz = document.documentElement;
+    var barra = document.getElementById('introBar');
+    var saltar = document.getElementById('introSkip');
+    var noMostrar = document.getElementById('introNoMostrar');
+    var capas = intro.querySelectorAll('.intro-layer');
+    var capaFinal = intro.querySelector('.intro-final');
+    var pasos = capas.length + 1;
+    var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var terminado = false;
+    var temporizadores = [];
+
+    // Si la página vuelve de tramitar la licencia, no se repite la intro.
+    if (intro.classList.contains('is-out') || localStorage.getItem('introOculta') === '1') {
+        raiz.classList.remove('intro-lock');
+        if (intro.parentNode) { intro.parentNode.removeChild(intro); }
+        return;
+    }
+
+    function esperar(fn, ms) { temporizadores.push(window.setTimeout(fn, ms)); }
+    function pintar(paso) { if (barra) { barra.style.width = Math.round((paso / pasos) * 100) + '%'; } }
+
+    function volarAlLogo() {
+        if (!capaFinal || !capaFinal.classList.contains('is-on')) { return; }
+        var destino = document.querySelector('.nav .marca img');
+        if (!destino) { return; }
+        var desde = capaFinal.getBoundingClientRect();
+        var hasta = destino.getBoundingClientRect();
+        if (!desde.width || !hasta.width) { return; }
+        var escala = hasta.width / desde.width;
+        var dx = (hasta.left + hasta.width / 2) - (desde.left + desde.width / 2);
+        var dy = (hasta.top + hasta.height / 2) - (desde.top + desde.height / 2);
+        capaFinal.style.transition = 'transform .65s cubic-bezier(.4, 0, .2, 1)';
+        capaFinal.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + escala + ')';
+    }
+
+    function terminar() {
+        if (terminado) { return; }
+        terminado = true;
+        volarAlLogo();
+        for (var i = 0; i < temporizadores.length; i++) { window.clearTimeout(temporizadores[i]); }
+        temporizadores = [];
+        if (barra) { barra.style.width = '100%'; }
+        intro.classList.add('is-out');
+        raiz.classList.remove('intro-lock');
+        window.setTimeout(function () {
+            if (intro.parentNode) { intro.parentNode.removeChild(intro); }
+        }, 900);
+    }
+
+    if (reducido) { terminar(); return; }
+
+    function mostrarFinal() {
+        if (terminado) { return; }
+        pintar(pasos);
+        intro.classList.add('is-final');
+        if (capaFinal) { capaFinal.classList.add('is-on'); }
+        esperar(function () { if (!terminado) { intro.classList.add('is-sheen'); } }, 1050);
+        esperar(terminar, 4100);
+    }
+
+    function mostrarCapa(indice) {
+        if (terminado) { return; }
+        if (indice >= capas.length) { esperar(mostrarFinal, 1000); return; }
+        var capa = capas[indice];
+        capa.classList.add('is-on');
+        pintar(indice + 1);
+        esperar(function () { mostrarCapa(indice + 1); }, 820);
+    }
+
+    if (saltar) { saltar.addEventListener('click', terminar); }
+    if (noMostrar) { noMostrar.addEventListener('click', function () { try { localStorage.setItem('introOculta', '1'); } catch (e) {} terminar(); }); }
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !terminado) { terminar(); }
+    });
+
+    esperar(terminar, 14000);
+    esperar(function () { mostrarCapa(0); }, 220);
+})();
+
+/* Botones flotantes: arriba / abajo según la posición de lectura */
+(function () {
+    var arriba = document.getElementById('btnScrollTop');
+    var abajo = document.getElementById('btnScrollBottom');
+    var progreso = document.getElementById('scrollProgress');
+    if (!arriba && !abajo) { return; }
+
+    function irArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function irAbajo() {
+        var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        window.scrollTo({ top: max, behavior: 'smooth' });
+    }
+    if (arriba) { arriba.addEventListener('click', irArriba); }
+    if (abajo) { abajo.addEventListener('click', irAbajo); }
+
+    function actualizar() {
+        var y = window.scrollY || document.documentElement.scrollTop || 0;
+        var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        if (arriba) { arriba.classList.toggle('is-visible', y > 140); }
+        if (abajo) { abajo.classList.toggle('is-visible', y < max - 140); }
+        if (progreso) {
+            progreso.style.width = (max > 0 ? Math.min(100, (y / max) * 100) : 0) + '%';
+        }
+    }
+    window.addEventListener('scroll', actualizar, { passive: true });
+    window.addEventListener('resize', actualizar);
+    actualizar();
+})();
+
+/* Menú móvil */
+(function () {
+    var btn = document.getElementById('menuBtn');
+    var menu = document.getElementById('menuMovil');
+    if (!btn || !menu) { return; }
+    btn.addEventListener('click', function () {
+        var abierto = menu.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+        btn.innerHTML = abierto
+            ? '<i class="fa-solid fa-xmark" aria-hidden="true"></i>'
+            : '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
+    });
+    menu.addEventListener('click', function (e) {
+        if (e.target.closest('a, button')) {
+            menu.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', 'false');
+            btn.innerHTML = '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
+        }
+    });
+})();
+
+/* Rotación automática de la escena y del fondo del hero */
+(function () {
+    var escena = document.querySelector('.escena');
+    if (!escena) { return; }
+    var diapos = escena.querySelectorAll('.diapo');
+    var pills  = escena.querySelectorAll('[data-slide]');
+    if (diapos.length < 2) { return; }
+    var capas = [document.getElementById('heroFondoA'), document.getElementById('heroFondoB')];
+    /* Mismo par de imágenes para móvil, tablet y PC: cada opción tiene la suya. */
+    var fondos = ['/images/nominas-hero.webp', '/images/hero.webp', '/images/costos.webp', '/images/inventarios.webp', '/images/administracion.webp'];
+    var actual = 0, capa = 0, timer = null;
+
+    /* Precarga para que el fundido entre sin parpadeos. */
+    for (var f = 0; f < fondos.length; f++) { var pre = new Image(); pre.src = fondos[f]; }
+
+    function ponerFondo(destino) {
+        if (!capas[0] || !capas[1] || !destino) { return; }
+        if (capas[capa].getAttribute('src') === destino) { return; }
+        var otra = capas[1 - capa];
+        otra.setAttribute('src', destino);
+        otra.classList.add('is-on');
+        capas[capa].classList.remove('is-on');
+        capa = 1 - capa;
+    }
+
+    function mostrar(i) {
+        actual = ((i % diapos.length) + diapos.length) % diapos.length;
+        for (var k = 0; k < diapos.length; k++) { diapos[k].classList.toggle('is-on', k === actual); }
+        for (var p = 0; p < pills.length; p++) {
+            pills[p].classList.toggle('is-on', parseInt(pills[p].getAttribute('data-slide'), 10) === actual);
+        }
+        ponerFondo(fondos[actual]);
+    }
+    function parar() { if (timer) { window.clearInterval(timer); timer = null; } }
+    function arrancar() { parar(); timer = window.setInterval(function () { mostrar(actual + 1); }, 7000); }
+
+    for (var j = 0; j < pills.length; j++) {
+        pills[j].addEventListener('click', function () {
+            mostrar(parseInt(this.getAttribute('data-slide'), 10));
+            arrancar();
+        });
+    }
+    mostrar(0);
+    arrancar();
+})();
+
+/* Desplegables del topbar (servicios y licencia) */
+(function () {
+    var drops = [].slice.call(document.querySelectorAll('.nav-login, .nav-drop'));
+    if (!drops.length) { return; }
+    function cerrar(drop) {
+        drop.classList.remove('is-open');
+        var b = drop.querySelector('button[aria-haspopup]');
+        if (b) b.setAttribute('aria-expanded', 'false');
+    }
+    drops.forEach(function (cont) {
+        var btn = cont.querySelector('button[aria-haspopup]');
+        if (!btn) return;
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var scrollTo = btn.getAttribute('data-nav-scroll');
+            if (scrollTo) {
+                var target = document.querySelector(scrollTo);
+                if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                cont.classList.add('is-open');
+                btn.setAttribute('aria-expanded', 'true');
+                drops.forEach(function (d) { if (d !== cont) cerrar(d); });
+                return;
+            }
+            var abierto = cont.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+            drops.forEach(function (d) { if (d !== cont) cerrar(d); });
+        });
+    });
+    document.addEventListener('click', function (e) {
+        drops.forEach(function (d) { if (!d.contains(e.target)) cerrar(d); });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' || e.key === 'Esc') { drops.forEach(cerrar); }
+    });
+})();
+
+/* Al abrir o recargar, la portada arranca limpia (sin hash) y arriba del todo.
+   Va antes de la lógica de animación por scroll para que el primer repaso se
+   haga con la página ya en su posición inicial. */
+(function () {
+    if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+    if (window.location.hash) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    window.scrollTo(0, 0);
+})();
+
+/* Aparición al hacer scroll */
+(function () {
+    // Los grupos numerosos entran en cadena: cada hijo lleva su propio retardo.
+    var grupos = [
+        '.grid > .card', '.pasos > .paso', '.serv-grid > .serv',
+        '.faq-lista > .faq', '.chips > span', '.pilares > .pilar',
+        '.duo > *', '.lic-grid > .panel', '.compromiso', '.proceso-grid > .proc-paso'
+    ];
+    for (var g = 0; g < grupos.length; g++) {
+        var hijos = document.querySelectorAll(grupos[g]);
+        var contador = new Map();
+        for (var k = 0; k < hijos.length; k++) {
+            var hijo = hijos[k];
+            var padre = hijo.parentNode;
+            var n = contador.get(padre) || 0;
+            contador.set(padre, n + 1);
+            if (!hijo.classList.contains('reveal')) { hijo.classList.add('reveal'); }
+            hijo.style.setProperty('--d', Math.min(n * 90, 360) + 'ms');
+        }
+    }
+
+    // Aparición al ir pasando: se mide la posición real en cada scroll (con
+    // requestAnimationFrame). Es más fiable que un IntersectionObserver aquí y
+    // garantiza que el bloque entre justo cuando asoma por el borde inferior.
+    var pendientes = [].slice.call(document.querySelectorAll('.reveal, .sec'));
+    if (!pendientes.length) { return; }
+    var ticking = false;
+
+    function enPantalla(el) {
+        var r = el.getBoundingClientRect();
+        var alto = window.innerHeight || document.documentElement.clientHeight;
+        return r.top < alto * 0.9 && r.bottom > 0;
+    }
+
+    function revisar() {
+        ticking = false;
+        var resto = [];
+        for (var i = 0; i < pendientes.length; i++) {
+            if (enPantalla(pendientes[i])) { pendientes[i].classList.add('is-in'); }
+            else { resto.push(pendientes[i]); }
+        }
+        pendientes = resto;
+        if (!pendientes.length) {
+            window.removeEventListener('scroll', pedir);
+            window.removeEventListener('resize', pedir);
+        }
+    }
+
+    function pedir() {
+        if (!ticking) { ticking = true; window.requestAnimationFrame(revisar); }
+    }
+
+    var iniciado = false;
+    function iniciar() {
+        if (iniciado) { return; }
+        iniciado = true;
+        window.addEventListener('scroll', pedir, { passive: true });
+        window.addEventListener('resize', pedir);
+        window.addEventListener('orientationchange', pedir);
+        // Se revisa cuando la página ya tiene su altura definitiva (imágenes y
+        // fuentes cargadas); si no, se revelarían de golpe secciones que aún no
+        // se han visto y al llegar a ellas ya estarían visibles, sin animación.
+        revisar();
+        window.setTimeout(revisar, 600);
+        window.setTimeout(revisar, 1800);
+    }
+
+    if (document.readyState === 'complete') {
+        iniciar();
+    } else {
+        window.addEventListener('load', iniciar);
+        // Respaldo: si «load» tarda demasiado (una imagen externa lenta), se
+        // arranca igualmente para que la portada no quede en blanco.
+        window.setTimeout(iniciar, 3500);
+    }
+})();
+</script>
+<script>
+(() => {
+  const els = document.querySelectorAll('.rv-ap, .rv-ap-hijos');
+  if (!els.length) return;
+  const show = (el) => el.classList.add('rv-visto');
+  const check = () => els.forEach(el => { if (el.classList.contains('rv-visto')) return; const r = el.getBoundingClientRect(); if (r.top < window.innerHeight + 40 && r.bottom > -40) show(el); });
+  if (!('IntersectionObserver' in window)) { els.forEach(show); return; }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  els.forEach(el => io.observe(el));
+  check();
+  window.addEventListener('scroll', check, { passive: true });
+  window.addEventListener('load', check);
+})();
+</script>
 </body>
 </html>
