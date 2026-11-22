@@ -24,31 +24,185 @@ if (is_file($licenciaArchivo)) {
     $licenciaDatos  = licencia_leer();
     $licenciaActiva = licencia_activada();
 }
-/* Versión de MySQL (misma lógica que servicios/phpinfo) */
+/* Versión de MySQL/Apache/phpMyAdmin y salud BD (misma lógica que servicios/phpinfo) */
 $mysqlVersionDisplay = 'No disponible';
+$apacheVersion = 'No detectado';
+$phpmyadminVersion = 'No detectado';
 $dbHost = '127.0.0.1';
 $dbUser = 'root';
 $dbPass = '';
+$dbName = '';
+$dbConnected = false;
+$dbConn = null;
+$dbSize = '0 MB';
+$dbTables = '0';
+$dbUptime = 'Sin datos';
+$dbUptimeTitle = 'Servidor MySQL no disponible';
+
 $configNominas = __DIR__ . '/servicios/nominas/config.php';
 if (is_file($configNominas)) {
     $cfg = file_get_contents($configNominas);
     if (preg_match("/define\\s*\\(\\s*['\\\"]DB_HOST['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbHost = $m[1];
     if (preg_match("/define\\s*\\(\\s*['\\\"]DB_USER['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbUser = $m[1];
     if (preg_match("/define\\s*\\(\\s*['\\\"]DB_PASS['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbPass = $m[1];
+    if (preg_match("/define\\s*\\(\\s*['\\\"]DB_NAME['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbName = $m[1];
 }
+
+$phpVersionDisplay = phpversion();
+if (function_exists('apache_get_version')) {
+    $apacheRaw = apache_get_version();
+    if (is_string($apacheRaw) && preg_match('/Apache\/([0-9\.]+)/', $apacheRaw, $matches)) $apacheVersion = $matches[1];
+} elseif (isset($_SERVER['SERVER_SOFTWARE']) && preg_match('/([0-9\.]+)/', (string)$_SERVER['SERVER_SOFTWARE'], $matches)) {
+    $apacheVersion = $matches[1];
+}
+
+$rutaPMAEncontrada = '';
+$dirActual = __DIR__;
+for ($i = 0; $i < 5; $i++) {
+    if (file_exists($dirActual . '/USBWebserver.exe') || file_exists($dirActual . '/usbwebserver.exe')) {
+        $rutaPMAEncontrada = $dirActual . '/phpmyadmin';
+        break;
+    }
+    $dirActual = dirname($dirActual);
+    if ($dirActual === '/' || $dirActual === '\\' || $dirActual === '') break;
+}
+if ($rutaPMAEncontrada === '') {
+    foreach ([dirname(__DIR__) . '/phpmyadmin', dirname(dirname(__DIR__)) . '/phpmyadmin', 'C:/USBWebserver/phpmyadmin'] as $ruta) {
+        if (is_dir($ruta)) { $rutaPMAEncontrada = $ruta; break; }
+    }
+}
+if ($rutaPMAEncontrada !== '' && is_dir($rutaPMAEncontrada)) {
+    $readmePath = $rutaPMAEncontrada . '/README';
+    $composerPath = $rutaPMAEncontrada . '/composer.json';
+    if (file_exists($readmePath)) {
+        $content = file_get_contents($readmePath);
+        if (is_string($content) && preg_match('/Version ([0-9]+\.[0-9]+\.[0-9]+)/i', $content, $m)) $phpmyadminVersion = $m[1];
+    } elseif (file_exists($composerPath)) {
+        $content = file_get_contents($composerPath);
+        if (is_string($content) && preg_match('/"version":\s*"([^"]+)"/', $content, $m)) $phpmyadminVersion = $m[1];
+    }
+}
+
+if (!function_exists('transnubet_shell_disabled')) {
+    function transnubet_shell_disabled(string $fn): bool {
+        $disabled = array_map('trim', explode(',', strtolower((string)ini_get('disable_functions'))));
+        return in_array(strtolower($fn), $disabled, true);
+    }
+}
+if (!function_exists('transnubet_mysql_start_from_sql')) {
+    function transnubet_mysql_start_from_sql($conn): ?int {
+        if (!($conn instanceof mysqli)) return null;
+        foreach (["SHOW GLOBAL STATUS LIKE 'Uptime'", "SELECT VARIABLE_VALUE AS Value FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'UPTIME'", "SELECT VARIABLE_VALUE AS Value FROM performance_schema.global_status WHERE VARIABLE_NAME = 'UPTIME'"] as $sql) {
+            try {
+                $res = @mysqli_query($conn, $sql);
+                if (!($res instanceof mysqli_result)) continue;
+                $row = @mysqli_fetch_assoc($res);
+                @mysqli_free_result($res);
+                if (!$row) continue;
+                $valor = null;
+                foreach (['Value','VARIABLE_VALUE','Uptime','UPTIME'] as $clave) { if (isset($row[$clave]) && $row[$clave] !== '') { $valor = $row[$clave]; break; } }
+                if ($valor === null) { $valores = array_values($row); $valor = end($valores); }
+                if ($valor !== null && is_numeric($valor)) return max(0, (int)$valor);
+            } catch (Throwable $e) {}
+        }
+        return null;
+    }
+}
+if (!function_exists('transnubet_parse_wmi_date')) {
+    function transnubet_parse_wmi_date(string $valor): ?int {
+        if (!preg_match('/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\.\d+([+-])(\d{3})$/', $valor, $m)) return null;
+        $local = gmmktime((int)$m[4], (int)$m[5], (int)$m[6], (int)$m[2], (int)$m[3], (int)$m[1]);
+        if ($local === false) return null;
+        $offset = ($m[7] === '+' ? 1 : -1) * ((int)$m[8] * 60);
+        return $local - $offset;
+    }
+}
+if (!function_exists('transnubet_mysql_start_from_pidfile')) {
+    function transnubet_mysql_start_from_pidfile(): ?int {
+        $candidatos = [dirname(__DIR__, 2) . '/mysql/my.ini', dirname(__DIR__) . '/mysql/my.ini', 'C:/Users/kakyc/Desktop/TRANSNUBET/mysql/my.ini', 'C:/USBWebserver/mysql/my.ini', 'C:/xampp/mysql/bin/my.ini'];
+        $datadirs = [];
+        foreach ($candidatos as $ini) {
+            if (!is_file($ini)) continue;
+            $contenido = (string)@file_get_contents($ini);
+            if (preg_match('/^\s*datadir\s*=\s*"?([^"\r\n]+)"?/mi', $contenido, $m)) $datadirs[] = str_replace('\\\\', '\\', trim($m[1]));
+            $datadirs[] = dirname($ini) . '/data';
+        }
+        $mejor = null;
+        foreach (array_unique($datadirs) as $dir) {
+            if (!is_dir($dir)) continue;
+            foreach ((array)glob(rtrim($dir, "/\\") . '/*.pid') as $pidFile) {
+                $ts = @filemtime($pidFile);
+                if ($ts === false) continue;
+                if ($mejor === null || $ts > $mejor) $mejor = $ts;
+            }
+        }
+        return $mejor;
+    }
+}
+if (!function_exists('transnubet_mysql_start_from_os')) {
+    function transnubet_mysql_start_from_os(): ?int {
+        if (stripos(PHP_OS_FAMILY, 'Windows') !== false) {
+            if (!transnubet_shell_disabled('shell_exec') && function_exists('shell_exec')) {
+                $wmic = @shell_exec('wmic process where "name like \'%mysqld%\'" get CreationDate /format:list 2>nul');
+                if (is_string($wmic) && preg_match_all('/(\d{14}\.\d{6}[+-]\d{3})/', $wmic, $m)) {
+                    $mejor = null;
+                    foreach ($m[1] as $fecha) { $ts = transnubet_parse_wmi_date($fecha); if ($ts !== null && ($mejor === null || $ts < $mejor)) $mejor = $ts; }
+                    if ($mejor !== null) return $mejor;
+                }
+            }
+            return transnubet_mysql_start_from_pidfile();
+        }
+        return transnubet_mysql_start_from_pidfile();
+    }
+}
+if (!function_exists('transnubet_mysql_uptime')) {
+    function transnubet_mysql_uptime($conn): int {
+        $desdeSql = transnubet_mysql_start_from_sql($conn);
+        if ($desdeSql !== null) return $desdeSql;
+        $start = transnubet_mysql_start_from_os();
+        if ($start !== null && $start > 0) return max(0, time() - $start);
+        return 0;
+    }
+}
+if (!function_exists('transnubet_formato_uptime')) {
+    function transnubet_formato_uptime(int $segundos): string {
+        $segundos = max(0, $segundos);
+        $dias = intdiv($segundos, 86400);
+        $horas = intdiv($segundos % 86400, 3600);
+        $minutos = intdiv($segundos % 3600, 60);
+        if ($dias > 0) return $dias . 'd ' . $horas . 'h ' . $minutos . 'm';
+        if ($horas > 0) return $horas . 'h ' . $minutos . 'm';
+        if ($minutos > 0) return $minutos . 'm';
+        return 'menos de 1 min';
+    }
+}
+
 if (function_exists('mysqli_connect')) {
     try {
-        $conn = @mysqli_connect($dbHost, $dbUser, $dbPass);
-        if ($conn) {
-            $info = mysqli_get_server_info($conn);
-            if (is_string($info) && $info !== '') {
-                $mysqlVersionDisplay = preg_replace('/^(\\d+\\.\\d+)(?:\\.\\d+.*)?$/', '$1', $info);
-                if (!is_string($mysqlVersionDisplay) || $mysqlVersionDisplay === '') $mysqlVersionDisplay = $info;
+        $dbConn = @mysqli_connect($dbHost, $dbUser, $dbPass);
+        if ($dbConn) {
+            $dbConnected = true;
+            $info = mysqli_get_server_info($dbConn);
+            if (is_string($info) && $info !== '') $mysqlVersionDisplay = $info;
+            if ($dbName !== '') {
+                @mysqli_select_db($dbConn, $dbName);
+                try {
+                    $res = @mysqli_query($dbConn, "SELECT SUM(data_length + index_length) AS size FROM information_schema.TABLES WHERE table_schema = '" . mysqli_real_escape_string($dbConn, $dbName) . "'");
+                    if ($res && $row = mysqli_fetch_assoc($res)) $dbSize = round(((float)($row['size'] ?? 0)) / (1024 * 1024), 2) . ' MB';
+                } catch (Throwable $e) {}
+                try {
+                    $res = @mysqli_query($dbConn, "SELECT COUNT(*) AS total FROM information_schema.TABLES WHERE table_schema = '" . mysqli_real_escape_string($dbConn, $dbName) . "'");
+                    if ($res && $row = mysqli_fetch_assoc($res)) $dbTables = (string)($row['total'] ?? '0');
+                } catch (Throwable $e) {}
             }
-            mysqli_close($conn);
+            $uptimeSeg = transnubet_mysql_uptime($dbConn);
+            $dbUptime = transnubet_formato_uptime($uptimeSeg);
+            if ($uptimeSeg >= 0) $dbUptimeTitle = 'Activo desde ' . date('d/m/Y H:i:s T', time() - $uptimeSeg) . ' · ' . number_format($uptimeSeg) . ' segundos';
+            @mysqli_close($dbConn);
         }
     } catch (Throwable $e) {
         $mysqlVersionDisplay = 'No disponible';
+        if ($dbConn instanceof mysqli) { @mysqli_close($dbConn); }
     }
 }
 
@@ -601,13 +755,22 @@ $faq = [
     }
 
     /* ===== Métricas / stats ===== */
-    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
+    .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
     .metric{display:flex;align-items:center;gap:.75rem;padding:1rem 1rem;border-radius:.85rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
     .metric i{width:2.25rem;height:2.25rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.6rem;background:rgba(0,212,255,.08);color:var(--cian);font-size:.95rem;flex-shrink:0}
     .metric b{display:block;font-family:'Exo 2',sans-serif;font-size:1rem;font-weight:800;color:var(--txt);line-height:1.1}
     .metric span{display:block;font-size:.75rem;color:var(--gris-3);margin-top:.15rem;line-height:1.3}
     @media(max-width:900px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:520px){.metrics{grid-template-columns:1fr}}
+    .db-health{margin-top:1.5rem;padding:1.25rem;border-radius:1rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
+    .db-health-head{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;font-family:'Exo 2',sans-serif;font-weight:700;color:var(--txt);font-size:.95rem}
+    .db-health-head i{color:#ff6b6b}
+    .db-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+    .db-health-item{padding:1rem;border-radius:.85rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);text-align:center}
+    .db-health-item i{font-size:1.4rem;margin-bottom:.45rem;display:block}
+    .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
+    .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
+    @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
     .escena {
         position: relative; justify-self: center;
         width: min(100%, 32rem);
@@ -692,13 +855,22 @@ $faq = [
         .hero { max-height: none; padding-bottom: 4rem; }
     
     /* ===== Métricas / stats ===== */
-    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
+    .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
     .metric{display:flex;align-items:center;gap:.75rem;padding:1rem 1rem;border-radius:.85rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
     .metric i{width:2.25rem;height:2.25rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.6rem;background:rgba(0,212,255,.08);color:var(--cian);font-size:.95rem;flex-shrink:0}
     .metric b{display:block;font-family:'Exo 2',sans-serif;font-size:1rem;font-weight:800;color:var(--txt);line-height:1.1}
     .metric span{display:block;font-size:.75rem;color:var(--gris-3);margin-top:.15rem;line-height:1.3}
     @media(max-width:900px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:520px){.metrics{grid-template-columns:1fr}}
+    .db-health{margin-top:1.5rem;padding:1.25rem;border-radius:1rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
+    .db-health-head{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;font-family:'Exo 2',sans-serif;font-weight:700;color:var(--txt);font-size:.95rem}
+    .db-health-head i{color:#ff6b6b}
+    .db-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+    .db-health-item{padding:1rem;border-radius:.85rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);text-align:center}
+    .db-health-item i{font-size:1.4rem;margin-bottom:.45rem;display:block}
+    .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
+    .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
+    @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
     .escena { margin-top: 3.25rem; }
     }
     @media (max-width: 40rem) {
@@ -1408,13 +1580,22 @@ $faq = [
         .js .hero-copy > * { opacity: 1; animation: none; }
     
     /* ===== Métricas / stats ===== */
-    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
+    .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
     .metric{display:flex;align-items:center;gap:.75rem;padding:1rem 1rem;border-radius:.85rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
     .metric i{width:2.25rem;height:2.25rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.6rem;background:rgba(0,212,255,.08);color:var(--cian);font-size:.95rem;flex-shrink:0}
     .metric b{display:block;font-family:'Exo 2',sans-serif;font-size:1rem;font-weight:800;color:var(--txt);line-height:1.1}
     .metric span{display:block;font-size:.75rem;color:var(--gris-3);margin-top:.15rem;line-height:1.3}
     @media(max-width:900px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:520px){.metrics{grid-template-columns:1fr}}
+    .db-health{margin-top:1.5rem;padding:1.25rem;border-radius:1rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
+    .db-health-head{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;font-family:'Exo 2',sans-serif;font-weight:700;color:var(--txt);font-size:.95rem}
+    .db-health-head i{color:#ff6b6b}
+    .db-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+    .db-health-item{padding:1rem;border-radius:.85rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);text-align:center}
+    .db-health-item i{font-size:1.4rem;margin-bottom:.45rem;display:block}
+    .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
+    .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
+    @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
     .escena { animation: none; }
         .pantalla, .movil, .escena::before { transform: none; }
         .btn:hover, .card:hover, .serv:hover, .paso:hover, .equipo-card:hover { transform: none; }
@@ -1946,11 +2127,19 @@ $faq = [
                 </div>
                 <div class="metric" role="listitem">
                     <i class="fa-brands fa-php" aria-hidden="true"></i>
-                    <div><b>PHP <?= PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ?></b><span>Servidor local</span></div>
+                    <div><b>PHP <?= htmlspecialchars($phpVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Servidor local</span></div>
                 </div>
                 <div class="metric" role="listitem">
                     <i class="fa-solid fa-database" aria-hidden="true"></i>
                     <div><b>MySQL <?= htmlspecialchars($mysqlVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Base de datos</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-server" aria-hidden="true"></i>
+                    <div><b>Apache <?= htmlspecialchars($apacheVersion, ENT_QUOTES, 'UTF-8') ?></b><span>HTTPD</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+                    <div><b><?= htmlspecialchars($phpmyadminVersion, ENT_QUOTES, 'UTF-8') ?></b><span>phpMyAdmin</span></div>
                 </div>
                 <div class="metric" role="listitem">
                     <i class="fa-solid fa-headset" aria-hidden="true"></i>
@@ -1969,7 +2158,30 @@ $faq = [
                 <?php endforeach; ?>
             </div>
 
-            <div class="lic-acciones reveal" style="margin-top:1.6rem">
+                        <div class="db-health reveal">
+                <div class="db-health-head">
+                    <i class="fa-solid fa-heart-pulse" aria-hidden="true"></i>
+                    <span>Salud de la Base de Datos (<?= htmlspecialchars($dbName !== '' ? $dbName : 'No conectada', ENT_QUOTES, 'UTF-8') ?>)</span>
+                </div>
+                <div class="db-health-grid">
+                    <div class="db-health-item">
+                        <i class="fa-solid fa-database" style="color:var(--cian)" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbSize, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Tamaño BD</span>
+                    </div>
+                    <div class="db-health-item">
+                        <i class="fa-solid fa-table" style="color:#4ade80" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbTables, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Tablas</span>
+                    </div>
+                    <div class="db-health-item" title="<?= htmlspecialchars($dbUptimeTitle, ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="fa-solid fa-clock" style="color:#fbbf24" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbUptime, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Uptime MySQL</span>
+                    </div>
+                </div>
+            </div>
+<div class="lic-acciones reveal" style="margin-top:1.6rem">
                 <a class="btn btn-ghost btn-sm" href="<?= $base ?>/phpinfo/">
                     <i class="fa-solid fa-server" aria-hidden="true"></i> Estado del servidor
                 </a>
