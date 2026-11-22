@@ -212,9 +212,14 @@
     .historia-texto strong{color:var(--txt);}
     .cita{margin-top:1.5rem;padding:1.2rem 1.25rem;border-left:3px solid var(--fuego);background:rgba(255,107,0,.06);color:var(--gris);font-family:"Exo 2",sans-serif;font-weight:700;letter-spacing:.02em;}
     .hitos{display:grid;gap:1rem;}
-    .hito{padding:1.25rem;border:1px solid rgba(30,41,59,.8);border-radius:.8rem;background:linear-gradient(145deg,#101827,#0a0f1a);}
+    .hito{padding:1.25rem;border:1px solid rgba(30,41,59,.8);border-radius:.8rem;background:linear-gradient(145deg,#101827,#0a0f1a);display:flex;gap:1rem;align-items:flex-start;}
+    .hito-ico{flex-shrink:0;width:2.5rem;height:2.5rem;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:.85rem;margin-top:.1rem;}
+    .hito-ico.is-fuego{background:rgba(255,107,0,.2);border:1px solid rgba(255,107,0,.4);color:var(--fuego);}
+    .hito-ico.is-cian{background:rgba(0,240,255,.1);border:1px solid rgba(0,240,255,.3);color:var(--cian);}
     .hito-k{font-family:"Exo 2",sans-serif;font-size:.66rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--cian);margin-bottom:.35rem;}
     .hito h3{font-family:"Exo 2",sans-serif;font-size:.9rem;font-weight:800;color:var(--txt);margin-bottom:.35rem;}
+    .hito p{color:var(--gris-2);font-size:.88rem;line-height:1.65;margin:0;}
+    .hito .hito-k{margin-bottom:.35rem;}
     .hito p{color:var(--gris-2);font-size:.86rem;line-height:1.65;}
 
     .equipo-card{position:relative;isolation:isolate;overflow:hidden;padding:clamp(1.5rem,3vw,2rem);background:rgba(0,0,0,.4);border:1px solid rgba(30,41,59,.6);border-radius:1rem;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
@@ -223,6 +228,9 @@
     @media(min-width:1024px){.equipo-grid{grid-template-columns:8fr 4fr;gap:2.5rem;align-items:center;}}
     .pilares{display:grid;gap:1.6rem;}
     @media(min-width:640px){.pilares{grid-template-columns:repeat(3,minmax(0,1fr));gap:1.5rem;}}
+    .pilar{padding:1.1rem 1rem;border:1px solid rgba(30,41,59,.65);border-radius:.8rem;background:rgba(255,255,255,.02);transition:transform .28s ease,border-color .28s ease,box-shadow .28s ease,background-color .28s ease;}
+    .pilar:hover,.pilar:focus-within{transform:translateY(-6px);border-color:rgba(255,107,0,.35);box-shadow:0 14px 28px rgba(0,0,0,.28),0 0 0 1px rgba(255,107,0,.12);background:rgba(255,107,0,.04);}
+    @media(prefers-reduced-motion:reduce){.pilar{transition:none;}.pilar:hover,.pilar:focus-within{transform:none;}}
     .pilar-ico{display:grid;place-items:center;width:2.5rem;height:2.5rem;border-radius:.5rem;margin-bottom:.75rem;font-size:1rem;}
     .pilar-ico.is-fuego{background:rgba(255,107,0,.1);border:1px solid rgba(255,107,0,.2);color:var(--fuego);}
     .pilar-ico.is-cian{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);color:var(--cian);}
@@ -237,8 +245,11 @@
 
     .dos-lineas{display:grid;gap:1.25rem;margin-top:2.5rem;}
     @media(min-width:900px){.dos-lineas{grid-template-columns:repeat(2,minmax(0,1fr));}}
-    .linea{padding:1.75rem;border:1px solid rgba(30,41,59,.85);border-radius:1rem;background:linear-gradient(145deg,#121b2b,#0a0f1a);}
+    .linea{padding:1.75rem;border:1px solid rgba(30,41,59,.85);border-radius:1rem;background:linear-gradient(145deg,#121b2b,#0a0f1a);transition:transform .28s ease,border-color .28s ease,box-shadow .28s ease;}
+    .linea:hover,.linea:focus-within{transform:translateY(-6px);border-color:rgba(0,212,255,.35);box-shadow:0 16px 32px rgba(0,0,0,.3),0 0 0 1px rgba(0,212,255,.12);}
     .linea.is-fuego{border-color:rgba(255,107,0,.3);}
+    .linea.is-fuego:hover,.linea.is-fuego:focus-within{border-color:rgba(255,107,0,.45);box-shadow:0 16px 32px rgba(0,0,0,.3),0 0 0 1px rgba(255,107,0,.14);}
+    @media(prefers-reduced-motion:reduce){.linea{transition:none;}.linea:hover,.linea:focus-within{transform:none;}}
     .linea-k{font-family:"Exo 2",sans-serif;font-size:.66rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--cian);margin-bottom:.5rem;}
     .linea.is-fuego .linea-k{color:var(--fuego);}
     .linea h3{font-family:"Bebas Neue",Impact,sans-serif;font-size:2.2rem;line-height:1;text-transform:uppercase;margin-bottom:.75rem;}
@@ -247,13 +258,16 @@
     .linea li{color:var(--gris);font-size:.86rem;line-height:1.6;padding-left:1.1rem;position:relative;}
     .linea li::before{content:"";position:absolute;left:0;top:.55em;width:.45rem;height:.45rem;border-radius:50%;background:var(--cian);}
     .linea.is-fuego li::before{background:var(--fuego);}
-    .linea a{font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--cian);}
+    .linea hr{border:0;border-top:1px solid rgba(148,163,184,.2);margin:0 0 1rem;}
+    .linea a{font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--cian);transition:color .2s ease;}
     .linea.is-fuego a{color:var(--fuego);}
+    .linea a:hover,.linea a:focus-visible{color:#fff;}
 
-    .cta{padding:2rem;border:1px solid rgba(30,41,59,.8);border-radius:1rem;background:linear-gradient(145deg,rgba(255,107,0,.08),rgba(0,212,255,.04) 55%,rgba(10,15,26,.9));}
-    .cta h2{font-size:clamp(2rem,4.5vw,3.4rem);text-transform:uppercase;margin:.5rem 0 .8rem;}
-    .cta p{color:var(--gris-2);max-width:42rem;line-height:1.75;margin-bottom:1.5rem;}
-    .hero-acciones{display:flex;flex-wrap:wrap;gap:.85rem;}
+    .cta{padding:2rem;border:1px solid rgba(30,41,59,.8);border-radius:1rem;background:linear-gradient(145deg,rgba(255,107,0,.08),rgba(0,212,255,.04) 55%,rgba(10,15,26,.9));text-align:center;}
+    .cta .eyebrow{display:block;font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(2rem,4.5vw,3.4rem);font-weight:400;letter-spacing:.03em;line-height:.95;color:var(--fuego);margin:0 0 .6rem;text-transform:uppercase;}
+    .cta h2{font-size:clamp(1.2rem,2.4vw,1.8rem);text-transform:uppercase;margin:.5rem 0 .8rem;line-height:1.2;}
+    .cta p{color:var(--gris-2);max-width:42rem;line-height:1.75;margin:0 auto 1.5rem;}
+    .hero-acciones{display:flex;flex-wrap:wrap;gap:.85rem;justify-content:center;}
 
     .maestro-modal{display:none;}
     .maestro-modal.is-open{display:flex;}
@@ -334,7 +348,7 @@
                 <p class="about-kicker">Sobre nosotros</p>
                 <h1 class="bebas">EL TALENTO<br><span>DETRÁS DE CADA SOLUCIÓN.</span></h1>
                 <p>UnicornioSoftware nace de la experiencia de profesionales dedicados al desarrollo de software, herramientas empresariales y soluciones digitales adaptadas a necesidades reales. Unimos conocimiento técnico y visión práctica para construir tecnología útil, confiable y cercana a quienes la usan.</p>
-                <a href="/index.php" class="btn-outline-fuego btn-volver"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la Página principal</a>
+                <a href="/index.php" class="btn-outline-fuego btn-volver"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la página principal</a>
             </div>
             <div class="about-hero-brand">
                 <div class="about-hero-logo-wrap">
@@ -344,40 +358,46 @@
         </div>
         <a href="#historia" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
     </section>
-    <section class="sec" id="historia">
-        <div class="wrap">
-            <div class="sec-head reveal">
+<section class="sec" id="historia">
+    <div class="wrap">
+        <div class="historia-grid">
+            <div class="historia-texto reveal">
                 <span class="eyebrow">Nuestra historia</span>
-                <h2 class="bebas">DE LA EXPERIENCIA TÉCNICA A LA VISIÓN EMPRESARIAL</h2>
-                <p>UnicornioSoftware surge de la unión entre experiencia técnica y una visión clara: crear software que funcione de verdad para las personas y los negocios que lo necesitan.</p>
+                <h2 class="bebas" style="margin-top:.5rem;margin-bottom:1.5rem;font-size:clamp(1.5rem,4vw,3rem);letter-spacing:.025em;line-height:1;text-transform:uppercase;">DE LA EXPERIENCIA TÉCNICA A LA VISIÓN EMPRESARIAL</h2>
+                <p>UnicornioSoftware surge de la unión entre experiencia técnica y una visión clara: crear software que funcione de verdad para las personas y los negocios que lo necesitan. Antes de consolidar el ecosistema actual, nuestro equipo venía trabajando en el desarrollo de aplicaciones, sistemas de gestión y soluciones adaptadas a distintos contextos operativos.</p>
+                <p>Esa experiencia nos permitió entender un problema común: muchos negocios necesitaban herramientas diseñadas para su realidad, no programas genéricos difíciles de adaptar. De ahí nace el <strong>Ecosistema Financiero</strong>, nuestro conjunto de aplicaciones, como respuesta práctica a necesidades concretas de facturación, nóminas, costos, inventarios y administración.</p>
+                <p>Hoy combinamos el desarrollo de productos propios con soluciones a medida, manteniendo un enfoque sencillo: escuchar, diseñar con criterio y entregar software que aporte valor real, con datos bajo control del cliente y una operación clara.</p>
+                <div class="cita">"Donde tu visión toma forma."</div>
             </div>
-            <div class="historia-grid">
-                <div class="historia-texto reveal">
-                    <p>Antes de consolidar el ecosistema actual, nuestro equipo venía trabajando en el desarrollo de aplicaciones, sistemas de gestión y soluciones adaptadas a distintos contextos operativos. Esa experiencia nos permitió entender un problema común: muchos negocios necesitaban herramientas diseñadas para su realidad, no programas genéricos difíciles de adaptar.</p>
-                    <p>De ahí nace el <strong>Ecosistema Financiero</strong>, nuestro conjunto de aplicaciones, como respuesta práctica a necesidades concretas de facturación, nóminas, costos, inventarios y administración. La idea siempre fue la misma: poner la tecnología al servicio del trabajo diario, con datos bajo control del cliente y una operación clara.</p>
-                    <p>Hoy combinamos el desarrollo de productos propios con soluciones a medida, manteniendo un enfoque sencillo: escuchar, diseñar con criterio y entregar software que aporte valor real.</p>
-                    <div class="cita">"Donde tu visión toma forma."</div>
-                </div>
-                <div class="hitos reveal">
-                    <article class="hito">
+            <div class="hitos reveal">
+                <article class="hito">
+                    <span class="hito-ico is-fuego"><i class="fa-solid fa-lightbulb" aria-hidden="true"></i></span>
+                    <div>
                         <p class="hito-k">Origen</p>
                         <h3>Problemas reales, soluciones propias</h3>
                         <p>Identificamos necesidades concretas de gestión en negocios y organizaciones, y decidimos construir software adaptado a ese contexto.</p>
-                    </article>
-                    <article class="hito">
+                    </div>
+                </article>
+                <article class="hito">
+                    <span class="hito-ico is-cian"><i class="fa-solid fa-cubes" aria-hidden="true"></i></span>
+                    <div>
                         <p class="hito-k">Primeros módulos</p>
                         <h3>Un ecosistema que crece por utilidad</h3>
                         <p>Facturación, nóminas, costos e inventarios se consolidaron como módulos prácticos, pensados para trabajar en la red local del cliente.</p>
-                    </article>
-                    <article class="hito">
+                    </div>
+                </article>
+                <article class="hito">
+                    <span class="hito-ico is-fuego"><i class="fa-solid fa-rocket" aria-hidden="true"></i></span>
+                    <div>
                         <p class="hito-k">Expansión</p>
                         <h3>Productos propios y desarrollo a medida</h3>
                         <p>Ampliamos el trabajo hacia nuevas soluciones, mejoras continuas y proyectos personalizados según los procesos de cada cliente.</p>
-                    </article>
-                </div>
+                    </div>
+                </article>
             </div>
         </div>
-    </section>
+    </div>
+</section>
     <section class="sec" id="equipo">
         <div class="wrap">
             <div class="sec-head reveal">
@@ -393,7 +413,7 @@
                         <div class="pilar">
                             <span class="pilar-ico is-fuego"><i class="fa-solid fa-code" aria-hidden="true"></i></span>
                             <h3>Ingeniería y arquitectura</h3>
-                            <p>Diseamos sistemas de escritorio, bases de datos locales y aplicaciones web con foco en estabilidad, mantenimiento y uso real.</p>
+                            <p>Diseñamos sistemas de escritorio, bases de datos locales y aplicaciones web con foco en estabilidad, mantenimiento y uso real.</p>
                         </div>
                         <div class="pilar">
                             <span class="pilar-ico is-cian"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
@@ -402,8 +422,8 @@
                         </div>
                         <div class="pilar">
                             <span class="pilar-ico is-fuego"><i class="fa-solid fa-headset" aria-hidden="true"></i></span>
-                            <h3>Cercana y soporte</h3>
-                            <p>Acompaamos a cada cliente con trato directo, comunicación clara y respuestas giles durante la implementación y el uso diario.</p>
+                            <h3>Cercanía y soporte</h3>
+                            <p>Acompañamos a cada cliente con trato directo, comunicación clara y respuestas ágiles durante la implementación y el uso diario.</p>
                         </div>
                     </div>
                     <div class="compromiso">
@@ -422,8 +442,8 @@
     <section id="fundadores" class="py-24 bg-abismo border-b border-acero">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="text-center mb-16 reveal">
-                <span class="text-fuego font-exo font-bold uppercase tracking-widest text-sm">Quienes la hacen posible</span>
-                <h2 class="font-bebas text-2xl sm:text-4xl md:text-6xl lg:text-7xl text-white mt-2 tracking-wider">LOS MAESTROS DE LA FORJA</h2>
+                <span class="text-fuego font-exo font-bold uppercase tracking-widest text-sm">Quienes lo hacen posible</span>
+                <h2 class="font-bebas text-2xl sm:text-4xl md:text-6xl lg:text-7xl text-white mt-2 tracking-wider">LOS MAESTROS QUE LO FORJAN</h2>
                 <div class="w-20 h-1 bg-fuego mx-auto rounded-full mt-4 mb-4"></div>
                 <p class="text-gray-400 mt-4 max-w-2xl mx-auto">Dos trayectorias profesionales, una misma visión: construir tecnología que transforme ideas en soluciones.</p>
             </div>
@@ -463,7 +483,7 @@
             </div>
             <div class="overflow-y-auto overscroll-contain px-6 sm:px-8 pb-2 maestro-modal-scroll">
 <div class="space-y-4 text-gray-400 text-sm leading-relaxed">
-    <p>Master en Ciencias Informáticas con más de una década de experiencia en desarrollo de software, videojuegos, simulación y dirección de proyectos tecnológicos.</p>
+    <p>Máster en Ciencias Informáticas con más de una década de experiencia en desarrollo de software, videojuegos, simulación y dirección de proyectos tecnológicos.</p>
     <p>Desarrollador full-stack con amplia experiencia en el diseño y desarrollo de interfaces de usuario, así como en la implementación de arquitecturas escalables y eficientes para sistemas empresariales. Mi enfoque principal es crear soluciones tecnológicas que no solo sean funcionales, sino también intuitivas y atractivas para los usuarios finales.</p>
     <p>Entre mis proyectos destacados se encuentra el Sistema de Gestión Empresarial, una plataforma integral diseñada para optimizar la gestión de clientes, inventarios y facturación. Este sistema combina tecnologías modernas como React para el frontend, Node.js para el backend y MongoDB como base de datos, lo que permite una experiencia de usuario fluida y un rendimiento óptimo en entornos empresariales.</p>
     <p>Su trayectoria se forjó en estudios de desarrollo, la academia y proyectos especializados — Vertical Soft Studios, Virtual Games Creations, Cátedra de Ciencias Informáticas y en la Universidad de Camagüey, dirigiendo equipos y definiendo arquitecturas de productos.</p>
@@ -487,8 +507,8 @@
         <div class="wrap">
             <div class="sec-head reveal">
                 <span class="eyebrow">Capacidades</span>
-                <h2 class="bebas">REAS DE ESPECIALIZACIN</h2>
-                <p>Conocimiento tcnico y enfoque prctico que respaldan cada solución que desarrollamos.</p>
+                <h2 class="bebas">ÁREAS DE ESPECIALIZACIÓN</h2>
+                <p>Conocimiento técnico y enfoque práctico que respaldan cada solución que desarrollamos.</p>
             </div>
             <div class="grid">
                 <article class="card reveal destacada" data-spotlight style="--card-sheen: rgba(255, 107, 0, .22)">
@@ -519,7 +539,7 @@
                     <span class="card__sheen" aria-hidden="true"></span>
                     <div class="card-head">
                         <span class="card-ico"><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i></span>
-                        <div><h3>Apps y experiencias interactivas</h3><p class="card-sub">Ms all del escritorio</p></div>
+                        <div><h3>Apps y experiencias interactivas</h3><p class="card-sub">Más allá del escritorio</p></div>
                     </div>
                     <p>Desarrollo de aplicaciones móviles y experiencias interactivas cuando el proyecto lo requiere, con tecnologías adaptadas al objetivo y al contexto de uso.</p>
                 </article>
@@ -537,7 +557,7 @@
                         <span class="card-ico"><i class="fa-solid fa-compass-drafting" aria-hidden="true"></i></span>
                         <div><h3>Dirección de proyectos</h3><p class="card-sub">Del problema a la solución</p></div>
                     </div>
-                    <p>Acompaamiento en el análisis, definición del alcance, planificación y evolución del producto para que la solución crezca con el negocio.</p>
+                    <p>Acompañamiento en el análisis, definición del alcance, planificación y evolución del producto para que la solución crezca con el negocio.</p>
                 </article>
             </div>
         </div>
@@ -547,14 +567,14 @@
             <div class="sec-head reveal">
                 <span class="eyebrow">Metodología</span>
                 <h2 class="bebas">DE LA NECESIDAD AL SISTEMA</h2>
-                <p>Un proceso claro para transformar un problema real en una solución tecnolgica til y sostenible.</p>
+                <p>Un proceso claro para transformar un problema real en una solución tecnológica útil y sostenible.</p>
             </div>
             <div class="pasos">
-                <article class="paso reveal"><div class="paso-num">01</div><h3>Anlisis de necesidades</h3><p>Entendemos el problema real, el contexto operativo y las restricciones del proyecto antes de proponer una solución.</p></article>
-                <article class="paso reveal"><div class="paso-num">02</div><h3>Diseño de la solución</h3><p>Definimos la estructura, los flujos, los datos y el modelo de funcionamiento ms adecuado para el negocio.</p></article>
+                <article class="paso reveal"><div class="paso-num">01</div><h3>Análisis de necesidades</h3><p>Entendemos el problema real, el contexto operativo y las restricciones del proyecto antes de proponer una solución.</p></article>
+                <article class="paso reveal"><div class="paso-num">02</div><h3>Diseño de la solución</h3><p>Definimos la estructura, los flujos, los datos y el modelo de funcionamiento más adecuado para el negocio.</p></article>
                 <article class="paso reveal"><div class="paso-num">03</div><h3>Desarrollo iterativo</h3><p>Construimos por entregas visibles, con retroalimentación constante para ajustar a tiempo lo que haga falta.</p></article>
                 <article class="paso reveal"><div class="paso-num">04</div><h3>Pruebas y calidad</h3><p>Validamos funcionalidad, rendimiento y usabilidad antes de poner el sistema en producción.</p></article>
-                <article class="paso reveal"><div class="paso-num">05</div><h3>Implementación</h3><p>Instalamos, configuramos, capacitamos al equipo y acompaamos el arranque operativo.</p></article>
+                <article class="paso reveal"><div class="paso-num">05</div><h3>Implementación</h3><p>Instalamos, configuramos, capacitamos al equipo y acompañamos el arranque operativo.</p></article>
                 <article class="paso reveal"><div class="paso-num">06</div><h3>Evolución y soporte</h3><p>Corregimos, mejoramos y adaptamos el software a medida que el negocio cambia o crece.</p></article>
             </div>
         </div>
@@ -564,30 +584,32 @@
         <div class="wrap">
             <div class="sec-head reveal">
                 <span class="eyebrow">Lo que construimos</span>
-                <h2 class="bebas">NUESTRAS LNEAS DE TRABAJO</h2>
-                <p>Dos formas de aportar valor: productos propios para la gestión diaria y desarrollos a medida para necesidades especficas.</p>
+                <h2 class="bebas">NUESTRAS LÍNEAS DE TRABAJO</h2>
+                <p>Dos formas de aportar valor: productos propios para la gestión diaria y desarrollos a medida para necesidades específicas.</p>
             </div>
             <div class="dos-lineas">
                 <article class="linea is-fuego reveal">
-                    <p class="linea-k">Lnea de productos  Ecosistema</p>
+                    <p class="linea-k">Línea de productos · Ecosistema</p>
                     <h3>Ecosistema Financiero</h3>
                     <p>Familia de aplicaciones para la gestión empresarial: nóminas, facturación, costos, inventarios y administración, pensadas para operar en la red local del cliente.</p>
                     <ul>
-                        <li><strong style="color:#fff">Soberana de datos:</strong> la información operativa permanece bajo resguardo del cliente.</li>
-                        <li><strong style="color:#fff">Operatividad local:</strong> módulos diseados para funcionar con estabilidad en el entorno real del negocio.</li>
-                        <li><strong style="color:#fff">Especialización práctica:</strong> cada módulo resuelve un rea concreta de la gestión.</li>
+                        <li><strong style="color:#fff">Soberanía de datos:</strong> la información operativa permanece bajo resguardo del cliente.</li>
+                        <li><strong style="color:#fff">Operatividad local:</strong> módulos diseñados para funcionar con estabilidad en el entorno real del negocio.</li>
+                        <li><strong style="color:#fff">Especialización práctica:</strong> cada módulo resuelve un área concreta de la gestión.</li>
                     </ul>
+                    <hr>
                     <a href="<?= $base ?>/index.php">Explorar el ecosistema &rarr;</a>
                 </article>
                 <article class="linea reveal">
-                    <p class="linea-k">Lnea de servicios  A medida</p>
+                    <p class="linea-k">Línea de servicios · A medida</p>
                     <h3>Software personalizado</h3>
-                    <p>Diseamos y desarrollamos soluciones especficas cuando el proyecto requiere un flujo, una integración o una experiencia que no resuelve un producto estndar.</p>
+                    <p>Diseñamos y desarrollamos soluciones específicas cuando el proyecto requiere un flujo, una integración o una experiencia que no resuelve un producto estándar.</p>
                     <ul>
-                        <li><strong style="color:#fff">Anlisis real:</strong> partimos del proceso del cliente, no de una plantilla genrica.</li>
+                        <li><strong style="color:#fff">Análisis real:</strong> partimos del proceso del cliente, no de una plantilla genérica.</li>
                         <li><strong style="color:#fff">Arquitectura adecuada:</strong> elegimos la tecnología según el objetivo, el contexto y el mantenimiento.</li>
-                        <li><strong style="color:#fff">Acompaamiento:</strong> desde la idea inicial hasta la implementación y evolución.</li>
+                        <li><strong style="color:#fff">Acompañamiento:</strong> desde la idea inicial hasta la implementación y evolución.</li>
                     </ul>
+                    <hr>
                     <a href="/desamedida.php">Ver desarrollo a medida &rarr;</a>
                 </article>
             </div>
@@ -597,13 +619,13 @@
     <section class="sec" id="contacto">
         <div class="wrap">
             <div class="cta reveal">
-                <span class="eyebrow">Tienes un proyecto en mente?</span>
-                <h2 class="bebas">CONVERTIMOS TU IDEA EN UNA SOLUCIÓN TECNOLGICA.</h2>
+                <span class="eyebrow">¿Tienes un proyecto en mente?</span>
+                <h2 class="bebas">CONVERTIMOS TU IDEA EN UNA SOLUCIÓN TECNOLÓGICA.</h2>
                 <p>Conversemos sobre lo que necesitas. Te ayudamos a definir el alcance, la mejor aproximación y los próximos pasos para construirlo.</p>
                 <div class="hero-acciones">
                     <a class="btn btn-verde" href="/desamedida.php"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> Solicitar software a medida</a>
                     <a class="btn btn-ghost" href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contactar con UnicornioSoftware</a>
-                    <a class="btn-outline-fuego" href="/index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la Página principal</a>
+                    <a class="btn-outline-fuego" href="/index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la página principal</a>
                 </div>
             </div>
         </div>
@@ -637,8 +659,9 @@
                 <h4>Contacto</h4>
                 <p><a href="mailto:kakycu@gmail.com"><i class="fa-solid fa-envelope" aria-hidden="true"></i> kakycu@gmail.com</a></p>
                 <p><a href="tel:+5352712861"><i class="fa-solid fa-phone" aria-hidden="true"></i> +53 5 2712861</a></p>
-                <p><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>Sbados: 9:00 AM - 1:00 PM</p>
+                <p><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>Sábados: 9:00 AM - 1:00 PM</p>
                 <p><a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Centro de soporte</a></p>
+                <p><a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Sobre nosotros</a></p>
             </div>
 
             <div>
@@ -656,15 +679,15 @@
 
                 <h4 class="pie-legal-title">Legal</h4>
                 <p class="pie-legal">
-                    <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Trminos</a>
-                    <a href="<?= $base ?>/privacidad.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
+                    <a href="/legal.php#terminos"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
+                    <a href="/legal.php#privacidad"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
                     <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
                 </p>
             </div>
         </div>
         <div class="pie-barra">
-            <span> <?= date('Y') ?> UnicornioSoftware Cuba. Todos los derechos reservados.</span>
-            <span>Licencia registrada  datos alojados en este equipo</span>
+            <span>© <?= date('Y') ?> UnicornioSoftware Cuba. Todos los derechos reservados.</span>
+            <span>Licencia registrada · datos alojados en este equipo</span>
         </div>
     </div>
 </footer>
@@ -710,7 +733,7 @@
     window.addEventListener('resize', actualizar);
     actualizar();
 })();
-/* Men móvil */
+/* Menú móvil */
 (function () {
     var btn = document.getElementById('menuBtn');
     var menu = document.getElementById('menuMovil');
