@@ -1099,7 +1099,7 @@ $faq = [
         <div class="wrap">
             <div class="sec-head reveal">
                 <span class="eyebrow">Bajo el capó</span>
-                <h2 class="bebas">La plataforma</h2>
+                <h2 class="bebas">La plataforma <button type="button" class="sec-refresh" id="btnRefreshPlataforma" title="Actualizar sección" aria-label="Actualizar sección La plataforma"><i class="fa-solid fa-rotate" aria-hidden="true"></i></button></h2>
                 <p>Un stack local probado en producción: Apache, PHP y MySQL, con respaldo y soporte del equipo que lo construyó.</p>
             </div>
 
@@ -2704,6 +2704,34 @@ $faq = [
   check();
   window.addEventListener('scroll', check, { passive: true });
   window.addEventListener('load', check);
+})();
+</script>
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('#btnRefreshPlataforma');
+    if(!btn) return;
+    if(btn.classList.contains('is-spinning')) return;
+    var sec = document.getElementById('plataforma');
+    if(!sec) return;
+    btn.classList.add('is-spinning');
+    fetch(window.location.pathname + window.location.search, {cache:'no-store', credentials:'same-origin'})
+      .then(function(r){ if(!r.ok) throw new Error('http'); return r.text(); })
+      .then(function(html){
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var fresh = doc.getElementById('plataforma');
+        if(!fresh) throw new Error('no-sec');
+        sec.innerHTML = fresh.innerHTML;
+        sec.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('is-in'); });
+        var nb = document.getElementById('btnRefreshPlataforma');
+        if(nb) nb.classList.add('is-spinning');
+      })
+      .catch(function(){ /* silencio: se mantiene contenido actual */ })
+      .finally(function(){
+        var b = document.getElementById('btnRefreshPlataforma');
+        if(b) b.classList.remove('is-spinning');
+      });
+  });
 })();
 </script>
 </body>

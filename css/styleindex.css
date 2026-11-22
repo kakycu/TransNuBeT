@@ -1304,3 +1304,11 @@
         .pantalla, .movil, .escena::before { transform: none; }
         .btn:hover, .card:hover, .serv:hover, .paso:hover, .equipo-card:hover { transform: none; }
     }
+
+/* Botón refrescar sección */
+.sec-refresh{display:inline-flex;align-items:center;justify-content:center;width:1.1em;height:1.1em;margin-left:.35rem;padding:0;border:0;background:transparent;color:var(--cian);cursor:pointer;vertical-align:middle;font-size:.55em;line-height:1;transition:color .2s,transform .2s}
+.sec-refresh:hover,.sec-refresh:focus-visible{color:var(--fuego);transform:scale(1.08)}
+.sec-refresh:focus-visible{outline:2px solid var(--cian);outline-offset:3px;border-radius:50%}
+.sec-refresh i{display:block}
+.sec-refresh.is-spinning i{animation:sec-spin .8s linear infinite}
+@keyframes sec-spin{to{transform:rotate(360deg)}}
