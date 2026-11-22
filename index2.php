@@ -1734,10 +1734,10 @@ $faq = [
 
         <div class="nav-links">
             <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-            <a href="#ingenieria"><i class="fa-solid fa-microchip" aria-hidden="true"></i> Ingeniería</a>
+            <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
             <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
             <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
-            <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Ing.y Servicios</a>
+            <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> SERVICIOS</a>
             <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
             <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
             <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
@@ -1776,10 +1776,10 @@ $faq = [
 
     <div class="menu-movil" id="menuMovil">
         <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-        <a href="#ingenieria"><i class="fa-solid fa-microchip" aria-hidden="true"></i> Ingeniería</a>
+        <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
         <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
         <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
-        <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Ing.y Servicios</a>
+        <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> SERVICIOS</a>
         <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
         <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
         <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
@@ -2048,42 +2048,6 @@ $faq = [
                     </a>
                 </article>
                 <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== Nuestra ingeniería ===== -->
-    <section class="sec" id="ingenieria">
-        <div class="wrap">
-            <div class="duo">
-                <div class="reveal">
-                    <span class="eyebrow">Nuestra ingeniería</span>
-                    <h2 class="bebas">Nuestra<br>ingeniería.</h2>
-                    <div class="rule" aria-hidden="true"></div>
-                    <p>
-                        Elegimos la arquitectura y las herramientas según las necesidades de cada proyecto,
-                        priorizando utilidad, seguridad y mantenimiento.
-                    </p>
-                    <ul class="mini-lista">
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Arquitectura definida por el uso real, no por la moda.</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Seguridad y respaldo pensados desde el primer día.</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Código mantenible, documentado y sin dependencias innecesarias.</li>
-                    </ul>
-                </div>
-
-                <div class="panel-destacado reveal">
-                    <h3>Integraciones disponibles en nuestros productos de gestión</h3>
-                    <div class="chips">
-                        <span><i class="fa-solid fa-building-columns" aria-hidden="true"></i> Bancos</span>
-                        <span><i class="fa-solid fa-credit-card" aria-hidden="true"></i> Pasarelas de pago</span>
-                        <span><i class="fa-solid fa-envelope" aria-hidden="true"></i> Correo</span>
-                        <span><i class="fa-solid fa-print" aria-hidden="true"></i> Impresoras fiscales</span>
-                        <span><i class="fa-solid fa-file-excel" aria-hidden="true"></i> Excel y CSV</span>
-                        <span><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</span>
-                        <span><i class="fa-solid fa-database" aria-hidden="true"></i> MySQL y SQL Server</span>
-                        <span><i class="fa-solid fa-sitemap" aria-hidden="true"></i> API y servicios web</span>
-                    </div>
-                </div>
             </div>
         </div>
     </section>
