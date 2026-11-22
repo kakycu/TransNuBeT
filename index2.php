@@ -24,6 +24,33 @@ if (is_file($licenciaArchivo)) {
     $licenciaDatos  = licencia_leer();
     $licenciaActiva = licencia_activada();
 }
+/* Versión de MySQL (misma lógica que servicios/phpinfo) */
+$mysqlVersionDisplay = 'No disponible';
+$dbHost = '127.0.0.1';
+$dbUser = 'root';
+$dbPass = '';
+$configNominas = __DIR__ . '/servicios/nominas/config.php';
+if (is_file($configNominas)) {
+    $cfg = file_get_contents($configNominas);
+    if (preg_match("/define\\s*\\(\\s*['\\\"]DB_HOST['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbHost = $m[1];
+    if (preg_match("/define\\s*\\(\\s*['\\\"]DB_USER['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbUser = $m[1];
+    if (preg_match("/define\\s*\\(\\s*['\\\"]DB_PASS['\\\"]\\s*,\\s*['\\\"]([^'\\\"]*)['\\\"]\\s*\\)/", $cfg, $m)) $dbPass = $m[1];
+}
+if (function_exists('mysqli_connect')) {
+    try {
+        $conn = @mysqli_connect($dbHost, $dbUser, $dbPass);
+        if ($conn) {
+            $info = mysqli_get_server_info($conn);
+            if (is_string($info) && $info !== '') {
+                $mysqlVersionDisplay = preg_replace('/^(\\d+\\.\\d+)(?:\\.\\d+.*)?$/', '$1', $info);
+                if (!is_string($mysqlVersionDisplay) || $mysqlVersionDisplay === '') $mysqlVersionDisplay = $info;
+            }
+            mysqli_close($conn);
+        }
+    } catch (Throwable $e) {
+        $mysqlVersionDisplay = 'No disponible';
+    }
+}
 
 /* ---------------------------------------------------------------------------
  * Activación y renovación de la licencia desde esta misma portada.
@@ -1923,7 +1950,7 @@ $faq = [
                 </div>
                 <div class="metric" role="listitem">
                     <i class="fa-solid fa-database" aria-hidden="true"></i>
-                    <div><b>MySQL 5.7</b><span>Base de datos</span></div>
+                    <div><b>MySQL <?= htmlspecialchars($mysqlVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Base de datos</span></div>
                 </div>
                 <div class="metric" role="listitem">
                     <i class="fa-solid fa-headset" aria-hidden="true"></i>
