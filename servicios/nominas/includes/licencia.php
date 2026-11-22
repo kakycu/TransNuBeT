@@ -409,6 +409,17 @@ function licencia_vencida($datos) {
 }
 
 /**
+ * Comprueba si la fecha de activación de la licencia es posterior a la fecha actual del PC.
+ * Se permite una tolerancia de 5 minutos por desfase de reloj.
+ * @param array|null $datos
+ * @return bool
+ */
+function licencia_fecha_futura($datos) {
+    if ($datos === null || !isset($datos['fecha_activacion'])) return false;
+    return ((int)$datos['fecha_activacion']) > (time() + 300);
+}
+
+/**
  * Días restantes hasta el vencimiento (0 si vence hoy o ya venció).
  * Cuenta días de CALENDARIO (medianoche a medianoche), sin redondear horas
  * residuales, para evitar el desfase de +1 día que producía ceil().
@@ -435,6 +446,7 @@ function licencia_activada() {
     if ($datos['registro'] === '' || $datos['usuario'] === '' || $datos['serial'] === '') return false;
     if (!licencia_validar_serial($datos['registro'], $datos['usuario'], $datos['serial'])) return false;
     if (licencia_vencida($datos)) return false;
+    if (licencia_fecha_futura($datos)) return false;
     // La licencia instalada queda vinculada a la huella del equipo actual.
     if ($datos['huella'] === '') return false;
     if (!hash_equals($datos['huella'], licencia_fingerprint_machine())) return false;
@@ -765,6 +777,16 @@ function licencia_texto_verificar($texto) {
         $resp['datos']          = $datos;
         return $resp;
     }
+    if (licencia_vencida($datos)) {
+        $resp['mensaje'] = 'La licencia está vencida y no puede importarse. Solicite una licencia vigente al proveedor.';
+        $resp['datos']   = $datos;
+        return $resp;
+    }
+    if (licencia_fecha_futura($datos)) {
+        $resp['mensaje'] = 'La fecha de la licencia es posterior a la fecha del equipo y no puede utilizarse. Verifique la fecha/hora del PC o solicite una licencia válida.';
+        $resp['datos']   = $datos;
+        return $resp;
+    }
     $meses = isset($datos['info']['meses']) ? $datos['info']['meses'] : null;
     $resp['ok']      = true;
     $resp['mensaje'] = 'Licencia valida para este equipo.';
@@ -789,6 +811,8 @@ function licencia_texto_verificar($texto) {
  */
 function licencia_instalar_datos($datos) {
     if (!is_array($datos)) return false;
+    if (licencia_vencida($datos)) return false;
+    if (licencia_fecha_futura($datos)) return false;
     if (licencia_activada()) return false;
     $fp = licencia_fingerprint_machine();
     if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fp)) return false;

@@ -306,6 +306,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $imp_datos = licencia_leer_archivo_lic($_FILES['archivo_lic']['tmp_name']);
                 if ($imp_datos === null) {
                     $error = 'El archivo <b>.lic</b> seleccionado no es válido o su llave interna no corresponde.<br>Revise el archivo o solicite uno nuevo.';
+                } elseif (licencia_vencida($imp_datos)) {
+                    $error = 'La licencia del archivo <b>.lic</b> está <b>vencida</b> y no puede importarse.<br>Solicite una licencia vigente al proveedor.';
+                } elseif (function_exists('licencia_fecha_futura') && licencia_fecha_futura($imp_datos)) {
+                    $error = 'La fecha de la licencia es <b>posterior a la fecha del equipo</b> y no puede utilizarse.<br>Verifique la fecha/hora del PC o solicite una licencia válida.';
                 } else {
                     $fp_actual = licencia_fingerprint_machine();
                     if ($imp_datos['huella'] !== '' && !hash_equals($imp_datos['huella'], $fp_actual)) {

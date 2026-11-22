@@ -76,6 +76,12 @@ function lic_importar_analizar_texto($contenido) {
     if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $huella_este)) {
         return array('ok' => false, 'mensaje' => 'Esta licencia fue emitida para otro equipo. No se puede instalar en este computador.', 'datos' => null);
     }
+    if (function_exists('licencia_vencida') && licencia_vencida($datos)) {
+        return array('ok' => false, 'mensaje' => 'La licencia esta vencida y no puede importarse. Solicite una licencia vigente al proveedor.', 'datos' => null);
+    }
+    if (function_exists('licencia_fecha_futura') && licencia_fecha_futura($datos)) {
+        return array('ok' => false, 'mensaje' => 'La fecha de la licencia es posterior a la fecha del equipo y no puede utilizarse. Verifique la fecha/hora del PC.', 'datos' => null);
+    }
     return array('ok' => true, 'mensaje' => 'Licencia valida.', 'datos' => $datos);
 }
 
@@ -173,6 +179,12 @@ if ($datos === null) {
 $huella_este = licencia_fingerprint_machine();
 if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $huella_este)) {
     lic_importar_responder(false, 'Esta licencia fue emitida para otro equipo. No se puede instalar en este computador.');
+}
+if (function_exists('licencia_vencida') && licencia_vencida($datos)) {
+    lic_importar_responder(false, 'La licencia esta vencida y no puede importarse. Solicite una licencia vigente al proveedor.');
+}
+if (function_exists('licencia_fecha_futura') && licencia_fecha_futura($datos)) {
+    lic_importar_responder(false, 'La fecha de la licencia es posterior a la fecha del equipo y no puede utilizarse. Verifique la fecha/hora del PC.');
 }
 
 // Reemplazo: la licencia actual se borra primero porque el motor no

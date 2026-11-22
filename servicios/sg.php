@@ -235,6 +235,10 @@ if (!function_exists('licencia_tipos')) {
         if ($vence === null) return false;
         return time() > (int)$vence;
     }
+    function licencia_fecha_futura($datos) {
+        if ($datos === null || !isset($datos['fecha_activacion'])) return false;
+        return ((int)$datos['fecha_activacion']) > (time() + 300);
+    }
     function licencia_dias_restantes($datos) {
         $vence = licencia_vencimiento($datos);
         if ($vence === null) return null;
@@ -250,6 +254,7 @@ if (!function_exists('licencia_tipos')) {
         if ($datos['registro'] === '' || $datos['usuario'] === '' || $datos['serial'] === '') return false;
         if (!licencia_validar_serial($datos['registro'], $datos['usuario'], $datos['serial'])) return false;
         if (licencia_vencida($datos)) return false;
+        if (licencia_fecha_futura($datos)) return false;
         if ($datos['huella'] === '') return false;
         if (!hash_equals($datos['huella'], licencia_fingerprint_machine())) return false;
         return true;
@@ -625,6 +630,12 @@ if ($ES_CLI) {
             if ($ruta === null || !is_file($ruta)) { fwrite(STDERR, "ERROR: debe indicar la ruta del .lic.\n"); exit(1); }
             $datos = licencia_leer_archivo_lic($ruta);
             if ($datos === null) { fwrite(STDERR, "ERROR: el archivo .lic no es válido.\n"); exit(1); }
+            if (licencia_vencida($datos)) {
+                fwrite(STDERR, "ERROR: la licencia está vencida y no puede importarse.\n"); exit(1);
+            }
+            if (licencia_fecha_futura($datos)) {
+                fwrite(STDERR, "ERROR: la fecha de la licencia es posterior a la del equipo y no puede utilizarse.\n"); exit(1);
+            }
             $fpMaquina = licencia_fingerprint_machine();
             if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fpMaquina)) {
                 fwrite(STDERR, "ERROR: este .lic fue emitido para OTRO equipo.\n"); exit(1);
@@ -1030,6 +1041,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $accion !== 'rotar_token') {
                 $forzar = !empty($_POST['forzar']);
                 $datos  = licencia_leer_archivo_lic($tmp);
                 if ($datos === null) { $flash['err'][] = 'El archivo .lic no es válido.'; break; }
+                if (licencia_vencida($datos)) {
+                    $flash['err'][] = 'La licencia está vencida y no puede importarse.'; break;
+                }
+                if (licencia_fecha_futura($datos)) {
+                    $flash['err'][] = 'La fecha de la licencia es posterior a la fecha del equipo y no puede utilizarse. Verifique la fecha/hora del PC.'; break;
+                }
                 $fpMaquina = licencia_fingerprint_machine();
                 if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fpMaquina)) {
                     $flash['err'][] = 'Este .lic fue emitido para OTRO equipo.'; break;
@@ -1094,6 +1111,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $accion !== 'rotar_token') {
 
                 $datos = licencia_leer_texto_lic($codigo);
                 if ($datos === null) { $flash['err'][] = 'El texto no corresponde a una licencia valida. Verifique que se copio completo.'; break; }
+                if (licencia_vencida($datos)) {
+                    $flash['err'][] = 'La licencia está vencida y no puede instalarse.'; break;
+                }
+                if (licencia_fecha_futura($datos)) {
+                    $flash['err'][] = 'La fecha de la licencia es posterior a la fecha del equipo y no puede utilizarse. Verifique la fecha/hora del PC.'; break;
+                }
 
                 $fpMaquina = licencia_fingerprint_machine();
                 if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fpMaquina)) {
@@ -1161,6 +1184,10 @@ if ($accion === 'validar_texto' && isset($_GET['ajax'])) {
             $datos = licencia_leer_texto_lic($codigo);
             if ($datos === null) {
                 $resp['mensaje'] = 'El texto no corresponde a una licencia valida. Verifique que se copio completo.';
+            } elseif (licencia_vencida($datos)) {
+                $resp['mensaje'] = 'La licencia está vencida y no puede importarse. Solicite una licencia vigente al proveedor.';
+            } elseif (licencia_fecha_futura($datos)) {
+                $resp['mensaje'] = 'La fecha de la licencia es posterior a la fecha del equipo y no puede utilizarse. Verifique la fecha/hora del PC.';
             } else {
                 $fpMaquina = licencia_fingerprint_machine();
                 $esGenerica = ($datos['huella'] === '');
