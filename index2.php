@@ -613,6 +613,10 @@ $faq = [
     .menu-movil a:hover { color: var(--txt); }
     .menu-movil a i { width: 1.1rem; margin-right: .55rem; color: var(--gris-3); }
     .menu-movil a:hover i { color: var(--cian); }
+    .menu-movil button.menu-movil-item { display:block; width:100%; text-align:left; padding:.9rem 1.5rem; font-family:"Exo 2",sans-serif; font-size:.8rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--gris-2); background:transparent; border:0; border-bottom:1px solid rgba(30,41,59,.35); cursor:pointer; }
+    .menu-movil button.menu-movil-item:hover { color: var(--txt); }
+    .menu-movil button.menu-movil-item i { width:1.1rem; margin-right:.55rem; color:var(--gris-3); }
+    .menu-movil button.menu-movil-item:hover i { color: var(--cian); }
     .menu-movil-titulo {
         display: block; padding: .9rem 1.5rem .4rem;
         font-family: "Exo 2", sans-serif; font-size: .62rem; font-weight: 800;
@@ -636,17 +640,62 @@ $faq = [
         z-index: 60;
     }
     .nav-login.is-open .nav-login-menu { opacity: 1; visibility: visible; transform: none; }
-    .nav-login-menu a {
-        display: flex; align-items: center; gap: .6rem;
+    .nav-login-menu a,
+    .nav-login-menu button {
+        display: flex; align-items: center; gap: .6rem; width: 100%;
         padding: .6rem .7rem; border-radius: .4rem;
         font-family: "Exo 2", sans-serif; font-size: .74rem; font-weight: 700;
         letter-spacing: .06em; text-transform: uppercase; color: var(--gris-2);
-        border-bottom: 0;
+        border-bottom: 0; background: transparent; border: 0; cursor: pointer; text-align: left;
         transition: background .18s, color .18s;
     }
-    .nav-login-menu a i { width: 1.05rem; text-align: center; color: var(--cian); font-size: .84rem; }
-    .nav-login-menu a:hover, .nav-login-menu a:focus-visible {
+    .nav-login-menu a i,
+    .nav-login-menu button i { width: 1.05rem; text-align: center; color: var(--cian); font-size: .84rem; }
+    .nav-login-menu a:hover, .nav-login-menu a:focus-visible,
+    .nav-login-menu button:hover, .nav-login-menu button:focus-visible {
         background: rgba(0, 212, 255, .1); color: var(--txt);
+    }
+    .nav-drop { position: relative; }
+    .nav-drop-toggle {
+        display: inline-flex; align-items: center; gap: .35rem;
+        background: transparent; border: 0; padding: 0; cursor: pointer;
+        font-family: "Exo 2", sans-serif; font-size: .8rem; font-weight: 700;
+        letter-spacing: .07em; text-transform: uppercase; color: var(--gris-2);
+        transition: color .2s; white-space: nowrap;
+    }
+    .nav-drop-toggle:hover, .nav-drop-toggle:focus-visible { color: var(--txt); }
+    .nav-drop-toggle i:first-child { margin-right: .03rem; color: var(--gris-3); font-size: 1rem; transition: color .2s; }
+    .nav-drop-toggle:hover i:first-child, .nav-drop-toggle:focus-visible i:first-child { color: var(--cian); }
+    .nav-drop-caret { font-size: .62em; opacity: .75; transition: transform .2s; }
+    .nav-drop.is-open .nav-drop-caret { transform: rotate(180deg); }
+    .nav-drop-menu {
+        position: absolute; left: 0; top: calc(100% + .6rem);
+        display: grid; gap: .1rem;
+        min-width: 15.5rem; padding: .45rem;
+        background: #0b111d; border: 1px solid var(--acero); border-radius: .6rem;
+        box-shadow: 0 28px 56px -22px rgba(0,0,0,.95), 0 0 0 1px rgba(0,212,255,.08);
+        opacity: 0; visibility: hidden; transform: translateY(-6px);
+        transition: opacity .18s ease, transform .18s ease, visibility .18s; z-index: 60;
+    }
+    .nav-drop.is-open .nav-drop-menu { opacity: 1; visibility: visible; transform: none; }
+    .nav-drop-menu a, .nav-drop-menu button {
+        display: flex; align-items: center; gap: .6rem; width: 100%;
+        padding: .6rem .7rem; border-radius: .4rem;
+        font-family: "Exo 2", sans-serif; font-size: .74rem; font-weight: 700;
+        letter-spacing: .06em; text-transform: uppercase; color: var(--gris-2);
+        border: 0; background: transparent; cursor: pointer; text-align: left; text-decoration: none;
+        transition: background .18s, color .18s;
+    }
+    .nav-drop-menu a i, .nav-drop-menu button i { width: 1.05rem; text-align: center; color: var(--cian); font-size: .84rem; }
+    .nav-drop-menu a:hover, .nav-drop-menu a:focus-visible,
+    .nav-drop-menu button:hover, .nav-drop-menu button:focus-visible { background: rgba(0,212,255,.1); color: var(--txt); }
+    @media (min-width: 900px) {
+        .nav-drop-toggle { font-size: .7rem; letter-spacing: .05em; }
+        .nav-drop-toggle i:first-child { display: none; }
+    }
+    @media (min-width: 1180px) {
+        .nav-drop-toggle { font-size: .72rem; letter-spacing: .04em; }
+        .nav-drop-toggle i:first-child { display: inline-block; margin-right: .24rem; font-size: .95rem; }
     }
     @media (min-width: 900px) {
         /* Nueve enlaces: primero compactos y sin iconos, luego con más aire. */
@@ -1214,6 +1263,38 @@ $faq = [
     @keyframes radar-sweep{0%{background-position:0% -100%}100%{background-position:0% 100%}}
     @media(prefers-reduced-motion:reduce){.circuit-line-cian,.circuit-line-cian-delay,.circuit-line-fuego,.circuit-line-fuego-slow,#servicios::after{animation:none}}
 
+    
+    /* ===== A medida (CyberForja) ===== */
+    #medida.medida-cf{position:relative;overflow:hidden;background:#060a12;padding:2rem 0}
+    @media(min-width:640px){#medida.medida-cf{padding:3rem 0}}
+    @media(min-width:768px){#medida.medida-cf{padding:4rem 0}}
+    .medida-cf__wrap{max-width:80rem;margin:0 auto;padding:0 1rem;position:relative;z-index:20}
+    @media(min-width:640px){.medida-cf__wrap{padding:0 1.5rem}}
+    @media(min-width:1024px){.medida-cf__wrap{padding:0 2rem}}
+    .medida-cf__head{max-width:56rem;margin:0 auto 2.5rem;text-align:center}
+    .medida-cf__eyebrow{display:block;color:var(--fuego);font-family:'Exo 2',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-size:.75rem}
+    @media(min-width:640px){.medida-cf__eyebrow{font-size:.875rem}}
+    .medida-cf__title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#fff;margin:.25rem 0 .75rem;letter-spacing:.05em;line-height:1}
+    @media(min-width:640px){.medida-cf__title{font-size:1.875rem}}
+    @media(min-width:768px){.medida-cf__title{font-size:3rem}}
+    .medida-cf__rule{width:4rem;height:.25rem;background:var(--fuego);margin:0 auto .75rem;border-radius:9999px}
+    .medida-cf__desc{font-family:'Inter',sans-serif;font-size:.75rem;color:#d1d5db;margin:0 auto 1.5rem;line-height:1.625;max-width:42rem}
+    @media(min-width:640px){.medida-cf__desc{font-size:.875rem}}
+    @media(min-width:768px){.medida-cf__desc{font-size:1rem}}
+    .medida-cf__cta{display:inline-flex;align-items:center;gap:.5rem;font-family:'Exo 2',sans-serif;font-weight:700;font-size:.75rem;padding:.75rem 1.5rem;border:1px solid var(--fuego);color:var(--fuego);background:transparent;text-decoration:none;text-transform:uppercase;letter-spacing:.05em;border-radius:.125rem;box-shadow:0 4px 6px -1px rgba(255,107,0,.2),0 2px 4px -2px rgba(255,107,0,.2);transition:all .3s ease}
+    @media(min-width:640px){.medida-cf__cta{font-size:.875rem}}
+    .medida-cf__cta:hover,.medida-cf__cta:focus-visible{background:var(--fuego);color:var(--abismo);transform:translateY(-2px)}
+    .medida-cf__steps{border-top:1px solid rgba(30,41,59,.6);padding-top:2rem}
+    .medida-cf__grid{display:grid;grid-template-columns:1fr;gap:1rem;text-align:left}
+    @media(min-width:640px){.medida-cf__grid{grid-template-columns:repeat(2,1fr);gap:1.25rem}}
+    @media(min-width:1024px){.medida-cf__grid{grid-template-columns:repeat(4,1fr)}}
+    .medida-cf__card{background:#080d17;padding:1rem;border-radius:.75rem;border:1px solid rgba(30,41,59,.6)}
+    .medida-cf__num{display:block;font-family:'Exo 2',sans-serif;font-weight:900;font-size:.75rem;letter-spacing:.1em;margin-bottom:.25rem}
+    .medida-cf__num.is-fuego{color:var(--fuego)}
+    .medida-cf__num.is-cian{color:var(--cian)}
+    .medida-cf__card-title{font-family:'Exo 2',sans-serif;font-weight:700;color:#fff;font-size:.875rem;margin:0 0 .25rem}
+    .medida-cf__card-desc{color:#9ca3af;font-size:.75rem;font-family:'Inter',sans-serif;line-height:1.625;margin:0}
+
     /* ===== FAQ ===== */
     details.faq {
         background: var(--tarjeta);
@@ -1734,14 +1815,26 @@ $faq = [
 
         <div class="nav-links">
             <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-            <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> ECOSIST.</a>
+            <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> Ecosistema</a>
+            <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> Ingeniería</a>
             <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
-            <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
-            <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
-            <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> SERVICIOS</a>
-            <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
             <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
             <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
+            <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Plataforma</a>
+            <div class="nav-drop" id="navLic">
+                <button type="button" class="nav-drop-toggle" id="navLicBtn" aria-haspopup="true" aria-expanded="false" aria-controls="navLicMenu">
+                    <i class="fa-solid fa-key" aria-hidden="true"></i> Licencia
+                    <i class="fa-solid fa-chevron-down nav-drop-caret" aria-hidden="true"></i>
+                </button>
+                <div class="nav-drop-menu" id="navLicMenu" role="menu" aria-labelledby="navLicBtn">
+                    <button type="button" role="menuitem" data-lic-open><i class="fa-solid fa-key" aria-hidden="true"></i> Activar / Renovar</button>
+                    <button type="button" role="menuitem" data-estado-lic-open><i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa</button>
+                    <button type="button" role="menuitem" data-sol-open><i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo</button>
+                    <a role="menuitem" href="/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Pedir soporte</a>
+                    <a role="menuitem" href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver Planes / Precios</a>
+                </div>
+            </div>
+            <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
         </div>
 
         <div class="nav-acc">
@@ -1777,14 +1870,19 @@ $faq = [
 
     <div class="menu-movil" id="menuMovil">
         <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-        <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> ECOSIST.</a>
+        <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> Ecosistema</a>
+        <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> Ingeniería</a>
         <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
-        <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
-        <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
-        <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> SERVICIOS</a>
-        <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
         <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
         <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
+        <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Plataforma</a>
+        <span class="menu-movil-titulo">Licencia</span>
+        <button type="button" class="menu-movil-item" data-lic-open><i class="fa-solid fa-key" aria-hidden="true"></i> Activar / Renovar</button>
+        <button type="button" class="menu-movil-item" data-estado-lic-open><i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa</button>
+        <button type="button" class="menu-movil-item" data-sol-open><i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo</button>
+        <a href="/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Pedir soporte</a>
+        <a href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver Planes / Precios</a>
+        <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
         <span class="menu-movil-titulo">Iniciar sesión</span>
         <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
         <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
@@ -2054,118 +2152,7 @@ $faq = [
         </div>
     </section>
 
-    <!-- ===== Ingeniería personalizada ===== -->
-    <section class="sec" id="medida">
-        <div class="wrap">
-            <div class="duo duo-espejo">
-                <div class="reveal">
-                    <span class="eyebrow">Ingeniería personalizada</span>
-                    <h2 class="bebas">Software<br>a medida.</h2>
-                    <div class="rule" aria-hidden="true"></div>
-                    <p>
-                        Analizamos tus procesos y desarrollamos aplicaciones adaptadas a tu organización,
-                        desde herramientas internas hasta plataformas completas.
-                    </p>
-                    <div class="hero-acciones" style="margin-top:1.4rem">
-                        <a class="btn btn-fuego" href="/desamedida.php">
-                            <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Contar mi proyecto
-                        </a>
-                    </div>
-                </div>
-
-                <div class="pasos" style="margin-top:0">
-                    <div class="paso reveal" style="grid-column:1 / -1">
-                        <span class="paso-num">01</span>
-                        <strong>Herramientas internas</strong>
-                        <p>Control de inventario, producción, compras o cualquier proceso que hoy vive en hojas de cálculo.</p>
-                    </div>
-                    <div class="paso reveal" style="grid-column:1 / -1">
-                        <span class="paso-num">02</span>
-                        <strong>Plataformas completas</strong>
-                        <p>Sistemas con varios módulos, usuarios y permisos, integrados con tu operación diaria.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== Estado de la licencia ===== -->
-    <section class="sec" id="licencia-estado">
-        <div class="wrap">
-            <div class="sec-head reveal">
-                <span class="eyebrow">Registro del equipo</span>
-                <h2 class="bebas">Estado de la licencia</h2>
-                <p>La licencia se guarda cifrada y solo en este equipo. Aquí puedes revisar su estado y renovarla cuando haga falta.</p>
-            </div>
-
-            <div class="lic-grid">
-                <div class="panel reveal">
-                    <span class="badge-estado <?= $licEdoTono ?>">
-                        <i class="fa-solid <?= $licEdoIcono ?>" aria-hidden="true"></i> <?= htmlspecialchars($licEdoNombre, ENT_QUOTES, 'UTF-8') ?>
-                    </span>
-
-                    <dl class="datos">
-                        <div class="dato">
-                            <dt>Nombre de registro</dt>
-                            <dd><?= $licRegistro !== '' ? htmlspecialchars($licRegistro, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
-                        </div>
-                        <div class="dato">
-                            <dt>Usuario del registro</dt>
-                            <dd><?= $licUsuario !== '' ? htmlspecialchars($licUsuario, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
-                        </div>
-                        <div class="dato">
-                            <dt>Tipo de licencia</dt>
-                            <dd><?= $licTipo !== '' ? htmlspecialchars($licTipo, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
-                        </div>
-                        <div class="dato">
-                            <dt>Vence</dt>
-                            <dd><?= $licVence !== '' ? htmlspecialchars($licVence, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
-                        </div>
-                        <div class="dato">
-                            <dt>Código de equipo</dt>
-                            <dd class="mono"><?= $licHuella !== '' ? htmlspecialchars($licHuella, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
-                        </div>
-                    </dl>
-
-                    <div class="lic-acciones">
-                        <button type="button" class="btn btn-fuego btn-sm" data-lic-open>
-                            <i class="fa-solid fa-key" aria-hidden="true"></i> Activar o renovar
-                        </button>
-                        <button type="button" class="btn btn-ghost btn-sm" data-estado-lic-open>
-                            <i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa
-                        </button>
-                        <button type="button" class="btn btn-ghost btn-sm" data-sol-open>
-                            <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo
-                        </button>
-                        <a class="btn btn-ghost btn-sm" href="<?= $base ?>/soporte.php">
-                            <i class="fa-solid fa-headset" aria-hidden="true"></i> Pedir soporte
-                        </a>
-                    </div>
-                </div>
-
-                <div class="panel reveal">
-                    <h3 class="bebas" style="font-size:1.7rem;text-transform:uppercase">Cómo funciona</h3>
-                    <p class="lic-nota" style="margin-top:.7rem">
-                        La llave serial se valida contra los datos de registro (<b>nombre</b> y <b>usuario</b>) y se
-                        guarda cifrada en el registro de Windows o en un archivo cifrado del disco. Así, la activación queda vinculada a este equipo y el sistema puede verificar su estado de forma segura.
-                    </p>
-                    <p class="lic-nota" style="margin-top:.9rem">
-                        Para renovar, solo debes introducir una llave nueva: la anterior se reemplaza sin perder los datos
-                        ni la configuración del sistema. Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida.
-                    </p>
-                    <p class="lic-nota" style="margin-top:.9rem">
-                        Todo el trámite —activar, renovar, importar un archivo <code>.lic</code> o solicitar la licencia por correo—
-                        se realiza aquí mismo, sin salir de la portada. Antes de activar, puedes revisar los planes disponibles y elegir el que mejor se adapte a tu negocio.
-                    </p>
-                    <div style="margin-top:1.25rem">
-                        <a class="btn btn-cian btn-sm" href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver planes y precios</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== Servicios / plataforma ===== -->
+    <!-- ===== Nuestra ingeniería ===== -->
         <section id="servicios">
         <div class="circuit-bg">
             <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
@@ -2268,6 +2255,149 @@ $faq = [
             </div>
         </div>
     </section>
+    <!-- ===== Ingeniería personalizada ===== -->
+    <section id="medida" class="medida-cf section-seam">
+        <div class="medida-cf__wrap">
+            <div class="medida-cf__head reveal">
+                <span class="medida-cf__eyebrow">Ingeniería personalizada</span>
+                <h2 class="medida-cf__title">SOFTWARE A MEDIDA.</h2>
+                <div class="medida-cf__rule" aria-hidden="true"></div>
+                <p class="medida-cf__desc">
+                    Analizamos tus procesos y desarrollamos aplicaciones adaptadas a tu organización, desde herramientas internas hasta plataformas completas.
+                </p>
+                <a href="/desamedida.php" id="btn-cta-medida" class="medida-cf__cta">
+                    Cuéntanos tu proyecto →
+                </a>
+            </div>
+
+            <div class="medida-cf__steps reveal">
+                <div class="medida-cf__grid">
+                    <div class="medida-cf__card">
+                        <span class="medida-cf__num is-fuego">01. ANALIZAMOS</span>
+                        <h4 class="medida-cf__card-title">Escuchamos y evaluamos</h4>
+                        <p class="medida-cf__card-desc">Entendemos tus procesos y objetivos para definir la arquitectura adecuada.</p>
+                    </div>
+                    <div class="medida-cf__card">
+                        <span class="medida-cf__num is-cian">02. DISEÑAMOS</span>
+                        <h4 class="medida-cf__card-title">Estructura y experiencia</h4>
+                        <p class="medida-cf__card-desc">Modelamos interfaces claras y flujos eficientes para los usuarios.</p>
+                    </div>
+                    <div class="medida-cf__card">
+                        <span class="medida-cf__num is-fuego">03. DESARROLLAMOS</span>
+                        <h4 class="medida-cf__card-title">Ingeniería sólida</h4>
+                        <p class="medida-cf__card-desc">Escribimos código limpio, seguro y optimizado para cada plataforma.</p>
+                    </div>
+                    <div class="medida-cf__card">
+                        <span class="medida-cf__num is-cian">04. IMPLEMENTAMOS</span>
+                        <h4 class="medida-cf__card-title">Puesta en marcha</h4>
+                        <p class="medida-cf__card-desc">Desplegamos el sistema y acompañamos su evolución continua.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Nuestro proceso ===== -->
+    <section class="sec" id="proceso">
+        <div class="wrap">
+            <div class="proceso-head reveal">
+                <span class="eyebrow">Nuestro proceso</span>
+                <h2 class="bebas">Cómo trabajamos.</h2>
+                <div class="rule-fuego" aria-hidden="true"></div>
+                <p>Combinamos análisis, diseño y desarrollo para construir sistemas que puedan utilizarse, mantenerse y evolucionar.</p>
+            </div>
+
+            <div class="proceso-grid">
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">01</span>
+                        <h3>Escuchamos y analizamos</h3>
+                        <p>Entendemos las necesidades, el entorno de trabajo y los problemas concretos que debe resolver el software.</p>
+                    </div>
+                </div>
+                <div class="proc-paso is-fuego">
+                    <div>
+                        <span class="proc-num">02</span>
+                        <h3>Diseñamos la solución</h3>
+                        <p>Definimos las funcionalidades, la arquitectura de datos y la experiencia de usuario para garantizar simplicidad.</p>
+                    </div>
+                </div>
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">03</span>
+                        <h3>Desarrollamos</h3>
+                        <p>Construimos el sistema de manera progresiva, con entregas parciales para validar resultados en cada etapa.</p>
+                    </div>
+                </div>
+                <div class="proc-paso is-fuego">
+                    <div>
+                        <span class="proc-num">04</span>
+                        <h3>Probamos e implementamos</h3>
+                        <p>Validamos el funcionamiento con pruebas reales, corregimos incidencias y preparamos la puesta en marcha.</p>
+                    </div>
+                </div>
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">05</span>
+                        <h3>Acompañamos su evolución</h3>
+                        <p>Ofrecemos soporte técnico, capacitación y mejoras continuas según las condiciones acordadas para cada solución.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Quiénes somos ===== -->
+    <section class="sec" id="nosotros">
+        <div class="wrap">
+            <!-- Encabezado alineado a la izquierda, como en cyberforja -->
+            <div class="equipo-head reveal" data-anim="left">
+                <span class="eyebrow">Sobre UnicornioSoftware</span>
+                <h2 class="bebas">Quiénes somos.</h2>
+                <div class="rule-fuego" aria-hidden="true"></div>
+                <p>
+                    Somos un equipo que combina experiencia en software empresarial, simulación y
+                    desarrollo interactivo para crear soluciones propias y proyectos especializados.
+                </p>
+            </div>
+
+            <!-- Ficha corporativa: tres pilares técnicos + compromiso y visión -->
+            <div class="equipo-card reveal" data-spotlight style="--card-sheen: rgba(255, 107, 0, .18)">
+                <span class="card__sheen" aria-hidden="true"></span>
+
+                <div class="equipo-grid">
+                    <div class="pilares">
+                        <div class="pilar">
+                            <span class="pilar-ico is-fuego"><i class="fa-solid fa-code" aria-hidden="true"></i></span>
+                            <h3>Ingeniería y arquitectura</h3>
+                            <p>Más de una década diseñando sistemas de escritorio autónomos, bases de datos locales y servicios web escalables.</p>
+                        </div>
+                        <div class="pilar">
+                            <span class="pilar-ico is-cian"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+                            <h3>Diseño y experiencia</h3>
+                            <p>Interfaces pensadas para simplificar tareas complejas en el ritmo diario de trabajo comercial.</p>
+                        </div>
+                        <div class="pilar">
+                            <span class="pilar-ico is-fuego"><i class="fa-solid fa-headset" aria-hidden="true"></i></span>
+                            <h3>Cercanía y soporte</h3>
+                            <p>Trato directo con el equipo que construye el software, con atención cercana y respuestas ágiles.</p>
+                        </div>
+                    </div>
+
+                    <div class="compromiso">
+                        <div>
+                            <h4>Compromiso y visión</h4>
+                            <p>Conoce nuestra historia, cómo trabajamos cada desarrollo y la trayectoria que respalda a UnicornioSoftware.</p>
+                        </div>
+                        <a class="btn-outline-fuego" href="/about.php">
+                            <i class="fa-solid fa-users" aria-hidden="true"></i> Conoce nuestro equipo &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
 <section class="sec" id="plataforma">
         <div class="wrap">
             <div class="sec-head reveal">
@@ -2348,6 +2478,82 @@ $faq = [
         </div>
     </section>
 
+
+    <!-- ===== Estado de la licencia ===== -->
+    <section class="sec" id="licencia-estado">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Registro del equipo</span>
+                <h2 class="bebas">Estado de la licencia</h2>
+                <p>La licencia se guarda cifrada y solo en este equipo. Aquí puedes revisar su estado y renovarla cuando haga falta.</p>
+            </div>
+
+            <div class="lic-grid">
+                <div class="panel reveal">
+                    <span class="badge-estado <?= $licEdoTono ?>">
+                        <i class="fa-solid <?= $licEdoIcono ?>" aria-hidden="true"></i> <?= htmlspecialchars($licEdoNombre, ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+
+                    <dl class="datos">
+                        <div class="dato">
+                            <dt>Nombre de registro</dt>
+                            <dd><?= $licRegistro !== '' ? htmlspecialchars($licRegistro, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Usuario del registro</dt>
+                            <dd><?= $licUsuario !== '' ? htmlspecialchars($licUsuario, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Tipo de licencia</dt>
+                            <dd><?= $licTipo !== '' ? htmlspecialchars($licTipo, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Vence</dt>
+                            <dd><?= $licVence !== '' ? htmlspecialchars($licVence, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Código de equipo</dt>
+                            <dd class="mono"><?= $licHuella !== '' ? htmlspecialchars($licHuella, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                    </dl>
+
+                    <div class="lic-acciones">
+                        <button type="button" class="btn btn-fuego btn-sm" data-lic-open>
+                            <i class="fa-solid fa-key" aria-hidden="true"></i> Activar o renovar
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-estado-lic-open>
+                            <i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-sol-open>
+                            <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo
+                        </button>
+                        <a class="btn btn-ghost btn-sm" href="<?= $base ?>/soporte.php">
+                            <i class="fa-solid fa-headset" aria-hidden="true"></i> Pedir soporte
+                        </a>
+                    </div>
+                </div>
+
+                <div class="panel reveal">
+                    <h3 class="bebas" style="font-size:1.7rem;text-transform:uppercase">Cómo funciona</h3>
+                    <p class="lic-nota" style="margin-top:.7rem">
+                        La llave serial se valida contra los datos de registro (<b>nombre</b> y <b>usuario</b>) y se
+                        guarda cifrada en el registro de Windows o en un archivo cifrado del disco. Así, la activación queda vinculada a este equipo y el sistema puede verificar su estado de forma segura.
+                    </p>
+                    <p class="lic-nota" style="margin-top:.9rem">
+                        Para renovar, solo debes introducir una llave nueva: la anterior se reemplaza sin perder los datos
+                        ni la configuración del sistema. Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida.
+                    </p>
+                    <p class="lic-nota" style="margin-top:.9rem">
+                        Todo el trámite —activar, renovar, importar un archivo <code>.lic</code> o solicitar la licencia por correo—
+                        se realiza aquí mismo, sin salir de la portada. Antes de activar, puedes revisar los planes disponibles y elegir el que mejor se adapte a tu negocio.
+                    </p>
+                    <div style="margin-top:1.25rem">
+                        <a class="btn btn-cian btn-sm" href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver planes y precios</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- ===== Precios ===== -->
     <section class="sec" id="precios">
@@ -2462,107 +2668,6 @@ $faq = [
         </div>
     </section>
 
-    <!-- ===== Nuestro proceso ===== -->
-    <section class="sec" id="proceso">
-        <div class="wrap">
-            <div class="proceso-head reveal">
-                <span class="eyebrow">Nuestro proceso</span>
-                <h2 class="bebas">Cómo trabajamos.</h2>
-                <div class="rule-fuego" aria-hidden="true"></div>
-                <p>Combinamos análisis, diseño y desarrollo para construir sistemas que puedan utilizarse, mantenerse y evolucionar.</p>
-            </div>
-
-            <div class="proceso-grid">
-                <div class="proc-paso">
-                    <div>
-                        <span class="proc-num">01</span>
-                        <h3>Escuchamos y analizamos</h3>
-                        <p>Entendemos las necesidades, el entorno de trabajo y los problemas concretos que debe resolver el software.</p>
-                    </div>
-                </div>
-                <div class="proc-paso is-fuego">
-                    <div>
-                        <span class="proc-num">02</span>
-                        <h3>Diseñamos la solución</h3>
-                        <p>Definimos las funcionalidades, la arquitectura de datos y la experiencia de usuario para garantizar simplicidad.</p>
-                    </div>
-                </div>
-                <div class="proc-paso">
-                    <div>
-                        <span class="proc-num">03</span>
-                        <h3>Desarrollamos</h3>
-                        <p>Construimos el sistema de manera progresiva, con entregas parciales para validar resultados en cada etapa.</p>
-                    </div>
-                </div>
-                <div class="proc-paso is-fuego">
-                    <div>
-                        <span class="proc-num">04</span>
-                        <h3>Probamos e implementamos</h3>
-                        <p>Validamos el funcionamiento con pruebas reales, corregimos incidencias y preparamos la puesta en marcha.</p>
-                    </div>
-                </div>
-                <div class="proc-paso">
-                    <div>
-                        <span class="proc-num">05</span>
-                        <h3>Acompañamos su evolución</h3>
-                        <p>Ofrecemos soporte técnico, capacitación y mejoras continuas según las condiciones acordadas para cada solución.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== Quiénes somos ===== -->
-    <section class="sec" id="nosotros">
-        <div class="wrap">
-            <!-- Encabezado alineado a la izquierda, como en cyberforja -->
-            <div class="equipo-head reveal" data-anim="left">
-                <span class="eyebrow">Sobre UnicornioSoftware</span>
-                <h2 class="bebas">Quiénes somos.</h2>
-                <div class="rule-fuego" aria-hidden="true"></div>
-                <p>
-                    Somos un equipo que combina experiencia en software empresarial, simulación y
-                    desarrollo interactivo para crear soluciones propias y proyectos especializados.
-                </p>
-            </div>
-
-            <!-- Ficha corporativa: tres pilares técnicos + compromiso y visión -->
-            <div class="equipo-card reveal" data-spotlight style="--card-sheen: rgba(255, 107, 0, .18)">
-                <span class="card__sheen" aria-hidden="true"></span>
-
-                <div class="equipo-grid">
-                    <div class="pilares">
-                        <div class="pilar">
-                            <span class="pilar-ico is-fuego"><i class="fa-solid fa-code" aria-hidden="true"></i></span>
-                            <h3>Ingeniería y arquitectura</h3>
-                            <p>Más de una década diseñando sistemas de escritorio autónomos, bases de datos locales y servicios web escalables.</p>
-                        </div>
-                        <div class="pilar">
-                            <span class="pilar-ico is-cian"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
-                            <h3>Diseño y experiencia</h3>
-                            <p>Interfaces pensadas para simplificar tareas complejas en el ritmo diario de trabajo comercial.</p>
-                        </div>
-                        <div class="pilar">
-                            <span class="pilar-ico is-fuego"><i class="fa-solid fa-headset" aria-hidden="true"></i></span>
-                            <h3>Cercanía y soporte</h3>
-                            <p>Trato directo con el equipo que construye el software, con atención cercana y respuestas ágiles.</p>
-                        </div>
-                    </div>
-
-                    <div class="compromiso">
-                        <div>
-                            <h4>Compromiso y visión</h4>
-                            <p>Conoce nuestra historia, cómo trabajamos cada desarrollo y la trayectoria que respalda a UnicornioSoftware.</p>
-                        </div>
-                        <a class="btn-outline-fuego" href="/about.php">
-                            <i class="fa-solid fa-users" aria-hidden="true"></i> Conoce nuestro equipo &rarr;
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- ===== CTA ===== -->
     <section class="sec">
         <div class="wrap">
@@ -2576,6 +2681,9 @@ $faq = [
                     </a>
                     <a class="btn btn-ghost" href="<?= $base ?>/soporte.php">
                         <i class="fa-solid fa-headset" aria-hidden="true"></i> Hablar con soporte
+                    </a>
+                    <a class="btn btn-ghost" href="#inicio">
+                        <i class="fa-solid fa-chevron-up" aria-hidden="true"></i> Regresar al Inicio
                     </a>
                 </div>
             </div>
@@ -3695,7 +3803,7 @@ $faq = [
             : '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
     });
     menu.addEventListener('click', function (e) {
-        if (e.target.closest('a')) {
+        if (e.target.closest('a, button')) {
             menu.classList.remove('is-open');
             btn.setAttribute('aria-expanded', 'false');
             btn.innerHTML = '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
@@ -3749,25 +3857,30 @@ $faq = [
     arrancar();
 })();
 
-/* Desplegable de acceso a los servicios (topbar) */
+/* Desplegables del topbar (servicios y licencia) */
 (function () {
-    var cont = document.getElementById('navLogin');
-    var btn = document.getElementById('navLoginBtn');
-    if (!cont || !btn) { return; }
-    function cerrar() {
-        cont.classList.remove('is-open');
-        btn.setAttribute('aria-expanded', 'false');
+    var drops = [].slice.call(document.querySelectorAll('.nav-login, .nav-drop'));
+    if (!drops.length) { return; }
+    function cerrar(drop) {
+        drop.classList.remove('is-open');
+        var b = drop.querySelector('button[aria-haspopup]');
+        if (b) b.setAttribute('aria-expanded', 'false');
     }
-    btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var abierto = cont.classList.toggle('is-open');
-        btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+    drops.forEach(function (cont) {
+        var btn = cont.querySelector('button[aria-haspopup]');
+        if (!btn) return;
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var abierto = cont.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+            drops.forEach(function (d) { if (d !== cont) cerrar(d); });
+        });
     });
     document.addEventListener('click', function (e) {
-        if (!cont.contains(e.target)) { cerrar(); }
+        drops.forEach(function (d) { if (!d.contains(e.target)) cerrar(d); });
     });
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' || e.key === 'Esc') { cerrar(); }
+        if (e.key === 'Escape' || e.key === 'Esc') { drops.forEach(cerrar); }
     });
 })();
 
