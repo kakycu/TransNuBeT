@@ -1455,6 +1455,10 @@ $faq = [
             title="Ir hasta arriba" aria-label="Ir hasta arriba de la página">
         <i class="fa-solid fa-angles-up" aria-hidden="true"></i>
     </button>
+    <button type="button" class="scroll-fab is-visible" id="btnMostrarIntro"
+            title="Mostrar animación de inicio" aria-label="Mostrar animación de inicio">
+        <i class="fa-solid fa-film" aria-hidden="true"></i>
+    </button>
     <button type="button" class="scroll-fab" id="btnScrollBottom"
             title="Ir hasta abajo" aria-label="Ir hasta abajo de la página">
         <i class="fa-solid fa-angles-down" aria-hidden="true"></i>
@@ -2463,8 +2467,9 @@ $faq = [
 (function () {
     var arriba = document.getElementById('btnScrollTop');
     var abajo = document.getElementById('btnScrollBottom');
+    var animar = document.getElementById('btnMostrarIntro');
     var progreso = document.getElementById('scrollProgress');
-    if (!arriba && !abajo) { return; }
+    if (!arriba && !abajo && !animar) { return; }
 
     function irArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
     function irAbajo() {
@@ -2473,6 +2478,12 @@ $faq = [
     }
     if (arriba) { arriba.addEventListener('click', irArriba); }
     if (abajo) { abajo.addEventListener('click', irAbajo); }
+    if (animar) {
+        animar.addEventListener('click', function () {
+            try { localStorage.removeItem('introOculta'); } catch (e) {}
+            window.location.reload();
+        });
+    }
 
     function actualizar() {
         var y = window.scrollY || document.documentElement.scrollTop || 0;
