@@ -1736,9 +1736,8 @@ $faq = [
             <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
             <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> ECOSIST.</a>
             <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
-            <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
-            <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
             <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
+            <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
             <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> SERVICIOS</a>
             <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
             <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
@@ -1779,8 +1778,9 @@ $faq = [
     <div class="menu-movil" id="menuMovil">
         <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
         <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> ECOSIST.</a>
-            <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
+        <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
         <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
+        <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
         <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> SERVICIOS</a>
         <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
         <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
