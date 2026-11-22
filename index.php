@@ -466,7 +466,7 @@ $faq = [
 <link rel="stylesheet" href="<?= $base ?>/css/font-awesome6.4.0/css/all.min.css">
 <link rel="stylesheet" href="<?= $base ?>/assets/fonts/fuentes.css">
 <link rel="stylesheet" href="<?= $base ?>/assets/css/portada-licencia.css">
-<link rel="stylesheet" href="/css/styleindex.css">
+<link rel="stylesheet" href="<?= $base ?>/css/styleindex.css">
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body id="top" class="rv-mov">
