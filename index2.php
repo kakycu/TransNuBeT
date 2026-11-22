@@ -1723,26 +1723,6 @@ $faq = [
         </div>
     </section>
 
-
-    <!-- Métricas -->
-    <div class="metrics" role="list" aria-label="Indicadores de la plataforma">
-        <div class="metric" role="listitem">
-            <i class="fa-solid fa-cubes" aria-hidden="true"></i>
-            <div><b><?= 5 ?></b><span>Módulos de gestión</span></div>
-        </div>
-        <div class="metric" role="listitem">
-            <i class="fa-brands fa-php" aria-hidden="true"></i>
-            <div><b>PHP <?= PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ?></b><span>Servidor local</span></div>
-        </div>
-        <div class="metric" role="listitem">
-            <i class="fa-solid fa-database" aria-hidden="true"></i>
-            <div><b>MySQL 5.7</b><span>Base de datos</span></div>
-        </div>
-        <div class="metric" role="listitem">
-            <i class="fa-solid fa-headset" aria-hidden="true"></i>
-            <div><b>24/7</b><span>Soporte técnico</span></div>
-        </div>
-    </div>
 <main>
     <!-- ===== Ecosistema ===== -->
     <section class="sec" id="ecosistema">
@@ -1932,7 +1912,25 @@ $faq = [
                 <p>Un stack local probado en producción: Apache, PHP y MySQL, con respaldo y soporte del equipo que lo construyó.</p>
             </div>
 
-            <div class="serv-grid">
+                        <div class="metrics" role="list" aria-label="Indicadores de la plataforma" style="padding:0 0 1.5rem">
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-cubes" aria-hidden="true"></i>
+                    <div><b><?= count($ecosistema) ?></b><span>Módulos de gestión</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-brands fa-php" aria-hidden="true"></i>
+                    <div><b>PHP <?= PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ?></b><span>Servidor local</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-database" aria-hidden="true"></i>
+                    <div><b>MySQL 5.7</b><span>Base de datos</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-headset" aria-hidden="true"></i>
+                    <div><b>24/7</b><span>Soporte técnico</span></div>
+                </div>
+            </div>
+<div class="serv-grid">
                 <?php foreach ($servicios as $srv): ?>
                 <div class="serv reveal">
                     <i class="<?= htmlspecialchars($srv['icono'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i>
