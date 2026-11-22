@@ -1487,9 +1487,23 @@ function importarLicHandler(): void {
     if (!function_exists('licencia_importar_archivo')) {
         jsonError('El módulo de licencias no está disponible.');
     }
+    $datosLic = function_exists('licencia_leer_archivo_lic') ? licencia_leer_archivo_lic($f['tmp_name']) : null;
+    if ($datosLic === null) {
+        jsonError('El archivo .lic no es válido o está dañado.');
+    }
+    if (function_exists('licencia_vencida') && licencia_vencida($datosLic)) {
+        jsonError('La licencia está vencida y no puede importarse. Solicite una licencia vigente al proveedor.');
+    }
+    if (function_exists('licencia_fecha_futura') && licencia_fecha_futura($datosLic)) {
+        jsonError('La fecha de la licencia es posterior a la fecha del equipo. Verifique la fecha/hora del PC o solicite una licencia válida.');
+    }
+    $huellaEste = function_exists('licencia_fingerprint_machine') ? licencia_fingerprint_machine() : '';
+    if ($datosLic['huella'] !== '' && $huellaEste !== '' && !hash_equals($datosLic['huella'], $huellaEste)) {
+        jsonError('Esta licencia fue emitida para otro equipo. No se puede instalar en este computador.');
+    }
     $datos = licencia_importar_archivo($f['tmp_name']);
     if ($datos === false) {
-        jsonError('El archivo .lic no es válido o no corresponde a este equipo.');
+        jsonError('No se pudo instalar la licencia. Verifique que no haya otra licencia activa o que el archivo sea válido para este equipo.');
     }
     $estado = function_exists('licencia_etiqueta_estado') ? licencia_etiqueta_estado($datos, '', true) : 'ACTIVA';
     logMessage('Licencia importada desde archivo: ' . $estado);

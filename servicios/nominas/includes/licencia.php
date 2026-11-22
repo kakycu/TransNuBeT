@@ -520,6 +520,12 @@ function licencia_texto_vencimiento($datos, $sin_datos = '—', $conPrefijo = fa
 function licencia_guardar($nombre, $usuario, $serial, $fecha_activacion = null, $reemplazar = false) {
     $tipo = licencia_tipo_desde_serial($serial);
     if ($tipo === null) return false;
+    $fecha = ($fecha_activacion === null) ? time() : (int)$fecha_activacion;
+    $datosCheck = array(
+        'fecha_activacion' => $fecha,
+        'info' => licencia_info_tipo($tipo),
+    );
+    if (licencia_vencida($datosCheck) || licencia_fecha_futura($datosCheck)) return false;
     // Solo se re-registra si la licencia actual no es válida ni está activa,
     // salvo que se pida expresamente reemplazarla (renovación).
     if (!$reemplazar && licencia_activada()) return false;
@@ -527,7 +533,7 @@ function licencia_guardar($nombre, $usuario, $serial, $fecha_activacion = null, 
         'r' => licencia_normalizar($nombre),
         'u' => licencia_normalizar($usuario),
         'k' => licencia_normalizar_serial($serial),
-        'd' => ($fecha_activacion === null) ? time() : (int)$fecha_activacion,
+        'd' => $fecha,
         'm' => licencia_fingerprint_machine(),
     ));
     $valor = licencia_cifrar($plano);
@@ -956,9 +962,9 @@ function licencia_test() {
         $persistencia['vencimiento'] = $leido ? array(time(), licencia_vencimiento($leido)) : null;
         $persistencia['vencida'] = $leido ? licencia_vencida($leido) : null;
         $persistencia['activada'] = licencia_activada();
-        // Simular vencida: re-escribir con fecha de hace 40 días (tipo M = 1 mes)
+        // Verificar que licencia_guardar rechaza licencias vencidas (guardia de negocio)
         $vencida_test = licencia_guardar($nombre, $usuario, $serial_m, time() - 40 * 86400);
-        $persistencia['vencida_forzada'] = ($vencida_test !== false) ? licencia_vencida(licencia_leer()) : null;
+        $persistencia['rechaza_vencida'] = ($vencida_test === false);
         licencia_borrar();
     }
     $resultados['persistencia'] = $persistencia;

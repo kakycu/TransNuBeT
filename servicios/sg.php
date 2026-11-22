@@ -11,6 +11,9 @@ if (function_exists('mb_internal_encoding')) {
 
 /* =====================================================================
    MÓDULO DE LICENCIA SISGESNOM (EMBEBIDO)
+   NOTA: Lógica duplicada de servicios/nominas/includes/licencia.php
+   por compatibilidad standalone de sg.php. Cualquier cambio de validación
+   o comportamiento debe aplicarse en ambos archivos.
    ===================================================================== */
 if (!function_exists('licencia_tipos')) {
 
@@ -262,12 +265,18 @@ if (!function_exists('licencia_tipos')) {
     function licencia_guardar($nombre, $usuario, $serial, $fecha_activacion = null) {
         $tipo = licencia_tipo_desde_serial($serial);
         if ($tipo === null) return false;
+        $fecha = ($fecha_activacion === null) ? time() : (int)$fecha_activacion;
+        $datosCheck = array(
+            'fecha_activacion' => $fecha,
+            'info' => licencia_info_tipo($tipo),
+        );
+        if (licencia_vencida($datosCheck) || licencia_fecha_futura($datosCheck)) return false;
         if (licencia_activada()) return false;
         $plano = json_encode(array(
             'r' => licencia_normalizar($nombre),
             'u' => licencia_normalizar($usuario),
             'k' => licencia_normalizar_serial($serial),
-            'd' => ($fecha_activacion === null) ? time() : (int)$fecha_activacion,
+            'd' => $fecha,
             'm' => licencia_fingerprint_machine(),
         ), JSON_UNESCAPED_UNICODE);
         $valor = licencia_cifrar($plano);
