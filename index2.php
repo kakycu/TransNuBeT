@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Portada alternativa (index2.php) con el lenguaje visual de cyberforja.com:
  * fondo abismo, acentos cian y fuego, titulares en Bebas Neue, etiquetas y
@@ -490,11 +490,11 @@ $faq = [
     /* ===== Hero ===== */
     .hero {
         position: relative;
-        display: flex; align-items: center;
-        min-height: calc(100svh - var(--nav-h));
-        max-height: 52rem;
+        display: flex; align-items: flex-start;
+        min-height: auto;
         padding-top: var(--nav-h);
-        overflow: hidden;
+        padding-bottom: 2rem;
+        overflow: visible;
     }
     .hero-fondo { position: absolute; inset: 0; z-index: 0; }
     .hero-fondo img {
@@ -513,11 +513,12 @@ $faq = [
         position: relative; z-index: 2;
         display: grid; gap: clamp(2rem, 4vw, 3rem);
         grid-template-columns: minmax(0, 1fr);
-        align-items: center;
-        padding-block: 2rem 3.5rem;
+        align-items: start;
+        padding-block: 9.25rem 0.5rem;
     }
-    .hero-copy { max-width: 40rem; }
-    .eyebrow {
+    .hero-copy { max-width: 34rem; margin-top: 0; }
+    .hero-copy > :first-child { margin-top: 0; }
+    .eyebrow { margin-top: 0;
         display: inline-block;
         font-family: "Exo 2", sans-serif; font-size: .76rem; font-weight: 800;
         letter-spacing: .2em; text-transform: uppercase; color: var(--cian);
@@ -552,88 +553,102 @@ $faq = [
     .tags .sep { color: rgba(255, 255, 255, .18); }
 
     /* Escena: monitor en perspectiva + móvil + ficha */
+    /* ===== Strip beneficios (mismo estilo/animación que Reven) ===== */
+    .reven-feats-strip{background:var(--abismo);border-bottom:1px solid rgba(255,255,255,.04)}
+    .reven-feats-grid{max-width:80rem;margin:0 auto;padding:0 1rem;display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:1rem}
+    @media(min-width:640px){.reven-feats-grid{padding:0 1.5rem;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem}}
+    @media(min-width:1024px){.reven-feats-grid{padding:0 2rem;grid-template-columns:repeat(4,minmax(0,1fr))}}
+    .reven-feat{display:flex;align-items:center;gap:.75rem;padding:1.25rem .5rem}
+    @media(min-width:640px){.reven-feat{padding:1.25rem 1rem}}
+    .reven-feat-icon{width:2.5rem;height:2.5rem;flex-shrink:0;border-radius:.5rem;display:flex;align-items:center;justify-content:center;background:rgba(121,73,181,.12);border:1px solid rgba(121,73,181,.25);color:#7949B5;font-size:1rem}
+    .reven-feat-copy{margin:0;line-height:1.2}
+    .reven-feat-title{display:block;font-family:'Exo 2',sans-serif;font-weight:700;font-size:.875rem;text-transform:uppercase;letter-spacing:.025em;color:#fff}
+    .reven-feat-desc{display:block;font-size:.75rem;color:#9ca3af;margin-top:.15rem}
+    @media(min-width:640px){.reven-feat-desc{font-size:.875rem}}
+    @keyframes rv-sube{0%{opacity:0;translate:0 22px}100%{opacity:1;translate:0}}
+    @keyframes rv-funde{0%{opacity:0}100%{opacity:1}}
+    .rv-mov .rv-ap{opacity:0}
+    .rv-mov .rv-ap.rv-visto{opacity:1;animation:rv-sube .7s cubic-bezier(.16,1,.3,1) backwards;animation-delay:calc(var(--rv-i,0)*70ms)}
+    @media (prefers-reduced-motion:reduce){
+      .rv-mov .rv-ap.rv-visto{animation:rv-funde .25s ease backwards}
+    }
     .escena {
         position: relative; justify-self: center;
-        width: min(100%, 37rem);
-        perspective: 2200px; transform-style: preserve-3d;
+        width: min(100%, 32rem);
+        transform-style: preserve-3d;
     }
     .escena::before {
-        content: ""; position: absolute; inset: -12% -8%; z-index: -1;
-        background: radial-gradient(ellipse 65% 55% at 55% 50%, rgba(var(--brillo, 139, 92, 246), .4), transparent 70%);
-        transform: translateZ(-200px); pointer-events: none;
+        content: ""; position: absolute; inset: -10% -8%; z-index: -1;
+        background: radial-gradient(ellipse 60% 50% at 55% 50%, rgba(var(--brillo, 139, 92, 246), .22), transparent 72%);
+        pointer-events: none;
     }
-    .escena-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; margin-bottom: .8rem; }
+    .escena-nav { display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: .35rem; margin-bottom: .75rem; overflow-x: auto; }
     .pill {
-        display: inline-flex; align-items: center; gap: .4rem;
-        padding: .3rem .8rem; border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, .18);
-        background: rgba(255, 255, 255, .07);
-        color: var(--gris-2);
-        font-family: "Exo 2", sans-serif; font-size: .68rem; font-weight: 700;
+        display: inline-flex; align-items: center; gap: .35rem;
+        padding: .26rem .55rem; border-radius: 999px; white-space: nowrap;
+        border: 1px solid rgba(255,255,255,.14);
+        background: rgba(255,255,255,.04);
+        color: var(--gris-3);
+        font-family: "Exo 2", sans-serif; font-size: .6rem; font-weight: 700;
         letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+        transition: all .2s;
     }
-    .pill .dot { width: .4rem; height: .4rem; border-radius: 50%; background: rgb(var(--brillo, 139, 92, 246)); }
-    .pill.is-on { background: rgba(255, 255, 255, .18); border-color: rgba(255, 255, 255, .4); color: #fff; }
-    .diapo { --brillo: 139, 92, 246; transition: opacity .5s, visibility .5s; }
-    .diapo:not(.is-on) {
-        position: absolute; top: 0; left: 0; width: 100%;
-        opacity: 0; visibility: hidden; pointer-events: none;
-    }
+    .pill .dot { width: .35rem; height: .35rem; border-radius: 50%; background: rgb(var(--brillo, 139, 92, 246)); }
+    .pill.is-on { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.28); color: #fff; }
+    .diapo { --brillo: 139, 92, 246; transition: opacity .45s ease, visibility .45s ease; perspective: 1500px; perspective-origin: 50% 50%; transform-style: preserve-3d; }
+    .diapo:not(.is-on) { position: absolute; top: 0; left: 0; width: 100%; opacity: 0; visibility: hidden; pointer-events: none; }
     .diapo.is-on { position: relative; opacity: 1; visibility: visible; }
     .pantalla {
         position: relative; z-index: 10;
-        padding: 8px; border-radius: 18px;
-        background: #0f141d;
-        border: 1.5px solid rgba(255, 255, 255, .18);
-        transform: translateZ(120px) rotateY(-14deg) rotateZ(-1.5deg);
+        padding: 6px; border-radius: 14px;
+        background: #111827;
+        border: 1px solid rgba(255,255,255,.12);
+        transform: rotateX(0deg) rotateY(-10deg) rotateZ(0deg);
         transform-style: preserve-3d;
         box-shadow:
-            0 0 0 1px rgba(var(--brillo), .4),
-            0 0 36px rgba(var(--brillo), .28),
-            0 35px 75px -15px rgba(0, 0, 0, .85),
-            inset 0 1px 1px rgba(255, 255, 255, .22);
+            0 0 0 1px rgba(var(--brillo), .18),
+            0 20px 50px -18px rgba(0,0,0,.75),
+            0 0 24px -8px rgba(var(--brillo), .2);
     }
-    .pantalla img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; border-radius: 11px; }
-    .pantalla::after {
-        content: ""; position: absolute; left: 4%; right: 4%; bottom: -14%; height: 14%;
-        background: radial-gradient(closest-side, rgba(var(--brillo), .55), transparent);
-    }
+    .pantalla img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; border-radius: 9px; display: block; }
+    .pantalla::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -10%; height: 10%; background: radial-gradient(closest-side, rgba(var(--brillo), .28), transparent); pointer-events: none; }
     .movil {
-        position: absolute; right: 1%; bottom: -10%; width: 21%; aspect-ratio: 9 / 19;
-        padding: .35rem; border-radius: 1.6rem; background: #0c1017; z-index: 50;
-        border: 1.5px solid rgba(255, 255, 255, .18);
-        transform: translateZ(280px) rotateY(-8deg) rotateZ(2deg);
-        box-shadow: -24px 24px 45px rgba(0, 0, 0, .92), 0 0 0 1px rgba(var(--brillo), .4), 0 0 24px rgba(var(--brillo), .3);
+        position: absolute; right: 2%; bottom: -8%; width: 18%; aspect-ratio: 9 / 19;
+        padding: .28rem; border-radius: 1.25rem; background: #0c1017; z-index: 50;
+        border: 1px solid rgba(255,255,255,.14);
+        transform: rotateX(0deg) rotateY(-10deg) rotateZ(0deg);
+        box-shadow: -12px 18px 35px rgba(0,0,0,.7), 0 0 0 1px rgba(var(--brillo), .18);
     }
-    .movil img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 1.25rem; }
+    .movil img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 1rem; display: block; }
     .ficha {
-        position: absolute; left: -1.25rem; bottom: -1.75rem; z-index: 60;
-        display: flex; flex-direction: column; align-items: flex-start; gap: .4rem;
-        max-width: 82%; transform: translateZ(300px);
+        position: absolute; left: -1rem; bottom: -1.2rem; z-index: 60;
+        display: flex; flex-direction: column; align-items: flex-start; gap: .35rem;
+        max-width: 78%; transform: rotateX(0deg) rotateY(-10deg) rotateZ(0deg);
     }
     .chip {
-        display: flex; align-items: center; gap: .6rem;
-        padding: .5rem .8rem .5rem .65rem; border-radius: 8px;
-        background: #fff; color: #1e1b4b;
-        border: 1px solid rgba(var(--brillo), .5);
-        box-shadow: 0 0 0 3px rgba(10, 15, 26, .3), 0 16px 32px -6px rgba(0, 0, 0, .75), 0 0 16px rgba(var(--brillo), .2);
+        display: flex; align-items: center; gap: .55rem;
+        padding: .45rem .75rem .45rem .6rem; border-radius: 10px;
+        background: rgba(255,255,255,.96); color: #1e1b4b;
+        border: 1px solid rgba(var(--brillo), .25);
+        box-shadow: 0 8px 24px -8px rgba(0,0,0,.45);
         font-family: "Inter", sans-serif;
+        backdrop-filter: blur(4px);
     }
-    .chip-icono { width: 2rem; height: 2rem; flex: 0 0 auto; }
-    .chip-icono img { width: 100%; height: 100%; object-fit: contain; }
-    .chip strong { display: block; font-size: .84rem; line-height: 1.15; }
-    .chip span { display: block; font-size: .72rem; color: #6b7280; line-height: 1.2; }
+    .chip-icono { width: 1.75rem; height: 1.75rem; flex: 0 0 auto; }
+    .chip-icono img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .chip > div { display: flex; flex-direction: column; gap: .08rem; }
+    .chip strong { display: block; font-size: .78rem; line-height: 1.2; font-weight: 700; color: #111827; }
+    .chip span { display: block; font-size: .68rem; color: #6b7280; line-height: 1.35; }
     .chip-btn {
-        display: inline-flex; align-items: center; gap: .35rem;
-        padding: .28rem .8rem; border-radius: 5px;
-        font-family: "Exo 2", sans-serif; font-size: .68rem; font-weight: 700;
+        display: inline-flex; align-items: center; gap: .3rem;
+        padding: .28rem .7rem; border-radius: 6px;
+        font-family: "Exo 2", sans-serif; font-size: .6rem; font-weight: 700;
         text-transform: uppercase; letter-spacing: .05em;
-        background: #0b0e14; color: #fff;
-        border: 1px solid rgba(var(--brillo), .7);
-        box-shadow: 0 3px 12px rgba(0, 0, 0, .6);
-        transition: background .2s, transform .2s;
+        background: rgba(15,23,42,.92); color: #fff;
+        border: 1px solid rgba(var(--brillo), .4);
+        transition: background .2s, transform .2s, border-color .2s;
     }
-    .chip-btn:hover { background: rgb(var(--brillo)); transform: translateY(-1px); }
+    .chip-btn:hover { background: rgb(var(--brillo)); border-color: rgb(var(--brillo)); transform: translateY(-1px); }
     @media (min-width: 1024px) {
         .hero-grid { grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr); }
     }
@@ -670,7 +685,7 @@ $faq = [
     }
     .sec.is-in::before { transform: scaleX(1); }
     .sec-head { max-width: 46rem; }
-    .sec-head .eyebrow { color: var(--fuego); }
+    .sec-head .eyebrow { margin-top: 0; color: var(--fuego); }
     .sec-head h2 {
         margin: .6rem 0 .8rem;
         font-size: clamp(2rem, 4.4vw, 3rem);
@@ -875,6 +890,40 @@ $faq = [
     }
     .serv p { color: var(--gris-2); font-size: .86rem; line-height: 1.6; margin-top: .25rem; }
 
+
+    /* ===== Precios ===== */
+    .precios-grid{display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:stretch;}
+    .plan-card{position:relative;display:flex;flex-direction:column;padding:1.75rem;border-radius:1rem;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.1);transition:transform .25s,border-color .25s,box-shadow .25s;}
+    .plan-card:hover{transform:translateY(-4px);border-color:rgba(0,212,255,.35);box-shadow:0 20px 50px -20px rgba(0,212,255,.2);}
+    .plan-card.is-featured{border-color:rgba(255,107,0,.45);box-shadow:0 24px 60px -24px rgba(255,107,0,.25);}
+    .plan-card.is-featured:hover{border-color:rgba(255,107,0,.7);box-shadow:0 28px 70px -24px rgba(255,107,0,.35);}
+    .plan-badge{position:absolute;top:-.7rem;left:1.5rem;padding:.3rem .75rem;border-radius:999px;background:var(--fuego);color:var(--abismo);font-family:"Exo 2",sans-serif;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}
+    .plan-name{font-family:"Exo 2",sans-serif;font-size:1.15rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--txt);margin:0 0 .35rem;}
+    .plan-desc{color:var(--gris-2);font-size:.92rem;line-height:1.65;margin:0 0 1.25rem;min-height:3.3rem;}
+    .plan-price{display:flex;align-items:flex-end;gap:.35rem;margin-bottom:.25rem;}
+    .plan-amount{font-family:"Bebas Neue",sans-serif;font-size:3.5rem;line-height:.9;color:var(--txt);}
+    .plan-currency{font-family:"Exo 2",sans-serif;font-size:1rem;font-weight:700;color:var(--cian);margin-bottom:.45rem;}
+    .plan-period{font-family:"Inter",sans-serif;font-size:.9rem;color:var(--gris-3);margin-bottom:.5rem;}
+    .plan-note{font-size:.78rem;color:var(--gris-3);margin:0 0 1.25rem;}
+    .plan-divider{border:0;border-top:1px solid rgba(255,255,255,.08);margin:0 0 1.25rem;}
+    .plan-features{list-style:none;padding:0;margin:0 0 1.5rem;display:flex;flex-direction:column;gap:.7rem;flex:1;}
+    .plan-features li{display:flex;gap:.65rem;align-items:flex-start;color:var(--gris-2);font-size:.9rem;line-height:1.5;}
+    .plan-features i{color:var(--cian);margin-top:.2rem;font-size:.8rem;}
+    .plan-card.is-featured .plan-features i{color:var(--fuego);}
+    .plan-cta{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.9rem 1rem;border-radius:.5rem;font-family:"Exo 2",sans-serif;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;transition:all .25s;border:1px solid transparent;cursor:pointer;}
+    .plan-cta-primary{background:var(--fuego);color:var(--abismo);}
+    .plan-cta-primary:hover{background:var(--fuego-h);transform:translateY(-1px);}
+    .plan-cta-secondary{background:rgba(0,212,255,.08);color:var(--cian);border-color:rgba(0,212,255,.3);}
+    .plan-cta-secondary:hover{background:rgba(0,212,255,.15);border-color:rgba(0,212,255,.55);}
+    .precios-trial{margin-top:2rem;padding:1.25rem 1.5rem;border-radius:1rem;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;}
+    .precios-trial p{margin:0;color:var(--gris-2);font-size:.95rem;}
+    .precios-trial strong{display:block;font-family:"Exo 2",sans-serif;color:var(--txt);text-transform:uppercase;font-size:.8rem;letter-spacing:.05em;margin-bottom:.2rem;}
+    .precios-links{margin-top:1.25rem;display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+    .precios-link{display:flex;gap:.75rem;align-items:flex-start;padding:1rem;border-radius:.85rem;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);text-decoration:none;transition:border-color .2s,background .2s;}
+    .precios-link:hover{border-color:rgba(0,212,255,.35);background:rgba(0,212,255,.04);}
+    .precios-link i{color:var(--cian);margin-top:.15rem;}
+    .precios-link span{font-size:.88rem;color:var(--gris-2);line-height:1.5;}
+    .precios-link strong{display:block;font-family:"Exo 2",sans-serif;color:var(--txt);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem;}
     /* ===== FAQ ===== */
     details.faq {
         background: var(--tarjeta);
@@ -1149,7 +1198,7 @@ $faq = [
 
     /* ===== Nuestro proceso (réplica de cyberforja) ===== */
     .proceso-head { text-align: center; max-width: 46rem; margin: 0 auto 2.2rem; }
-    .proceso-head .eyebrow { color: var(--fuego); font-size: .8rem; }
+    .proceso-head .eyebrow { margin-top: 0; color: var(--fuego); font-size: .8rem; }
     .proceso-head h2 {
         margin: .45rem 0 .7rem;
         font-size: clamp(2.2rem, 5vw, 3.8rem);
@@ -1244,7 +1293,7 @@ $faq = [
 
     /* ===== Quiénes somos (réplica de la sección de cyberforja) ===== */
     .equipo-head { max-width: 48rem; margin-bottom: 2rem; }
-    .equipo-head .eyebrow { color: var(--fuego); }
+    .equipo-head .eyebrow { margin-top: 0; color: var(--fuego); }
     .equipo-head h2 {
         margin: .35rem 0 .55rem;
         font-size: clamp(2rem, 4.4vw, 3.1rem);
@@ -1319,7 +1368,7 @@ $faq = [
 </style>
 <script>document.documentElement.classList.add('js');</script>
 </head>
-<body id="top">
+<body id="top" class="rv-mov">
 
 <!-- Intro animada: piezas del logo en images/anim. Se retira sola y se puede
      saltar; con «prefers-reduced-motion» no se muestra. -->
@@ -1453,24 +1502,28 @@ $faq = [
                 <span class="sep" aria-hidden="true">·</span>
                 <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Soporte técnico</span>
             </div>
+            <p style="margin-top:1rem;font-family:'Inter',sans-serif;font-size:.85rem;color:var(--gris-3);letter-spacing:.01em;"><i class="fa-solid fa-shield-halved" style="color:var(--cian);margin-right:.4rem" aria-hidden="true"></i>Instalación local &middot; sin dependencia de la nube &middot; respaldo periódico</p>
+            <p style="margin-top:.55rem;font-family:'Inter',sans-serif;font-size:.9rem;color:var(--gris-2);">¿Ya lo usas, licencia vencida? <button type="button" data-lic-open style="background:none;border:0;padding:0;color:var(--cian);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:4px;cursor:pointer;transition:color .2s;">Renueva o activa tu licencia</button>, <a href="#precios" style="color:var(--fuego);font-weight:600;text-decoration:underline;text-underline-offset:4px;transition:color .2s;">consulta precios</a></p>
+
+
         </div>
 
         <div class="escena">
             <div class="escena-nav">
                 <button type="button" class="pill is-on" data-slide="0" style="--brillo: 37, 99, 235" aria-label="Ver Nóminas en el monitor">
-                    <span class="dot" aria-hidden="true"></span> 01. Nóminas
+                    <span class="dot" aria-hidden="true"></span> Nóminas
                 </button>
                 <button type="button" class="pill" data-slide="1" style="--brillo: 0, 200, 83" aria-label="Ver Facturación en el monitor">
-                    <span class="dot" aria-hidden="true"></span> 02. Facturación
+                    <span class="dot" aria-hidden="true"></span> Facturación
                 </button>
                 <button type="button" class="pill" data-slide="2" style="--brillo: 255, 167, 38" aria-label="Ver Costos en el monitor">
-                    <span class="dot" aria-hidden="true"></span> 03. Costos
+                    <span class="dot" aria-hidden="true"></span> Costos
                 </button>
                 <button type="button" class="pill" data-slide="3" style="--brillo: 139, 92, 246" aria-label="Ver Inventarios en el monitor">
-                    <span class="dot" aria-hidden="true"></span> 04. Inventarios
+                    <span class="dot" aria-hidden="true"></span> Inventarios
                 </button>
                 <button type="button" class="pill" data-slide="4" style="--brillo: 0, 212, 255" aria-label="Ver Administración en el monitor">
-                    <span class="dot" aria-hidden="true"></span> 05. Administración
+                    <span class="dot" aria-hidden="true"></span> Administración
                 </button>
             </div>
 
@@ -1612,6 +1665,36 @@ $faq = [
     </div>
     <a href="#ecosistema" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
 </header>
+
+    <!-- Strip de beneficios (estilo Reven/CyberForja) -->
+    <section class="reven-feats-strip" aria-label="Beneficios principales">
+        <div class="reven-feats-grid">
+            <div class="rv-ap reven-feat" style="--rv-i:0">
+                <div class="reven-feat-icon">
+                    <i class="fas fa-wifi" aria-hidden="true"></i>
+                </div>
+                <p class="reven-feat-copy"><span class="reven-feat-title">Sin internet</span><span class="reven-feat-desc">Facturas, Vendes, Cotizas, Pagas Aunque Se Caiga La Red</span></p>
+            </div>
+            <div class="rv-ap reven-feat" style="--rv-i:1">
+                <div class="reven-feat-icon">
+                    <i class="fas fa-desktop" aria-hidden="true"></i>
+                </div>
+                <p class="reven-feat-copy"><span class="reven-feat-title">PC modesta</span><span class="reven-feat-desc">Windows 7 y 2 GB de RAM</span></p>
+            </div>
+            <div class="rv-ap reven-feat" style="--rv-i:2">
+                <div class="reven-feat-icon">
+                    <i class="fas fa-coins" aria-hidden="true"></i>
+                </div>
+                <p class="reven-feat-copy"><span class="reven-feat-title">CUP &middot; USD &middot; EUR</span><span class="reven-feat-desc">Con la tasa que tú decides</span></p>
+            </div>
+            <div class="rv-ap reven-feat" style="--rv-i:3">
+                <div class="reven-feat-icon">
+                    <i class="fas fa-gift" aria-hidden="true"></i>
+                </div>
+                <p class="reven-feat-copy"><span class="reven-feat-title">15 días gratis</span><span class="reven-feat-desc">Sin tarjeta ni registro</span></p>
+            </div>
+        </div>
+    </section>
 
 <main>
     <!-- ===== Ecosistema ===== -->
@@ -1775,15 +1858,19 @@ $faq = [
                     <h3 class="bebas" style="font-size:1.7rem;text-transform:uppercase">Cómo funciona</h3>
                     <p class="lic-nota" style="margin-top:.7rem">
                         La llave serial se valida contra los datos de registro (<b>nombre</b> y <b>usuario</b>) y se
-                        guarda cifrada en el registro de Windows o en un archivo cifrado del disco. Para renovar,
-                        introduce una llave nueva: la anterior se reemplaza sin perder los datos del sistema.
+                        guarda cifrada en el registro de Windows o en un archivo cifrado del disco. Así, la activación queda vinculada a este equipo y el sistema puede verificar su estado de forma segura.
                     </p>
                     <p class="lic-nota" style="margin-top:.9rem">
-                        Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida.
-                        Todo el trámite —activar, renovar, importar un archivo <code>.lic</code> o pedir la
-                        licencia por correo— se hace aquí mismo, sin salir de la portada.
+                        Para renovar, solo debes introducir una llave nueva: la anterior se reemplaza sin perder los datos
+                        ni la configuración del sistema. Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida.
                     </p>
-
+                    <p class="lic-nota" style="margin-top:.9rem">
+                        Todo el trámite —activar, renovar, importar un archivo <code>.lic</code> o solicitar la licencia por correo—
+                        se realiza aquí mismo, sin salir de la portada. Antes de activar, puedes revisar los planes disponibles y elegir el que mejor se adapte a tu negocio.
+                    </p>
+                    <div style="margin-top:1.25rem">
+                        <a class="btn btn-cian btn-sm" href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver planes y precios</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1821,6 +1908,99 @@ $faq = [
         </div>
     </section>
 
+    <!-- ===== Precios ===== -->
+    <section class="sec" id="precios">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Precios</span>
+                <h2 class="bebas">Planes de licenciamiento</h2>
+                <p>Elige el plan que mejor se adapte al tamaño y ritmo de tu negocio. Activa tu licencia y pon SiGesEmp a trabajar para ti.</p>
+            </div>
+
+            <div class="precios-grid">
+                <article class="plan-card reveal">
+                    <h3 class="plan-name">Básico</h3>
+                    <p class="plan-desc">Para pequeños negocios que quieren ordenar su operación y empezar a trabajar con control.</p>
+                    <div class="plan-price">
+                        <span class="plan-amount">15</span>
+                        <span class="plan-currency">USD</span>
+                        <span class="plan-period">/mes</span>
+                    </div>
+                    <p class="plan-note">Licencia por equipo, con soporte inicial.</p>
+                    <hr class="plan-divider">
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>1 módulo principal a elegir</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>1 usuario administrador</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Trabajo local, sin internet</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Respaldo manual de la base de datos</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Soporte por correo y teléfono</span></li>
+                    </ul>
+                    <a href="#licencia-estado" class="plan-cta plan-cta-secondary"><i class="fa-solid fa-key" aria-hidden="true"></i> Activar licencia</a>
+                </article>
+
+                <article class="plan-card is-featured reveal">
+                    <span class="plan-badge"><i class="fa-solid fa-star" aria-hidden="true"></i> Más elegido</span>
+                    <h3 class="plan-name">Profesional</h3>
+                    <p class="plan-desc">Para negocios en crecimiento que necesitan integrar varios módulos y tener más control.</p>
+                    <div class="plan-price">
+                        <span class="plan-amount">30</span>
+                        <span class="plan-currency">USD</span>
+                        <span class="plan-period">/mes</span>
+                    </div>
+                    <p class="plan-note">Ideal para operaciones con varios procesos.</p>
+                    <hr class="plan-divider">
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Hasta 3 módulos del ecosistema SiGesEmp</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Usuarios y permisos por módulo</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Reportes y cierres operativos</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Respaldo local y exportación manual</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Soporte prioritario</span></li>
+                    </ul>
+                    <a href="#licencia-estado" class="plan-cta plan-cta-primary"><i class="fa-solid fa-rocket" aria-hidden="true"></i> Empezar ahora</a>
+                </article>
+
+                <article class="plan-card reveal">
+                    <h3 class="plan-name">Empresarial</h3>
+                    <p class="plan-desc">Para empresas que necesitan la plataforma completa, acompañamiento y mayor capacidad de operación.</p>
+                    <div class="plan-price">
+                        <span class="plan-amount">50</span>
+                        <span class="plan-currency">USD</span>
+                        <span class="plan-period">/mes</span>
+                    </div>
+                    <p class="plan-note">Pensado para gestión integral y crecimiento.</p>
+                    <hr class="plan-divider">
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Todos los módulos de SiGesEmp</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Usuarios y roles según tu operación</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Integración entre módulos y reportes completos</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Asistencia en puesta en marcha</span></li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Soporte técnico y acompañamiento continuo</span></li>
+                    </ul>
+                    <a href="/desamedida.php" class="plan-cta plan-cta-secondary"><i class="fa-solid fa-comments" aria-hidden="true"></i> Solicitar propuesta</a>
+                </article>
+            </div>
+
+            <div class="precios-trial reveal">
+                <p><strong>¿Todavía no decides?</strong>Solicita una demostración o activa tu licencia cuando estés listo. Te orientamos según las necesidades de tu negocio.</p>
+                <a href="#licencia-estado" class="btn btn-cian btn-sm"><i class="fa-solid fa-key" aria-hidden="true"></i> Activar / renovar</a>
+            </div>
+
+            <div class="precios-links reveal">
+                <a href="#licencia-estado" class="precios-link">
+                    <i class="fa-solid fa-percent" aria-hidden="true"></i>
+                    <span><strong>Paga menos por ciclo</strong>Consulta opciones de pago semestral o anual y elige el plan que mejor te convenga.</span>
+                </a>
+                <a href="<?= $base ?>/contacto.php" class="precios-link">
+                    <i class="fa-solid fa-file-signature" aria-hidden="true"></i>
+                    <span><strong>Cómo contratar</strong>Habla con nuestro equipo y recibe orientación sobre el plan, la activación y la puesta en marcha.</span>
+                </a>
+                <a href="<?= $base ?>/contacto.php" class="precios-link">
+                    <i class="fa-solid fa-user-check" aria-hidden="true"></i>
+                    <span><strong>¿Te lo instalan?</strong>Busca un socio técnico acreditado en tu zona, con presupuesto acordado.</span>
+                </a>
+            </div>
+        </div>
+    </section>
     <!-- ===== Preguntas frecuentes ===== -->
     <section class="sec" id="preguntas">
         <div class="wrap">
@@ -3236,6 +3416,22 @@ $faq = [
         // arranca igualmente para que la portada no quede en blanco.
         window.setTimeout(iniciar, 3500);
     }
+})();
+</script>
+<script>
+(() => {
+  const els = document.querySelectorAll('.rv-ap, .rv-ap-hijos');
+  if (!els.length) return;
+  const show = (el) => el.classList.add('rv-visto');
+  const check = () => els.forEach(el => { if (el.classList.contains('rv-visto')) return; const r = el.getBoundingClientRect(); if (r.top < window.innerHeight + 40 && r.bottom > -40) show(el); });
+  if (!('IntersectionObserver' in window)) { els.forEach(show); return; }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  els.forEach(el => io.observe(el));
+  check();
+  window.addEventListener('scroll', check, { passive: true });
+  window.addEventListener('load', check);
 })();
 </script>
 </body>
