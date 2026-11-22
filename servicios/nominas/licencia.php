@@ -67,56 +67,6 @@ require_once __DIR__ . '/includes/licencia.php';
 // al boton que abre el cliente de correo local (mailto:).
 require_once __DIR__ . '/includes/solicitud_licencia_correo.php';
 
-/**
- * Verifica el texto pegado/escrito de una licencia contra este equipo.
- * No instala nada: solo informa si el texto es una licencia vigente para esta PC.
- * @param string $texto Texto Base64 de la licencia.
- * @return array{ok:bool, mensaje:string, datos:?array, huella_destino:string, huella_equipo:string}
- */
-function licencia_texto_verificar($texto) {
-    $resp = array(
-        'ok'             => false,
-        'mensaje'        => 'Pegue el texto de la licencia para verificarlo.',
-        'datos'          => null,
-        'huella_destino' => '',
-        'huella_equipo'  => '',
-    );
-    $texto = trim((string)$texto);
-    if ($texto === '') {
-        return $resp;
-    }
-    if (strlen($texto) > 8192) {
-        $resp['mensaje'] = 'El texto es demasiado largo para ser una licencia.';
-        return $resp;
-    }
-    $datos = licencia_leer_texto_lic($texto);
-    if ($datos === null) {
-        $resp['mensaje'] = 'El texto no corresponde a una licencia valida. Verifique que se copio completo.';
-        return $resp;
-    }
-    $fp_actual = licencia_fingerprint_machine();
-    if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fp_actual)) {
-        $resp['mensaje']        = 'Esta licencia fue emitida para otro equipo. Solicite al proveedor una licencia para esta PC.';
-        $resp['huella_destino'] = licencia_formatear_fingerprint($datos['huella']);
-        $resp['huella_equipo']  = licencia_formatear_fingerprint($fp_actual);
-        $resp['datos']          = $datos;
-        return $resp;
-    }
-    $meses = isset($datos['info']['meses']) ? $datos['info']['meses'] : null;
-    $resp['ok']      = true;
-    $resp['mensaje'] = 'Licencia valida para este equipo.';
-    $resp['datos']   = array(
-        'registro'  => $datos['registro'],
-        'usuario'   => $datos['usuario'],
-        'serial'    => licencia_formatear_serial($datos['serial']),
-        'termino'   => isset($datos['info']['nombre']) ? $datos['info']['nombre'] : 'Permanente',
-        'periodo'   => ($meses !== null) ? ((int)$meses === 1 ? '1 mes' : (int)$meses . ' meses') : 'Permanente',
-        'vence'     => ($meses !== null) ? licencia_texto_vencimiento($datos, 'Sin vencimiento (Permanente)') : 'Sin vencimiento (Permanente)',
-        'exclusiva' => ($datos['huella'] !== ''),
-    );
-    return $resp;
-}
-
 if (!function_exists('licencia_responder_json')) {
     /**
      * Emite la respuesta JSON de un endpoint interno y termina.
@@ -297,8 +247,21 @@ switch ($lic_diagnostico) {
         break;
 }
 
+// La portada (index.php) puede mostrar solo el formulario de solicitud dentro
+// de un panel, sin cambiar de página ni exigir una licencia vencida.
+$lic_embed_solicitud = (isset($_GET['solicitud_embed']) && (string)$_GET['solicitud_embed'] === '1');
+if ($lic_embed_solicitud) {
+    // En modo embebido no se muestran los avisos de diagnóstico del registro.
+    $mensaje_diagnostico = '';
+}
+
+// Renovación pedida expresamente desde la portada (index.php). Permite entrar
+// al registro aunque la licencia siga vigente, para sustituirla por otra.
+$lic_renovar = (isset($_GET['renovar']) && (string)$_GET['renovar'] === '1');
+$lic_activa  = licencia_activada();
+
 // Si ya está registrado y NO vence, ir directo al login.
-if (licencia_activada()) {
+if ($lic_activa && !$lic_renovar && !$lic_embed_solicitud) {
     header('Location: login.php');
     exit;
 }
@@ -374,7 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!licencia_validar_serial($nombre, $usuario, $serial)) {
         $error = 'La <b>Llave Serial</b> no corresponde a los datos de registro introducidos.<br>Verifique Nombre y Usuario, o solicite una llave válida.';
     } else {
-        $guardado = licencia_guardar($nombre, $usuario, $serial);
+        $guardado = licencia_guardar($nombre, $usuario, $serial, null, ($lic_renovar && $lic_activa));
         if ($guardado !== false) {
             $guardado_ok  = true;
             $guardado_tipo   = isset($guardado['info']['nombre']) ? $guardado['info']['nombre'] : 'Permanente';
@@ -1431,6 +1394,20 @@ if ($guardado_ok) {
         });
     });
     </script>
+    <?php elseif ($lic_renovar && $lic_activa && $lic_guardada !== null): ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            icon: 'info',
+            title: '<i class="fas fa-key" style="color:#38bdf8"></i> Renovar licencia',
+            html: 'La licencia de este equipo est&aacute; vigente hasta <b><?php echo htmlspecialchars(licencia_texto_vencimiento($lic_guardada), ENT_QUOTES, 'UTF-8'); ?></b>.<br>Introduzca la nueva llave para renovarla.',
+            confirmButtonText: '<i class="fas fa-check"></i> Entendido',
+            background: '#1e1e2f',
+            color: '#ffffff',
+            confirmButtonColor: '#3b82f6'
+        });
+    });
+    </script>
     <?php elseif ($mensaje_diagnostico !== ''): ?>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -2316,5 +2293,29 @@ function copiarHuella(icono) { copiarAlPortapapeles(icono); }
         })();
     });
     </script>
+<?php if ($lic_embed_solicitud): ?>
+    <!-- Modo embebido: la portada muestra únicamente este formulario de
+         solicitud dentro de un panel. -->
+    <style>
+        html, body { background: transparent !important; height: 100%; overflow: hidden; }
+        body > *:not(#solOverlay):not(.swal2-container) { display: none !important; }
+        body > #solOverlay {
+            display: flex !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        body > #solOverlay .lic-modal {
+            width: 100%; max-width: 100%; max-height: 100vh;
+            border-radius: 0; border: 0; box-shadow: none;
+        }
+        body > .swal2-container { z-index: 1500; }
+    </style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btnSolicitar');
+        if (btn) { btn.click(); }
+    });
+    </script>
+<?php endif; ?>
 </body>
 </html>

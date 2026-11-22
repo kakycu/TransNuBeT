@@ -1,0 +1,3138 @@
+<?php
+/**
+ * Portada alternativa (index2.php) con el lenguaje visual de cyberforja.com:
+ * fondo abismo, acentos cian y fuego, titulares en Bebas Neue, etiquetas y
+ * botones en Exo 2, y el monitor en perspectiva con móvil y ficha del producto.
+ *
+ * Es una página independiente: no reutiliza el CSS de index.php. Todas las
+ * imágenes viven en /images (hero*, nominas-* y facturacion-*) y no se hace
+ * ninguna petición externa.
+ */
+
+date_default_timezone_set('America/Havana');
+
+$base = '/servicios';
+
+/* ---------------------------------------------------------------------------
+ * Estado de la licencia local (mismo módulo que usa el resto del sistema).
+ * ------------------------------------------------------------------------- */
+$licenciaArchivo = __DIR__ . '/servicios/nominas/includes/licencia.php';
+$licenciaDatos   = null;
+$licenciaActiva  = false;
+if (is_file($licenciaArchivo)) {
+    require_once $licenciaArchivo;
+    $licenciaDatos  = licencia_leer();
+    $licenciaActiva = licencia_activada();
+}
+
+/* ---------------------------------------------------------------------------
+ * Activación y renovación de la licencia desde esta misma portada.
+ * Misma lógica que index.php: se procesa por POST antes de pintar la página.
+ * ------------------------------------------------------------------------- */
+$licForm = [
+    'nombre'  => ($licenciaDatos !== null) ? (string)$licenciaDatos['registro'] : '',
+    'usuario' => ($licenciaDatos !== null) ? (string)$licenciaDatos['usuario']  : '',
+    'serial'  => '',
+    'texto'   => '',
+];
+$licError        = '';
+$licAviso        = '';
+$licAvisoTipo    = '';
+$licOk           = false;
+$licOkTipo       = '';
+$licOkHasta      = '';
+$licModalAbierto = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['licencia_accion']) && function_exists('licencia_guardar')) {
+    $licAccion       = (string)$_POST['licencia_accion'];
+    $licModalAbierto = true;
+    $licForm['nombre']  = isset($_POST['nombre'])  ? trim((string)$_POST['nombre'])  : $licForm['nombre'];
+    $licForm['usuario'] = isset($_POST['usuario']) ? trim((string)$_POST['usuario']) : $licForm['usuario'];
+    $licForm['serial']  = isset($_POST['serial'])  ? trim((string)$_POST['serial'])  : '';
+    $licForm['texto']   = isset($_POST['licencia_texto']) ? (string)$_POST['licencia_texto'] : '';
+
+    if ($licAccion === 'examinar_texto') {
+        $verif = licencia_texto_verificar($licForm['texto']);
+        if ($verif['ok']) {
+            $licForm['nombre']  = $verif['datos']['registro'];
+            $licForm['usuario'] = $verif['datos']['usuario'];
+            $licForm['serial']  = $verif['datos']['serial'];
+            $licAvisoTipo = 'ok';
+            $licAviso = 'Licencia válida para este equipo (' . $verif['datos']['termino'] . '). Revise los datos y pulse «Activar licencia».';
+        } else {
+            $licAvisoTipo = 'error';
+            $licAviso = $verif['mensaje'];
+            if ($verif['huella_destino'] !== '') {
+                $licAviso .= ' Huella destino: ' . $verif['huella_destino']
+                    . ' · Este equipo: ' . $verif['huella_equipo'] . '.';
+            }
+        }
+    } elseif ($licAccion === 'examinar_archivo') {
+        $licAvisoTipo = 'error';
+        if (empty($_FILES['archivo_lic']['tmp_name'])
+            || (($_FILES['archivo_lic']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK)) {
+            $licAviso = 'Debe seleccionar un archivo .lic válido para importar.';
+        } elseif (strtolower(pathinfo($_FILES['archivo_lic']['name'], PATHINFO_EXTENSION)) !== 'lic') {
+            $licAviso = 'El archivo debe tener extensión .lic.';
+        } else {
+            $impDatos = licencia_leer_archivo_lic($_FILES['archivo_lic']['tmp_name']);
+            if ($impDatos === null) {
+                $licAviso = 'El archivo .lic no es válido o su llave no corresponde.';
+            } elseif ($impDatos['huella'] !== ''
+                && !hash_equals($impDatos['huella'], licencia_fingerprint_machine())) {
+                $licAviso = 'Esta licencia fue emitida para otro equipo. Huella destino: '
+                    . licencia_formatear_fingerprint($impDatos['huella'])
+                    . ' · Este equipo: '
+                    . licencia_formatear_fingerprint(licencia_fingerprint_machine()) . '.';
+            } else {
+                $licForm['nombre']  = $impDatos['registro'];
+                $licForm['usuario'] = $impDatos['usuario'];
+                $licForm['serial']  = licencia_formatear_serial($impDatos['serial']);
+                $licAvisoTipo = 'ok';
+                $licAviso = 'Archivo .lic válido ('
+                    . (isset($impDatos['info']['nombre']) ? $impDatos['info']['nombre'] : 'Permanente')
+                    . '). Revise los datos y pulse «Activar licencia».';
+            }
+        }
+    } else {
+        if ($licForm['nombre'] === '') {
+            $licError = 'Debe indicar el <b>Nombre de Registro</b>.';
+        } elseif ($licForm['usuario'] === '') {
+            $licError = 'Debe indicar el <b>Usuario del Registro</b>.';
+        } elseif (preg_match('/^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$/', strtoupper($licForm['serial'])) !== 1) {
+            $licError = 'La <b>Llave Serial</b> no tiene el formato válido (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX).';
+        } elseif (!licencia_validar_serial($licForm['nombre'], $licForm['usuario'], $licForm['serial'])) {
+            $licError = 'La <b>Llave Serial</b> no corresponde a los datos de registro introducidos.';
+        } else {
+            $guardado = licencia_guardar($licForm['nombre'], $licForm['usuario'], $licForm['serial'], null, $licenciaActiva);
+            if ($guardado === false) {
+                $licError = 'No se pudo guardar la licencia en este equipo. Compruebe que la aplicación tiene permisos de escritura.';
+            } else {
+                $licOk      = true;
+                $licOkTipo  = isset($guardado['info']['nombre']) ? $guardado['info']['nombre'] : 'Permanente';
+                $licOkHasta = licencia_texto_vencimiento($guardado, 'Sin vencimiento (Permanente)');
+                $licenciaDatos  = $guardado;
+                $licenciaActiva = licencia_activada();
+                $licForm['serial'] = '';
+            }
+        }
+    }
+}
+
+if ($licOk) {
+    $licenciaEstadoTxt = 'Licencia registrada correctamente en este equipo.';
+} elseif ($licenciaActiva && function_exists('licencia_texto_vencimiento')) {
+    $licenciaEstadoTxt = 'Licencia vigente hasta ' . licencia_texto_vencimiento($licenciaDatos)
+        . '. Puede introducir una nueva llave para renovarla.';
+} elseif ($licenciaDatos !== null) {
+    $licenciaEstadoTxt = 'La licencia guardada no está vigente en este equipo. Active una nueva llave para continuar.';
+} else {
+    $licenciaEstadoTxt = 'Este equipo aún no tiene licencia. Introduzca la llave serial para activarla.';
+}
+
+if ($licenciaActiva) {
+    $licEdoNombre = 'Activa';
+    $licEdoTono   = 'is-ok';
+    $licEdoIcono  = 'fa-circle-check';
+} elseif ($licenciaDatos !== null) {
+    $licEdoNombre = 'Vencida';
+    $licEdoTono   = 'is-warn';
+    $licEdoIcono  = 'fa-hourglass-end';
+} elseif (function_exists('licencia_tiene_valor_guardado') && licencia_tiene_valor_guardado()) {
+    $licEdoNombre = 'No válida';
+    $licEdoTono   = 'is-warn';
+    $licEdoIcono  = 'fa-triangle-exclamation';
+} else {
+    $licEdoNombre = 'Sin activar';
+    $licEdoTono   = 'is-off';
+    $licEdoIcono  = 'fa-circle-minus';
+}
+
+$licRegistro = ($licenciaDatos !== null) ? (string)$licenciaDatos['registro'] : '';
+$licUsuario  = ($licenciaDatos !== null) ? (string)$licenciaDatos['usuario']  : '';
+$licTipo     = ($licenciaDatos !== null && isset($licenciaDatos['info']['nombre'])) ? (string)$licenciaDatos['info']['nombre'] : '';
+$licVence    = ($licenciaDatos !== null) ? licencia_texto_vencimiento($licenciaDatos) : '';
+$licHuella   = function_exists('licencia_fingerprint_equipo') ? licencia_fingerprint_equipo() : '';
+$licEdoActivada = ($licenciaDatos !== null && !empty($licenciaDatos['fecha_activacion']))
+    ? date('d/m/Y', (int)$licenciaDatos['fecha_activacion']) : '';
+$licEdoRegistro = $licRegistro;
+$licEdoUsuario  = $licUsuario;
+$licEdoTipo     = $licTipo;
+$licEdoVence    = $licVence;
+
+/* ---------------------------------------------------------------------------
+ * Contenido de la portada.
+ * ------------------------------------------------------------------------- */
+$ecosistema = [
+    [
+        'titulo'    => 'Ecosistema Financiero',
+        'texto'     => 'Facturación, nóminas, costos e inventarios en un solo lugar: entra al sistema completo y elige el módulo que necesitas.',
+        'icono'     => 'fa-solid fa-wallet',
+        'url'       => $base . '/index.php',
+        'etiqueta'  => 'Portada del sistema',
+        'destacada' => true,
+    ],
+    [
+        'titulo'   => 'Gestión de Nóminas',
+        'texto'    => 'Cálculo de nóminas, cierres mensuales, vacaciones, contribuciones y exportaciones bancarias.',
+        'icono'    => 'fa-solid fa-money-check-dollar',
+        'url'      => $base . '/nominas/',
+        'etiqueta' => 'Módulo de nóminas',
+    ],
+    [
+        'titulo'   => 'Facturación Electrónica',
+        'texto'    => 'Emisión de facturas, clientes, servicios y reportes de cierre con control de usuarios.',
+        'icono'    => 'fa-solid fa-file-invoice-dollar',
+        'url'      => $base . '/facturacion/index.php',
+        'etiqueta' => 'Módulo de facturación',
+    ],
+    [
+        'titulo'   => 'Gestión de Costos',
+        'texto'    => 'Fichas de costo, gastos operativos, márgenes y proyecciones para controlar la rentabilidad.',
+        'icono'    => 'fa-solid fa-calculator',
+        'url'      => $base . '/costos/login.php',
+        'etiqueta' => 'Módulo de costos',
+    ],
+    [
+        'titulo'   => 'Inventarios',
+        'texto'    => 'Control de stock, entradas y salidas, alertas de inventario mínimo y gestión de proveedores.',
+        'icono'    => 'fa-solid fa-boxes-stacked',
+        'url'      => $base . '/inventarios/login.php',
+        'etiqueta' => 'Módulo de inventarios',
+    ],
+    [
+        'titulo'   => 'Administración',
+        'texto'    => 'Usuarios, roles, parámetros globales, auditoría y configuración del sistema en un solo panel.',
+        'icono'    => 'fa-solid fa-user-shield',
+        'url'      => $base . '/administracion/index.php',
+        'etiqueta' => 'Módulo de administración',
+    ],
+    [
+        'titulo'   => 'Panel del Servidor',
+        'texto'    => 'Estado de Apache, PHP y MySQL: versión, uptime real del motor y lanzadores de herramientas.',
+        'icono'    => 'fa-solid fa-server',
+        'url'      => $base . '/phpinfo/',
+        'etiqueta' => 'Información del servidor',
+    ],
+    [
+        'titulo'   => 'Instalador de Base de Datos',
+        'texto'    => 'Asistente para crear o restaurar la base de datos del sistema cuando se prepara un equipo nuevo.',
+        'icono'    => 'fa-solid fa-database',
+        'url'      => $base . '/InstalarBD/InstalarBD.php',
+        'etiqueta' => 'Preparar el sistema',
+    ],
+    [
+        'titulo'   => 'Soporte y Contacto',
+        'texto'    => 'Documentación de soporte, contacto directo y canales de atención para la operación diaria.',
+        'icono'    => 'fa-solid fa-headset',
+        'url'      => $base . '/soporte.php',
+        'etiqueta' => 'Ayuda y contacto',
+    ],
+];
+
+$servicios = [
+    ['icono' => 'fa-solid fa-database',      'titulo' => 'Base de datos',  'texto' => 'Motor MySQL con integridad referencial, respaldo periódico y restauración confiable.'],
+    ['icono' => 'fa-brands fa-php',          'titulo' => 'PHP 8.1',        'texto' => 'Compatibilidad con el stack local y rendimiento estable para todos los módulos.'],
+    ['icono' => 'fa-solid fa-shield-halved', 'titulo' => 'Seguridad',      'texto' => 'Comunicación cifrada, autenticación reforzada y secretos fuera del código.'],
+    ['icono' => 'fa-solid fa-arrows-rotate', 'titulo' => 'Sincronización', 'texto' => 'Información siempre al día entre módulos, sin cálculos repetidos ni desfases.'],
+    ['icono' => 'fa-solid fa-clock',         'titulo' => 'Soporte 24/7',   'texto' => 'Acompañamiento continuo para la operación y resolución de incidencias.'],
+    ['icono' => 'fa-solid fa-lock',          'titulo' => 'Licencia local', 'texto' => 'Todo funciona en el equipo del cliente: los datos no salen de la red local.'],
+];
+
+$faq = [
+    [
+        'p' => '¿De dónde salen los datos que muestra esta portada?',
+        'r' => 'Se leen en cada carga desde tus bases locales: facturación (<code>tbl_fact</code>) y nóminas (<code>cierres_periodo_nomina</code>), del último mes. Si ese mes no tiene movimiento, se toma el último mes con datos y se indica cuál es. No hay cifras de ejemplo.',
+    ],
+    [
+        'p' => '¿Y si MySQL está apagado?',
+        'r' => 'La portada se abre igual. Los módulos que dependen de la base esperan a que el servicio vuelva, y nunca se inventan cifras.',
+    ],
+    [
+        'p' => '¿Necesito internet para usar el sistema?',
+        'r' => 'No. Todo corre en tu equipo o en la red local: Apache, PHP y MySQL. Los datos no salen de esa red.',
+    ],
+    [
+        'p' => '¿Cómo empiezo si el equipo es nuevo?',
+        'r' => 'Entra al <a href="' . $base . '/InstalarBD/InstalarBD.php">Instalador de base de datos</a>, crea el esquema y después abre el Ecosistema Financiero. Si ya tienes datos, salta ese paso.',
+    ],
+    [
+        'p' => '¿Cómo pido soporte?',
+        'r' => 'Escribe a <a href="mailto:kakycu@gmail.com">kakycu@gmail.com</a> o llama al <a href="tel:+5352712861">+53 5 2712861</a>, de lunes a viernes de 8:00 a 17:00.',
+    ],
+];
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UnicornioSoftware Cuba · SOFTWARE PARA TRANSFORMAR TU NEGOCIO</title>
+<meta name="description" content="Facturación, nóminas, costos e inventarios en una plataforma que corre en tu propia red. UnicornioSoftware Cuba.">
+<link rel="icon" type="image/png" href="/images/logo.png">
+<link rel="stylesheet" href="<?= $base ?>/css/font-awesome6.4.0/css/all.min.css">
+<link rel="stylesheet" href="<?= $base ?>/assets/fonts/fuentes.css">
+<link rel="stylesheet" href="<?= $base ?>/assets/css/portada-licencia.css">
+<style>
+    /* ===== Tokens del tema cyberforja ===== */
+    :root {
+        --abismo:  #0a0f1a;
+        --panel:   #0b0e14;
+        --tarjeta: #090e18;
+        --acero:   #1e293b;
+        --cian:    #00d4ff;
+        --fuego:   #ff6b00;
+        --fuego-h: #ff8a33;
+        --reven:   #8b5cf6;
+        --txt:     #ffffff;
+        --gris:    #d1d5db;
+        --gris-2:  #9ca3af;
+        --gris-3:  #6b7280;
+        --nav-h:   5rem;
+        --wrap:    80rem;
+        --radio:   .5rem;
+        /* Tokens que consume el panel de licencia (portada-licencia.css) */
+        --muted:   #93a4bd;
+        --border:  #1e293b;
+        --border-strong: #2b3b55;
+        --tile:    rgba(255, 255, 255, .04);
+        --mint:    #22c55e;
+        --cyan:    #00d4ff;
+        --accent:  #ff6b00;
+        --accent-soft: rgba(255, 107, 0, .14);
+        --surface: #0d1422;
+        --surface-solid: #0d1422;
+        --surface-strong: #131b2c;
+        --card-hover-border: #2b3b55;
+        --danger:  #ef4444;
+        --danger-txt: #fca5a5;
+        --danger-soft: rgba(239, 68, 68, .12);
+        --danger-border: rgba(239, 68, 68, .38);
+        --warn:    #f59e0b;
+        --radius-lg: 1rem;
+        --shadow:  0 24px 60px -30px #000;
+        --shadow-glow: 0 0 0 1px rgba(0, 212, 255, .18);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 1rem); }
+    body {
+        margin: 0;
+        background: var(--abismo);
+        color: var(--txt);
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 16px; line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+    }
+    ::selection { background: var(--fuego); color: #fff; }
+    img { max-width: 100%; display: block; }
+    a { color: inherit; text-decoration: none; }
+    h1, h2, h3, h4 { margin: 0; }
+    p { margin: 0; }
+    .wrap { width: 100%; max-width: var(--wrap); margin-inline: auto; padding-inline: clamp(1.25rem, 4vw, 3rem); }
+
+    /* ===== Tipografías ===== */
+    .bebas { font-family: "Bebas Neue", "Bebas Neue Fallback", Impact, sans-serif; font-weight: 400; letter-spacing: .02em; line-height: .92; }
+    .exo   { font-family: "Exo 2", "Inter", system-ui, sans-serif; }
+
+    /* ===== Botones ===== */
+    .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+        padding: .85rem 1.5rem; border-radius: 2px;
+        font-family: "Exo 2", "Inter", system-ui, sans-serif;
+        font-size: .8rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .09em;
+        border: 1px solid transparent; cursor: pointer;
+        transition: transform .2s, background .2s, border-color .2s, color .2s, box-shadow .2s;
+        white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-fuego {
+        background: var(--fuego); color: var(--abismo);
+        box-shadow: 0 8px 24px rgba(255, 107, 0, .22);
+    }
+    .btn-fuego:hover { background: var(--fuego-h); box-shadow: 0 10px 28px rgba(255, 107, 0, .35); }
+    .btn-cian {
+        background: rgba(0, 212, 255, .1); color: var(--cian);
+        border-color: rgba(0, 212, 255, .4);
+    }
+    .btn-cian:hover { background: var(--cian); color: var(--abismo); border-color: var(--cian); }
+    .btn-ghost { background: transparent; color: var(--gris); border-color: var(--acero); }
+    .btn-ghost:hover { color: var(--txt); border-color: var(--fuego); }
+    .btn-sm { padding: .6rem 1rem; font-size: .72rem; }
+    /* Alias que usa el panel de licencia compartido */
+    .btn-primary {
+        background: linear-gradient(135deg, var(--fuego), #e35f00);
+        color: #170a02; border: 1px solid transparent;
+        font-weight: 800;
+    }
+    .btn-primary:hover { background: linear-gradient(135deg, var(--fuego-h), var(--fuego)); color: #170a02; }
+    .btn-glass {
+        background: rgba(255, 255, 255, .04);
+        color: var(--txt);
+        border: 1px solid var(--acero);
+    }
+    .btn-glass:hover { background: rgba(255, 255, 255, .09); border-color: rgba(0, 212, 255, .45); }
+
+    /* ===== Navegación ===== */
+    .nav {
+        position: fixed; inset: 0 0 auto 0; z-index: 50;
+        height: var(--nav-h);
+        background: rgba(10, 15, 26, .82);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--acero);
+    }
+    .nav-in { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: var(--nav-h); }
+    .marca { display: inline-flex; align-items: center; gap: .7rem; }
+    .marca img { width: 2.5rem; height: 2.5rem; object-fit: contain; }
+    .marca-txt { display: grid; line-height: 1; }
+    .marca-txt b {
+        font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400;
+        font-size: 1.5rem; letter-spacing: .06em;
+    }
+    .marca-txt b i { font-style: normal; color: var(--cian); }
+    .marca-txt b em { font-style: normal; color: var(--fuego); }
+    .marca-txt small {
+        margin-top: .2rem; font-size: .58rem; letter-spacing: .22em;
+        text-transform: uppercase; color: var(--gris-3); font-weight: 600;
+    }
+    .nav-links { display: none; align-items: center; gap: 1.4rem; }
+    .nav-links a {
+        font-family: "Exo 2", sans-serif; font-size: .78rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .08em; color: var(--gris-2);
+        transition: color .2s;
+    }
+    .nav-links a:hover, .nav-links a:focus-visible { color: var(--txt); }
+    .nav-links a i { margin-right: .38rem; color: var(--gris-3); font-size: .78em; transition: color .2s; }
+    .nav-links a:hover i, .nav-links a:focus-visible i { color: var(--cian); }
+    .nav-acc { display: flex; align-items: center; gap: .6rem; }
+    .nav-acc .btn { display: none; }
+    .menu-btn {
+        display: inline-grid; place-items: center;
+        width: 2.75rem; height: 2.75rem;
+        border: 1px solid var(--acero); border-radius: 2px;
+        background: transparent; color: var(--gris-2); font-size: 1.1rem; cursor: pointer;
+    }
+    .menu-btn:hover { color: var(--txt); border-color: var(--fuego); }
+    .menu-movil { display: none; border-top: 1px solid var(--acero); background: var(--abismo); }
+    .menu-movil.is-open { display: block; }
+    .menu-movil a {
+        display: block; padding: .9rem 1.5rem;
+        font-family: "Exo 2", sans-serif; font-size: .8rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .08em; color: var(--gris-2);
+        border-bottom: 1px solid rgba(30, 41, 59, .6);
+    }
+    .menu-movil a:hover { color: var(--txt); }
+    .menu-movil a i { width: 1.1rem; margin-right: .55rem; color: var(--gris-3); }
+    .menu-movil a:hover i { color: var(--cian); }
+    .menu-movil-titulo {
+        display: block; padding: .9rem 1.5rem .4rem;
+        font-family: "Exo 2", sans-serif; font-size: .62rem; font-weight: 800;
+        letter-spacing: .18em; text-transform: uppercase; color: var(--gris-3);
+    }
+
+    /* ===== Acceso a los servicios (desplegable del topbar) ===== */
+    .nav-login { position: relative; display: none; }
+    .nav-login-caret { font-size: .62em; opacity: .75; transition: transform .2s; }
+    .nav-login.is-open .nav-login-caret { transform: rotate(180deg); }
+    .nav-login-menu {
+        position: absolute; right: 0; top: calc(100% + .6rem);
+        display: grid; gap: .1rem;
+        min-width: 15.5rem; padding: .45rem;
+        background: #0b111d;
+        border: 1px solid var(--acero);
+        border-radius: .6rem;
+        box-shadow: 0 28px 56px -22px rgba(0, 0, 0, .95), 0 0 0 1px rgba(0, 212, 255, .08);
+        opacity: 0; visibility: hidden; transform: translateY(-6px);
+        transition: opacity .18s ease, transform .18s ease, visibility .18s;
+        z-index: 60;
+    }
+    .nav-login.is-open .nav-login-menu { opacity: 1; visibility: visible; transform: none; }
+    .nav-login-menu a {
+        display: flex; align-items: center; gap: .6rem;
+        padding: .6rem .7rem; border-radius: .4rem;
+        font-family: "Exo 2", sans-serif; font-size: .74rem; font-weight: 700;
+        letter-spacing: .06em; text-transform: uppercase; color: var(--gris-2);
+        border-bottom: 0;
+        transition: background .18s, color .18s;
+    }
+    .nav-login-menu a i { width: 1.05rem; text-align: center; color: var(--cian); font-size: .84rem; }
+    .nav-login-menu a:hover, .nav-login-menu a:focus-visible {
+        background: rgba(0, 212, 255, .1); color: var(--txt);
+    }
+    @media (min-width: 900px) {
+        /* Nueve enlaces: primero compactos y sin iconos, luego con más aire. */
+        .nav-links { display: flex; gap: .8rem; }
+        .nav-links a { font-size: .64rem; letter-spacing: .05em; white-space: nowrap; }
+        .nav-links a i { display: none; }
+        .nav-acc .btn { display: inline-flex; }
+        .nav-login { display: block; }
+        .menu-btn { display: none; }
+        .menu-movil { display: none !important; }
+    }
+    @media (min-width: 1180px) {
+        .nav-links { gap: .7rem; }
+        .nav-links a { font-size: .64rem; letter-spacing: .04em; }
+        .nav-links a i { display: inline-block; margin-right: .24rem; font-size: .68em; }
+    }
+    @media (min-width: 1400px) {
+        .nav-links { gap: .85rem; }
+        .nav-links a { font-size: .68rem; }
+    }
+
+    /* ===== Hero ===== */
+    .hero {
+        position: relative;
+        display: flex; align-items: center;
+        min-height: calc(100svh - var(--nav-h));
+        max-height: 52rem;
+        padding-top: var(--nav-h);
+        overflow: hidden;
+    }
+    .hero-fondo { position: absolute; inset: 0; z-index: 0; }
+    .hero-fondo img {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%; object-fit: cover;
+        opacity: 0; transition: opacity .9s ease;
+    }
+    .hero-fondo img.is-on { opacity: 1; }
+    .hero-velo {
+        position: absolute; inset: 0; z-index: 1;
+        background:
+            linear-gradient(90deg, rgba(5, 8, 16, .96) 0%, rgba(5, 8, 16, .82) 44%, rgba(5, 8, 16, .58) 100%),
+            radial-gradient(circle at left, rgba(0, 212, 255, .14) 0%, transparent 55%);
+    }
+    .hero-grid {
+        position: relative; z-index: 2;
+        display: grid; gap: clamp(2rem, 4vw, 3rem);
+        grid-template-columns: minmax(0, 1fr);
+        align-items: center;
+        padding-block: 2rem 3.5rem;
+    }
+    .hero-copy { max-width: 40rem; }
+    .eyebrow {
+        display: inline-block;
+        font-family: "Exo 2", sans-serif; font-size: .76rem; font-weight: 800;
+        letter-spacing: .2em; text-transform: uppercase; color: var(--cian);
+        text-shadow: 0 2px 12px rgba(0, 0, 0, .9);
+    }
+    .eyebrow span { color: var(--gris-3); font-weight: 600; }
+    .hero h1 {
+        margin: .7rem 0 .9rem;
+        font-size: clamp(2.4rem, 5.4vw, 3.9rem);
+        max-width: 36rem;
+        color: #fff;
+        text-shadow: 0 4px 24px rgba(0, 0, 0, .9);
+    }
+    .hero h1 span { color: var(--cian); filter: drop-shadow(0 0 16px rgba(0, 212, 255, .45)); }
+    .hero-bajada {
+        max-width: 38rem; color: var(--gris); font-size: 1.05rem; line-height: 1.7;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, .85);
+    }
+    .hero-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; margin-top: 1.8rem; }
+    .hero-acciones .btn { flex: 0 0 auto; }
+    .tags {
+        display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem;
+        margin-top: 1.9rem;
+        font-family: "Exo 2", sans-serif; font-size: .72rem; font-weight: 700;
+        letter-spacing: .1em; text-transform: uppercase; color: var(--gris-2);
+    }
+    .tags span { display: inline-flex; align-items: center; gap: .45rem; }
+    .tags i { color: var(--cian); font-size: .7rem; }
+    .tags .sep { color: rgba(255, 255, 255, .18); }
+
+    /* Escena: monitor en perspectiva + móvil + ficha */
+    .escena {
+        position: relative; justify-self: center;
+        width: min(100%, 37rem);
+        perspective: 2200px; transform-style: preserve-3d;
+    }
+    .escena::before {
+        content: ""; position: absolute; inset: -12% -8%; z-index: -1;
+        background: radial-gradient(ellipse 65% 55% at 55% 50%, rgba(var(--brillo, 139, 92, 246), .4), transparent 70%);
+        transform: translateZ(-200px); pointer-events: none;
+    }
+    .escena-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; margin-bottom: .8rem; }
+    .pill {
+        display: inline-flex; align-items: center; gap: .4rem;
+        padding: .3rem .8rem; border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, .18);
+        background: rgba(255, 255, 255, .07);
+        color: var(--gris-2);
+        font-family: "Exo 2", sans-serif; font-size: .68rem; font-weight: 700;
+        letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+    }
+    .pill .dot { width: .4rem; height: .4rem; border-radius: 50%; background: rgb(var(--brillo, 139, 92, 246)); }
+    .pill.is-on { background: rgba(255, 255, 255, .18); border-color: rgba(255, 255, 255, .4); color: #fff; }
+    .diapo { --brillo: 139, 92, 246; transition: opacity .5s, visibility .5s; }
+    .diapo:not(.is-on) {
+        position: absolute; top: 0; left: 0; width: 100%;
+        opacity: 0; visibility: hidden; pointer-events: none;
+    }
+    .diapo.is-on { position: relative; opacity: 1; visibility: visible; }
+    .pantalla {
+        position: relative; z-index: 10;
+        padding: 8px; border-radius: 18px;
+        background: #0f141d;
+        border: 1.5px solid rgba(255, 255, 255, .18);
+        transform: translateZ(120px) rotateY(-14deg);
+        transform-style: preserve-3d;
+        box-shadow:
+            0 0 0 1px rgba(var(--brillo), .4),
+            0 0 36px rgba(var(--brillo), .28),
+            0 35px 75px -15px rgba(0, 0, 0, .85),
+            inset 0 1px 1px rgba(255, 255, 255, .22);
+    }
+    .pantalla img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; border-radius: 11px; }
+    .pantalla::after {
+        content: ""; position: absolute; left: 4%; right: 4%; bottom: -14%; height: 14%;
+        background: radial-gradient(closest-side, rgba(var(--brillo), .55), transparent);
+    }
+    .movil {
+        position: absolute; right: 1%; bottom: -10%; width: 21%; aspect-ratio: 9 / 19;
+        padding: .35rem; border-radius: 1.6rem; background: #0c1017; z-index: 50;
+        border: 1.5px solid rgba(255, 255, 255, .18);
+        transform: translateZ(280px) rotateY(-8deg);
+        box-shadow: -24px 24px 45px rgba(0, 0, 0, .92), 0 0 0 1px rgba(var(--brillo), .4), 0 0 24px rgba(var(--brillo), .3);
+    }
+    .movil img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 1.25rem; }
+    .ficha {
+        position: absolute; left: .75rem; bottom: -1.75rem; z-index: 60;
+        display: flex; flex-direction: column; align-items: flex-start; gap: .4rem;
+        max-width: 82%; transform: translateZ(300px);
+    }
+    .chip {
+        display: flex; align-items: center; gap: .6rem;
+        padding: .5rem .8rem .5rem .65rem; border-radius: 8px;
+        background: #fff; color: #1e1b4b;
+        border: 1px solid rgba(var(--brillo), .5);
+        box-shadow: 0 0 0 3px rgba(10, 15, 26, .3), 0 16px 32px -6px rgba(0, 0, 0, .75), 0 0 16px rgba(var(--brillo), .2);
+        font-family: "Inter", sans-serif;
+    }
+    .chip-icono { width: 2rem; height: 2rem; flex: 0 0 auto; }
+    .chip-icono img { width: 100%; height: 100%; object-fit: contain; }
+    .chip strong { display: block; font-size: .84rem; line-height: 1.15; }
+    .chip span { display: block; font-size: .72rem; color: #6b7280; line-height: 1.2; }
+    .chip-btn {
+        display: inline-flex; align-items: center; gap: .35rem;
+        padding: .28rem .8rem; border-radius: 5px;
+        font-family: "Exo 2", sans-serif; font-size: .68rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .05em;
+        background: #0b0e14; color: #fff;
+        border: 1px solid rgba(var(--brillo), .7);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, .6);
+        transition: background .2s, transform .2s;
+    }
+    .chip-btn:hover { background: rgb(var(--brillo)); transform: translateY(-1px); }
+    @media (min-width: 1024px) {
+        .hero-grid { grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr); }
+    }
+    @media (max-width: 1023px) {
+        .hero { max-height: none; padding-bottom: 4rem; }
+        .escena { margin-top: 3.25rem; }
+    }
+    @media (max-width: 40rem) {
+        .movil { width: 24%; bottom: -8%; }
+        .ficha { left: .5rem; bottom: -1.4rem; max-width: 92%; }
+        .escena-nav { justify-content: flex-start; }
+        .hero-acciones { gap: .45rem; }
+        .hero-acciones .btn {
+            flex: 1 1 0; min-width: 0;
+            padding: .72rem .55rem;
+            font-size: clamp(.58rem, 2.9vw, .74rem);
+            letter-spacing: .04em; gap: .35rem;
+        }
+    }
+
+    /* ===== Secciones ===== */
+    .sec {
+        position: relative;
+        padding-block: clamp(3.5rem, 7vw, 6rem);
+        border-top: 1px solid rgba(30, 41, 59, .7);
+    }
+    /* Filete de separación que se dibuja al entrar en la sección */
+    .sec::before {
+        content: ""; position: absolute; inset-inline: 0; top: -1px; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 212, 255, .55), rgba(255, 107, 0, .35), transparent);
+        transform: scaleX(0); transform-origin: left center;
+        transition: transform 1.1s cubic-bezier(.22, .8, .24, 1);
+        pointer-events: none;
+    }
+    .sec.is-in::before { transform: scaleX(1); }
+    .sec-head { max-width: 46rem; }
+    .sec-head .eyebrow { color: var(--fuego); }
+    .sec-head h2 {
+        margin: .6rem 0 .8rem;
+        font-size: clamp(2rem, 4.4vw, 3rem);
+        text-transform: uppercase;
+    }
+    .sec-head p { color: var(--gris-2); font-size: 1rem; }
+
+    /* ===== Tarjetas del ecosistema ===== */
+    .grid { display: grid; gap: 1rem; margin-top: 2.5rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 640px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1024px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    /* Tarjetas «card-acero» de cyberforja: degradado de acero, brillo reactivo
+       que sigue al puntero (--pointer-x/--pointer-y) y logo que gira al pasar. */
+    .card {
+        position: relative; display: flex; flex-direction: column; gap: .85rem;
+        padding: 1.5rem;
+        background: linear-gradient(145deg, #131b2c, #0a0f1a);
+        border: 1px solid var(--acero);
+        border-radius: .9rem;
+        box-shadow: 0 10px 24px -18px rgba(0, 0, 0, .9);
+        transition: transform .4s cubic-bezier(.4, 0, .2, 1), border-color .4s ease, box-shadow .4s ease;
+        overflow: hidden;
+        isolation: isolate;
+    }
+    .card__sheen {
+        position: absolute; inset: 0; z-index: 0; pointer-events: none;
+        opacity: 0;
+        background: radial-gradient(290px circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+                    var(--card-sheen, rgba(0, 212, 255, .18)), transparent 75%);
+        transition: opacity .22s ease;
+    }
+    .card:hover {
+        transform: translateY(-6px);
+        border-color: rgba(0, 212, 255, .55);
+        box-shadow: 0 26px 54px -28px rgba(0, 0, 0, .95);
+    }
+    .card:hover .card__sheen { opacity: 1; }
+    .card > *:not(.card__sheen) { position: relative; z-index: 1; }
+    .card-head {
+        display: flex; align-items: center; gap: .85rem;
+        padding-bottom: .75rem; margin-bottom: .1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, .06);
+    }
+    .card-ico {
+        flex: 0 0 auto;
+        display: grid; place-items: center;
+        width: 3rem; height: 3rem;
+        border-radius: .7rem;
+        background: rgba(0, 212, 255, .09);
+        border: 1px solid rgba(0, 212, 255, .22);
+        color: var(--cian); font-size: 1.15rem;
+        transition: transform .35s cubic-bezier(.34, 1.56, .64, 1);
+    }
+    .card:hover .card-ico { transform: scale(1.12) rotate(6deg); }
+    .card h3 {
+        font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400;
+        font-size: 1.55rem; line-height: 1; letter-spacing: .03em; text-transform: uppercase;
+    }
+    .card-sub {
+        margin-top: .25rem;
+        font-family: "Exo 2", sans-serif; font-size: .62rem; font-weight: 800;
+        letter-spacing: .14em; text-transform: uppercase; color: var(--cian);
+    }
+    .card p { color: var(--gris-2); font-size: .9rem; line-height: 1.65; }
+    .card-link {
+        margin-top: auto; padding-top: .85rem;
+        display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+        border-top: 1px solid rgba(255, 255, 255, .06);
+        font-family: "Exo 2", sans-serif; font-size: .7rem; font-weight: 800;
+        letter-spacing: .1em; text-transform: uppercase; color: var(--cian);
+        transition: color .2s;
+    }
+    .card-link i { transition: transform .3s ease; }
+    .card:hover .card-link i { transform: translateX(5px); }
+    .card.destacada {
+        border-color: rgba(255, 107, 0, .45);
+        background: linear-gradient(145deg, #22140c, #0a0f1a 62%);
+    }
+    .card.destacada .card-ico { background: rgba(255, 107, 0, .12); border-color: rgba(255, 107, 0, .35); color: var(--fuego); }
+    .card.destacada .card-sub { color: var(--fuego); }
+    .card.destacada .card-link { color: var(--fuego); }
+    .card.destacada:hover { border-color: var(--fuego); box-shadow: 0 26px 54px -26px rgba(255, 107, 0, .35); }
+
+    /* ===== Secciones de ingeniería / proceso / quiénes somos ===== */
+    .rule { width: 5rem; height: 4px; border-radius: 999px; background: var(--cian); margin: 1rem 0 1.15rem; }
+    .duo { display: grid; gap: 2rem; margin-top: 2.4rem; align-items: center; }
+    @media (min-width: 900px) { .duo { grid-template-columns: 1.05fr .95fr; gap: 3rem; } }
+    .duo-espejo > :first-child { order: 1; }
+    @media (min-width: 900px) { .duo-espejo > :first-child { order: 2; } }
+    .duo h2 { font-size: clamp(2.1rem, 4.4vw, 3.4rem); text-transform: uppercase; }
+    .duo p { color: var(--gris); font-size: 1rem; line-height: 1.75; }
+    .duo .mini-lista { list-style: none; margin: 1.3rem 0 0; padding: 0; display: grid; gap: .6rem; }
+    .duo .mini-lista li { display: flex; gap: .6rem; align-items: flex-start; color: var(--gris-2); font-size: .92rem; }
+    .duo .mini-lista i { color: var(--cian); margin-top: .25rem; font-size: .8rem; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.1rem; }
+    .chips span {
+        display: inline-flex; align-items: center; gap: .4rem;
+        padding: .42rem .75rem;
+        background: rgba(255, 255, 255, .04);
+        border: 1px solid rgba(255, 255, 255, .1);
+        border-radius: .4rem;
+        font-family: "Exo 2", sans-serif; font-size: .68rem; font-weight: 700;
+        letter-spacing: .06em; text-transform: uppercase; color: var(--gris);
+        transition: border-color .2s, color .2s, background .2s;
+    }
+    .chips span:hover { border-color: rgba(0, 212, 255, .45); color: var(--txt); background: rgba(0, 212, 255, .08); }
+    .chips i { color: var(--cian); font-size: .7rem; }
+
+    .panel-destacado {
+        background: linear-gradient(150deg, #101828, #0a0f1a 70%);
+        border: 1px solid var(--acero);
+        border-radius: 1rem;
+        padding: 1.6rem;
+        box-shadow: 0 30px 60px -40px #000;
+    }
+    .panel-destacado h3 {
+        font-family: "Exo 2", sans-serif; font-size: .72rem; font-weight: 800;
+        letter-spacing: .16em; text-transform: uppercase; color: var(--gris-2);
+    }
+
+    .pasos { display: grid; gap: 1rem; margin-top: 2.4rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 640px) { .pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1024px) { .pasos { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .paso {
+        position: relative;
+        padding: 1.4rem 1.3rem;
+        background: linear-gradient(160deg, #111a2b, #090e18 70%);
+        border: 1px solid var(--acero);
+        border-radius: .9rem;
+        transition: transform .35s cubic-bezier(.4, 0, .2, 1), border-color .35s;
+    }
+    .paso:hover { transform: translateY(-5px); border-color: rgba(0, 212, 255, .45); }
+    .paso-num {
+        display: block;
+        font-family: "Bebas Neue", Impact, sans-serif; font-size: 2.3rem; line-height: 1;
+        color: rgba(0, 212, 255, .28);
+        margin-bottom: .5rem;
+    }
+    .paso strong {
+        display: block;
+        font-family: "Exo 2", sans-serif; font-size: .82rem; font-weight: 800;
+        letter-spacing: .12em; text-transform: uppercase; color: var(--txt);
+    }
+    .paso p { margin-top: .45rem; color: var(--gris-2); font-size: .86rem; line-height: 1.6; }
+
+    .cifras { display: grid; gap: .8rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 1.3rem; }
+    .cifra { padding: .9rem 1rem; background: rgba(255, 255, 255, .03); border: 1px solid var(--acero); border-radius: .7rem; }
+    .cifra b { display: block; font-family: "Bebas Neue", Impact, sans-serif; font-size: 1.9rem; line-height: 1; color: var(--cian); }
+    .cifra span { font-family: "Exo 2", sans-serif; font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gris-3); }
+
+    /* ===== Licencia ===== */
+    .lic-grid { display: grid; gap: 1.5rem; margin-top: 2.4rem; align-items: start; }
+    @media (min-width: 900px) { .lic-grid { grid-template-columns: 1.1fr .9fr; } }
+    .panel {
+        background: var(--tarjeta);
+        border: 1px solid var(--acero);
+        border-radius: 1rem;
+        padding: 1.6rem;
+    }
+    .badge-estado {
+        display: inline-flex; align-items: center; gap: .5rem;
+        padding: .35rem .85rem; border-radius: 999px;
+        font-family: "Exo 2", sans-serif; font-size: .72rem; font-weight: 800;
+        letter-spacing: .12em; text-transform: uppercase;
+    }
+    .badge-estado.is-ok   { color: #34d399; background: rgba(52, 211, 153, .1); border: 1px solid rgba(52, 211, 153, .35); }
+    .badge-estado.is-warn { color: var(--fuego); background: rgba(255, 107, 0, .1); border: 1px solid rgba(255, 107, 0, .35); }
+    .badge-estado.is-off  { color: var(--gris-2); background: rgba(148, 163, 184, .08); border: 1px solid var(--acero); }
+    .datos { display: grid; gap: .1rem; margin-top: 1.2rem; }
+    .dato {
+        display: grid; grid-template-columns: minmax(7rem, 34%) 1fr; gap: .8rem;
+        padding: .65rem 0; border-bottom: 1px solid rgba(30, 41, 59, .8);
+        font-size: .88rem;
+    }
+    .dato:last-child { border-bottom: 0; }
+    .dato dt { color: var(--gris-3); font-weight: 600; }
+    .dato dd { margin: 0; color: var(--txt); font-weight: 600; word-break: break-word; }
+    .dato dd.mono { font-family: ui-monospace, Consolas, monospace; letter-spacing: .04em; }
+    .lic-acciones { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.4rem; }
+    .lic-nota { color: var(--gris-2); font-size: .9rem; line-height: 1.7; }
+    .lic-nota b { color: var(--txt); }
+    .lic-nota code { color: var(--cian); font-family: ui-monospace, Consolas, monospace; font-size: .85em; }
+
+    /* ===== Servicios ===== */
+    .serv-grid { display: grid; gap: .9rem; margin-top: 2.4rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 640px) { .serv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1024px) { .serv-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .serv {
+        display: flex; gap: .9rem; align-items: flex-start;
+        padding: 1.15rem 1.2rem;
+        background: rgba(9, 14, 24, .7);
+        border: 1px solid var(--acero); border-radius: .7rem;
+        transition: border-color .2s, transform .2s;
+    }
+    .serv:hover { border-color: rgba(0, 212, 255, .45); transform: translateY(-3px); }
+    .serv i { color: var(--fuego); font-size: 1.05rem; margin-top: .2rem; }
+    .serv strong {
+        display: block;
+        font-family: "Exo 2", sans-serif; font-size: .82rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .08em;
+    }
+    .serv p { color: var(--gris-2); font-size: .86rem; line-height: 1.6; margin-top: .25rem; }
+
+    /* ===== FAQ ===== */
+    details.faq {
+        background: var(--tarjeta);
+        border: 1px solid var(--acero);
+        border-radius: .7rem;
+        padding: .2rem 1.15rem;
+        margin-top: .7rem;
+        transition: border-color .2s;
+    }
+    details.faq:hover { border-color: rgba(0, 212, 255, .4); }
+    details.faq summary {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        padding: .95rem 0; cursor: pointer; list-style: none;
+        font-family: "Exo 2", sans-serif; font-size: .88rem; font-weight: 700;
+        letter-spacing: .02em;
+    }
+    details.faq summary::-webkit-details-marker { display: none; }
+    details.faq summary i { color: var(--cian); font-size: .8rem; transition: transform .2s; }
+    details.faq[open] summary i { transform: rotate(45deg); }
+    details.faq .faq-body { padding: 0 0 1.05rem; color: var(--gris-2); font-size: .9rem; line-height: 1.7; }
+    details.faq .faq-body a { color: var(--cian); border-bottom: 1px solid rgba(0, 212, 255, .35); }
+    details.faq .faq-body code { color: var(--cian); font-family: ui-monospace, Consolas, monospace; font-size: .86em; }
+    .faq-lista { margin-top: 2rem; max-width: 56rem; }
+
+    /* ===== CTA final ===== */
+    .cta {
+        position: relative; overflow: hidden;
+        padding: clamp(2rem, 5vw, 3.5rem);
+        border: 1px solid rgba(255, 107, 0, .35);
+        border-radius: 1rem;
+        background:
+            radial-gradient(90% 140% at 100% 0%, rgba(255, 107, 0, .16), transparent 60%),
+            radial-gradient(80% 120% at 0% 100%, rgba(0, 212, 255, .12), transparent 60%),
+            var(--tarjeta);
+        text-align: center;
+    }
+    .cta h2 {
+        font-size: clamp(2rem, 4.6vw, 3.2rem);
+        text-transform: uppercase; margin-bottom: .7rem;
+    }
+    .cta p { color: var(--gris-2); max-width: 44rem; margin: 0 auto; }
+    .cta .hero-acciones { justify-content: center; }
+
+    /* ===== Barra de progreso de lectura ===== */
+    .scroll-progress {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: 3px; z-index: 70; pointer-events: none;
+        background: rgba(10, 15, 26, .35);
+    }
+    .scroll-progress span {
+        display: block; width: 0; height: 100%;
+        background: linear-gradient(90deg, var(--cian), var(--fuego));
+        box-shadow: 0 0 12px rgba(0, 212, 255, .55);
+        transition: width .08s linear;
+    }
+
+    /* ===== Pie ===== */
+    .pie { border-top: 1px solid var(--acero); padding-block: 3rem 1.5rem; background: #080c15; }
+    .pie-grid { display: grid; gap: 2rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 720px) { .pie-grid { grid-template-columns: 1.5fr 1fr 1fr; } }
+    @media (min-width: 1080px) { .pie-grid { grid-template-columns: 1.6fr 1.05fr 1fr 1fr; } }
+    .pie-lista { list-style: none; display: grid; gap: .2rem; }
+    .pie-lista a { display: inline-flex; align-items: center; gap: .45rem; }
+    .pie-lista a i { color: var(--gris-3); font-size: .78em; transition: color .2s; }
+    .pie-lista a:hover i { color: var(--fuego); }
+    .pie-social { display: flex; flex-wrap: nowrap; gap: .45rem; margin-bottom: 1.3rem; }
+    .pie .pie-social a {
+        display: grid; place-items: center;
+        width: 2.1rem; height: 2.1rem; border-radius: 50%;
+        border: 1px solid var(--acero); color: var(--gris-2);
+        background: rgba(255, 255, 255, .03);
+        transition: color .2s, border-color .2s, background .2s, transform .2s;
+    }
+    .pie .pie-social a:hover,
+    .pie .pie-social a:focus-visible {
+        color: var(--abismo); background: var(--cian); border-color: var(--cian);
+        transform: translateY(-2px);
+    }
+    .pie .pie-social a i,
+    .pie .pie-social a svg { color: inherit; transition: transform .2s; }
+    .pie .pie-social a:hover i,
+    .pie .pie-social a:hover svg,
+    .pie .pie-social a:focus-visible i,
+    .pie .pie-social a:focus-visible svg { transform: scale(1.18); }
+    .pie-social svg { width: .82rem; height: .82rem; }
+    .pie-legal-title { margin-top: .4rem; }
+    .dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: .5rem;
+        background: var(--tarjeta);
+        border: 1px solid var(--acero);
+        border-radius: .5rem;
+        padding: .5rem;
+        min-width: 140px;
+        z-index: 50;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity .2s, visibility .2s;
+    }
+    .pie-legal { display: flex; flex-wrap: wrap; gap: .3rem 1rem; }
+    .pie h4 {
+        font-family: "Exo 2", sans-serif; font-size: .74rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .14em; color: var(--gris-2);
+        margin-bottom: .8rem;
+    }
+    .pie a, .pie p { color: var(--gris-3); font-size: .86rem; line-height: 1.9; }
+    .pie a:hover { color: var(--cian); }
+    .pie-marca { display: flex; align-items: center; gap: .7rem; margin-bottom: .8rem; }
+    .pie-marca img { width: 2.2rem; height: 2.2rem; object-fit: contain; }
+    .pie-barra {
+        margin-top: 2.5rem; padding-top: 1.2rem;
+        border-top: 1px solid rgba(30, 41, 59, .8);
+        display: flex; flex-wrap: wrap; gap: .6rem; justify-content: space-between;
+        color: var(--gris-3); font-size: .78rem;
+    }
+
+    /* ===== Botones flotantes: ir hasta arriba / ir hasta abajo ===== */
+    .scroll-fabs {
+        position: fixed; right: 1.15rem; bottom: 1.15rem; z-index: 60;
+        display: flex; flex-direction: column; gap: .55rem;
+    }
+    .scroll-fab {
+        display: flex; align-items: center; justify-content: center;
+        width: 2.9rem; height: 2.9rem; padding: 0;
+        border-radius: 50%;
+        background: rgba(11, 14, 20, .88);
+        color: var(--cian);
+        border: 1px solid var(--acero);
+        box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .9);
+        cursor: pointer;
+        opacity: 0; visibility: hidden;
+        transform: translateY(8px) scale(.92);
+        -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+        transition: opacity .2s, transform .2s, visibility .2s, background .2s, color .2s, border-color .2s;
+    }
+    .scroll-fab.is-visible { opacity: 1; visibility: visible; transform: none; }
+    .scroll-fab:hover {
+        color: var(--abismo); background: var(--cian);
+        border-color: var(--cian); transform: translateY(-2px);
+    }
+    .scroll-fab:focus-visible { outline: 2px solid var(--cian); outline-offset: 3px; }
+    @media (max-width: 30rem) {
+        .scroll-fabs { right: .8rem; bottom: .8rem; }
+        .scroll-fab { width: 2.55rem; height: 2.55rem; font-size: .9rem; }
+    }
+
+    /* ===== Intro animada: piezas del logo (images/anim) ===== */
+    html.intro-lock { overflow: hidden; }
+    .intro {
+        position: fixed; inset: 0; z-index: 9999;
+        display: grid; place-items: center;
+        background: radial-gradient(120% 120% at 50% 26%, #111c38 0%, #070a12 56%, #03050a 100%);
+        transition: opacity .8s ease, visibility .8s ease;
+    }
+    .intro.is-out { opacity: 0; visibility: hidden; }
+    .intro-stage {
+        position: relative;
+        width: min(92vmin, 760px);
+        aspect-ratio: 429 / 440;
+        display: grid; place-items: center;
+        isolation: isolate;
+    }
+    .intro-halo {
+        position: absolute; z-index: 0;
+        width: 78%; aspect-ratio: 1; border-radius: 50%;
+        background: radial-gradient(circle, rgba(0, 212, 255, .34) 0%, rgba(255, 107, 0, .16) 44%, rgba(0, 212, 255, 0) 70%);
+        filter: blur(10px);
+        opacity: 0; transform: scale(.72);
+        transition: opacity 1s ease, transform 1.4s cubic-bezier(.22, .8, .24, 1);
+    }
+    .intro.is-final .intro-halo { opacity: 1; transform: scale(1); animation: introHalo 4s ease-in-out 1.2s infinite; }
+    @keyframes introHalo {
+        0%, 100% { opacity: .82; transform: scale(1); }
+        50%      { opacity: 1;   transform: scale(1.06); }
+    }
+    .intro-layer,
+    .intro-final {
+        position: absolute; inset: 0; z-index: 1;
+        display: grid; place-items: center;
+        opacity: 0;
+        transform: scale(.92) translateY(10px);
+        transition: opacity .7s ease, transform 1.15s cubic-bezier(.16, .84, .24, 1);
+        will-change: opacity, transform;
+        pointer-events: none;
+    }
+    .intro-layer img {
+        position: absolute; height: auto;
+        max-width: none; max-height: none;
+        filter: drop-shadow(0 24px 46px rgba(0, 0, 0, .62));
+    }
+    .intro-layer[data-paso="1"] img { left: 0;   top: 0;  width: 100%; }
+    .intro-layer[data-paso="2"] img { left: 3%;  top: 7%; width: 78%; }
+    .intro-layer[data-paso="3"] img { left: 5%;  top: 40%; width: 66%; }
+    .intro-layer[data-paso="4"] img { left: 55%; top: 18%; width: 44%; }
+    .intro-layer[data-paso="5"] img { left: 12%; top: 74%; width: 78%; }
+    .intro-layer[data-paso="1"] { transform: scale(.5); }
+    .intro-layer[data-paso="2"] { transform: translateX(135%) scale(.68); }
+    .intro-layer[data-paso="3"] { transform: translateX(-135%) scale(.68); }
+    .intro-layer[data-paso="4"] { transform: translateX(135%) scale(.68); }
+    .intro-layer[data-paso="5"] { transform: translateY(-185%) scale(.68); }
+    .intro-layer.is-on { opacity: 1; transform: translate(0, 0) scale(1); }
+    .intro.is-final .intro-layer { opacity: 0; transition: opacity .3s ease; }
+    .intro-final { z-index: 2; transform: scale(.92) translateY(8px); }
+    .intro-logo { position: relative; width: 100%; }
+    .intro-logo img { display: block; width: 100%; height: auto; filter: drop-shadow(0 30px 70px rgba(0, 0, 0, .66)); }
+    .intro-final.is-on { opacity: 1; transform: scale(1) translateY(0); }
+    .intro-final.is-on .intro-logo { animation: introLogoIn 1.15s cubic-bezier(.2, .72, .2, 1) both; }
+    @keyframes introLogoIn {
+        0%   { transform: scale(.84); filter: brightness(1.45) saturate(1.15); }
+        60%  { transform: scale(1.03); }
+        100% { transform: scale(1); filter: none; }
+    }
+    .intro-sheen {
+        position: absolute; inset: 0; pointer-events: none; opacity: 0;
+        background-image: linear-gradient(105deg,
+            rgba(255, 255, 255, 0) 40%,
+            rgba(255, 255, 255, .32) 46%,
+            rgba(255, 255, 255, .95) 50%,
+            rgba(140, 235, 255, .85) 54%,
+            rgba(255, 255, 255, 0) 60%);
+        background-size: 260% 100%;
+        background-position: 135% 0;
+        background-repeat: no-repeat;
+        -webkit-mask-size: contain; mask-size: contain;
+        -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+        -webkit-mask-position: center; mask-position: center;
+        mix-blend-mode: screen;
+    }
+    .intro.is-sheen .intro-sheen { opacity: 1; animation: introSheen 1.4s cubic-bezier(.4, 0, .5, 1) 2; }
+    @keyframes introSheen {
+        0%   { background-position: 135% 0; }
+        100% { background-position: -45% 0; }
+    }
+    .intro-bar {
+        position: absolute; left: 50%; bottom: max(2.25rem, 5vh);
+        width: min(64vmin, 520px); height: 3px;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, .14);
+        border-radius: 2px; overflow: hidden;
+    }
+    .intro-bar span {
+        display: block; width: 0; height: 100%;
+        background: linear-gradient(90deg, var(--cian), var(--fuego));
+        transition: width .35s ease;
+    }
+    .intro-skip {
+        position: absolute; right: max(1rem, 2vw); bottom: max(1rem, 2vh);
+        padding: .5rem .95rem; font: inherit; font-size: .8rem;
+        font-family: "Exo 2", sans-serif; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+        color: #cfd6ff;
+        background: rgba(255, 255, 255, .06);
+        border: 1px solid rgba(255, 255, 255, .18);
+        border-radius: 999px;
+        cursor: pointer;
+        -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+        transition: background .2s, border-color .2s, color .2s;
+    }
+    .intro-skip:hover, .intro-skip:focus-visible {
+        background: rgba(255, 255, 255, .12);
+        border-color: rgba(0, 212, 255, .5);
+        color: #fff; outline: none;
+    }
+    @media (max-width: 520px) {
+        .intro-skip { top: max(1rem, 2vh); bottom: auto; right: 1rem; }
+        .intro-bar { bottom: max(1.25rem, 3vh); width: min(82vw, 360px); }
+    }
+
+    /* ===== Nuestro proceso (réplica de cyberforja) ===== */
+    .proceso-head { text-align: center; max-width: 46rem; margin: 0 auto 2.2rem; }
+    .proceso-head .eyebrow { color: var(--fuego); font-size: .8rem; }
+    .proceso-head h2 {
+        margin: .45rem 0 .7rem;
+        font-size: clamp(2.2rem, 5vw, 3.8rem);
+        text-transform: uppercase;
+    }
+    .proceso-head .rule-fuego { width: 5rem; margin: 0 auto 1rem; }
+    .proceso-head p {
+        max-width: 42rem; margin-inline: auto;
+        color: var(--gris); font-size: 1rem; line-height: 1.7;
+    }
+    .proceso-grid { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 768px) { .proceso-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1.5rem; } }
+    .proc-paso {
+        display: flex; flex-direction: column; justify-content: space-between;
+        padding: 1rem 1.1rem;
+        background: rgba(0, 0, 0, .4);
+        border: 1px solid rgba(30, 41, 59, .6);
+        border-radius: .75rem;
+        transition: border-color .3s ease, transform .35s cubic-bezier(.4, 0, .2, 1);
+    }
+    @media (min-width: 640px) { .proc-paso { padding: 1.5rem; } }
+    .proc-paso:hover { border-color: rgba(0, 212, 255, .4); transform: translateY(-3px); }
+    .proc-paso.is-fuego:hover { border-color: rgba(255, 107, 0, .4); }
+    .proc-num {
+        display: block; margin-bottom: .6rem;
+        font-family: "Bebas Neue", Impact, sans-serif; font-size: 2.3rem; line-height: 1;
+        color: rgba(0, 212, 255, .4);
+        transition: color .3s ease;
+    }
+    .proc-paso.is-fuego .proc-num { color: rgba(255, 107, 0, .4); }
+    .proc-paso:hover .proc-num { color: var(--cian); }
+    .proc-paso.is-fuego:hover .proc-num { color: var(--fuego); }
+    .proc-paso h3 {
+        font-family: "Exo 2", sans-serif; font-size: .95rem; font-weight: 800;
+        letter-spacing: .06em; text-transform: uppercase; color: var(--txt); margin-bottom: .5rem;
+    }
+    .proc-paso p { color: var(--gris-2); font-size: .78rem; line-height: 1.6; }
+
+    /* ===== Aparición al hacer scroll =====
+       Cada bloque entra con su propia transición y un retardo escalonado
+       (--d), así las tarjetas, pasos, chips y columnas van apareciendo en cadena. */
+    .js .reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: opacity .8s cubic-bezier(.22, .8, .24, 1), transform .8s cubic-bezier(.22, .8, .24, 1);
+        transition-delay: var(--d, 0ms);
+        will-change: opacity, transform;
+    }
+    .js .reveal[data-anim="left"]  { transform: translateX(-48px); }
+    .js .reveal[data-anim="right"] { transform: translateX(48px); }
+    .js .reveal[data-anim="zoom"]  { transform: scale(.92); }
+    .js .reveal[data-anim="tilt"]  { transform: perspective(1100px) rotateX(10deg) translateY(30px); }
+    .js .reveal.is-in { opacity: 1; transform: none; }
+
+    /* El filete de los encabezados crece al aparecer */
+    .js .sec-head .rule, .js .equipo-head .rule-fuego {
+        transform: scaleX(0); transform-origin: left center;
+        transition: transform .95s cubic-bezier(.22, .8, .24, 1) .18s;
+    }
+    .js .sec-head.is-in .rule, .js .equipo-head.is-in .rule-fuego { transform: scaleX(1); }
+
+    /* Numeración de los pasos y cifras con entrada propia */
+    .js .paso .paso-num,
+    .js .cifra b {
+        opacity: 0; transform: translateY(12px) scale(.9);
+        transition: opacity .6s ease .18s, transform .6s cubic-bezier(.34, 1.56, .64, 1) .18s;
+    }
+    .js .paso.is-in .paso-num,
+    .js .cifra.is-in b { opacity: 1; transform: none; }
+
+    /* El hero y la escena también tienen su entrada */
+    @media (prefers-reduced-motion: no-preference) {
+        .js .hero-copy > * { opacity: 0; }
+        html:not(.intro-lock) .hero-copy > * {
+            animation: heroIn .9s cubic-bezier(.22, .8, .24, 1) both;
+        }
+        html:not(.intro-lock) .hero-copy > *:nth-child(1) { animation-delay: .05s; }
+        html:not(.intro-lock) .hero-copy > *:nth-child(2) { animation-delay: .16s; }
+        html:not(.intro-lock) .hero-copy > *:nth-child(3) { animation-delay: .27s; }
+        html:not(.intro-lock) .hero-copy > *:nth-child(4) { animation-delay: .38s; }
+        html:not(.intro-lock) .hero-copy > *:nth-child(5) { animation-delay: .49s; }
+        html:not(.intro-lock) .escena { animation: escenaIn 1.2s cubic-bezier(.22, .8, .24, 1) .35s both; }
+    }
+    @keyframes heroIn {
+        from { opacity: 0; transform: translateY(26px); }
+        to   { opacity: 1; transform: none; }
+    }
+    @keyframes escenaIn {
+        from { opacity: 0; transform: translate3d(0, 34px, 0) scale(.96); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    /* ===== Quiénes somos (réplica de la sección de cyberforja) ===== */
+    .equipo-head { max-width: 48rem; margin-bottom: 2rem; }
+    .equipo-head .eyebrow { color: var(--fuego); }
+    .equipo-head h2 {
+        margin: .35rem 0 .55rem;
+        font-size: clamp(2rem, 4.4vw, 3.1rem);
+        text-transform: uppercase;
+    }
+    .rule-fuego {
+        width: 4rem; height: 4px; border-radius: 999px;
+        background: var(--fuego); margin-bottom: 1rem;
+    }
+    .equipo-head p { color: var(--gris); font-size: 1rem; line-height: 1.75; }
+
+    .equipo-card {
+        position: relative; isolation: isolate; overflow: hidden;
+        padding: clamp(1.5rem, 3vw, 2rem);
+        background: rgba(0, 0, 0, .4);
+        border: 1px solid rgba(30, 41, 59, .6);
+        border-radius: 1rem;
+        -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+        transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .equipo-card:hover { border-color: rgba(255, 107, 0, .4); box-shadow: 0 30px 60px -40px rgba(255, 107, 0, .35); }
+    .equipo-card > *:not(.card__sheen) { position: relative; z-index: 1; }
+    .equipo-grid { display: grid; gap: 2rem; }
+    @media (min-width: 1024px) {
+        .equipo-grid { grid-template-columns: 8fr 4fr; gap: 2.5rem; align-items: center; }
+    }
+    .pilares { display: grid; gap: 1.6rem; }
+    @media (min-width: 640px) { .pilares { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; } }
+    .pilar-ico {
+        display: grid; place-items: center;
+        width: 2.5rem; height: 2.5rem;
+        border-radius: .5rem; margin-bottom: .75rem; font-size: 1rem;
+        transition: transform .35s cubic-bezier(.34, 1.56, .64, 1);
+    }
+    .pilar-ico.is-fuego { background: rgba(255, 107, 0, .1); border: 1px solid rgba(255, 107, 0, .2); color: var(--fuego); }
+    .pilar-ico.is-cian  { background: rgba(0, 212, 255, .1); border: 1px solid rgba(0, 212, 255, .2); color: var(--cian); }
+    .pilar:hover .pilar-ico { transform: translateY(-3px) rotate(-6deg); }
+    .pilar h3 {
+        font-family: "Exo 2", sans-serif; font-size: .8rem; font-weight: 800;
+        letter-spacing: .06em; text-transform: uppercase; color: var(--txt); margin-bottom: .4rem;
+    }
+    .pilar p { color: var(--gris-2); font-size: .78rem; line-height: 1.65; }
+    .compromiso { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; }
+    @media (min-width: 1024px) {
+        .compromiso { border-left: 1px solid rgba(255, 255, 255, .1); padding-left: 2rem; }
+    }
+    .compromiso h4 {
+        font-family: "Exo 2", sans-serif; font-size: .8rem; font-weight: 800;
+        letter-spacing: .06em; text-transform: uppercase; color: var(--txt);
+    }
+    .compromiso p { margin-top: .35rem; color: var(--gris-2); font-size: .78rem; line-height: 1.65; }
+    .btn-outline-fuego {
+        display: inline-flex; align-items: center; gap: .5rem;
+        padding: .8rem 1.4rem; border: 1px solid var(--fuego); border-radius: .25rem;
+        color: var(--fuego);
+        font-family: "Exo 2", sans-serif; font-size: .72rem; font-weight: 800;
+        letter-spacing: .1em; text-transform: uppercase;
+        transition: background .3s ease, color .3s ease, transform .3s ease;
+    }
+    .btn-outline-fuego:hover { background: var(--fuego); color: var(--abismo); transform: translateY(-1px); }
+    @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .js .reveal, .js .reveal[data-anim] { opacity: 1; transform: none; transition: none; }
+        .js .sec-head .rule, .js .equipo-head .rule-fuego { transform: none; transition: none; }
+        .js .paso .paso-num, .js .cifra b { opacity: 1; transform: none; transition: none; }
+        .sec::before { transform: scaleX(1); transition: none; }
+        .js .hero-copy > * { opacity: 1; animation: none; }
+        .escena { animation: none; }
+        .pantalla, .movil, .escena::before { transform: none; }
+        .btn:hover, .card:hover, .serv:hover, .paso:hover, .equipo-card:hover { transform: none; }
+    }
+</style>
+<script>document.documentElement.classList.add('js');</script>
+</head>
+<body id="top">
+
+<!-- Intro animada: piezas del logo en images/anim. Se retira sola y se puede
+     saltar; con «prefers-reduced-motion» no se muestra. -->
+<div class="intro<?= $licModalAbierto ? ' is-out' : '' ?>" id="introAnim">
+    <div class="intro-stage">
+        <div class="intro-halo"></div>
+        <div class="intro-layer" data-paso="1"><img src="/images/anim/01_Circulo.png" alt="" width="498" height="490" decoding="async"></div>
+        <div class="intro-layer" data-paso="2"><img src="/images/anim/02_Unicornio.png" alt="" width="456" height="303" decoding="async"></div>
+        <div class="intro-layer" data-paso="3"><img src="/images/anim/03_Trabajadores.png" alt="" width="446" height="319" decoding="async"></div>
+        <div class="intro-layer" data-paso="4"><img src="/images/anim/04_Elementos_Nomina.png" alt="" width="412" height="372" decoding="async"></div>
+        <div class="intro-layer" data-paso="5"><img src="/images/anim/05_Logo_SiGesNom.png" alt="" width="546" height="183" decoding="async"></div>
+        <div class="intro-final">
+            <div class="intro-logo">
+                <img src="/images/anim/final.png" alt="UnicornioSoftware Cuba" width="429" height="440" decoding="async">
+                <span class="intro-sheen" aria-hidden="true" style="-webkit-mask-image:url('/images/anim/final.png');mask-image:url('/images/anim/final.png');"></span>
+            </div>
+        </div>
+    </div>
+    <div class="intro-bar" aria-hidden="true"><span id="introBar"></span></div>
+    <button type="button" class="intro-skip" id="introSkip">Saltar intro</button>
+</div>
+<script>document.documentElement.classList.add('intro-lock');</script>
+
+<!-- ===== Barra de progreso de lectura ===== -->
+<div class="scroll-progress" aria-hidden="true"><span id="scrollProgress"></span></div>
+
+<!-- ===== Navegación ===== -->
+<nav class="nav">
+    <div class="wrap nav-in">
+        <a class="marca" href="/index2.php" title="UnicornioSoftware Cuba">
+            <img src="/images/logo.png" alt="UnicornioSoftware Cuba">
+            <span class="marca-txt">
+                <b><i>UNICORNIO</i><em>SOFTWARE</em></b>
+                <small>Cuba · Gestión empresarial</small>
+            </span>
+        </a>
+
+        <div class="nav-links">
+            <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+            <a href="#ingenieria"><i class="fa-solid fa-microchip" aria-hidden="true"></i> Ingeniería</a>
+            <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
+            <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
+            <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
+            <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
+            <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
+            <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
+            <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
+        </div>
+
+        <div class="nav-acc">
+            <div class="nav-login" id="navLogin">
+                <button type="button" class="btn btn-cian btn-sm" id="navLoginBtn"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="navLoginMenu">
+                    <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Iniciar sesión
+                    <i class="fa-solid fa-chevron-down nav-login-caret" aria-hidden="true"></i>
+                </button>
+                <div class="nav-login-menu" id="navLoginMenu" role="menu" aria-labelledby="navLoginBtn">
+                    <a role="menuitem" href="<?= $base ?>/nominas/login.php">
+                        <i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas
+                    </a>
+                    <a role="menuitem" href="<?= $base ?>/facturacion/login.php">
+                        <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación
+                    </a>
+                    <a role="menuitem" href="<?= $base ?>/costos/login.php">
+                        <i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos
+                    </a>
+                    <a role="menuitem" href="<?= $base ?>/inventarios/login.php">
+                        <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios
+                    </a>
+                    <a role="menuitem" href="<?= $base ?>/administracion/index.php">
+                        <i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración
+                    </a>
+                </div>
+            </div>
+            <button type="button" class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="menu-movil" id="menuMovil">
+        <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+        <a href="#ingenieria"><i class="fa-solid fa-microchip" aria-hidden="true"></i> Ingeniería</a>
+        <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
+        <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
+        <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Servicios</a>
+        <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
+        <a href="#proceso"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Proceso</a>
+        <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
+        <a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
+        <span class="menu-movil-titulo">Iniciar sesión</span>
+        <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
+        <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
+        <a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a>
+        <a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a>
+        <a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a>
+    </div>
+</nav>
+
+<!-- ===== Hero ===== -->
+<header class="hero" id="inicio">
+    <div class="hero-fondo" aria-hidden="true">
+        <img class="is-on" id="heroFondoA" src="/images/nominas-hero.webp"
+             width="1376" height="768" alt="" fetchpriority="high" decoding="async">
+        <img id="heroFondoB" src="/images/hero.webp"
+             width="1376" height="768" alt="" loading="lazy" decoding="async">
+    </div>
+    <div class="hero-velo" aria-hidden="true"></div>
+
+    <div class="wrap hero-grid">
+        <div class="hero-copy">
+            <span class="eyebrow">UnicornioSoftware · Gestión empresarial <span>· Cuba</span></span>
+            <h1 class="bebas">SOFTWARE PARA <span>TRANSFORMAR TU NEGOCIO.</span></h1>
+            <p class="hero-bajada">
+                Facturación, nóminas, costos e inventarios en una plataforma que corre en tu propia red,
+                pensada para resolver el día a día real de tu operación.
+            </p>
+            <div class="hero-acciones">
+                <a class="btn btn-fuego" href="#ecosistema">
+                    <i class="fa-solid fa-layer-group" aria-hidden="true"></i> Explorar el ecosistema
+                </a>
+                <a class="btn btn-cian" href="/desamedida.php">
+                    <i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> Desarrollo a medida
+                </a>
+            </div>
+            <div class="tags">
+                <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Productos propios</span>
+                <span class="sep" aria-hidden="true">·</span>
+                <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Tecnología Aplicada</span>
+                <span class="sep" aria-hidden="true">·</span>
+                <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Soporte técnico</span>
+            </div>
+        </div>
+
+        <div class="escena">
+            <div class="escena-nav">
+                <button type="button" class="pill is-on" data-slide="0" style="--brillo: 37, 99, 235" aria-label="Ver Nóminas en el monitor">
+                    <span class="dot" aria-hidden="true"></span> 01. Nóminas
+                </button>
+                <button type="button" class="pill" data-slide="1" style="--brillo: 0, 200, 83" aria-label="Ver Facturación en el monitor">
+                    <span class="dot" aria-hidden="true"></span> 02. Facturación
+                </button>
+            </div>
+
+            <div class="diapo is-on" style="--brillo: 37, 99, 235">
+                <div class="pantalla">
+                    <img src="/images/nominas-monitor.webp"
+                         width="1672" height="940" alt="Panel del subsistema de nóminas SisGeNom" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/images/nominas-movil.webp"
+                         width="540" height="1054" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/images/nominas-icono.webp"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Nóminas · SisGeNom</strong>
+                            <span>Mantén todo en un solo lugar: nóminas, trabajadores, aportes, banco</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="diapo" style="--brillo: 0, 200, 83">
+                <div class="pantalla">
+                    <img src="/images/facturacion-monitor.webp"
+                         width="1672" height="940" alt="Panel del subsistema de facturación SisGeFac" loading="lazy" decoding="async">
+                </div>
+                <div class="movil">
+                    <img src="/images/facturacion-movil.webp"
+                         width="540" height="1054" alt="" loading="lazy" decoding="async">
+                </div>
+                <div class="ficha">
+                    <div class="chip">
+                        <span class="chip-icono">
+                            <img src="/images/facturacion-icono.webp"
+                                 width="40" height="40" alt="" loading="lazy" decoding="async">
+                        </span>
+                        <div>
+                            <strong>Subsistema de Facturación · SisGeFac</strong>
+                            <span>Factura, contrata, cotiza. Controla todas tus ventas</span>
+                        </div>
+                    </div>
+                    <a class="chip-btn" href="#ecosistema">
+                        <span>Ver más</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main>
+    <!-- ===== Ecosistema ===== -->
+    <section class="sec" id="ecosistema">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">El ecosistema</span>
+                <h2 class="bebas">Todo el sistema, a un clic</h2>
+                <p>Facturación, nóminas, costos, inventarios y administración corriendo en tu propia red. Elige el módulo con el que quieres trabajar.</p>
+            </div>
+
+            <div class="grid">
+                <?php foreach ($ecosistema as $mod): ?>
+                <article class="card reveal<?= !empty($mod['destacada']) ? ' destacada' : '' ?>" data-spotlight
+                         style="--card-sheen: <?= !empty($mod['destacada']) ? 'rgba(255, 107, 0, .22)' : 'rgba(0, 212, 255, .18)' ?>">
+                    <span class="card__sheen" aria-hidden="true"></span>
+                    <div class="card-head">
+                        <span class="card-ico"><i class="<?= htmlspecialchars($mod['icono'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i></span>
+                        <div>
+                            <h3><?= htmlspecialchars($mod['titulo'], ENT_QUOTES, 'UTF-8') ?></h3>
+                            <p class="card-sub"><?= htmlspecialchars($mod['etiqueta'], ENT_QUOTES, 'UTF-8') ?></p>
+                        </div>
+                    </div>
+                    <p><?= htmlspecialchars($mod['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                    <a class="card-link" href="<?= htmlspecialchars($mod['url'], ENT_QUOTES, 'UTF-8') ?>">
+                        <span>Abrir módulo</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </article>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Nuestra ingeniería ===== -->
+    <section class="sec" id="ingenieria">
+        <div class="wrap">
+            <div class="duo">
+                <div class="reveal">
+                    <span class="eyebrow">Nuestra ingeniería</span>
+                    <h2 class="bebas">Nuestra<br>ingeniería.</h2>
+                    <div class="rule" aria-hidden="true"></div>
+                    <p>
+                        Elegimos la arquitectura y las herramientas según las necesidades de cada proyecto,
+                        priorizando utilidad, seguridad y mantenimiento.
+                    </p>
+                    <ul class="mini-lista">
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Arquitectura definida por el uso real, no por la moda.</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Seguridad y respaldo pensados desde el primer día.</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Código mantenible, documentado y sin dependencias innecesarias.</li>
+                    </ul>
+                </div>
+
+                <div class="panel-destacado reveal">
+                    <h3>Integraciones disponibles en nuestros productos de gestión</h3>
+                    <div class="chips">
+                        <span><i class="fa-solid fa-building-columns" aria-hidden="true"></i> Bancos</span>
+                        <span><i class="fa-solid fa-credit-card" aria-hidden="true"></i> Pasarelas de pago</span>
+                        <span><i class="fa-solid fa-envelope" aria-hidden="true"></i> Correo</span>
+                        <span><i class="fa-solid fa-print" aria-hidden="true"></i> Impresoras fiscales</span>
+                        <span><i class="fa-solid fa-file-excel" aria-hidden="true"></i> Excel y CSV</span>
+                        <span><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</span>
+                        <span><i class="fa-solid fa-database" aria-hidden="true"></i> MySQL y SQL Server</span>
+                        <span><i class="fa-solid fa-sitemap" aria-hidden="true"></i> API y servicios web</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Ingeniería personalizada ===== -->
+    <section class="sec" id="medida">
+        <div class="wrap">
+            <div class="duo duo-espejo">
+                <div class="reveal">
+                    <span class="eyebrow">Ingeniería personalizada</span>
+                    <h2 class="bebas">Software<br>a medida.</h2>
+                    <div class="rule" aria-hidden="true"></div>
+                    <p>
+                        Analizamos tus procesos y desarrollamos aplicaciones adaptadas a tu organización,
+                        desde herramientas internas hasta plataformas completas.
+                    </p>
+                    <div class="hero-acciones" style="margin-top:1.4rem">
+                        <a class="btn btn-fuego" href="<?= $base ?>/soporte.php">
+                            <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Contar mi proyecto
+                        </a>
+                    </div>
+                </div>
+
+                <div class="pasos" style="margin-top:0">
+                    <div class="paso reveal" style="grid-column:1 / -1">
+                        <span class="paso-num">01</span>
+                        <strong>Herramientas internas</strong>
+                        <p>Control de inventario, producción, compras o cualquier proceso que hoy vive en hojas de cálculo.</p>
+                    </div>
+                    <div class="paso reveal" style="grid-column:1 / -1">
+                        <span class="paso-num">02</span>
+                        <strong>Plataformas completas</strong>
+                        <p>Sistemas con varios módulos, usuarios y permisos, integrados con tu operación diaria.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Estado de la licencia ===== -->
+    <section class="sec" id="licencia-estado">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Registro del equipo</span>
+                <h2 class="bebas">Estado de la licencia</h2>
+                <p>La licencia se guarda cifrada y solo en este equipo. Aquí puedes revisar su estado y renovarla cuando haga falta.</p>
+            </div>
+
+            <div class="lic-grid">
+                <div class="panel reveal">
+                    <span class="badge-estado <?= $licEdoTono ?>">
+                        <i class="fa-solid <?= $licEdoIcono ?>" aria-hidden="true"></i> <?= htmlspecialchars($licEdoNombre, ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+
+                    <dl class="datos">
+                        <div class="dato">
+                            <dt>Nombre de registro</dt>
+                            <dd><?= $licRegistro !== '' ? htmlspecialchars($licRegistro, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Usuario del registro</dt>
+                            <dd><?= $licUsuario !== '' ? htmlspecialchars($licUsuario, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Tipo de licencia</dt>
+                            <dd><?= $licTipo !== '' ? htmlspecialchars($licTipo, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Vence</dt>
+                            <dd><?= $licVence !== '' ? htmlspecialchars($licVence, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                        <div class="dato">
+                            <dt>Código de equipo</dt>
+                            <dd class="mono"><?= $licHuella !== '' ? htmlspecialchars($licHuella, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+                        </div>
+                    </dl>
+
+                    <div class="lic-acciones">
+                        <button type="button" class="btn btn-fuego btn-sm" data-lic-open>
+                            <i class="fa-solid fa-key" aria-hidden="true"></i> Activar o renovar
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-estado-lic-open>
+                            <i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-sol-open>
+                            <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo
+                        </button>
+                        <a class="btn btn-ghost btn-sm" href="<?= $base ?>/soporte.php">
+                            <i class="fa-solid fa-headset" aria-hidden="true"></i> Pedir soporte
+                        </a>
+                    </div>
+                </div>
+
+                <div class="panel reveal">
+                    <h3 class="bebas" style="font-size:1.7rem;text-transform:uppercase">Cómo funciona</h3>
+                    <p class="lic-nota" style="margin-top:.7rem">
+                        La llave serial se valida contra los datos de registro (<b>nombre</b> y <b>usuario</b>) y se
+                        guarda cifrada en el registro de Windows o en un archivo cifrado del disco. Para renovar,
+                        introduce una llave nueva: la anterior se reemplaza sin perder los datos del sistema.
+                    </p>
+                    <p class="lic-nota" style="margin-top:.9rem">
+                        Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida.
+                        Todo el trámite —activar, renovar, importar un archivo <code>.lic</code> o pedir la
+                        licencia por correo— se hace aquí mismo, sin salir de la portada.
+                    </p>
+                    <div class="lic-acciones">
+                        <a class="btn btn-cian btn-sm" href="<?= $base ?>/nominas/login.php">
+                            <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar al sistema
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Servicios / plataforma ===== -->
+    <section class="sec" id="servicios">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Bajo el capó</span>
+                <h2 class="bebas">La plataforma</h2>
+                <p>Un stack local probado en producción: Apache, PHP y MySQL, con respaldo y soporte del equipo que lo construyó.</p>
+            </div>
+
+            <div class="serv-grid">
+                <?php foreach ($servicios as $srv): ?>
+                <div class="serv reveal">
+                    <i class="<?= htmlspecialchars($srv['icono'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i>
+                    <div>
+                        <strong><?= htmlspecialchars($srv['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <p><?= htmlspecialchars($srv['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="lic-acciones reveal" style="margin-top:1.6rem">
+                <a class="btn btn-ghost btn-sm" href="<?= $base ?>/phpinfo/">
+                    <i class="fa-solid fa-server" aria-hidden="true"></i> Estado del servidor
+                </a>
+                <a class="btn btn-ghost btn-sm" href="<?= $base ?>/InstalarBD/InstalarBD.php">
+                    <i class="fa-solid fa-database" aria-hidden="true"></i> Instalador de base de datos
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Preguntas frecuentes ===== -->
+    <section class="sec" id="preguntas">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Antes de entrar</span>
+                <h2 class="bebas">Preguntas frecuentes</h2>
+                <p>Lo que conviene saber sobre los datos, la conexión y el soporte de la plataforma.</p>
+            </div>
+
+            <div class="faq-lista">
+                <?php foreach ($faq as $i => $f): ?>
+                <details class="faq reveal"<?= $i === 0 ? ' open' : '' ?>>
+                    <summary><span><?= htmlspecialchars($f['p'], ENT_QUOTES, 'UTF-8') ?></span><i class="fa-solid fa-plus" aria-hidden="true"></i></summary>
+                    <div class="faq-body"><p><?= $f['r'] ?></p></div>
+                </details>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Nuestro proceso ===== -->
+    <section class="sec" id="proceso">
+        <div class="wrap">
+            <div class="proceso-head reveal">
+                <span class="eyebrow">Nuestro proceso</span>
+                <h2 class="bebas">Cómo trabajamos.</h2>
+                <div class="rule-fuego" aria-hidden="true"></div>
+                <p>Combinamos análisis, diseño y desarrollo para construir sistemas que puedan utilizarse, mantenerse y evolucionar.</p>
+            </div>
+
+            <div class="proceso-grid">
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">01</span>
+                        <h3>Escuchamos y analizamos</h3>
+                        <p>Entendemos las necesidades, el entorno de trabajo y los problemas concretos que debe resolver el software.</p>
+                    </div>
+                </div>
+                <div class="proc-paso is-fuego">
+                    <div>
+                        <span class="proc-num">02</span>
+                        <h3>Diseñamos la solución</h3>
+                        <p>Definimos las funcionalidades, la arquitectura de datos y la experiencia de usuario para garantizar simplicidad.</p>
+                    </div>
+                </div>
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">03</span>
+                        <h3>Desarrollamos</h3>
+                        <p>Construimos el sistema de manera progresiva, con entregas parciales para validar resultados en cada etapa.</p>
+                    </div>
+                </div>
+                <div class="proc-paso is-fuego">
+                    <div>
+                        <span class="proc-num">04</span>
+                        <h3>Probamos e implementamos</h3>
+                        <p>Validamos el funcionamiento con pruebas reales, corregimos incidencias y preparamos la puesta en marcha.</p>
+                    </div>
+                </div>
+                <div class="proc-paso">
+                    <div>
+                        <span class="proc-num">05</span>
+                        <h3>Acompañamos su evolución</h3>
+                        <p>Ofrecemos soporte técnico, capacitación y mejoras continuas según las condiciones acordadas para cada solución.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== Quiénes somos ===== -->
+    <section class="sec" id="nosotros">
+        <div class="wrap">
+            <!-- Encabezado alineado a la izquierda, como en cyberforja -->
+            <div class="equipo-head reveal" data-anim="left">
+                <span class="eyebrow">Sobre UnicornioSoftware</span>
+                <h2 class="bebas">Quiénes somos.</h2>
+                <div class="rule-fuego" aria-hidden="true"></div>
+                <p>
+                    Somos un equipo que combina experiencia en software empresarial, simulación y
+                    desarrollo interactivo para crear soluciones propias y proyectos especializados.
+                </p>
+            </div>
+
+            <!-- Ficha corporativa: tres pilares técnicos + compromiso y visión -->
+            <div class="equipo-card reveal" data-spotlight style="--card-sheen: rgba(255, 107, 0, .18)">
+                <span class="card__sheen" aria-hidden="true"></span>
+
+                <div class="equipo-grid">
+                    <div class="pilares">
+                        <div class="pilar">
+                            <span class="pilar-ico is-fuego"><i class="fa-solid fa-code" aria-hidden="true"></i></span>
+                            <h3>Ingeniería y arquitectura</h3>
+                            <p>Más de una década diseñando sistemas de escritorio autónomos, bases de datos locales y servicios web escalables.</p>
+                        </div>
+                        <div class="pilar">
+                            <span class="pilar-ico is-cian"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+                            <h3>Diseño y experiencia</h3>
+                            <p>Interfaces pensadas para simplificar tareas complejas en el ritmo diario de trabajo comercial.</p>
+                        </div>
+                        <div class="pilar">
+                            <span class="pilar-ico is-fuego"><i class="fa-solid fa-headset" aria-hidden="true"></i></span>
+                            <h3>Cercanía y soporte</h3>
+                            <p>Trato directo con el equipo que construye el software, con atención cercana y respuestas ágiles.</p>
+                        </div>
+                    </div>
+
+                    <div class="compromiso">
+                        <div>
+                            <h4>Compromiso y visión</h4>
+                            <p>Conoce nuestra historia, cómo trabajamos cada desarrollo y la trayectoria que respalda a UnicornioSoftware.</p>
+                        </div>
+                        <a class="btn-outline-fuego" href="<?= $base ?>/soporte.php">
+                            <i class="fa-solid fa-users" aria-hidden="true"></i> Conoce nuestro equipo &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== CTA ===== -->
+    <section class="sec">
+        <div class="wrap">
+            <div class="cta reveal">
+                <span class="eyebrow">Empieza ahora</span>
+                <h2 class="bebas">Todo el sistema,<br>a un clic desde aquí</h2>
+                <p>La portada reúne los accesos a cada módulo, el estado de la licencia y la información de soporte de tu instalación.</p>
+                <div class="hero-acciones">
+                    <a class="btn btn-fuego" href="<?= $base ?>/index.php">
+                        <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Ir al Ecosistema Financiero
+                    </a>
+                    <a class="btn btn-ghost" href="<?= $base ?>/soporte.php">
+                        <i class="fa-solid fa-headset" aria-hidden="true"></i> Hablar con soporte
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- ===== Pie ===== -->
+<footer class="pie">
+    <div class="wrap">
+        <div class="pie-grid">
+            <div>
+                <div class="pie-marca">
+                    <img src="/images/logo.png" alt="">
+                    <span class="bebas" style="font-size:1.5rem"><i style="font-style:normal;color:var(--cian)">UNICORNIO</i><i style="font-style:normal;color:var(--fuego)">SOFTWARE</i></span>
+                </div>
+                <p>Entorno de Aplicaciones Web de UnicornioSoftware&#174; Cuba. Kaky&#174;. Facturación, nóminas, costos e inventarios en tu propia red.</p>
+                <p style="margin-top:.6rem;color:var(--gris-2);font-style:italic">&laquo;Donde tu visión toma forma&raquo;</p>
+            </div>
+
+            <nav aria-label="Enlaces del pie">
+                <h4>Explorar</h4>
+                <ul class="pie-lista">
+                    <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
+                    <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
+                    <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
+                    <li><a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
+                    <li><a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
+                    <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
+                </ul>
+            </nav>
+
+            <div>
+                <h4>Contacto</h4>
+                <p><a href="mailto:kakycu@gmail.com"><i class="fa-solid fa-envelope" aria-hidden="true"></i> kakycu@gmail.com</a></p>
+                <p><a href="tel:+5352712861"><i class="fa-solid fa-phone" aria-hidden="true"></i> +53 5 2712861</a></p>
+                <p><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>Sábados: 9:00 AM - 1:00 PM</p>
+                <p><a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Centro de soporte</a></p>
+            </div>
+
+            <div>
+                <h4>Síguenos</h4>
+                <div class="pie-social">
+                    <a href="https://www.facebook.com/unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
+                    <a href="https://www.x.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true"><path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn"><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
+                    <a href="https://www.instagram.com/unicorniosoftcuba" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
+                    <a href="https://www.youtube.com/@unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a>
+                    <a href="https://api.whatsapp.com/send?phone=5352712861" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a>
+                </div>
+
+                <h4 class="pie-legal-title">Legal</h4>
+                <p class="pie-legal">
+                    <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
+                    <a href="<?= $base ?>/privacidad.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
+                    <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+                </p>
+            </div>
+        </div>
+        <div class="pie-barra">
+            <span>© <?= date('Y') ?> UnicornioSoftware® Cuba. Todos los derechos reservados.</span>
+            <span>Licencia registrada · datos alojados en este equipo</span>
+        </div>
+    </div>
+</footer>
+
+<!-- Botones flotantes: ir hasta arriba / ir hasta abajo -->
+<div class="scroll-fabs">
+    <button type="button" class="scroll-fab" id="btnScrollTop"
+            title="Ir hasta arriba" aria-label="Ir hasta arriba de la página">
+        <i class="fa-solid fa-angles-up" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="scroll-fab" id="btnScrollBottom"
+            title="Ir hasta abajo" aria-label="Ir hasta abajo de la página">
+        <i class="fa-solid fa-angles-down" aria-hidden="true"></i>
+    </button>
+</div>
+
+<?php if (function_exists('licencia_fingerprint_equipo')): ?>
+<!-- ===== Activación / renovación de licencia, sin salir de la portada ===== -->
+<div class="lic-overlay" id="licencia"<?= $licModalAbierto ? '' : ' hidden' ?>>
+    <div class="lic-modal" role="dialog" aria-modal="true" aria-labelledby="licModalTitulo">
+        <button type="button" class="lic-modal-x" data-lic-close aria-label="Cerrar">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+        <div class="lic-modal-head">
+            <span class="lic-modal-icon"><i class="fa-solid fa-key" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="licModalTitulo">Activar o renovar licencia</h2>
+                <p class="lic-modal-sub"><?= htmlspecialchars($licenciaEstadoTxt, ENT_QUOTES, 'UTF-8') ?></p>
+            </div>
+        </div>
+
+        <?php if ($licOk): ?>
+        <div class="lic-ok" role="status">
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <div>
+                <strong>Licencia activada correctamente.</strong>
+                <p>Tipo: <b><?= htmlspecialchars($licOkTipo, ENT_QUOTES, 'UTF-8') ?></b> · Vence: <b><?= htmlspecialchars($licOkHasta, ENT_QUOTES, 'UTF-8') ?></b></p>
+            </div>
+        </div>
+        <div class="lic-modal-actions" style="margin-top:1.1rem;">
+            <a class="btn btn-primary" href="<?= $base ?>/nominas/login.php">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar al sistema
+            </a>
+            <button type="button" class="btn btn-glass" data-lic-close>Cerrar</button>
+        </div>
+        <?php else: ?>
+        <?php if ($licError !== ''): ?>
+        <div class="lic-msg lic-msg-error" role="alert">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <span><?= $licError ?></span>
+        </div>
+        <?php elseif ($licAviso !== ''): ?>
+        <div class="lic-msg <?= $licAvisoTipo === 'ok' ? 'lic-msg-ok' : 'lic-msg-error' ?>" role="status">
+            <i class="fa-solid <?= $licAvisoTipo === 'ok' ? 'fa-circle-check' : 'fa-triangle-exclamation' ?>" aria-hidden="true"></i>
+            <span><?= $licAviso ?></span>
+        </div>
+        <?php endif; ?>
+
+        <form class="lic-form" method="post" action="#licencia" autocomplete="off">
+            <input type="hidden" name="licencia_accion" value="activar">
+            <div class="lic-grid">
+                <label class="lic-field">Nombre de Registro
+                    <input type="text" name="nombre" value="<?= htmlspecialchars($licForm['nombre'], ENT_QUOTES, 'UTF-8') ?>"
+                           maxlength="120" placeholder="Empresa o instalación" required>
+                </label>
+                <label class="lic-field">Usuario del Registro
+                    <input type="text" name="usuario" value="<?= htmlspecialchars($licForm['usuario'], ENT_QUOTES, 'UTF-8') ?>"
+                           maxlength="80" placeholder="Administrador responsable" required>
+                </label>
+            </div>
+            <label class="lic-field">Llave Serial
+                <input type="text" name="serial" id="licSerial" value="<?= htmlspecialchars($licForm['serial'], ENT_QUOTES, 'UTF-8') ?>"
+                       maxlength="29" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellcheck="false" required>
+            </label>
+            <div class="lic-fp">
+                <span>Código de este equipo:</span>
+                <b><?= htmlspecialchars(licencia_fingerprint_equipo(), ENT_QUOTES, 'UTF-8') ?></b>
+                <button type="button" class="btn btn-glass btn-sm" id="licCopiar">
+                    <i class="fa-regular fa-copy"></i> Copiar
+                </button>
+            </div>
+            <div class="lic-modal-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-key"></i> Activar licencia
+                </button>
+                <button type="button" class="btn btn-glass" data-lic-close>Cancelar</button>
+            </div>
+        </form>
+
+        <div class="lic-solicitar">
+            <button type="button" class="btn btn-glass" data-sol-open>
+                <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar licencia por correo
+            </button>
+        </div>
+
+        <div class="lic-alt">
+            <details>
+                <summary><i class="fa-solid fa-file-import" aria-hidden="true"></i> Importar desde un archivo .lic</summary>
+                <form method="post" action="#licencia" enctype="multipart/form-data">
+                    <input type="hidden" name="licencia_accion" value="examinar_archivo">
+                    <input type="file" name="archivo_lic" accept=".lic" required onchange="this.form.submit()">
+                </form>
+            </details>
+            <details>
+                <summary><i class="fa-solid fa-file-signature" aria-hidden="true"></i> Pegar el texto de la licencia</summary>
+                <form method="post" action="#licencia">
+                    <input type="hidden" name="licencia_accion" value="examinar_texto">
+                    <textarea name="licencia_texto" rows="3" spellcheck="false"
+                              placeholder="Pegue aquí el texto de la licencia..."><?= htmlspecialchars($licForm['texto'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                    <div>
+                        <button type="submit" class="btn btn-glass btn-sm">
+                            <i class="fa-solid fa-magnifying-glass"></i> Verificar y rellenar
+                        </button>
+                    </div>
+                </form>
+            </details>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- ===== Solicitud de licencia por correo, igual que en /servicios/nominas/licencia.php ===== -->
+<div class="lic-overlay" id="solLicencia" hidden>
+    <div class="lic-modal sol-modal" role="dialog" aria-modal="true" aria-labelledby="solTitulo">
+        <button type="button" class="lic-modal-x" data-sol-close aria-label="Cerrar">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+        <div class="lic-modal-head">
+            <span class="lic-modal-icon"><i class="fa-solid fa-envelope" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="solTitulo">Solicitar licencia por correo</h2>
+                <p class="lic-modal-sub">Complete sus datos y el periodo de validez deseado. La licencia se envía al correo electrónico que registre.</p>
+            </div>
+        </div>
+
+        <p class="sol-intro">
+            Se enviará la solicitud con el <b>código de equipo</b> de esta PC, o con el de otro equipo
+            si lo escribe con el lápiz, y la licencia será remitida al <b>correo electrónico</b> del solicitante.
+        </p>
+
+        <div class="lic-fp">
+            <span>Código de este equipo:</span>
+            <b><?= htmlspecialchars(licencia_formatear_fingerprint(licencia_fingerprint_machine()), ENT_QUOTES, 'UTF-8') ?></b>
+        </div>
+
+        <div class="lic-msg lic-msg-error" id="solMsg" role="alert" hidden>
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <span id="solMsgTexto"></span>
+        </div>
+
+        <form class="sol-form" id="solForm" autocomplete="off" novalidate>
+            <div class="sol-grid">
+                <label class="sol-field">Nombre
+                    <input type="text" id="solNombre" name="nombre" maxlength="60" placeholder="Nombres">
+                </label>
+                <label class="sol-field">Apellidos
+                    <input type="text" id="solApellidos" name="apellidos" maxlength="60" placeholder="Apellidos">
+                </label>
+                <label class="sol-field">Carné de identidad
+                    <input type="text" id="solCi" name="ci" maxlength="11" inputmode="numeric" placeholder="11 dígitos">
+                    <small class="sol-feedback" id="solCiFeedback"></small>
+                </label>
+                <label class="sol-field">Usuario
+                    <input type="text" id="solUsuario" name="usuario" maxlength="60" placeholder="Usuario del sistema">
+                </label>
+                <label class="sol-field">Entidad
+                    <input type="text" id="solEntidad" name="entidad" maxlength="120" placeholder="Empresa o entidad">
+                </label>
+                <label class="sol-field">Periodo de validez
+                    <select id="solPeriodo" name="periodo">
+                        <option value="">Seleccione un periodo</option>
+                        <?php foreach (licencia_tipos() as $codigoTipo => $infoTipo): ?>
+                        <option value="<?= htmlspecialchars($codigoTipo, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($infoTipo['nombre'] . ' (' . $codigoTipo . ')', ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <div class="sol-field">
+                    <span>Tipo de licencia</span>
+                    <label class="sol-switch" for="solGenerica">
+                        <input type="checkbox" id="solGenerica" name="generica" value="1">
+                        <span class="sol-switch-track"></span>
+                        <span id="solGenericaTxt">Específica</span>
+                    </label>
+                </div>
+                <div class="sol-field">
+                    <span>Código de equipo actual</span>
+                    <div class="sol-huella-fila">
+                        <input type="text" id="solHuellaInput" name="huella" maxlength="29"
+                               value="<?= htmlspecialchars(licencia_formatear_fingerprint(licencia_fingerprint_machine()), ENT_QUOTES, 'UTF-8') ?>"
+                               placeholder="#####-#####-#####-#####" spellcheck="false" autocapitalize="characters" disabled>
+                        <button type="button" class="btn btn-glass btn-sm" id="solEditarHuella"
+                                title="Escribir el código de otro equipo" aria-label="Escribir el código de otro equipo">
+                            <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <small class="sol-feedback" id="solHuellaInputFeedback"></small>
+                </div>
+                <label class="sol-field">No. soporte WhatsApp
+                    <input type="text" id="solWhatsapp" name="whatsapp" maxlength="20" inputmode="numeric"
+                           placeholder="5359860773" spellcheck="false" autocomplete="off">
+                    <small class="sol-feedback" id="solWhatsappFeedback"></small>
+                </label>
+                <label class="sol-field">Correo del solicitante
+                    <input type="email" id="solEmail" name="email" maxlength="120" placeholder="correo@ejemplo.com" spellcheck="false" autocomplete="email">
+                    <small class="sol-feedback" id="solEmailFeedback"></small>
+                </label>
+                <label class="sol-field sol-full">Email del proveedor de soporte técnico
+                    <input type="email" id="solEmailSoporte" name="email_soporte" maxlength="120" placeholder="soporte@ejemplo.com" spellcheck="false" autocomplete="off">
+                    <small class="sol-feedback" id="solEmailSoporteFeedback"></small>
+                </label>
+            </div>
+            <div class="sol-actions">
+                <button type="button" class="btn btn-primary" id="solEnviar">
+                    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar solicitud
+                </button>
+                <div class="sol-menu">
+                    <button type="button" class="btn btn-glass" id="solCorreo" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i> Enviar con…
+                    </button>
+                    <div class="sol-menu-lista" id="solEnviarLista" hidden>
+                        <button type="button" data-canal="correo"><i class="fa-solid fa-envelope-open-text" aria-hidden="true"></i> Enviar con mi correo</button>
+                        <button type="button" data-canal="whatsapp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar con WhatsApp</button>
+                        <button type="button" data-canal="gmail"><i class="fa-brands fa-google" aria-hidden="true"></i> Enviar con Gmail</button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-glass" data-sol-close>Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== Estado de la licencia ===== -->
+<div class="lic-overlay" id="estadoLicencia" hidden>
+    <div class="lic-modal" role="dialog" aria-modal="true" aria-labelledby="edoLicTitulo">
+        <button type="button" class="lic-modal-x" data-estado-lic-close aria-label="Cerrar">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+        <div class="lic-modal-head">
+            <span class="lic-modal-icon"><i class="fa-solid fa-key" aria-hidden="true"></i></span>
+            <div>
+                <h2 id="edoLicTitulo">Estado de la licencia</h2>
+                <p class="lic-modal-sub">
+                    <span class="lic-estado-badge <?= $licEdoTono ?>">
+                        <i class="fa-solid <?= $licEdoIcono ?>" aria-hidden="true"></i> <?= htmlspecialchars($licEdoNombre, ENT_QUOTES, 'UTF-8') ?>
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <dl class="lic-estado-lista">
+            <div class="lic-estado-fila">
+                <dt>Nombre de registro</dt>
+                <dd><?= $licEdoRegistro !== '' ? htmlspecialchars($licEdoRegistro, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+            </div>
+            <div class="lic-estado-fila">
+                <dt>Usuario del registro</dt>
+                <dd><?= $licEdoUsuario !== '' ? htmlspecialchars($licEdoUsuario, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+            </div>
+            <div class="lic-estado-fila">
+                <dt>Tipo de licencia</dt>
+                <dd><?= $licEdoTipo !== '' ? htmlspecialchars($licEdoTipo, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+            </div>
+            <div class="lic-estado-fila">
+                <dt>Activada el</dt>
+                <dd><?= $licEdoActivada !== '' ? htmlspecialchars($licEdoActivada, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+            </div>
+            <div class="lic-estado-fila">
+                <dt>Vence</dt>
+                <dd><?= $licEdoVence !== '' ? htmlspecialchars($licEdoVence, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+            </div>
+            <div class="lic-estado-fila">
+                <dt>Código de equipo</dt>
+                <dd class="mono"><?= htmlspecialchars(licencia_fingerprint_equipo(), ENT_QUOTES, 'UTF-8') ?></dd>
+            </div>
+        </dl>
+
+        <div class="lic-modal-actions" style="margin-top:1.15rem;">
+            <button type="button" class="btn btn-primary" data-estado-lic-ir="licencia">
+                <i class="fa-solid fa-key" aria-hidden="true"></i> Activar o renovar
+            </button>
+            <button type="button" class="btn btn-glass" data-estado-lic-ir="solicitud">
+                <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo
+            </button>
+            <button type="button" class="btn btn-glass" data-estado-lic-close>Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var overlay = document.getElementById('licencia');
+    if (!overlay) { return; }
+
+    function abrir() {
+        overlay.hidden = false;
+        document.body.classList.add('lic-abierto');
+        var campo = overlay.querySelector('input[name="nombre"]');
+        if (campo) { window.setTimeout(function () { campo.focus(); }, 40); }
+    }
+    function cerrar() {
+        overlay.hidden = true;
+        document.body.classList.remove('lic-abierto');
+    }
+
+    var abridores = document.querySelectorAll('[data-lic-open]');
+    for (var i = 0; i < abridores.length; i++) {
+        abridores[i].addEventListener('click', function (e) { e.preventDefault(); abrir(); });
+    }
+    var cierres = overlay.querySelectorAll('[data-lic-close]');
+    for (var j = 0; j < cierres.length; j++) {
+        cierres[j].addEventListener('click', cerrar);
+    }
+    overlay.addEventListener('mousedown', function (e) {
+        // El modal no se cierra al pulsar fuera: solo con la X, Cancelar o Escape.
+        if (e.target === overlay) { e.preventDefault(); }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !overlay.hidden) { cerrar(); }
+    });
+    if (!overlay.hidden) { document.body.classList.add('lic-abierto'); }
+
+    // Se expone para el panel «Estado de la licencia».
+    window.licAbrir = abrir;
+
+    // La llave serial se agrupa sola en 5 bloques de 5 caracteres.
+    var serial = document.getElementById('licSerial');
+    if (serial) {
+        serial.addEventListener('input', function () {
+            var valor = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 25);
+            var grupos = valor.match(/.{1,5}/g);
+            this.value = grupos ? grupos.join('-') : '';
+        });
+    }
+
+    var copiar = document.getElementById('licCopiar');
+    if (copiar) {
+        copiar.addEventListener('click', function () {
+            var texto = <?= json_encode(licencia_fingerprint_equipo()) ?>;
+            function listo() {
+                copiar.innerHTML = '<i class="fa-solid fa-check"></i> Copiado';
+                window.setTimeout(function () {
+                    copiar.innerHTML = '<i class="fa-regular fa-copy"></i> Copiar';
+                }, 1600);
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(texto).then(listo);
+            } else {
+                var tmp = document.createElement('textarea');
+                tmp.value = texto;
+                document.body.appendChild(tmp);
+                tmp.select();
+                try { document.execCommand('copy'); listo(); } catch (err) {}
+                document.body.removeChild(tmp);
+            }
+        });
+    }
+})();
+</script>
+
+<script>
+/* Solicitud de licencia por correo desde la portada.
+ * Replica el comportamiento de /servicios/nominas/licencia.php: valida los
+ * campos en el navegador, envía por el SMTP del sistema al endpoint
+ * ?solicitar_licencia=1 y ofrece los canales externos (correo, WhatsApp, Gmail). */
+(function () {
+    var overlay = document.getElementById('solLicencia');
+    if (!overlay) { return; }
+
+    var endpoint  = <?= json_encode($base . '/nominas/licencia.php') ?>;
+    var licOverlay = document.getElementById('licencia');
+    var btnAbrir  = document.querySelectorAll('[data-sol-open]');
+    var btnEnviar = document.getElementById('solEnviar');
+    var btnCorreo = document.getElementById('solCorreo');
+    var listaEnvio = document.getElementById('solEnviarLista');
+    var huellaInput = document.getElementById('solHuellaInput');
+    var btnEditar = document.getElementById('solEditarHuella');
+    var cajaMsg   = document.getElementById('solMsg');
+    var textoMsg  = document.getElementById('solMsgTexto');
+
+    var CAMPOS = [
+        { id: 'solNombre',    clave: 'nombre' },
+        { id: 'solApellidos', clave: 'apellidos' },
+        { id: 'solCi',        clave: 'ci' },
+        { id: 'solEmail',     clave: 'email' },
+        { id: 'solUsuario',   clave: 'usuario' },
+        { id: 'solEntidad',   clave: 'entidad' },
+        { id: 'solPeriodo',   clave: 'periodo' }
+    ];
+
+    // Correos y WhatsApp tomados de Configuración del sistema. Se piden al abrir
+    // el modal para no cargar la base de datos al dibujar la portada.
+    var correosConfig = { destino: '', solicitante: '', whatsapp: '', resuelto: false };
+
+    function porId(id) { return document.getElementById(id); }
+
+    function avisar(texto) {
+        textoMsg.innerHTML = texto;
+        cajaMsg.hidden = false;
+        cajaMsg.classList.add('lic-msg-error');
+        cajaMsg.classList.remove('lic-msg-ok');
+    }
+    function celebrar(texto) {
+        textoMsg.innerHTML = texto;
+        cajaMsg.hidden = false;
+        cajaMsg.classList.add('lic-msg-ok');
+        cajaMsg.classList.remove('lic-msg-error');
+    }
+    function limpiarAviso() { cajaMsg.hidden = true; textoMsg.innerHTML = ''; }
+
+    function aplicarCorreosConfig() {
+        if (correosConfig.destino) {
+            porId('solEmailSoporte').value = correosConfig.destino;
+        }
+        if (correosConfig.solicitante) {
+            porId('solEmail').value = correosConfig.solicitante;
+        }
+        if (correosConfig.whatsapp) {
+            porId('solWhatsapp').value = correosConfig.whatsapp;
+        }
+    }
+
+    function cargarCorreos() {
+        aplicarCorreosConfig();
+        if (correosConfig.resuelto) { return; }
+        fetch(endpoint + '?solicitar_licencia_destino=1')
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (j && j.destino) {
+                    correosConfig.destino     = j.destino;
+                    correosConfig.solicitante = j.solicitante || '';
+                    correosConfig.whatsapp    = j.whatsapp || '';
+                    correosConfig.resuelto    = true;
+                    aplicarCorreosConfig();
+                }
+            })
+            .catch(function () { /* se conservan los valores escritos */ });
+    }
+
+    function abrir() {
+        if (licOverlay) { licOverlay.hidden = true; }
+        overlay.hidden = false;
+        document.body.classList.add('lic-abierto');
+        limpiarAviso();
+        var campo = porId('solNombre');
+        if (campo) { window.setTimeout(function () { campo.focus(); }, 40); }
+        cargarCorreos();
+    }
+
+    function cerrar() {
+        overlay.hidden = true;
+        limpiarAviso();
+        cerrarMenuEnvio();
+        if (licOverlay) {
+            licOverlay.hidden = false;
+            document.body.classList.add('lic-abierto');
+        } else {
+            document.body.classList.remove('lic-abierto');
+        }
+    }
+
+    for (var i = 0; i < btnAbrir.length; i++) {
+        btnAbrir[i].addEventListener('click', function (e) { e.preventDefault(); abrir(); });
+    }
+    var cierres = overlay.querySelectorAll('[data-sol-close]');
+    for (var j = 0; j < cierres.length; j++) {
+        cierres[j].addEventListener('click', cerrar);
+    }
+    // Sin cierre al pulsar fuera del modal.
+    overlay.addEventListener('mousedown', function (e) {
+        if (e.target === overlay) { e.preventDefault(); }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            if (!listaEnvio.hidden) { cerrarMenuEnvio(); return; }
+            if (!overlay.hidden) { cerrar(); }
+        }
+    });
+
+    // --- Validaciones, con el mismo criterio que el servidor ---
+    function validarCI(ci) {
+        ci = String(ci).replace(/[\s-]/g, '');
+        if (!/^\d{11}$/.test(ci)) return { valido: false, mensaje: 'Debe contener 11 dígitos numéricos' };
+        var anio = ci.substr(0, 2);
+        var mes  = ci.substr(2, 2);
+        var dia  = ci.substr(4, 2);
+        if (mes < '01' || mes > '12') return { valido: false, mensaje: 'Mes de nacimiento inválido' };
+        var diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        var maxDias = diasPorMes[parseInt(mes, 10) - 1];
+        if (parseInt(mes, 10) === 2 && parseInt(dia, 10) === 29) {
+            var anioLargo = parseInt(anio, 10) < 30 ? 2000 + parseInt(anio, 10) : 1900 + parseInt(anio, 10);
+            var bisiesto = (anioLargo % 4 === 0 && anioLargo % 100 !== 0) || (anioLargo % 400 === 0);
+            if (!bisiesto) return { valido: false, mensaje: '29/02 solo es válido en años bisiestos' };
+        } else if (dia < '01' || parseInt(dia, 10) > maxDias) {
+            return { valido: false, mensaje: 'Día de nacimiento inválido' };
+        }
+        var digitoGenero = parseInt(ci.charAt(9), 10);
+        var genero    = digitoGenero % 2 === 0 ? 'Masculino' : 'Femenino';
+        var anioTexto = parseInt(anio, 10) < 30 ? '20' + anio : '19' + anio;
+        return {
+            valido: true,
+            mensaje: 'CI válido | ' + genero + ' | Nac: ' + dia + '/' + mes + '/' + anioTexto,
+            genero: genero,
+            icono: digitoGenero % 2 === 0 ? 'fa-mars' : 'fa-venus'
+        };
+    }
+
+    var RE_EMAIL  = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+    var RE_HUELLA = /^[A-Z0-9]{5}(-[A-Z0-9]{5}){3}$/;
+
+    function validarEmail(email) {
+        var v = String(email).trim();
+        if (v === '') return { valido: false, mensaje: 'Ingrese su correo electrónico' };
+        if (v.indexOf('..') !== -1 || v.charAt(0) === '.' || v.charAt(v.length - 1) === '.') {
+            return { valido: false, mensaje: 'Formato de correo electrónico inválido' };
+        }
+        if (!RE_EMAIL.test(v)) return { valido: false, mensaje: 'Formato de correo electrónico inválido' };
+        return { valido: true, mensaje: 'Correo electrónico válido' };
+    }
+
+    function normalizarWhatsapp(valor) {
+        var n = (valor || '').replace(/\D/g, '');
+        if (n.indexOf('00') === 0) { n = n.slice(2); }
+        if (n.length === 8 && n.slice(0, 2) !== '53') { n = '53' + n; }
+        return (n.length >= 8 && n.length <= 15) ? n : '';
+    }
+
+    function mostrarFeedback(id, resultado) {
+        var caja = porId(id + 'Feedback');
+        if (!caja) { return; }
+        caja.classList.remove('ok', 'mal');
+        if (!resultado) { caja.innerHTML = ''; return; }
+        if (resultado.valido) {
+            caja.classList.add('ok');
+            caja.innerHTML = '<i class="fa-solid fa-circle-check"></i> '
+                + (resultado.icono ? '<i class="fa-solid ' + resultado.icono + '"></i> ' : '')
+                + resultado.mensaje;
+        } else {
+            caja.classList.add('mal');
+            caja.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> ' + resultado.mensaje;
+        }
+    }
+
+    function limpiarErrores() {
+        for (var k = 0; k < CAMPOS.length; k++) {
+            porId(CAMPOS[k].id).classList.remove('error');
+            mostrarFeedback(CAMPOS[k].id, null);
+        }
+        huellaInput.classList.remove('error');
+        mostrarFeedback('solHuellaInput', null);
+        porId('solWhatsapp').classList.remove('error');
+        mostrarFeedback('solWhatsapp', null);
+        porId('solEmailSoporte').classList.remove('error');
+        mostrarFeedback('solEmailSoporte', null);
+        limpiarAviso();
+    }
+
+    for (var c = 0; c < CAMPOS.length; c++) {
+        porId(CAMPOS[c].id).addEventListener('input', function () { this.classList.remove('error'); });
+    }
+
+    porId('solCi').addEventListener('input', function () {
+        var digitos = this.value.replace(/\D/g, '').slice(0, 11);
+        if (this.value !== digitos) { this.value = digitos; }
+        mostrarFeedback('solCi', digitos.length === 11 ? validarCI(digitos) : null);
+    });
+
+    porId('solEmail').addEventListener('input', function () {
+        var v = this.value.trim();
+        mostrarFeedback('solEmail', (v === '' || v.indexOf('@') === -1) ? null : validarEmail(v));
+    });
+
+    porId('solEmailSoporte').addEventListener('input', function () {
+        this.classList.remove('error');
+        mostrarFeedback('solEmailSoporte', null);
+    });
+
+    porId('solWhatsapp').addEventListener('input', function () {
+        var v = (this.value || '').trim();
+        if (v !== '' && normalizarWhatsapp(v) !== '') {
+            this.classList.remove('error');
+            mostrarFeedback('solWhatsapp', null);
+        }
+    });
+
+    // --- Tipo de licencia y código de equipo ---
+    var chkGenerica = porId('solGenerica');
+    var huellaEditando = false;
+    var huellaMaquina = huellaInput.value;
+
+    function aplicarEstadoHuella() {
+        var generica = !!chkGenerica.checked;
+        btnEditar.disabled = generica;
+        huellaInput.disabled = generica ? true : !huellaEditando;
+        btnEditar.title = generica
+            ? 'No se modifica con licencia genérica'
+            : (huellaEditando ? 'Restaurar el código de esta PC' : 'Escribir el código de otro equipo');
+    }
+
+    function aplicarTipo() {
+        porId('solGenericaTxt').textContent = chkGenerica.checked ? 'Genérica' : 'Específica';
+        aplicarEstadoHuella();
+    }
+    chkGenerica.addEventListener('change', aplicarTipo);
+    aplicarEstadoHuella();
+
+    huellaInput.addEventListener('input', function () {
+        if (this.disabled) { return; }
+        var limpio = (this.value.match(/[A-Za-z0-9]/g) || []).join('').toUpperCase().slice(0, 20);
+        this.value = limpio.replace(/(.{5})(?=.)/g, '$1-');
+    });
+
+    btnEditar.addEventListener('click', function () {
+        if (huellaEditando) {
+            huellaEditando = false;
+            huellaInput.value = huellaMaquina;
+        } else {
+            huellaEditando = true;
+            huellaInput.classList.remove('error');
+            mostrarFeedback('solHuellaInput', null);
+        }
+        aplicarEstadoHuella();
+        if (huellaEditando) { huellaInput.focus(); huellaInput.select(); }
+    });
+
+    // --- Recolección y envío ---
+    function prepararSolicitud() {
+        limpiarErrores();
+
+        var valores = {};
+        var faltan = [];
+        for (var k = 0; k < CAMPOS.length; k++) {
+            var campo = porId(CAMPOS[k].id);
+            var valor = (campo.value || '').trim();
+            valores[CAMPOS[k].clave] = valor;
+            if (valor === '') {
+                campo.classList.add('error');
+                faltan.push(campo);
+            }
+        }
+        if (faltan.length > 0) {
+            avisar('Complete todos los campos para enviar la solicitud.');
+            faltan[0].focus();
+            return null;
+        }
+
+        var ci = porId('solCi');
+        var resCI = validarCI(ci.value);
+        if (!resCI.valido) {
+            ci.classList.add('error');
+            mostrarFeedback('solCi', resCI);
+            avisar('Carné de identidad inválido: ' + resCI.mensaje + '.');
+            ci.focus();
+            return null;
+        }
+
+        var campoWa = porId('solWhatsapp');
+        if (campoWa.value.trim() !== '' && normalizarWhatsapp(campoWa.value) === '') {
+            campoWa.classList.add('error');
+            mostrarFeedback('solWhatsapp', { valido: false, mensaje: 'Número de WhatsApp inválido' });
+            avisar('Número de WhatsApp inválido: debe tener entre 8 y 15 dígitos, con el prefijo del país.');
+            campoWa.focus();
+            return null;
+        }
+
+        var mail = porId('solEmail');
+        var resMail = validarEmail(mail.value);
+        if (!resMail.valido) {
+            mail.classList.add('error');
+            mostrarFeedback('solEmail', resMail);
+            avisar('Correo electrónico inválido: ' + resMail.mensaje + '.');
+            mail.focus();
+            return null;
+        }
+
+        var mailSoporte = porId('solEmailSoporte');
+        if (mailSoporte.value.trim() !== '') {
+            var resSoporte = validarEmail(mailSoporte.value);
+            if (!resSoporte.valido) {
+                mailSoporte.classList.add('error');
+                mostrarFeedback('solEmailSoporte', resSoporte);
+                avisar('Correo del proveedor inválido: ' + resSoporte.mensaje + '.');
+                mailSoporte.focus();
+                return null;
+            }
+            mostrarFeedback('solEmailSoporte', resSoporte);
+        }
+
+        var huella = (huellaInput.value || '').trim().toUpperCase();
+        if (huella !== '' && !RE_HUELLA.test(huella)) {
+            huellaInput.classList.add('error');
+            mostrarFeedback('solHuellaInput', { valido: false, mensaje: 'Formato de código de equipo inválido' });
+            avisar('Código de equipo inválido: debe tener el formato #####-#####-#####-#####.');
+            huellaInput.focus();
+            return null;
+        }
+
+        valores.ci            = ci.value.replace(/\D/g, '');
+        valores.email         = mail.value.trim();
+        valores.email_soporte = mailSoporte.value.trim();
+        valores.generica      = chkGenerica.checked ? '1' : '0';
+        valores.huella        = huella;
+        return valores;
+    }
+
+    btnEnviar.addEventListener('click', function () {
+        var datos = prepararSolicitud();
+        if (!datos) { return; }
+
+        var fd = new FormData();
+        for (var k = 0; k < CAMPOS.length; k++) { fd.append(CAMPOS[k].clave, datos[CAMPOS[k].clave]); }
+        fd.append('email_soporte', datos.email_soporte);
+        fd.append('huella', datos.huella);
+        fd.append('generica', datos.generica);
+
+        var textoBoton = btnEnviar.innerHTML;
+        btnEnviar.disabled = true;
+        btnEnviar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+
+        fetch(endpoint + '?solicitar_licencia=1', { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (resp) {
+                if (resp && resp.ok) {
+                    celebrar(resp.mensaje || 'Su solicitud fue enviada.');
+                    porId('solForm').reset();
+                    huellaInput.value = huellaMaquina;
+                    huellaEditando = false;
+                    aplicarTipo();
+                } else {
+                    var errores = (resp && resp.errores) ? resp.errores : {};
+                    for (var clave in errores) {
+                        if (!Object.prototype.hasOwnProperty.call(errores, clave)) { continue; }
+                        for (var m = 0; m < CAMPOS.length; m++) {
+                            if (CAMPOS[m].clave === clave) { porId(CAMPOS[m].id).classList.add('error'); }
+                        }
+                    }
+                    if (errores.email_soporte) {
+                        porId('solEmailSoporte').classList.add('error');
+                        mostrarFeedback('solEmailSoporte', { valido: false, mensaje: errores.email_soporte });
+                    }
+                    if (errores.huella) {
+                        huellaEditando = true;
+                        huellaInput.disabled = false;
+                        huellaInput.classList.add('error');
+                        mostrarFeedback('solHuellaInput', { valido: false, mensaje: errores.huella });
+                    }
+                    avisar((resp && resp.mensaje) ? resp.mensaje : 'Ocurrió un error inesperado.');
+                }
+            })
+            .catch(function () {
+                avisar('No se pudo contactar al servidor. Verifique su conexión e intente nuevamente.');
+            })
+            .then(function () {
+                btnEnviar.disabled = false;
+                btnEnviar.innerHTML = textoBoton;
+            });
+    });
+
+    // --- Canales externos: correo local, WhatsApp y Gmail ---
+    function destinoActual() {
+        return (porId('solEmailSoporte').value || '').trim()
+            || (correosConfig.destino || '').trim();
+    }
+
+    function whatsappActual() {
+        return normalizarWhatsapp(porId('solWhatsapp').value)
+            || normalizarWhatsapp(correosConfig.whatsapp);
+    }
+
+    function construirMensaje(d) {
+        var sel = porId('solPeriodo');
+        var periodo = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : d.periodo;
+        var linea = new Array(41).join('=');
+        var resCI = validarCI(d.ci);
+        var sexo = (resCI && resCI.valido && resCI.genero) ? resCI.genero : '';
+        var cuerpo = [
+            'SOLICITUD DE LICENCIA SiGesNom',
+            linea,
+            '',
+            'Nombre:             ' + d.nombre,
+            'Apellidos:          ' + d.apellidos,
+            'Carne de identidad: ' + d.ci,
+            'Sexo:                ' + sexo,
+            'Correo electronico: ' + d.email,
+            'Usuario:            ' + d.usuario,
+            'Entidad:            ' + d.entidad,
+            'Periodo de validez: ' + periodo,
+            'Codigo de equipo:   ' + d.huella,
+            'Tipo de Licencia:   ' + (d.generica === '1' ? 'Generica' : 'Especifica')
+        ];
+        cuerpo.push('', linea);
+        return {
+            asunto: 'Solicitud de licencia - ' + d.entidad + ' (' + periodo + ')',
+            texto: cuerpo.join('\n')
+        };
+    }
+
+    function abrirEnlace(url) {
+        var enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.target = '_blank';
+        enlace.rel = 'noopener noreferrer';
+        document.body.appendChild(enlace);
+        enlace.click();
+        document.body.removeChild(enlace);
+    }
+
+    function enviarPor(canal) {
+        cerrarMenuEnvio();
+        var d = prepararSolicitud();
+        if (!d) { return; }
+        var m = construirMensaje(d);
+
+        if (canal === 'whatsapp') {
+            var numero = whatsappActual();
+            if (numero === '') {
+                avisar('WhatsApp no está configurado en el sistema.');
+                return;
+            }
+            abrirEnlace('https://api.whatsapp.com/send?phone=' + numero + '&text=' + encodeURIComponent(m.texto));
+            return;
+        }
+        var destino = destinoActual();
+        if (destino === '') {
+            avisar('No se pudo determinar el correo del proveedor de soporte.');
+            return;
+        }
+        if (canal === 'gmail') {
+            abrirEnlace('https://mail.google.com/mail/?view=cm&to=' + encodeURIComponent(destino)
+                + '&su=' + encodeURIComponent(m.asunto)
+                + '&body=' + encodeURIComponent(m.texto));
+            return;
+        }
+        abrirEnlace('mailto:' + encodeURI(destino)
+            + '?subject=' + encodeURIComponent(m.asunto)
+            + '&body=' + encodeURIComponent(m.texto));
+    }
+
+    function abrirMenuEnvio() {
+        listaEnvio.hidden = false;
+        btnCorreo.setAttribute('aria-expanded', 'true');
+    }
+    function cerrarMenuEnvio() {
+        if (!listaEnvio || listaEnvio.hidden) { return; }
+        listaEnvio.hidden = true;
+        btnCorreo.setAttribute('aria-expanded', 'false');
+    }
+
+    btnCorreo.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (listaEnvio.hidden) { abrirMenuEnvio(); } else { cerrarMenuEnvio(); }
+    });
+    listaEnvio.addEventListener('click', function (e) {
+        var item = e.target.closest('.sol-menu-lista button');
+        if (!item) { return; }
+        e.preventDefault();
+        enviarPor(item.getAttribute('data-canal'));
+    });
+    document.addEventListener('click', function (e) {
+        if (!btnCorreo.parentNode.contains(e.target)) { cerrarMenuEnvio(); }
+    });
+
+    // Se expone para el panel «Estado de la licencia».
+    window.licSolicitar = abrir;
+})();
+</script>
+
+<script>
+/* Panel «Estado de la licencia»: resume la licencia guardada en el equipo y
+ * lleva a los dos trámites que ya existen en la portada. */
+(function () {
+    var overlay = document.getElementById('estadoLicencia');
+    if (!overlay) { return; }
+
+    function abrirEstado() {
+        overlay.hidden = false;
+        document.body.classList.add('lic-abierto');
+    }
+    function cerrarEstado() {
+        overlay.hidden = true;
+        if (!document.querySelector('.lic-overlay:not([hidden])')) {
+            document.body.classList.remove('lic-abierto');
+        }
+    }
+
+    var abridores = document.querySelectorAll('[data-estado-lic-open]');
+    for (var i = 0; i < abridores.length; i++) {
+        abridores[i].addEventListener('click', function (e) { e.preventDefault(); abrirEstado(); });
+    }
+    var cierres = overlay.querySelectorAll('[data-estado-lic-close]');
+    for (var j = 0; j < cierres.length; j++) {
+        cierres[j].addEventListener('click', cerrarEstado);
+    }
+    // Sin cierre por clic fuera, igual que el resto de modales.
+    overlay.addEventListener('mousedown', function (e) {
+        if (e.target === overlay) { e.preventDefault(); }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !overlay.hidden) { cerrarEstado(); }
+    });
+
+    var irA = overlay.querySelectorAll('[data-estado-lic-ir]');
+    for (var k = 0; k < irA.length; k++) {
+        irA[k].addEventListener('click', function () {
+            var destino = this.getAttribute('data-estado-lic-ir');
+            cerrarEstado();
+            if (destino === 'solicitud' && typeof window.licSolicitar === 'function') {
+                window.licSolicitar();
+            } else if (typeof window.licAbrir === 'function') {
+                window.licAbrir();
+            }
+        });
+    }
+})();
+</script>
+<?php endif; ?>
+
+<script>
+/* Brillos sobre las tarjetas: el resplandor sigue al puntero. */
+(function () {
+    var tarjetas = document.querySelectorAll('[data-spotlight]');
+    function mover(e) {
+        var r = this.getBoundingClientRect();
+        this.style.setProperty('--pointer-x', (e.clientX - r.left) + 'px');
+        this.style.setProperty('--pointer-y', (e.clientY - r.top) + 'px');
+    }
+    for (var i = 0; i < tarjetas.length; i++) {
+        tarjetas[i].addEventListener('pointermove', mover);
+    }
+})();
+
+/* Intro animada: piezas del logo, destello final y salto con Escape o botón */
+(function () {
+    var intro = document.getElementById('introAnim');
+    if (!intro) { return; }
+    var raiz = document.documentElement;
+    var barra = document.getElementById('introBar');
+    var saltar = document.getElementById('introSkip');
+    var capas = intro.querySelectorAll('.intro-layer');
+    var capaFinal = intro.querySelector('.intro-final');
+    var pasos = capas.length + 1;
+    var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var terminado = false;
+    var temporizadores = [];
+
+    // Si la página vuelve de tramitar la licencia, no se repite la intro.
+    if (intro.classList.contains('is-out')) {
+        raiz.classList.remove('intro-lock');
+        if (intro.parentNode) { intro.parentNode.removeChild(intro); }
+        return;
+    }
+
+    function esperar(fn, ms) { temporizadores.push(window.setTimeout(fn, ms)); }
+    function pintar(paso) { if (barra) { barra.style.width = Math.round((paso / pasos) * 100) + '%'; } }
+
+    function volarAlLogo() {
+        if (!capaFinal || !capaFinal.classList.contains('is-on')) { return; }
+        var destino = document.querySelector('.nav .marca img');
+        if (!destino) { return; }
+        var desde = capaFinal.getBoundingClientRect();
+        var hasta = destino.getBoundingClientRect();
+        if (!desde.width || !hasta.width) { return; }
+        var escala = hasta.width / desde.width;
+        var dx = (hasta.left + hasta.width / 2) - (desde.left + desde.width / 2);
+        var dy = (hasta.top + hasta.height / 2) - (desde.top + desde.height / 2);
+        capaFinal.style.transition = 'transform .65s cubic-bezier(.4, 0, .2, 1)';
+        capaFinal.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + escala + ')';
+    }
+
+    function terminar() {
+        if (terminado) { return; }
+        terminado = true;
+        volarAlLogo();
+        for (var i = 0; i < temporizadores.length; i++) { window.clearTimeout(temporizadores[i]); }
+        temporizadores = [];
+        if (barra) { barra.style.width = '100%'; }
+        intro.classList.add('is-out');
+        raiz.classList.remove('intro-lock');
+        window.setTimeout(function () {
+            if (intro.parentNode) { intro.parentNode.removeChild(intro); }
+        }, 900);
+    }
+
+    if (reducido) { terminar(); return; }
+
+    function mostrarFinal() {
+        if (terminado) { return; }
+        pintar(pasos);
+        intro.classList.add('is-final');
+        if (capaFinal) { capaFinal.classList.add('is-on'); }
+        esperar(function () { if (!terminado) { intro.classList.add('is-sheen'); } }, 1050);
+        esperar(terminar, 4100);
+    }
+
+    function mostrarCapa(indice) {
+        if (terminado) { return; }
+        if (indice >= capas.length) { esperar(mostrarFinal, 1000); return; }
+        var capa = capas[indice];
+        capa.classList.add('is-on');
+        pintar(indice + 1);
+        esperar(function () { mostrarCapa(indice + 1); }, 820);
+    }
+
+    if (saltar) { saltar.addEventListener('click', terminar); }
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !terminado) { terminar(); }
+    });
+
+    esperar(terminar, 14000);
+    esperar(function () { mostrarCapa(0); }, 220);
+})();
+
+/* Botones flotantes: arriba / abajo según la posición de lectura */
+(function () {
+    var arriba = document.getElementById('btnScrollTop');
+    var abajo = document.getElementById('btnScrollBottom');
+    var progreso = document.getElementById('scrollProgress');
+    if (!arriba && !abajo) { return; }
+
+    function irArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function irAbajo() {
+        var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        window.scrollTo({ top: max, behavior: 'smooth' });
+    }
+    if (arriba) { arriba.addEventListener('click', irArriba); }
+    if (abajo) { abajo.addEventListener('click', irAbajo); }
+
+    function actualizar() {
+        var y = window.scrollY || document.documentElement.scrollTop || 0;
+        var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        if (arriba) { arriba.classList.toggle('is-visible', y > 140); }
+        if (abajo) { abajo.classList.toggle('is-visible', y < max - 140); }
+        if (progreso) {
+            progreso.style.width = (max > 0 ? Math.min(100, (y / max) * 100) : 0) + '%';
+        }
+    }
+    window.addEventListener('scroll', actualizar, { passive: true });
+    window.addEventListener('resize', actualizar);
+    actualizar();
+})();
+
+/* Menú móvil */
+(function () {
+    var btn = document.getElementById('menuBtn');
+    var menu = document.getElementById('menuMovil');
+    if (!btn || !menu) { return; }
+    btn.addEventListener('click', function () {
+        var abierto = menu.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+        btn.innerHTML = abierto
+            ? '<i class="fa-solid fa-xmark" aria-hidden="true"></i>'
+            : '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
+    });
+    menu.addEventListener('click', function (e) {
+        if (e.target.closest('a')) {
+            menu.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', 'false');
+            btn.innerHTML = '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
+        }
+    });
+})();
+
+/* Rotación automática de la escena y del fondo del hero */
+(function () {
+    var escena = document.querySelector('.escena');
+    if (!escena) { return; }
+    var diapos = escena.querySelectorAll('.diapo');
+    var pills  = escena.querySelectorAll('[data-slide]');
+    if (diapos.length < 2) { return; }
+    var capas = [document.getElementById('heroFondoA'), document.getElementById('heroFondoB')];
+    /* Mismo par de imágenes para móvil, tablet y PC: cada opción tiene la suya. */
+    var fondos = ['/images/nominas-hero.webp', '/images/hero.webp'];
+    var actual = 0, capa = 0, timer = null;
+
+    /* Precarga para que el fundido entre sin parpadeos. */
+    for (var f = 0; f < fondos.length; f++) { var pre = new Image(); pre.src = fondos[f]; }
+
+    function ponerFondo(destino) {
+        if (!capas[0] || !capas[1] || !destino) { return; }
+        if (capas[capa].getAttribute('src') === destino) { return; }
+        var otra = capas[1 - capa];
+        otra.setAttribute('src', destino);
+        otra.classList.add('is-on');
+        capas[capa].classList.remove('is-on');
+        capa = 1 - capa;
+    }
+
+    function mostrar(i) {
+        actual = ((i % diapos.length) + diapos.length) % diapos.length;
+        for (var k = 0; k < diapos.length; k++) { diapos[k].classList.toggle('is-on', k === actual); }
+        for (var p = 0; p < pills.length; p++) {
+            pills[p].classList.toggle('is-on', parseInt(pills[p].getAttribute('data-slide'), 10) === actual);
+        }
+        ponerFondo(fondos[actual]);
+    }
+    function parar() { if (timer) { window.clearInterval(timer); timer = null; } }
+    function arrancar() { parar(); timer = window.setInterval(function () { mostrar(actual + 1); }, 7000); }
+
+    for (var j = 0; j < pills.length; j++) {
+        pills[j].addEventListener('click', function () {
+            mostrar(parseInt(this.getAttribute('data-slide'), 10));
+            arrancar();
+        });
+    }
+    mostrar(0);
+    arrancar();
+})();
+
+/* Desplegable de acceso a los servicios (topbar) */
+(function () {
+    var cont = document.getElementById('navLogin');
+    var btn = document.getElementById('navLoginBtn');
+    if (!cont || !btn) { return; }
+    function cerrar() {
+        cont.classList.remove('is-open');
+        btn.setAttribute('aria-expanded', 'false');
+    }
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var abierto = cont.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+    });
+    document.addEventListener('click', function (e) {
+        if (!cont.contains(e.target)) { cerrar(); }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' || e.key === 'Esc') { cerrar(); }
+    });
+})();
+
+/* Al abrir o recargar, la portada arranca limpia (sin hash) y arriba del todo.
+   Va antes de la lógica de animación por scroll para que el primer repaso se
+   haga con la página ya en su posición inicial. */
+(function () {
+    if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+    if (window.location.hash) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    window.scrollTo(0, 0);
+})();
+
+/* Aparición al hacer scroll */
+(function () {
+    // Los grupos numerosos entran en cadena: cada hijo lleva su propio retardo.
+    var grupos = [
+        '.grid > .card', '.pasos > .paso', '.serv-grid > .serv',
+        '.faq-lista > .faq', '.chips > span', '.pilares > .pilar',
+        '.duo > *', '.lic-grid > .panel', '.compromiso', '.proceso-grid > .proc-paso'
+    ];
+    for (var g = 0; g < grupos.length; g++) {
+        var hijos = document.querySelectorAll(grupos[g]);
+        var contador = new Map();
+        for (var k = 0; k < hijos.length; k++) {
+            var hijo = hijos[k];
+            var padre = hijo.parentNode;
+            var n = contador.get(padre) || 0;
+            contador.set(padre, n + 1);
+            if (!hijo.classList.contains('reveal')) { hijo.classList.add('reveal'); }
+            hijo.style.setProperty('--d', Math.min(n * 90, 360) + 'ms');
+        }
+    }
+
+    // Aparición al ir pasando: se mide la posición real en cada scroll (con
+    // requestAnimationFrame). Es más fiable que un IntersectionObserver aquí y
+    // garantiza que el bloque entre justo cuando asoma por el borde inferior.
+    var pendientes = [].slice.call(document.querySelectorAll('.reveal, .sec'));
+    if (!pendientes.length) { return; }
+    var ticking = false;
+
+    function enPantalla(el) {
+        var r = el.getBoundingClientRect();
+        var alto = window.innerHeight || document.documentElement.clientHeight;
+        return r.top < alto * 0.9 && r.bottom > 0;
+    }
+
+    function revisar() {
+        ticking = false;
+        var resto = [];
+        for (var i = 0; i < pendientes.length; i++) {
+            if (enPantalla(pendientes[i])) { pendientes[i].classList.add('is-in'); }
+            else { resto.push(pendientes[i]); }
+        }
+        pendientes = resto;
+        if (!pendientes.length) {
+            window.removeEventListener('scroll', pedir);
+            window.removeEventListener('resize', pedir);
+        }
+    }
+
+    function pedir() {
+        if (!ticking) { ticking = true; window.requestAnimationFrame(revisar); }
+    }
+
+    var iniciado = false;
+    function iniciar() {
+        if (iniciado) { return; }
+        iniciado = true;
+        window.addEventListener('scroll', pedir, { passive: true });
+        window.addEventListener('resize', pedir);
+        window.addEventListener('orientationchange', pedir);
+        // Se revisa cuando la página ya tiene su altura definitiva (imágenes y
+        // fuentes cargadas); si no, se revelarían de golpe secciones que aún no
+        // se han visto y al llegar a ellas ya estarían visibles, sin animación.
+        revisar();
+        window.setTimeout(revisar, 600);
+        window.setTimeout(revisar, 1800);
+    }
+
+    if (document.readyState === 'complete') {
+        iniciar();
+    } else {
+        window.addEventListener('load', iniciar);
+        // Respaldo: si «load» tarda demasiado (una imagen externa lenta), se
+        // arranca igualmente para que la portada no quede en blanco.
+        window.setTimeout(iniciar, 3500);
+    }
+})();
+</script>
+</body>
+</html>

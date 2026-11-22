@@ -501,13 +501,16 @@ function licencia_texto_vencimiento($datos, $sin_datos = '—', $conPrefijo = fa
  * @param string $usuario Usuario del registro
  * @param string $serial  Llave serial
  * @param int|null $fecha_activacion Para pruebas / re-registro (UNIX).
+ * @param bool $reemplazar Permite sobrescribir una licencia que aún está
+ *                         vigente (renovación solicitada por el usuario).
  * @return array|false Estado guardado o false si no se pudo.
  */
-function licencia_guardar($nombre, $usuario, $serial, $fecha_activacion = null) {
+function licencia_guardar($nombre, $usuario, $serial, $fecha_activacion = null, $reemplazar = false) {
     $tipo = licencia_tipo_desde_serial($serial);
     if ($tipo === null) return false;
-    // Solo se re-registra si la licencia actual no es válida ni está activa.
-    if (licencia_activada()) return false;
+    // Solo se re-registra si la licencia actual no es válida ni está activa,
+    // salvo que se pida expresamente reemplazarla (renovación).
+    if (!$reemplazar && licencia_activada()) return false;
     $plano = json_encode(array(
         'r' => licencia_normalizar($nombre),
         'u' => licencia_normalizar($usuario),
@@ -725,6 +728,56 @@ function licencia_leer_archivo_lic($ruta) {
     $contenido = @file_get_contents($ruta);
     if ($contenido === false) return null;
     return licencia_leer_texto_lic($contenido);
+}
+
+/**
+ * Verifica el texto pegado/escrito de una licencia contra este equipo.
+ * No instala nada: solo informa si el texto es una licencia vigente para esta PC.
+ * @param string $texto Texto Base64 de la licencia.
+ * @return array{ok:bool, mensaje:string, datos:?array, huella_destino:string, huella_equipo:string}
+ */
+function licencia_texto_verificar($texto) {
+    $resp = array(
+        'ok'             => false,
+        'mensaje'        => 'Pegue el texto de la licencia para verificarlo.',
+        'datos'          => null,
+        'huella_destino' => '',
+        'huella_equipo'  => '',
+    );
+    $texto = trim((string)$texto);
+    if ($texto === '') {
+        return $resp;
+    }
+    if (strlen($texto) > 8192) {
+        $resp['mensaje'] = 'El texto es demasiado largo para ser una licencia.';
+        return $resp;
+    }
+    $datos = licencia_leer_texto_lic($texto);
+    if ($datos === null) {
+        $resp['mensaje'] = 'El texto no corresponde a una licencia valida. Verifique que se copio completo.';
+        return $resp;
+    }
+    $fp_actual = licencia_fingerprint_machine();
+    if ($datos['huella'] !== '' && !hash_equals($datos['huella'], $fp_actual)) {
+        $resp['mensaje']        = 'Esta licencia fue emitida para otro equipo. Solicite al proveedor una licencia para esta PC.';
+        $resp['huella_destino'] = licencia_formatear_fingerprint($datos['huella']);
+        $resp['huella_equipo']  = licencia_formatear_fingerprint($fp_actual);
+        $resp['datos']          = $datos;
+        return $resp;
+    }
+    $meses = isset($datos['info']['meses']) ? $datos['info']['meses'] : null;
+    $resp['ok']      = true;
+    $resp['mensaje'] = 'Licencia valida para este equipo.';
+    $resp['datos']   = array(
+        'registro'  => $datos['registro'],
+        'usuario'   => $datos['usuario'],
+        'serial'    => licencia_formatear_serial($datos['serial']),
+        'termino'   => isset($datos['info']['nombre']) ? $datos['info']['nombre'] : 'Permanente',
+        'periodo'   => ($meses !== null) ? ((int)$meses === 1 ? '1 mes' : (int)$meses . ' meses') : 'Permanente',
+        'vence'     => ($meses !== null) ? licencia_texto_vencimiento($datos, 'Sin vencimiento (Permanente)') : 'Sin vencimiento (Permanente)',
+        'exclusiva' => ($datos['huella'] !== ''),
+    );
+    return $resp;
 }
 
 /**
