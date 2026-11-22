@@ -1047,8 +1047,8 @@ $faq = [
     <!-- ===== Quiénes somos ===== -->
     <section class="sec" id="nosotros">
         <div class="wrap">
-            <!-- Encabezado alineado a la izquierda, como en cyberforja -->
-            <div class="equipo-head reveal" data-anim="left">
+            <!-- Encabezado centrado -->
+            <div class="equipo-head reveal">
                 <span class="eyebrow">Sobre UnicornioSoftware</span>
                 <h2 class="bebas">Quiénes somos.</h2>
                 <div class="rule-fuego" aria-hidden="true"></div>

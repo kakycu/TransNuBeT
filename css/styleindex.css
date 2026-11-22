@@ -1198,18 +1198,19 @@
     }
 
     /* ===== Quiénes somos (réplica de la sección de cyberforja) ===== */
-    .equipo-head { max-width: 48rem; margin-bottom: 2rem; }
-    .equipo-head .eyebrow { margin-top: 0; color: var(--fuego); }
+    .equipo-head { text-align: center; max-width: 46rem; margin: 0 auto 2.2rem; }
+    .equipo-head .eyebrow { margin-top: 0; color: var(--fuego); font-size: .8rem; }
     .equipo-head h2 {
         margin: .35rem 0 .55rem;
         font-size: clamp(2rem, 4.4vw, 3.1rem);
         text-transform: uppercase;
     }
+    .equipo-head .rule-fuego { margin: 0 auto 1rem; }
     .rule-fuego {
         width: 4rem; height: 4px; border-radius: 999px;
         background: var(--fuego); margin-bottom: 1rem;
     }
-    .equipo-head p { color: var(--gris); font-size: 1rem; line-height: 1.75; }
+    .equipo-head p { color: var(--gris-2); font-size: 1rem; line-height: 1.7; max-width: 48rem; margin-left: auto; margin-right: auto; }
 
     .equipo-card {
         position: relative; isolation: isolate; overflow: hidden;
