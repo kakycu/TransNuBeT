@@ -272,7 +272,7 @@ $script:antes = @()
 [SG.U]::EnumWindows($cbAntes, [IntPtr]::Zero) | Out-Null
 $claves = @($script:antes)
 
-$lanzador = Join-Path $env:TEMP 'transnubet_tui.cmd'
+$lanzador = Join-Path $env:TEMP 'BD_tui.cmd'
 $contenido = "@echo off`r`ntitle Serial Generador TUI`r`ncall `"$cmdTui`"`r`n"
 [System.IO.File]::WriteAllText($lanzador, $contenido, [System.Text.Encoding]::Default)
 

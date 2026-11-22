@@ -1776,7 +1776,7 @@ html.focus-mode .fluid-container {
     }
 
     /* Boton Enfoque del pie: alterna el mismo modo enfoque del tema
-       (clase focus-mode en <html> + clave transnubet_focus_mode de theme_config.php) */
+       (clase focus-mode en <html> + clave BD_focus_mode de theme_config.php) */
     function initFocusToggle() {
         var btn = document.getElementById('focusModeSidebarBtn');
         if (!btn) return;
@@ -1793,10 +1793,10 @@ html.focus-mode .fluid-container {
         function guardar(on) {
             try {
                 /* Misma clave por dispositivo que theme_config.php y theme_panel.php */
-                var pd = (localStorage.getItem('transnubet_per_device') || 'true') !== 'false';
+                var pd = (localStorage.getItem('BD_per_device') || 'true') !== 'false';
                 var dev = null;
                 if (!pd) {
-                    var m = localStorage.getItem('transnubet_device_manual');
+                    var m = localStorage.getItem('BD_device_manual');
                     if (m === 'pc' || m === 'tableta' || m === 'movil') dev = m;
                 }
                 if (!dev) {
@@ -1810,7 +1810,7 @@ html.focus-mode .fluid-container {
                         dev = w <= 768 ? 'movil' : (w <= 1024 ? 'tableta' : 'pc');
                     }
                 }
-                localStorage.setItem(pd ? ('transnubet_focus_mode@' + dev) : 'transnubet_focus_mode', on ? 'true' : 'false');
+                localStorage.setItem(pd ? ('BD_focus_mode@' + dev) : 'BD_focus_mode', on ? 'true' : 'false');
             } catch (err) {}
         }
 

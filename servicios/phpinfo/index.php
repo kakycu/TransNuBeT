@@ -206,19 +206,19 @@
             //    Se intenta primero por SQL; si performance_schema está
             //    roto/deshabilitado, se usa el arranque real del proceso.
             // ---------------------------------------------------------
-            if (!function_exists('transnubet_shell_disabled')) {
-                function transnubet_shell_disabled(string $fn): bool
+            if (!function_exists('BD_shell_disabled')) {
+                function BD_shell_disabled(string $fn): bool
                 {
                     $disabled = array_map('trim', explode(',', strtolower((string)ini_get('disable_functions'))));
                     return in_array(strtolower($fn), $disabled, true);
                 }
             }
 
-            if (!function_exists('transnubet_mysql_start_from_sql')) {
+            if (!function_exists('BD_mysql_start_from_sql')) {
                 /**
                  * Obtiene el uptime (segundos) desde el propio MySQL.
                  */
-                function transnubet_mysql_start_from_sql($conn): ?int
+                function BD_mysql_start_from_sql($conn): ?int
                 {
                     if (!($conn instanceof mysqli)) {
                         return null;
@@ -265,21 +265,21 @@
                 }
             }
 
-            if (!function_exists('transnubet_mysql_start_from_os')) {
+            if (!function_exists('BD_mysql_start_from_os')) {
                 /**
                  * Marca de tiempo (epoch) del arranque real del proceso de MySQL.
                  */
-                function transnubet_mysql_start_from_os(): ?int
+                function BD_mysql_start_from_os(): ?int
                 {
                     // ---- Windows: WMI (wmic) ----
                     if (stripos(PHP_OS_FAMILY, 'Windows') !== false) {
-                        if (!transnubet_shell_disabled('shell_exec') && function_exists('shell_exec')) {
+                        if (!BD_shell_disabled('shell_exec') && function_exists('shell_exec')) {
                             // wmic (rápido)
                             $wmic = @shell_exec('wmic process where "name like \'%mysqld%\'" get CreationDate /format:list 2>nul');
                             if (is_string($wmic) && preg_match_all('/(\d{14}\.\d{6}[+-]\d{3})/', $wmic, $m)) {
                                 $mejor = null;
                                 foreach ($m[1] as $fecha) {
-                                    $ts = transnubet_parse_wmi_date($fecha);
+                                    $ts = BD_parse_wmi_date($fecha);
                                     if ($ts !== null && ($mejor === null || $ts < $mejor)) {
                                         $mejor = $ts;
                                     }
@@ -304,7 +304,7 @@
                             }
                         }
 
-                        return transnubet_mysql_start_from_pidfile();
+                        return BD_mysql_start_from_pidfile();
                     }
 
                     // ---- Linux: /proc ----
@@ -333,11 +333,11 @@
                             }
                         }
 
-                        return transnubet_mysql_start_from_pidfile();
+                        return BD_mysql_start_from_pidfile();
                     }
 
                     // ---- macOS / otros: ps ----
-                    if (!transnubet_shell_disabled('shell_exec') && function_exists('shell_exec')) {
+                    if (!BD_shell_disabled('shell_exec') && function_exists('shell_exec')) {
                         $pid = trim((string)@shell_exec('pgrep -x mysqld 2>/dev/null'));
                         if ($pid !== '' && ctype_digit($pid)) {
                             $inicio = trim((string)@shell_exec('ps -o lstart= -p ' . (int)$pid . ' 2>/dev/null'));
@@ -350,15 +350,15 @@
                         }
                     }
 
-                    return transnubet_mysql_start_from_pidfile();
+                    return BD_mysql_start_from_pidfile();
                 }
             }
 
-            if (!function_exists('transnubet_parse_wmi_date')) {
+            if (!function_exists('BD_parse_wmi_date')) {
                 /**
                  * Convierte "20261101205803.318779-240" (CIM_DATETIME) a epoch UTC.
                  */
-                function transnubet_parse_wmi_date(string $valor): ?int
+                function BD_parse_wmi_date(string $valor): ?int
                 {
                     if (!preg_match('/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\.\d+([+-])(\d{3})$/', $valor, $m)) {
                         return null;
@@ -377,11 +377,11 @@
                 }
             }
 
-            if (!function_exists('transnubet_mysql_start_from_pidfile')) {
+            if (!function_exists('BD_mysql_start_from_pidfile')) {
                 /**
                  * Respaldo: fecha de escritura del archivo .pid de MySQL.
                  */
-                function transnubet_mysql_start_from_pidfile(): ?int
+                function BD_mysql_start_from_pidfile(): ?int
                 {
                     $candidatos = [
                         dirname(__DIR__, 2) . '/mysql/my.ini',
@@ -425,19 +425,19 @@
                 }
             }
 
-            if (!function_exists('transnubet_mysql_uptime')) {
+            if (!function_exists('BD_mysql_uptime')) {
                 /**
                  * Uptime (segundos) de MySQL: SQL -> proceso real -> .pid -> tracker local.
                  */
-                function transnubet_mysql_uptime($conn): int
+                function BD_mysql_uptime($conn): int
                 {
-                    $desdeSql = transnubet_mysql_start_from_sql($conn);
+                    $desdeSql = BD_mysql_start_from_sql($conn);
                     if ($desdeSql !== null) {
                         return $desdeSql;
                     }
 
                     $cacheFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR
-                        . 'transnubet_mysql_start_' . substr(md5(__DIR__), 0, 8) . '.json';
+                        . 'BD_mysql_start_' . substr(md5(__DIR__), 0, 8) . '.json';
 
                     // Reutilizar el arranque detectado durante 2 minutos (evita llamar a WMI en cada carga)
                     if (is_file($cacheFile)) {
@@ -450,7 +450,7 @@
                         }
                     }
 
-                    $start = transnubet_mysql_start_from_os();
+                    $start = BD_mysql_start_from_os();
                     if ($start !== null && $start > 0) {
                         @file_put_contents($cacheFile, json_encode(['start' => $start, 'checked' => time()]), LOCK_EX);
                         return max(0, time() - $start);
@@ -458,7 +458,7 @@
 
                     // Último recurso: recordar la primera vez que se vio el servidor
                     $tracker = sys_get_temp_dir() . DIRECTORY_SEPARATOR
-                        . 'transnubet_mysql_seen_' . substr(md5(__DIR__), 0, 8) . '.json';
+                        . 'BD_mysql_seen_' . substr(md5(__DIR__), 0, 8) . '.json';
 
                     if (is_file($tracker)) {
                         $data = json_decode((string)@file_get_contents($tracker), true);
@@ -473,11 +473,11 @@
                 }
             }
 
-            if (!function_exists('transnubet_formato_uptime')) {
+            if (!function_exists('BD_formato_uptime')) {
                 /**
                  * Formatea segundos a un texto legible (nunca "0h 0m").
                  */
-                function transnubet_formato_uptime(int $segundos): string
+                function BD_formato_uptime(int $segundos): string
                 {
                     $segundos = max(0, $segundos);
                     $dias     = intdiv($segundos, 86400);
@@ -558,9 +558,9 @@
                         } catch (mysqli_sql_exception $e) { }
                         
                         // 3. Uptime Real de MySQL (SQL -> arranque del proceso -> .pid)
-                        $uptimeSeg = transnubet_mysql_uptime($conn);
+                        $uptimeSeg = BD_mysql_uptime($conn);
 
-                        $dbUptime = transnubet_formato_uptime($uptimeSeg);
+                        $dbUptime = BD_formato_uptime($uptimeSeg);
                         if ($uptimeSeg >= 0) {
                             $dbUptimeTitle = 'Activo desde '
                                 . date('d/m/Y H:i:s T', time() - $uptimeSeg)

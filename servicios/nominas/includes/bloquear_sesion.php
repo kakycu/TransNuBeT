@@ -1081,7 +1081,7 @@ $LOCK_SEGUNDOS = $auto_close_activo ? $tiempo_bloqueo_min * 60 : 0;
                     showConfirmButton: true,
                     confirmButtonText: '<i class="fas fa-check me-2"></i>Entendido',
                     confirmButtonColor: '#3b82f6',
-                    background: '<?php echo (isset($_COOKIE) && !empty($_COOKIE['transnubet_theme']) && $_COOKIE['transnubet_theme'] === 'light') ? '#ffffff' : 'rgba(15, 23, 42, 0.96)'; ?>',
+                    background: '<?php echo (isset($_COOKIE) && !empty($_COOKIE['BD_theme']) && $_COOKIE['BD_theme'] === 'light') ? '#ffffff' : 'rgba(15, 23, 42, 0.96)'; ?>',
                     color: '#ffffff',
                     backdrop: 'rgba(0, 0, 0, 0.65)',
                     allowOutsideClick: true

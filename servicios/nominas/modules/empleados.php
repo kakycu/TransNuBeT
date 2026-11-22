@@ -1091,7 +1091,7 @@ if ($action === 'crear') {
     } elseif (empty($_POST['fecha_alta'])) {
         $response['message'] = "Error: La fecha de alta es obligatoria.";
     } elseif (!empty($_POST['fecha_baja']) && !empty($_POST['fecha_alta']) && $_POST['fecha_baja'] < $_POST['fecha_alta']) {
-        $response['message'] = "No se puede establecer esa fecha pues es anterior a la fecha de Alta del Trabajador: " . transnubet_fecha_txt($_POST['fecha_alta']) . ", rectifique.";
+        $response['message'] = "No se puede establecer esa fecha pues es anterior a la fecha de Alta del Trabajador: " . BD_fecha_txt($_POST['fecha_alta']) . ", rectifique.";
     } elseif (empty($_POST['centro_costo_id'])) {
         $response['message'] = "Error: Debe seleccionar un Centro de Costo.";
     } elseif (empty($_POST['categoria_id'])) {
@@ -1220,7 +1220,7 @@ $stmt->execute([$id_nuevo]);
     } elseif (empty($_POST['fecha_alta'])) {
         $response['message'] = "Error: La fecha de alta es obligatoria.";
     } elseif (!empty($_POST['fecha_baja']) && !empty($_POST['fecha_alta']) && $_POST['fecha_baja'] < $_POST['fecha_alta']) {
-        $response['message'] = "No se puede establecer esa fecha pues es anterior a la fecha de Alta del Trabajador: " . transnubet_fecha_txt($_POST['fecha_alta']) . ", rectifique.";
+        $response['message'] = "No se puede establecer esa fecha pues es anterior a la fecha de Alta del Trabajador: " . BD_fecha_txt($_POST['fecha_alta']) . ", rectifique.";
     } elseif (empty($_POST['centro_costo_id'])) {
         $response['message'] = "Error: Debe seleccionar un Centro de Costo.";
     } elseif (empty($_POST['categoria_id'])) {
@@ -1458,7 +1458,7 @@ $fecha_anio = date('Y');
 $fechas_alta = $pdo->query("SELECT DISTINCT YEAR(fecha_alta) AS anio, MONTH(fecha_alta) AS mes FROM trabajadores WHERE fecha_alta IS NOT NULL AND fecha_alta <> '0000-00-00'")->fetchAll();
 $fechas_baja = $pdo->query("SELECT DISTINCT YEAR(fecha_baja) AS anio, MONTH(fecha_baja) AS mes FROM trabajadores WHERE fecha_baja IS NOT NULL AND fecha_baja <> '0000-00-00'")->fetchAll();
 
-function transnubet_fechas_para_js($rows) {
+function BD_fechas_para_js($rows) {
     $anios = array(); $meses = array(); $mesesPorAnio = array(); $aniosPorMes = array();
     foreach ($rows as $r) {
         $a = (int)$r['anio']; $m = (int)$r['mes'];
@@ -1477,12 +1477,12 @@ function transnubet_fechas_para_js($rows) {
     unset($aa);
     return array('anios' => $anios, 'meses' => $meses, 'mesesPorAnio' => $mesesPorAnio, 'aniosPorMes' => $aniosPorMes);
 }
-$jsAlta = transnubet_fechas_para_js($fechas_alta);
-$jsBaja = transnubet_fechas_para_js($fechas_baja);
+$jsAlta = BD_fechas_para_js($fechas_alta);
+$jsBaja = BD_fechas_para_js($fechas_baja);
 
 // Devuelve la fecha como 'YYYY-MM-DD' sin usar strtotime (evita el warning
 // "Epoch doesn't fit in a PHP integer" con años fuera de rango, p. ej. 0006-05-04)
-function transnubet_fecha_iso($f) {
+function BD_fecha_iso($f) {
     $f = trim((string)$f);
     if ($f === '' || strpos($f, '0000-00-00') === 0) return '';
     $f = substr($f, 0, 10);
@@ -1492,8 +1492,8 @@ function transnubet_fecha_iso($f) {
 }
 
 // Devuelve la fecha como 'DD/MM/YYYY' (o '-' si está vacía/inválida)
-function transnubet_fecha_txt($f) {
-    $iso = transnubet_fecha_iso($f);
+function BD_fecha_txt($f) {
+    $iso = BD_fecha_iso($f);
     if ($iso === '') return '-';
     $p = explode('-', $iso);
     return $p[2] . '/' . $p[1] . '/' . $p[0];
@@ -3699,7 +3699,7 @@ html[data-theme="orgullo"] {
                     $fila_roja = (($emp['vacaciones_acumuladas'] ?? 0) > 20);
                     if (($emp['no_acumular_vacaciones'] ?? 0) == 1) $valor_a_pagar = $emp['valor_vacaciones'];
                     ?>
-                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>" data-creado="<?php echo transnubet_fecha_iso($emp['created_at'] ?? ''); ?>" data-fecha-alta="<?php echo transnubet_fecha_iso($emp['fecha_alta'] ?? ''); ?>" data-fecha-baja="<?php echo transnubet_fecha_iso($emp['fecha_baja'] ?? ''); ?>" data-tiene-nomina="<?php echo isset($tiene_nomina_set[(int)$emp['id']]) ? '1' : '0'; ?>">
+                    <tr class="empleado-row <?php echo $fila_roja ? 'vacaciones-excedidas' : ''; ?>" data-id="<?php echo $emp['id']; ?>" data-cargo="<?php echo htmlspecialchars($emp['cargo'] ?? '', ENT_QUOTES); ?>" data-creado="<?php echo BD_fecha_iso($emp['created_at'] ?? ''); ?>" data-fecha-alta="<?php echo BD_fecha_iso($emp['fecha_alta'] ?? ''); ?>" data-fecha-baja="<?php echo BD_fecha_iso($emp['fecha_baja'] ?? ''); ?>" data-tiene-nomina="<?php echo isset($tiene_nomina_set[(int)$emp['id']]) ? '1' : '0'; ?>">
                         <td class="text-center">
                             <?php if ($puede_eliminar_empleados): ?>
                             <button class="btn-win btn-win-danger btn-win-sm" onclick="eliminarTrabajador(<?php echo $emp['id']; ?>, '<?php echo addslashes($emp['nombre_completo'] ?? ''); ?>')" title="Eliminar Empleado" data-tooltip="Eliminar Empleado" data-tooltip-theme="danger">
@@ -3733,8 +3733,8 @@ html[data-theme="orgullo"] {
                         <td class="text-end"><?php echo formatearMoneda($emp['salario_mensual'] ?? 0); ?></td>
                         <td class="text-end"><?php echo formatearMoneda($emp['salario_hora_ordinaria'] ?? 0); ?></td>
                         <td class="text-center"><?php echo htmlspecialchars($emp['cuentabanc'] ?? '-'); ?></td>
-                        <td class="text-center"><?php echo transnubet_fecha_txt($emp['fecha_alta'] ?? ''); ?></td>
-                        <td class="text-center"><?php echo transnubet_fecha_txt($emp['fecha_baja'] ?? ''); ?></td>
+                        <td class="text-center"><?php echo BD_fecha_txt($emp['fecha_alta'] ?? ''); ?></td>
+                        <td class="text-center"><?php echo BD_fecha_txt($emp['fecha_baja'] ?? ''); ?></td>
                         <td class="text-end fw-bold <?php echo $fila_roja ? 'text-danger' : 'text-info'; ?>">
                             <?php echo number_format((float)($emp['vacaciones_acumuladas'] ?? 0), 2); ?>
                         </td>

@@ -4306,7 +4306,7 @@ html .win-sidebar.collapsed .nav-submenu .nav-item:hover:not(.active) { border-c
 
 <script>
 (function () {
-    var THEME_KEY = 'transnubet_theme';
+    var THEME_KEY = 'BD_theme';
     window.themeColor = function (name, fallback) {
         var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         return v || fallback || '';

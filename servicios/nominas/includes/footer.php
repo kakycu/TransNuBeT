@@ -785,13 +785,13 @@ html.no-tooltips .tt-box{display:none!important}
         pie.classList.toggle('pie-minimizado',min);
     }
     function preferencia(){
-        try{return localStorage.getItem('transnubet_pie_min')!=='0';}catch(e){return true;}
+        try{return localStorage.getItem('BD_pie_min')!=='0';}catch(e){return true;}
     }
     btn.addEventListener('click',function(e){
         e.stopPropagation();
         var min=!pie.classList.contains('pie-minimizado');
         aplicar(min);
-        try{localStorage.setItem('transnubet_pie_min',min?'1':'0');}catch(e2){}
+        try{localStorage.setItem('BD_pie_min',min?'1':'0');}catch(e2){}
     });
     aplicar(esMovil()?preferencia():false);
     var temporizador=null;

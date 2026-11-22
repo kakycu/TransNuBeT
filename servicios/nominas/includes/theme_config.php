@@ -27,8 +27,8 @@
 try{
 var s=localStorage;
 function g(k,d){try{var v=s.getItem(k);return v!==null?v:d;}catch(e){return d;}}
-var perDev=(s.getItem('transnubet_per_device')||'true')!=='false';
-var manualDev=s.getItem('transnubet_device_manual');
+var perDev=(s.getItem('BD_per_device')||'true')!=='false';
+var manualDev=s.getItem('BD_device_manual');
 if(!(manualDev==='pc'||manualDev==='tableta'||manualDev==='movil'))manualDev=null;
 /* Clasificacion estable del dispositivo: el lado corto de la PANTALLA no depende
    del <meta viewport>. Evita que en moviles el arranque mida ~980 px y lea las
@@ -44,26 +44,26 @@ function clasificarDispositivo(){
 var DEV=clasificarDispositivo();
 if(!perDev&&manualDev)DEV=manualDev;
 function gd(k,def){
-    var kk=(k!=='transnubet_per_device'&&k!=='transnubet_device_manual')?k+'@'+DEV:k;
+    var kk=(k!=='BD_per_device'&&k!=='BD_device_manual')?k+'@'+DEV:k;
     var v=s.getItem(kk);
     if(v===null&&kk!==k)v=s.getItem(k);
     return v!==null?v:def;
 }
 var theme=<?php echo (defined('TN_THEME_FORZADO') && TN_THEME_FORZADO) ? json_encode(TN_THEME_FORZADO) : 'null' ?>;
-if(theme===null){theme=gd('transnubet_theme','win11');}
+if(theme===null){theme=gd('BD_theme','win11');}
 if(theme!=='light'&&theme!=='dark'&&theme!=='blue'&&theme!=='verde'&&theme!=='orgullo'&&theme!=='win11')theme='win11';
 var accDef={dark:'blue',light:'blue',blue:'cyan',verde:'green',orgullo:'purple',win11:'winblue'};
-var accent=gd('transnubet_accent_'+theme,null)||accDef[theme]||'blue';
-var radius=gd('transnubet_radius','10');
-var fontSize=gd('transnubet_font_size','1.0');
-var density=gd('transnubet_density','normal');
-var sidebarCompact=gd('transnubet_sidebar_compact','false');
-var sidebarOpacity=gd('transnubet_sidebar_opacity','95');
-var contentWidth=gd('transnubet_content_width','100');
-var animations=gd('transnubet_animations','true');
-var focusMode=gd('transnubet_focus_mode','false');
-var tooltips=gd('transnubet_tooltips','true');
-var stickyHeader=gd('transnubet_sticky_header','true');
+var accent=gd('BD_accent_'+theme,null)||accDef[theme]||'blue';
+var radius=gd('BD_radius','10');
+var fontSize=gd('BD_font_size','1.0');
+var density=gd('BD_density','normal');
+var sidebarCompact=gd('BD_sidebar_compact','false');
+var sidebarOpacity=gd('BD_sidebar_opacity','95');
+var contentWidth=gd('BD_content_width','100');
+var animations=gd('BD_animations','true');
+var focusMode=gd('BD_focus_mode','false');
+var tooltips=gd('BD_tooltips','true');
+var stickyHeader=gd('BD_sticky_header','true');
 
 var accents={
   blue:{c:'#3b82f6',r:'59,130,246',d:'#2563eb',l:'#93c5fd',bg:'rgba(59,130,246,0.12)',bg2:'rgba(59,130,246,0.06)'},
@@ -914,8 +914,8 @@ if(perDev&&!manualDev){
     var msUltimaRecarga=0;            /* Cuándo fue la última recarga automática */
     try{
         /* sessionStorage sobrevive al location.reload(): aqui recordamos cuantas recargas llevamos */
-        recargasAutomaticas=parseInt(sessionStorage.getItem('transnubet_recargas_auto')||'0',10)||0;
-        msUltimaRecarga=parseInt(sessionStorage.getItem('transnubet_recargas_auto_ms')||'0',10)||0;
+        recargasAutomaticas=parseInt(sessionStorage.getItem('BD_recargas_auto')||'0',10)||0;
+        msUltimaRecarga=parseInt(sessionStorage.getItem('BD_recargas_auto_ms')||'0',10)||0;
         if(Date.now()-msUltimaRecarga>30000){recargasAutomaticas=0;} /* ventana vencida: reiniciar */
     }catch(e){}
     window.addEventListener('resize',function(){
@@ -929,8 +929,8 @@ if(perDev&&!manualDev){
             var nuevoDispositivo=clasificarDispositivo();
             if(nuevoDispositivo!==DEV){
                 recargasAutomaticas++;msUltimaRecarga=Date.now();
-                try{sessionStorage.setItem('transnubet_recargas_auto',String(recargasAutomaticas));
-                    sessionStorage.setItem('transnubet_recargas_auto_ms',String(msUltimaRecarga));}catch(e){}
+                try{sessionStorage.setItem('BD_recargas_auto',String(recargasAutomaticas));
+                    sessionStorage.setItem('BD_recargas_auto_ms',String(msUltimaRecarga));}catch(e){}
                 location.reload();
             }
         },500);

@@ -83,14 +83,14 @@ if ($rutaPMAEncontrada !== '' && is_dir($rutaPMAEncontrada)) {
     }
 }
 
-if (!function_exists('transnubet_shell_disabled')) {
-    function transnubet_shell_disabled(string $fn): bool {
+if (!function_exists('BD_shell_disabled')) {
+    function BD_shell_disabled(string $fn): bool {
         $disabled = array_map('trim', explode(',', strtolower((string)ini_get('disable_functions'))));
         return in_array(strtolower($fn), $disabled, true);
     }
 }
-if (!function_exists('transnubet_mysql_start_from_sql')) {
-    function transnubet_mysql_start_from_sql($conn): ?int {
+if (!function_exists('BD_mysql_start_from_sql')) {
+    function BD_mysql_start_from_sql($conn): ?int {
         if (!($conn instanceof mysqli)) return null;
         foreach (["SHOW GLOBAL STATUS LIKE 'Uptime'", "SELECT VARIABLE_VALUE AS Value FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'UPTIME'", "SELECT VARIABLE_VALUE AS Value FROM performance_schema.global_status WHERE VARIABLE_NAME = 'UPTIME'"] as $sql) {
             try {
@@ -108,8 +108,8 @@ if (!function_exists('transnubet_mysql_start_from_sql')) {
         return null;
     }
 }
-if (!function_exists('transnubet_parse_wmi_date')) {
-    function transnubet_parse_wmi_date(string $valor): ?int {
+if (!function_exists('BD_parse_wmi_date')) {
+    function BD_parse_wmi_date(string $valor): ?int {
         if (!preg_match('/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\.\d+([+-])(\d{3})$/', $valor, $m)) return null;
         $local = gmmktime((int)$m[4], (int)$m[5], (int)$m[6], (int)$m[2], (int)$m[3], (int)$m[1]);
         if ($local === false) return null;
@@ -117,8 +117,8 @@ if (!function_exists('transnubet_parse_wmi_date')) {
         return $local - $offset;
     }
 }
-if (!function_exists('transnubet_mysql_start_from_pidfile')) {
-    function transnubet_mysql_start_from_pidfile(): ?int {
+if (!function_exists('BD_mysql_start_from_pidfile')) {
+    function BD_mysql_start_from_pidfile(): ?int {
         $candidatos = [dirname(__DIR__, 2) . '/mysql/my.ini', dirname(__DIR__) . '/mysql/my.ini', 'C:/Users/kakyc/Desktop/TRANSNUBET/mysql/my.ini', 'C:/USBWebserver/mysql/my.ini', 'C:/xampp/mysql/bin/my.ini'];
         $datadirs = [];
         foreach ($candidatos as $ini) {
@@ -139,33 +139,33 @@ if (!function_exists('transnubet_mysql_start_from_pidfile')) {
         return $mejor;
     }
 }
-if (!function_exists('transnubet_mysql_start_from_os')) {
-    function transnubet_mysql_start_from_os(): ?int {
+if (!function_exists('BD_mysql_start_from_os')) {
+    function BD_mysql_start_from_os(): ?int {
         if (stripos(PHP_OS_FAMILY, 'Windows') !== false) {
-            if (!transnubet_shell_disabled('shell_exec') && function_exists('shell_exec')) {
+            if (!BD_shell_disabled('shell_exec') && function_exists('shell_exec')) {
                 $wmic = @shell_exec('wmic process where "name like \'%mysqld%\'" get CreationDate /format:list 2>nul');
                 if (is_string($wmic) && preg_match_all('/(\d{14}\.\d{6}[+-]\d{3})/', $wmic, $m)) {
                     $mejor = null;
-                    foreach ($m[1] as $fecha) { $ts = transnubet_parse_wmi_date($fecha); if ($ts !== null && ($mejor === null || $ts < $mejor)) $mejor = $ts; }
+                    foreach ($m[1] as $fecha) { $ts = BD_parse_wmi_date($fecha); if ($ts !== null && ($mejor === null || $ts < $mejor)) $mejor = $ts; }
                     if ($mejor !== null) return $mejor;
                 }
             }
-            return transnubet_mysql_start_from_pidfile();
+            return BD_mysql_start_from_pidfile();
         }
-        return transnubet_mysql_start_from_pidfile();
+        return BD_mysql_start_from_pidfile();
     }
 }
-if (!function_exists('transnubet_mysql_uptime')) {
-    function transnubet_mysql_uptime($conn): int {
-        $desdeSql = transnubet_mysql_start_from_sql($conn);
+if (!function_exists('BD_mysql_uptime')) {
+    function BD_mysql_uptime($conn): int {
+        $desdeSql = BD_mysql_start_from_sql($conn);
         if ($desdeSql !== null) return $desdeSql;
-        $start = transnubet_mysql_start_from_os();
+        $start = BD_mysql_start_from_os();
         if ($start !== null && $start > 0) return max(0, time() - $start);
         return 0;
     }
 }
-if (!function_exists('transnubet_formato_uptime')) {
-    function transnubet_formato_uptime(int $segundos): string {
+if (!function_exists('BD_formato_uptime')) {
+    function BD_formato_uptime(int $segundos): string {
         $segundos = max(0, $segundos);
         $dias = intdiv($segundos, 86400);
         $horas = intdiv($segundos % 86400, 3600);
@@ -195,8 +195,8 @@ if (function_exists('mysqli_connect')) {
                     if ($res && $row = mysqli_fetch_assoc($res)) $dbTables = (string)($row['total'] ?? '0');
                 } catch (Throwable $e) {}
             }
-            $uptimeSeg = transnubet_mysql_uptime($dbConn);
-            $dbUptime = transnubet_formato_uptime($uptimeSeg);
+            $uptimeSeg = BD_mysql_uptime($dbConn);
+            $dbUptime = BD_formato_uptime($uptimeSeg);
             if ($uptimeSeg >= 0) $dbUptimeTitle = 'Activo desde ' . date('d/m/Y H:i:s T', time() - $uptimeSeg) . ' · ' . number_format($uptimeSeg) . ' segundos';
             @mysqli_close($dbConn);
         }
@@ -413,7 +413,7 @@ $ecosistema = [
 
 $servicios = [
     ['icono' => 'fa-solid fa-database',      'titulo' => 'Base de datos',  'texto' => 'Motor MySQL con integridad referencial, respaldo periódico y restauración confiable.'],
-    ['icono' => 'fa-brands fa-php',          'titulo' => 'PHP 8.1',        'texto' => 'Compatibilidad con el stack local y rendimiento estable para todos los módulos.'],
+    ['icono' => 'fa-brands fa-php',          'titulo' => 'PHP ' . $phpVersionDisplay,        'texto' => 'Compatibilidad con el stack local y rendimiento estable para todos los módulos.'],
     ['icono' => 'fa-solid fa-shield-halved', 'titulo' => 'Seguridad',      'texto' => 'Comunicación cifrada, autenticación reforzada y secretos fuera del código.'],
     ['icono' => 'fa-solid fa-arrows-rotate', 'titulo' => 'Sincronización', 'texto' => 'Información siempre al día entre módulos, sin cálculos repetidos ni desfases.'],
     ['icono' => 'fa-solid fa-clock',         'titulo' => 'Soporte 24/7',   'texto' => 'Acompañamiento continuo para la operación y resolución de incidencias.'],

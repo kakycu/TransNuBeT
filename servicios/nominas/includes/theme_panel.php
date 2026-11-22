@@ -410,13 +410,13 @@
 <script>
 (function(){
 /* ===== CONSTANTS ===== */
-var STORAGE_KEY='transnubet_theme';
+var STORAGE_KEY='BD_theme';
 var ACCENTS={blue:{c:'#3b82f6',r:'59,130,246'},winblue:{c:'#0078d4',r:'0,120,212'},purple:{c:'#8b5cf6',r:'139,92,246'},green:{c:'#10b981',r:'16,185,129'},amber:{c:'#f59e0b',r:'245,158,11'},red:{c:'#ef4444',r:'239,68,68'},cyan:{c:'#06b6d4',r:'6,182,212'},teal:{c:'#14b8a6',r:'20,184,166'},pink:{c:'#ec4899',r:'236,72,153'},indigo:{c:'#6366f1',r:'99,102,241'},rose:{c:'#f43f5e',r:'244,63,94'},orange:{c:'#f97316',r:'249,115,22'},lime:{c:'#84cc16',r:'132,204,22'},fuchsia:{c:'#d946ef',r:'217,70,239'},slate:{c:'#64748b',r:'100,116,139'},forest:{c:'#228b22',r:'34,139,34'},navy:{c:'#1e3a8a',r:'30,58,138'}};
 var DEFAULTS={theme:'win11',radius:'10',font_size:'1.0',density:'normal',sidebar_compact:'false',sidebar_opacity:'95',content_width:'100',animations:'true',focus_mode:'false',tooltips:'true',sticky_header:'true',per_device:'true'};
 var ACCDEF={dark:'blue',light:'blue',blue:'cyan',verde:'green',orgullo:'purple',win11:'winblue'};
 
 /* ===== HELPERS ===== */
-var PER_KEY='transnubet_per_device';
+var PER_KEY='BD_per_device';
 function raw(k,d){try{var v=localStorage.getItem(k);return v!==null?v:d;}catch(e){return d;}}
 function rawSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 /* Misma logica estable que theme_config.php: lado corto de pantalla primero
@@ -429,11 +429,11 @@ function curDev(){
     return w<=768?'movil':(w<=1024?'tableta':'pc');
 }
 function pdev(){return raw(PER_KEY,'true')!=='false';}
-function effDev(){return pdev()?curDev():(raw('transnubet_device_manual',null)||curDev());}
+function effDev(){return pdev()?curDev():(raw('BD_device_manual',null)||curDev());}
 /* Con perfiles activos, lee/escribe la clave del dispositivo activo (@pc/@tableta/@movil).
    PER_KEY y device_manual siempre van sin sufijo (son los selectores). */
-function g(k,d){var kk=(k!==PER_KEY&&k!=='transnubet_device_manual')?k+'@'+effDev():k;return raw(kk,d);}
-function s(k,v){try{localStorage.setItem((k!==PER_KEY&&k!=='transnubet_device_manual')?k+'@'+effDev():k,v);}catch(e){}}
+function g(k,d){var kk=(k!==PER_KEY&&k!=='BD_device_manual')?k+'@'+effDev():k;return raw(kk,d);}
+function s(k,v){try{localStorage.setItem((k!==PER_KEY&&k!=='BD_device_manual')?k+'@'+effDev():k,v);}catch(e){}}
 
 /* ===== DOM REFS ===== */
 var panel=document.getElementById('tpPanel');
@@ -484,34 +484,34 @@ function loadCurrentValues(){
     document.querySelectorAll('.tp-theme-btn').forEach(function(b){b.classList.toggle('active',b.dataset.tpTheme===theme);});
     /* Accent: por tema, con default propio */
     var th=g(STORAGE_KEY,'win11');
-    var accent=g('transnubet_accent_'+th,null)||ACCDEF[th]||'blue';
+    var accent=g('BD_accent_'+th,null)||ACCDEF[th]||'blue';
     document.querySelectorAll('.tp-accent-dot').forEach(function(d){d.classList.toggle('active',d.dataset.accent===accent);});
     /* Radius */
-    var radius=g('transnubet_radius','10');
+    var radius=g('BD_radius','10');
     document.querySelectorAll('#tpRadiusGroup .tp-radio').forEach(function(b){b.classList.toggle('active',b.dataset.val===radius);});
     /* Font */
-    var fs=g('transnubet_font_size','1.0');
+    var fs=g('BD_font_size','1.0');
     document.querySelectorAll('#tpFontGroup .tp-radio').forEach(function(b){b.classList.toggle('active',b.dataset.val===fs);});
     /* Density */
-    var den=g('transnubet_density','normal');
+    var den=g('BD_density','normal');
     document.querySelectorAll('#tpDensityGroup .tp-radio').forEach(function(b){b.classList.toggle('active',b.dataset.val===den);});
     /* Sidebar compact */
-    document.getElementById('tpSidebarCompact').checked=(g('transnubet_sidebar_compact','false')==='true');
+    document.getElementById('tpSidebarCompact').checked=(g('BD_sidebar_compact','false')==='true');
     /* Sidebar opacity */
-    var op=g('transnubet_sidebar_opacity','95');
+    var op=g('BD_sidebar_opacity','95');
     document.getElementById('tpSidebarOpacity').value=op;
     document.getElementById('tpOpacityVal').textContent=op+'%';
     /* Content width */
-    var cw=g('transnubet_content_width','100');
+    var cw=g('BD_content_width','100');
     document.querySelectorAll('#tpContentWidthGroup .tp-chip').forEach(function(b){b.classList.toggle('active',b.dataset.val===cw);});
     /* Animations */
-    document.getElementById('tpAnimations').checked=(g('transnubet_animations','true')==='true');
+    document.getElementById('tpAnimations').checked=(g('BD_animations','true')==='true');
     /* Focus mode */
-    document.getElementById('tpFocusMode').checked=(g('transnubet_focus_mode','false')==='true');
+    document.getElementById('tpFocusMode').checked=(g('BD_focus_mode','false')==='true');
     /* Tooltips */
-    document.getElementById('tpTooltips').checked=(g('transnubet_tooltips','true')==='true');
+    document.getElementById('tpTooltips').checked=(g('BD_tooltips','true')==='true');
     /* Sticky header */
-    document.getElementById('tpStickyHeader').checked=(g('transnubet_sticky_header','true')==='true');
+    document.getElementById('tpStickyHeader').checked=(g('BD_sticky_header','true')==='true');
     /* Vista de dispositivo */
     var pd=pdev();
     var eff=effDev();
@@ -528,7 +528,7 @@ document.querySelectorAll('.tp-theme-btn').forEach(function(btn){
         document.querySelectorAll('.tp-theme-btn').forEach(function(b){b.classList.remove('active');});
         btn.classList.add('active');
         applyTheme(btn.dataset.tpTheme);
-        var na=g('transnubet_accent_'+btn.dataset.tpTheme,null)||ACCDEF[btn.dataset.tpTheme]||'blue';
+        var na=g('BD_accent_'+btn.dataset.tpTheme,null)||ACCDEF[btn.dataset.tpTheme]||'blue';
         document.querySelectorAll('.tp-accent-dot').forEach(function(d){d.classList.toggle('active',d.dataset.accent===na);});
         applyAccent(na);
     });
@@ -569,28 +569,28 @@ document.getElementById('tpSidebarOpacity').addEventListener('input',function(){
 /* Modo enfoque en vivo */
 document.getElementById('tpFocusMode').addEventListener('change',function(){
     document.documentElement.classList.toggle('focus-mode',this.checked);
-    s('transnubet_focus_mode',this.checked?'true':'false');
+    s('BD_focus_mode',this.checked?'true':'false');
     updateCustomBadge();
 });
 
 /* Animaciones en vivo */
 document.getElementById('tpAnimations').addEventListener('change',function(){
     document.documentElement.classList.toggle('no-animations',!this.checked);
-    s('transnubet_animations',this.checked?'true':'false');
+    s('BD_animations',this.checked?'true':'false');
     updateCustomBadge();
 });
 
 /* Tooltips en vivo */
 document.getElementById('tpTooltips').addEventListener('change',function(){
     document.documentElement.classList.toggle('no-tooltips',!this.checked);
-    s('transnubet_tooltips',this.checked?'true':'false');
+    s('BD_tooltips',this.checked?'true':'false');
     updateCustomBadge();
 });
 
 /* Sticky header en vivo */
 document.getElementById('tpStickyHeader').addEventListener('change',function(){
     document.documentElement.classList.toggle('sticky-header',this.checked);
-    s('transnubet_sticky_header',this.checked?'true':'false');
+    s('BD_sticky_header',this.checked?'true':'false');
     updateCustomBadge();
 });
 
@@ -599,14 +599,14 @@ document.querySelectorAll('#tpDeviceGroup .tp-radio').forEach(function(btn){
     btn.addEventListener('click',function(){
         if(btn.dataset.val===effDev())return;
         rawSet(PER_KEY,'false');
-        rawSet('transnubet_device_manual',btn.dataset.val);
+        rawSet('BD_device_manual',btn.dataset.val);
         window.location.reload();
     });
 });
 
 /* Detección automática: vuelve al perfil del dispositivo real */
 document.getElementById('tpPerDevice').addEventListener('change',function(){
-    if(this.checked){try{localStorage.removeItem('transnubet_device_manual');}catch(e){}}
+    if(this.checked){try{localStorage.removeItem('BD_device_manual');}catch(e){}}
     rawSet(PER_KEY,this.checked?'true':'false');
     window.location.reload();
 });
@@ -644,17 +644,17 @@ saveBtn.addEventListener('click',function(){
 
     /* Persist */
     s(STORAGE_KEY,theme);
-    s('transnubet_accent_'+theme,accent);
-    s('transnubet_radius',radius);
-    s('transnubet_font_size',font_size);
-    s('transnubet_density',density);
-    s('transnubet_sidebar_compact',sidebar_compact);
-    s('transnubet_sidebar_opacity',sidebar_opacity);
-    s('transnubet_content_width',content_width);
-    s('transnubet_animations',animations);
-    s('transnubet_focus_mode',focus_mode);
-    s('transnubet_tooltips',tooltips);
-    s('transnubet_sticky_header',sticky_header);
+    s('BD_accent_'+theme,accent);
+    s('BD_radius',radius);
+    s('BD_font_size',font_size);
+    s('BD_density',density);
+    s('BD_sidebar_compact',sidebar_compact);
+    s('BD_sidebar_opacity',sidebar_opacity);
+    s('BD_content_width',content_width);
+    s('BD_animations',animations);
+    s('BD_focus_mode',focus_mode);
+    s('BD_tooltips',tooltips);
+    s('BD_sticky_header',sticky_header);
 
     /* Sincroniza el estado del hamburger con la opción del tema para que no peleen:
        compacto ON -> sidebar siempre colapsado; OFF -> arranca expandido. */
@@ -681,15 +681,15 @@ saveBtn.addEventListener('click',function(){
 /* ===== RESET ===== */
 resetBtn.addEventListener('click',function(){
     Object.keys(DEFAULTS).forEach(function(k){
-        var lk=k==='theme'?STORAGE_KEY:'transnubet_'+k;
+        var lk=k==='theme'?STORAGE_KEY:'BD_'+k;
         s(lk,DEFAULTS[k]);
     });
     try{
         Object.keys(localStorage).forEach(function(k){
-            if(k.indexOf('transnubet_accent_')===0){localStorage.removeItem(k);}
+            if(k.indexOf('BD_accent_')===0){localStorage.removeItem(k);}
         });
     }catch(e){}
-    try{localStorage.removeItem('transnubet_device_manual');}catch(e){}
+    try{localStorage.removeItem('BD_device_manual');}catch(e){}
     try{localStorage.removeItem('winSidebarCollapsed');}catch(e){}
     window.location.reload();
 });
@@ -698,11 +698,11 @@ resetBtn.addEventListener('click',function(){
 function countCustom(){
     var n=0;
     Object.keys(DEFAULTS).forEach(function(k){
-        var lk=(k==='theme')?STORAGE_KEY:'transnubet_'+k;
+        var lk=(k==='theme')?STORAGE_KEY:'BD_'+k;
         if(g(lk,DEFAULTS[k])!==DEFAULTS[k])n++;
     });
     var th=g(STORAGE_KEY,'win11');
-    if((g('transnubet_accent_'+th,null)||ACCDEF[th]||'blue')!==ACCDEF[th])n++;
+    if((g('BD_accent_'+th,null)||ACCDEF[th]||'blue')!==ACCDEF[th])n++;
     return n;
 }
 function updateCustomBadge(){
