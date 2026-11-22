@@ -1734,6 +1734,7 @@ $faq = [
 
         <div class="nav-links">
             <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+            <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> ECOSIST.</a>
             <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
             <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
             <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
@@ -1776,7 +1777,8 @@ $faq = [
 
     <div class="menu-movil" id="menuMovil">
         <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-        <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
+        <a href="#ecosistema"><i class="fa-solid fa-cubes" aria-hidden="true"></i> ECOSIST.</a>
+            <a href="#servicios"><i class="fa-solid fa-microchip" aria-hidden="true"></i> INGENIERÍA</a>
         <a href="#medida"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> A medida</a>
         <a href="#licencia-estado"><i class="fa-solid fa-key" aria-hidden="true"></i> Licencia</a>
         <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> SERVICIOS</a>
