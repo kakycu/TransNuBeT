@@ -1830,8 +1830,8 @@ $faq = [
                     <button type="button" role="menuitem" data-lic-open><i class="fa-solid fa-key" aria-hidden="true"></i> Activar / Renovar</button>
                     <button type="button" role="menuitem" data-estado-lic-open><i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa</button>
                     <button type="button" role="menuitem" data-sol-open><i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo</button>
-                    <a role="menuitem" href="/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Pedir soporte</a>
                     <a role="menuitem" href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver Planes / Precios</a>
+                    <a role="menuitem" href="/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Solicitar Soporte</a>
                 </div>
             </div>
             <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
@@ -1880,8 +1880,8 @@ $faq = [
         <button type="button" class="menu-movil-item" data-lic-open><i class="fa-solid fa-key" aria-hidden="true"></i> Activar / Renovar</button>
         <button type="button" class="menu-movil-item" data-estado-lic-open><i class="fa-solid fa-id-card" aria-hidden="true"></i> Ver ficha completa</button>
         <button type="button" class="menu-movil-item" data-sol-open><i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo</button>
-        <a href="/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Pedir soporte</a>
         <a href="#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Ver Planes / Precios</a>
+        <a href="/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Solicitar Soporte</a>
         <a href="#preguntas"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
         <span class="menu-movil-titulo">Iniciar sesión</span>
         <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
@@ -2528,7 +2528,7 @@ $faq = [
                             <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo
                         </button>
                         <a class="btn btn-ghost btn-sm" href="<?= $base ?>/soporte.php">
-                            <i class="fa-solid fa-headset" aria-hidden="true"></i> Pedir soporte
+                            <i class="fa-solid fa-headset" aria-hidden="true"></i> Solicitar Soporte
                         </a>
                     </div>
                 </div>
@@ -3186,8 +3186,10 @@ $faq = [
             .catch(function () { /* se conservan los valores escritos */ });
     }
 
+    var licEstabaAbierto = false;
     function abrir() {
-        if (licOverlay) { licOverlay.hidden = true; }
+        licEstabaAbierto = !!(licOverlay && !licOverlay.hidden);
+        if (licEstabaAbierto) { licOverlay.hidden = true; }
         overlay.hidden = false;
         document.body.classList.add('lic-abierto');
         limpiarAviso();
@@ -3200,11 +3202,13 @@ $faq = [
         overlay.hidden = true;
         limpiarAviso();
         cerrarMenuEnvio();
-        if (licOverlay) {
+        if (licEstabaAbierto && licOverlay) {
             licOverlay.hidden = false;
             document.body.classList.add('lic-abierto');
         } else {
-            document.body.classList.remove('lic-abierto');
+            if (!document.querySelector('.lic-overlay:not([hidden])')) {
+                document.body.classList.remove('lic-abierto');
+            }
         }
     }
 
