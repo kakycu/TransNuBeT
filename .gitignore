@@ -24,6 +24,7 @@ Desktop.ini
 .env
 .env.*
 *.local
+api/eltoque-token.local.php
 **/.tool_token
 **/nominas/config.php
 correo_privado.php

@@ -1262,15 +1262,17 @@ $faq = [
             </div>
 
             <div class="precios-grid">
-                <article class="plan-card reveal">
-                    <h3 class="plan-name">Básico</h3>
-                    <p class="plan-desc">Para pequeños negocios que quieren ordenar su operación y empezar a trabajar con control.</p>
-                    <div class="plan-price">
-                        <span class="plan-amount">15</span>
-                        <span class="plan-currency">USD</span>
-                        <span class="plan-period">/mes</span>
+                <article class="plan-card reveal" style="--plan-color:#00D4FF">
+                    <div class="plan-head">
+                        <h3 class="plan-name">Básico</h3>
+                        <p class="plan-desc">Para pequeños negocios que quieren ordenar su operación y empezar a trabajar con control.</p>
                     </div>
-                    <p class="plan-note">Licencia por equipo, con soporte inicial.</p>
+                    <div class="plan-price">
+                        <span class="plan-price-amount">15</span>
+                        <span class="plan-price-currency">USD</span>
+                        <span class="plan-price-period">/mes</span>
+                    </div>
+                    <p class="plan-price-cup" data-usd="15">(Aprox. 14.400 CUP a la tasa del día)</p>
                     <hr class="plan-divider">
                     <ul class="plan-features">
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>1 módulo principal a elegir</span></li>
@@ -1282,16 +1284,18 @@ $faq = [
                     <a href="#licencia-estado" class="plan-cta plan-cta-secondary"><i class="fa-solid fa-key" aria-hidden="true"></i> Activar licencia</a>
                 </article>
 
-                <article class="plan-card is-featured reveal">
-                    <span class="plan-badge"><i class="fa-solid fa-star" aria-hidden="true"></i> Más elegido</span>
-                    <h3 class="plan-name">Profesional</h3>
-                    <p class="plan-desc">Para negocios en crecimiento que necesitan integrar varios módulos y tener más control.</p>
-                    <div class="plan-price">
-                        <span class="plan-amount">30</span>
-                        <span class="plan-currency">USD</span>
-                        <span class="plan-period">/mes</span>
+                <article class="plan-card reveal" style="--plan-color:#FF6B00">
+                    <span class="plan-badge"><i class="fa-solid fa-fire" aria-hidden="true"></i> El más solicitado</span>
+                    <div class="plan-head">
+                        <h3 class="plan-name">Profesional</h3>
+                        <p class="plan-desc">Para negocios en crecimiento que necesitan integrar varios módulos y tener más control.</p>
                     </div>
-                    <p class="plan-note">Ideal para operaciones con varios procesos.</p>
+                    <div class="plan-price">
+                        <span class="plan-price-amount">30</span>
+                        <span class="plan-price-currency">USD</span>
+                        <span class="plan-price-period">/mes</span>
+                    </div>
+                    <p class="plan-price-cup" data-usd="30">(Aprox. 28.800 CUP a la tasa del día)</p>
                     <hr class="plan-divider">
                     <ul class="plan-features">
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Hasta 3 módulos del ecosistema SiGesEmp</span></li>
@@ -1303,15 +1307,18 @@ $faq = [
                     <a href="#licencia-estado" class="plan-cta plan-cta-primary"><i class="fa-solid fa-rocket" aria-hidden="true"></i> Empezar ahora</a>
                 </article>
 
-                <article class="plan-card reveal">
-                    <h3 class="plan-name">Empresarial</h3>
-                    <p class="plan-desc">Para empresas que necesitan la plataforma completa, acompañamiento y mayor capacidad de operación.</p>
-                    <div class="plan-price">
-                        <span class="plan-amount">50</span>
-                        <span class="plan-currency">USD</span>
-                        <span class="plan-period">/mes</span>
+                <article class="plan-card is-featured reveal" style="--plan-color:#7949b5">
+                    <span class="plan-badge"><i class="fa-solid fa-star" aria-hidden="true"></i> Solución Integral</span>
+                    <div class="plan-head">
+                        <h3 class="plan-name">Empresarial</h3>
+                        <p class="plan-desc">Para empresas que necesitan la plataforma completa, acompañamiento y mayor capacidad de operación.</p>
                     </div>
-                    <p class="plan-note">Pensado para gestión integral y crecimiento.</p>
+                    <div class="plan-price">
+                        <span class="plan-price-amount">50</span>
+                        <span class="plan-price-currency">USD</span>
+                        <span class="plan-price-period">/mes</span>
+                    </div>
+                    <p class="plan-price-cup" data-usd="50">(Aprox. 48.000 CUP a la tasa del día)</p>
                     <hr class="plan-divider">
                     <ul class="plan-features">
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Todos los módulos de SiGesEmp</span></li>
@@ -1320,7 +1327,7 @@ $faq = [
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Asistencia en puesta en marcha</span></li>
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i><span>Soporte técnico y acompañamiento continuo</span></li>
                     </ul>
-                    <a href="/desamedida.php" class="plan-cta plan-cta-secondary"><i class="fa-solid fa-comments" aria-hidden="true"></i> Solicitar propuesta</a>
+                    <a href="/desamedida.php" class="plan-cta plan-cta-primary"><i class="fa-solid fa-comments" aria-hidden="true"></i> Solicitar propuesta</a>
                 </article>
             </div>
 
@@ -2732,6 +2739,63 @@ $faq = [
         if(b) b.classList.remove('is-spinning');
       });
   });
+})();
+</script>
+<script>
+/* Tasa USD->CUP dinámica (inspirado en cyberforja tasa.js/product-page.js) */
+(function () {
+    var KEY = 'cf_tasa_usd_cup';
+    var REFRESH_MS = 6 * 60 * 60 * 1000;
+    var FALLBACK = 960;
+    function fmt(usd, rate) {
+        var cup = Math.round(usd * rate);
+        var n = cup.toLocaleString('es-ES');
+        return '(Aprox. ' + n + ' CUP a la tasa del día)';
+    }
+    function apply(rate) {
+        document.querySelectorAll('.plan-price-cup[data-usd]').forEach(function (el) {
+            var usd = parseFloat(el.getAttribute('data-usd'));
+            if (!isFinite(usd)) return;
+            el.textContent = fmt(usd, rate);
+        });
+    }
+    function readCache() {
+        try {
+            var raw = localStorage.getItem(KEY);
+            if (!raw) return null;
+            var obj = JSON.parse(raw);
+            if (!obj || typeof obj.rate !== 'number') return null;
+            return obj;
+        } catch (e) { return null; }
+    }
+    function writeCache(rate) {
+        try { localStorage.setItem(KEY, JSON.stringify({ rate: rate, ts: Date.now() })); } catch (e) {}
+    }
+    function parseRate(json) {
+        var rate = json && json.success && json.data && json.data.rate;
+        if (typeof rate !== 'number' || !isFinite(rate) || rate <= 0) throw new Error('bad');
+        return rate;
+    }
+    function fetchRate() {
+        return fetch('/api/exchange-rate.php', { credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+            .then(parseRate)
+            .catch(function () {
+                return fetch('https://cyberforja.com/api/exchange-rate', { credentials: 'omit' })
+                    .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+                    .then(parseRate);
+            });
+    }
+    var cached = readCache();
+    if (cached && typeof cached.rate === 'number') apply(cached.rate);
+    var fresh = cached && (Date.now() - (cached.ts || 0) < REFRESH_MS);
+    if (fresh) return;
+    fetchRate().then(function (rate) {
+        writeCache(rate);
+        apply(rate);
+    }).catch(function () {
+        if (!cached) apply(FALLBACK);
+    });
 })();
 </script>
 </body>
