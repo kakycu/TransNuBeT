@@ -438,6 +438,10 @@ $faq = [
         'r' => 'Si la licencia vence, los módulos dejan de abrir hasta registrar una llave válida. Todo el trámite de activación o renovación se realiza desde la portada, de forma rápida y sin perder la información de tu equipo.',
     ],
     [
+        'p' => '¿Cómo adquiero una licencia?',
+        'r' => 'Revisa los <a href="#precios">planes y precios</a> y elige el que mejor se adapte a tu negocio. Luego, desde la sección <a href="#licencia-estado">Estado de la licencia</a> puedes solicitarla por correo, recibir tu llave o archivo <code>.lic</code> y activarla en este mismo equipo. Si necesitas ayuda, escribe a <a href="mailto:kakycu@gmail.com">kakycu@gmail.com</a> o por WhatsApp al <a href="https://wa.me/5352712861">+53 5 2712861</a>.',
+    ],
+    [
         'p' => '¿Necesito internet para usar el sistema?',
         'r' => 'No. El sistema corre en tu propio equipo o en tu red local con Apache, PHP y MySQL. Tus datos se mantienen dentro de tu red.',
     ],
@@ -2982,9 +2986,6 @@ $faq = [
 <!-- ===== Estado de la licencia ===== -->
 <div class="lic-overlay" id="estadoLicencia" hidden>
     <div class="lic-modal" role="dialog" aria-modal="true" aria-labelledby="edoLicTitulo">
-        <button type="button" class="lic-modal-x" data-estado-lic-close aria-label="Cerrar">
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-        </button>
         <div class="lic-modal-head">
             <span class="lic-modal-icon"><i class="fa-solid fa-key" aria-hidden="true"></i></span>
             <div>
@@ -3031,7 +3032,7 @@ $faq = [
             <button type="button" class="btn btn-glass" data-estado-lic-ir="solicitud">
                 <i class="fa-solid fa-envelope" aria-hidden="true"></i> Solicitar por correo
             </button>
-            <button type="button" class="btn btn-glass" data-estado-lic-close>Cerrar</button>
+            <button type="button" class="btn btn-glass" data-estado-lic-close><i class="fa-solid fa-xmark" aria-hidden="true"></i> Cerrar</button>
         </div>
     </div>
 </div>
