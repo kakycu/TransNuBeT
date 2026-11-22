@@ -513,8 +513,9 @@ $faq = [
     </div>
     <div class="intro-bar" aria-hidden="true"><span id="introBar"></span></div>
     <div class="intro-acciones">
-        <button type="button" class="intro-skip" id="introNoMostrar">No volver a mostrar intro</button>
-        <button type="button" class="intro-skip" id="introSkip">Saltar intro</button>
+        <button type="button" class="intro-skip" id="introNoMostrar">No volver a mostrar </button>
+        <button type="button" class="intro-skip" id="introReplay">Repetir</button>
+        <button type="button" class="intro-skip" id="introSkip">Saltar</button>
     </div>
 </div>
 <script>(function(){var i=document.getElementById('introAnim');if(localStorage.getItem('introOculta')==='1'){if(i)i.classList.add('is-out');}else{document.documentElement.classList.add('intro-lock');}})();</script>
@@ -2427,6 +2428,7 @@ $faq = [
     var barra = document.getElementById('introBar');
     var saltar = document.getElementById('introSkip');
     var noMostrar = document.getElementById('introNoMostrar');
+    var replay = document.getElementById('introReplay');
     var capas = intro.querySelectorAll('.intro-layer');
     var capaFinal = intro.querySelector('.intro-final');
     var pasos = capas.length + 1;
@@ -2467,7 +2469,7 @@ $faq = [
         if (barra) { barra.style.width = '100%'; }
         intro.classList.add('is-out');
         raiz.classList.remove('intro-lock');
-        window.setTimeout(function () {
+        esperar(function () {
             if (intro.parentNode) { intro.parentNode.removeChild(intro); }
         }, 900);
     }
@@ -2492,7 +2494,25 @@ $faq = [
         esperar(function () { mostrarCapa(indice + 1); }, 820);
     }
 
+    function reiniciar() {
+        for (var i = 0; i < temporizadores.length; i++) { window.clearTimeout(temporizadores[i]); }
+        temporizadores = [];
+        terminado = false;
+        intro.classList.remove('is-out', 'is-final', 'is-sheen');
+        raiz.classList.add('intro-lock');
+        if (barra) { barra.style.width = '0%'; }
+        for (var j = 0; j < capas.length; j++) { capas[j].classList.remove('is-on'); }
+        if (capaFinal) {
+            capaFinal.classList.remove('is-on');
+            capaFinal.style.transition = '';
+            capaFinal.style.transform = '';
+        }
+        esperar(terminar, 14000);
+        esperar(function () { mostrarCapa(0); }, 220);
+    }
+
     if (saltar) { saltar.addEventListener('click', terminar); }
+    if (replay) { replay.addEventListener('click', reiniciar); }
     if (noMostrar) { noMostrar.addEventListener('click', function () { try { localStorage.setItem('introOculta', '1'); } catch (e) {} terminar(); }); }
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && !terminado) { terminar(); }
