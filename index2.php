@@ -1822,7 +1822,7 @@ $faq = [
             <a href="#nosotros"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
             <a href="#plataforma"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Plataforma</a>
             <div class="nav-drop" id="navLic">
-                <button type="button" class="nav-drop-toggle" id="navLicBtn" aria-haspopup="true" aria-expanded="false" aria-controls="navLicMenu">
+                <button type="button" class="nav-drop-toggle" id="navLicBtn" data-nav-scroll="#licencia-estado" aria-haspopup="true" aria-expanded="false" aria-controls="navLicMenu">
                     <i class="fa-solid fa-key" aria-hidden="true"></i> Licencia
                     <i class="fa-solid fa-chevron-down nav-drop-caret" aria-hidden="true"></i>
                 </button>
@@ -3875,6 +3875,15 @@ $faq = [
         if (!btn) return;
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
+            var scrollTo = btn.getAttribute('data-nav-scroll');
+            if (scrollTo) {
+                var target = document.querySelector(scrollTo);
+                if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                cont.classList.add('is-open');
+                btn.setAttribute('aria-expanded', 'true');
+                drops.forEach(function (d) { if (d !== cont) cerrar(d); });
+                return;
+            }
             var abierto = cont.classList.toggle('is-open');
             btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
             drops.forEach(function (d) { if (d !== cont) cerrar(d); });
