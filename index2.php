@@ -1831,7 +1831,7 @@ $faq = [
                             <h4>Compromiso y visión</h4>
                             <p>Conoce nuestra historia, cómo trabajamos cada desarrollo y la trayectoria que respalda a UnicornioSoftware.</p>
                         </div>
-                        <a class="btn-outline-fuego" href="<?= $base ?>/soporte.php">
+                        <a class="btn-outline-fuego" href="/about.php">
                             <i class="fa-solid fa-users" aria-hidden="true"></i> Conoce nuestro equipo &rarr;
                         </a>
                     </div>

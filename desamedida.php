@@ -549,6 +549,8 @@
             <a href="#como-trabajamos"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Cómo trabajamos</a>
             <a href="#lo-que-construimos"><i class="fa-solid fa-hammer" aria-hidden="true"></i> Construimos</a>
             <a href="#faq"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
+            <a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
+            <a href="#cuentanos"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> CUÉNTANOS</a>
         </div>
 
         <div class="nav-acc">
@@ -589,6 +591,8 @@
         <a href="#como-trabajamos"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Cómo trabajamos</a>
         <a href="#lo-que-construimos"><i class="fa-solid fa-hammer" aria-hidden="true"></i> Construimos</a>
         <a href="#faq"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
+        <a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
+        <a href="#cuentanos"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> CUÉNTANOS</a>
         <span class="menu-movil-titulo">Iniciar sesión</span>
         <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
         <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
@@ -943,7 +947,7 @@
     </section>
 
     <!-- CIERRE -->
-<section class="relative py-20 bg-gradient-to-r from-abismo via-[#2a1205] to-abismo border-t border-acero text-center overflow-hidden">
+<section id="cuentanos" class="relative py-20 bg-gradient-to-r from-abismo via-[#2a1205] to-abismo border-t border-acero text-center overflow-hidden">
 
     <!-- Glow decorativo de fondo -->
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
