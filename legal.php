@@ -79,11 +79,13 @@
     .legal-hero h1 { font-family:"Bebas Neue",Impact,sans-serif; font-weight:400; font-size:clamp(2.8rem,7vw,4.5rem); line-height:.95; letter-spacing:.03em; color:#fff; margin:0; text-transform:uppercase; }
     .legal-hero p { color:var(--gris-2); margin:1rem auto 0; max-width:36rem; line-height:1.75; font-size:1rem; }
     .legal-hero .updated { color:var(--gris-3); font-size:.75rem; margin-top:1rem; }
+    .print-brand { display:none; }
     .hero-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:1rem; margin-top:2rem; }
     .hero-btn { display:inline-flex; align-items:center; gap:.5rem; font-family:"Exo 2",sans-serif; font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; padding:.85rem 1.5rem; border:1px solid var(--acero); border-radius:.25rem; color:var(--gris); text-decoration:none; transition:all .25s ease; background:transparent; }
     .hero-btn:hover,.hero-btn:focus-visible { color:#fff; transform:translateY(-2px); }
     .hero-btn.is-fuego:hover,.hero-btn.is-fuego:focus-visible { border-color:var(--fuego); box-shadow:0 10px 24px -12px rgba(255,107,0,.45); }
     .hero-btn.is-cian:hover,.hero-btn.is-cian:focus-visible { border-color:var(--cian); box-shadow:0 10px 24px -12px rgba(0,212,255,.35); }
+    .hero-btn.is-print:hover,.hero-btn.is-print:focus-visible { border-color:var(--gris-2); box-shadow:0 10px 24px -12px rgba(255,255,255,.18); }
 
     .legal-main { max-width:56rem; margin:0 auto; padding:5rem 1.5rem; }
     .legal-section { scroll-margin-top:7rem; }
@@ -146,6 +148,74 @@
     .scroll-progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cian),var(--fuego));box-shadow:0 0 12px rgba(0,212,255,.55);}
 
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}.reveal{opacity:1;transform:none;transition:none;}.hero-btn:hover,.scroll-fab:hover{transform:none;}}
+
+    /* ===== IMPRESIÓN: salida tipo documento Word (carta, Calibri 11 pt) ===== */
+    @media print {
+        @page { size: letter; margin: 17.5mm 13.4mm 17.5mm 30mm; }
+
+        html, body { background:#fff !important; color:#000 !important; }
+        body { font-family:"Calibri","Segoe UI",Arial,sans-serif !important; font-size:11pt; line-height:1.08; margin:0; }
+
+        .scroll-progress, .nav, .menu-movil, .scroll-fabs, .pie,
+        .hero-actions, .eyebrow, .legal-divider, .sec-icon,
+        .legal-block h3 .dot, .legal-list li i, #top { display:none !important; }
+
+        .legal-hero { padding:0 0 14pt !important; border:0 !important; background:#fff !important; text-align:center; }
+        .legal-hero::before { display:none !important; }
+        .legal-hero-inner { max-width:none; padding:0; }
+        .print-brand { display:block !important; font-size:11pt; line-height:1.08; margin:0 0 6pt; color:#000; }
+        .legal-hero h1 {
+            font-family:"Calibri Light","Calibri",Arial,sans-serif !important;
+            font-size:18pt !important; font-weight:700 !important;
+            color:#000 !important; letter-spacing:0 !important;
+            line-height:1.1 !important; margin:0 0 6pt; text-transform:uppercase;
+        }
+        .legal-hero p { color:#000 !important; font-size:11pt; line-height:1.08; margin:0 0 4pt; max-width:none; }
+        .legal-hero .updated { color:#000 !important; margin-top:2pt; }
+
+        .legal-main { max-width:none; margin:0; padding:0; }
+        .legal-section { scroll-margin-top:0; }
+        .legal-section.reveal { opacity:1 !important; transform:none !important; }
+
+        .sec-head { display:block; margin:8pt 0 8pt; padding:0; border:0; }
+        .sec-head h2 {
+            font-family:"Calibri",Arial,sans-serif !important;
+            font-size:11pt !important; font-weight:700 !important;
+            color:#000 !important; text-transform:uppercase;
+            letter-spacing:0; line-height:1.08; margin:0;
+            break-after:avoid-page; page-break-after:avoid;
+        }
+        #privacidad .sec-head h2 { text-decoration:underline; }
+
+        .legal-content { display:block; color:#000 !important; line-height:1.08; }
+        .legal-block { margin:0 0 8pt; }
+        .legal-block h3 {
+            display:block; font-family:"Calibri",Arial,sans-serif !important;
+            font-size:11pt !important; font-weight:700 !important;
+            color:#000 !important; text-transform:none;
+            letter-spacing:0; margin:0 0 8pt;
+            break-after:avoid-page; page-break-after:avoid;
+        }
+        .legal-block p {
+            font-size:11pt; line-height:1.08; color:#000 !important;
+            margin:0 0 8pt; text-align:justify;
+            orphans:3; widows:3;
+        }
+        .legal-block p + p { margin-top:0; }
+        .legal-block strong { color:#000 !important; font-weight:700; }
+        .legal-block a { color:#000 !important; text-decoration:underline; }
+
+        .legal-list {
+            list-style:disc; display:block;
+            margin:0 0 8pt 1.5em; padding-left:1.5em;
+        }
+        .legal-list li {
+            display:list-item; font-size:11pt; line-height:1.08;
+            color:#000 !important; margin:0 0 2pt; text-align:justify;
+        }
+        .legal-list li::marker { color:#000; }
+        .legal-block a[href]::after { content:""; }
+    }
     </style>
 </head>
 
@@ -184,10 +254,11 @@
 
     <header class="legal-hero">
         <div class="legal-hero-inner">
+            <p class="print-brand">Documentos Legales - UnicornioSoftware&reg;</p>
             <span class="eyebrow">Documentos Legales</span>
             <h1>PRIVACIDAD &amp; TÉRMINOS</h1>
             <p>Todo lo que necesitas saber sobre cómo tratamos tus datos y las condiciones de uso de los sistemas de UnicornioSoftware. Sin letra pequeña.</p>
-            <p class="updated">Última actualización: 25 de mayo de 2026</p>
+            <p class="updated">Última actualización: <strong>22 de noviembre de 2026</strong></p>
             <div class="hero-actions">
                 <a href="#privacidad" class="hero-btn is-fuego">
                     <i class="fa-solid fa-shield-halved" style="color:var(--fuego)" aria-hidden="true"></i> Política de Privacidad
@@ -195,6 +266,9 @@
                 <a href="#terminos" class="hero-btn is-cian">
                     <i class="fa-solid fa-file-contract" style="color:var(--cian)" aria-hidden="true"></i> Términos de Servicio
                 </a>
+                <button type="button" class="hero-btn is-print" id="btnImprimir" title="Imprimir documento (Ctrl+P)">
+                    <i class="fa-solid fa-print" style="color:var(--gris)" aria-hidden="true"></i> Imprimir documento
+                </button>
             </div>
         </div>
     </header>
@@ -209,39 +283,59 @@
 
             <div class="legal-content">
                 <div class="legal-block">
-                    <h3><span class="dot fuego"></span> 1. Datos que recopilamos</h3>
-                    <p>El Sistema recopila información personal de los trabajadores y usuarios autorizados, incluyendo: nombre completo, carné de identidad, número de teléfono, dirección, área de trabajo, salario, datos bancarios, historial de pagos y vacaciones. También se almacenan registros de acceso (IP, fecha y hora) para fines de seguridad y trazabilidad.</p>
+                    <h3><span class="dot fuego"></span> 1. Quién es el responsable</h3>
+                    <p>El responsable del tratamiento de los datos es <strong>UnicornioSoftware</strong>, desarrollador del ecosistema de gestión empresarial y del sistema <strong>SiGesNom®</strong>. El software está diseñado para instalarse y operar en la infraestructura local del cliente, manteniendo el control de la información operativa en su propio entorno.</p>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot fuego"></span> 2. Uso de la información</h3>
-                    <p>Los datos se utilizan exclusivamente para:</p>
+                    <h3><span class="dot fuego"></span> 2. Qué datos recopilamos</h3>
+                    <p>Para la correcta prestación del servicio y la seguridad del sistema, podemos tratar la siguiente información:</p>
                     <ul class="legal-list">
-                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span>Gestionar nóminas, pagos y deducciones legales.</span></li>
-                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span>Control de vacaciones y licencias.</span></li>
-                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span>Generar reportes internos y cumplir con obligaciones fiscales (CESS, impuestos).</span></li>
-                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span>Auditorías de seguridad y trazabilidad de acciones.</span></li>
+                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span><strong>Datos de usuarios y trabajadores:</strong> nombre completo, carné de identidad, teléfono, dirección, área de trabajo, salario, datos bancarios, historial de pagos y vacaciones, según los módulos utilizados.</span></li>
+                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span><strong>Datos de acceso y seguridad:</strong> usuario, dirección IP, fecha, hora y registros de actividad necesarios para autenticación, auditoría y trazabilidad.</span></li>
+                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span><strong>Datos técnicos de licencia:</strong> identificador de hardware/huella del equipo y datos de activación o validación de licencia, utilizados para verificar la autorización de uso en el equipo correspondiente.</span></li>
                     </ul>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot fuego"></span> 3. Protección de datos</h3>
-                    <p>Toda la información se almacena en servidores locales con acceso restringido mediante autenticación robusta y cifrado de contraseñas. No compartimos datos personales con terceros, excepto cuando sea requerido por las autoridades competentes de la República de Cuba.</p>
+                    <h3><span class="dot fuego"></span> 3. Uso de la información</h3>
+                    <p>La información recopilada se utiliza exclusivamente para:</p>
+                    <ul class="legal-list">
+                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span>Gestionar nóminas, pagos, deducciones legales, vacaciones y licencias.</span></li>
+                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span>Generar reportes internos y apoyar el cumplimiento de obligaciones fiscales o laborales aplicables.</span></li>
+                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span>Controlar el acceso autorizado, la seguridad del sistema y la trazabilidad de acciones.</span></li>
+                        <li><i class="fa-solid fa-chevron-right fuego" aria-hidden="true"></i><span>Validar la autenticidad de la licencia y brindar soporte técnico cuando el usuario lo solicite.</span></li>
+                    </ul>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot fuego"></span> 4. Derechos del usuario</h3>
-                    <p>Usted tiene derecho a solicitar la corrección, eliminación o limitación del tratamiento de sus datos personales, siempre que no afecte obligaciones legales. Para ejercer estos derechos, comuníquese con el administrador del sistema o a través de nuestro <a href="<?= $base ?>/contacto.php">formulario de contacto</a>.</p>
+                    <h3><span class="dot fuego"></span> 4. Confidencialidad y seguridad local</h3>
+                    <p><strong>Tus datos comerciales son privados.</strong> La información operativa que procesas dentro del sistema (nóminas, trabajadores, pagos, reportes y datos internos de tu organización) reside en el servidor o dispositivo local donde se instala la solución. UnicornioSoftware no accede a la información operativa o financiera de tu negocio, salvo cuando el cliente autoriza expresamente un soporte técnico puntual y limitado a la incidencia.</p>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot fuego"></span> 5. Cookies y seguimiento</h3>
-                    <p>El Sistema utiliza cookies de sesión estrictamente necesarias para el funcionamiento (autenticación). No se emplean cookies de terceros ni sistemas de analítica externos.</p>
+                    <h3><span class="dot fuego"></span> 5. Protección de datos</h3>
+                    <p>La información se almacena en la infraestructura local definida por el cliente, con acceso restringido mediante credenciales, roles y medidas de seguridad como cifrado de contraseñas. El cliente es responsable de proteger el acceso físico y lógico al equipo o servidor donde se aloja el sistema.</p>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot fuego"></span> 6. Consentimiento</h3>
-                    <p>Al utilizar el Sistema, usted otorga su consentimiento explícito para el tratamiento de sus datos personales conforme a esta política.</p>
+                    <h3><span class="dot fuego"></span> 6. Compartición de datos</h3>
+                    <p><strong>UnicornioSoftware no vende, alquila ni comparte</strong> tu información personal o comercial con terceros con fines publicitarios o comerciales. Solo podrá existir comunicación de datos cuando sea requerida por autoridades competentes conforme a la legislación aplicable, o cuando el propio cliente la autorice expresamente para soporte o servicios solicitados.</p>
+                </div>
+
+                <div class="legal-block">
+                    <h3><span class="dot fuego"></span> 7. Derechos del usuario</h3>
+                    <p>Usted puede solicitar la corrección, actualización, eliminación o limitación del tratamiento de sus datos personales, siempre que ello no entre en conflicto con obligaciones legales, laborales, fiscales o de auditoría. Para ejercer estos derechos, contacte al administrador del sistema o utilice nuestro <a href="<?= $base ?>/contacto.php">formulario de contacto</a>.</p>
+                </div>
+
+                <div class="legal-block">
+                    <h3><span class="dot fuego"></span> 8. Cookies y seguimiento</h3>
+                    <p>El sistema utiliza cookies o mecanismos de sesión estrictamente necesarios para la autenticación y el funcionamiento seguro. No se emplean cookies publicitarias de terceros ni sistemas de analítica externos dentro del sistema.</p>
+                </div>
+
+                <div class="legal-block">
+                    <h3><span class="dot fuego"></span> 9. Consentimiento</h3>
+                    <p>Al utilizar el Sistema, usted reconoce y acepta el tratamiento de los datos necesarios para su operación conforme a esta Política de Privacidad y a la normativa aplicable.</p>
                 </div>
             </div>
         </section>
@@ -257,32 +351,52 @@
             <div class="legal-content">
                 <div class="legal-block">
                     <h3><span class="dot cian"></span> 1. Aceptación de los términos</h3>
-                    <p>Al acceder y utilizar el Sistema de Gestión de Nóminas (en adelante "el Sistema"), usted acepta quedar vinculado por estos Términos y Condiciones, así como por todas las leyes y regulaciones aplicables. Si no está de acuerdo con alguno de estos términos, se le prohíbe utilizar o acceder a este Sistema.</p>
+                    <p>Al acceder y utilizar los sistemas de UnicornioSoftware, incluyendo <strong>SiGesNom®</strong> y los módulos del ecosistema, usted acepta quedar vinculado por estos Términos y Condiciones, así como por las leyes y regulaciones aplicables. Si no está de acuerdo con alguno de estos términos, debe abstenerse de utilizar el sistema.</p>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot cian"></span> 2. Uso del sistema</h3>
-                    <p>El Sistema es proporcionado exclusivamente para la gestión interna de nóminas, trabajadores y pagos del Proyecto de Desarrollo Local <strong>SiGesNom®</strong>. El acceso está restringido a usuarios autorizados mediante credenciales personales e intransferibles. Cada usuario es responsable de mantener la confidencialidad de su contraseña y de todas las actividades que ocurran bajo su cuenta.</p>
+                    <h3><span class="dot cian"></span> 2. Licencia de uso y propiedad intelectual</h3>
+                    <p>Al adquirir o activar un producto de UnicornioSoftware, se otorga una <strong>licencia de uso</strong> sobre el software, no una cesión de propiedad. El código fuente, diseño, bases de datos, logotipos, documentación y demás elementos asociados son propiedad exclusiva de <strong>UnicornioSoftware®</strong> y están protegidos por las leyes de propiedad intelectual aplicables. Queda prohibida su reproducción, distribución, modificación o ingeniería inversa sin autorización expresa por escrito.</p>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot cian"></span> 3. Propiedad intelectual</h3>
-                    <p>Todo el contenido, código fuente, diseño, bases de datos, logotipos y documentación asociada son propiedad exclusiva de <strong>UnicornioSoftware®</strong> y están protegidos por las leyes de propiedad intelectual cubanas e internacionales. Queda prohibida la reproducción, distribución, modificación o ingeniería inversa sin autorización expresa por escrito.</p>
+                    <h3><span class="dot cian"></span> 3. Uso autorizado del sistema</h3>
+                    <p>El sistema se proporciona para la gestión interna autorizada de la organización o negocio del cliente. El acceso está restringido a usuarios autorizados mediante credenciales personales e intransferibles. Cada usuario es responsable de mantener la confidencialidad de su contraseña y de todas las actividades realizadas bajo su cuenta.</p>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot cian"></span> 4. Limitación de responsabilidad</h3>
-                    <p>El Sistema se proporciona "tal cual", sin garantías de ningún tipo. UnicornioSoftware no será responsable por daños directos, indirectos, incidentales o consecuentes derivados del uso o la imposibilidad de uso del Sistema, incluso si se ha advertido de la posibilidad de tales daños.</p>
+                    <h3><span class="dot cian"></span> 4. Periodo de prueba y evaluación</h3>
+                    <p>Cuando se ofrezca un periodo de prueba, demostración o evaluación, este tendrá como único fin valorar el funcionamiento del software antes de su adquisición o activación definitiva. UnicornioSoftware se reserva el derecho de limitar, suspender o finalizar el acceso de prueba ante uso abusivo, intentos de evasión de restricciones técnicas o incumplimiento de estos términos.</p>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot cian"></span> 5. Modificaciones</h3>
-                    <p>Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios entrarán en vigor inmediatamente después de su publicación. Se recomienda revisar periódicamente esta página.</p>
+                    <h3><span class="dot cian"></span> 5. Activación, huella de equipo y abuso de licencia</h3>
+                    <p>Las licencias pueden estar vinculadas a un equipo o entorno autorizado mediante mecanismos técnicos de activación, como la huella del equipo. El <strong>abuso de la licencia</strong>, incluyendo la distribución no autorizada de archivos o claves de activación, la manipulación de validaciones, la ingeniería inversa o el uso fuera de los términos acordados, puede dar lugar a la <strong>suspensión o revocación</strong> de la licencia sin perjuicio de las acciones legales correspondientes.</p>
                 </div>
 
                 <div class="legal-block">
-                    <h3><span class="dot cian"></span> 6. Legislación aplicable</h3>
-                    <p>Estos términos se rigen por las leyes de la República de Cuba. Cualquier disputa será resuelta ante los tribunales competentes de la localidad.</p>
+                    <h3><span class="dot cian"></span> 6. Responsabilidad por datos y respaldos</h3>
+                    <p>El cliente es responsable de mantener copias de seguridad actualizadas de su base de datos, archivos y configuraciones. UnicornioSoftware no se hace responsable por pérdidas de datos causadas por fallos de hardware, cortes eléctricos, desastres, errores de operación, acceso indebido por falta de resguardo del cliente o ausencia de respaldos adecuados.</p>
+                </div>
+
+                <div class="legal-block">
+                    <h3><span class="dot cian"></span> 7. Limitación de responsabilidad</h3>
+                    <p>El sistema se proporciona "tal cual", según sus funcionalidades disponibles al momento de la entrega o activación. En la medida permitida por la legislación aplicable, UnicornioSoftware no será responsable por daños indirectos, incidentales, consecuentes, pérdida de beneficios, interrupción del negocio o imposibilidad de uso derivados del empleo o la imposibilidad de empleo del software.</p>
+                </div>
+
+                <div class="legal-block">
+                    <h3><span class="dot cian"></span> 8. Reembolsos</h3>
+                    <p>Salvo acuerdo comercial escrito que indique lo contrario, una vez entregada, activada o puesta en uso una licencia definitiva, <strong>no se aceptan devoluciones ni reembolsos</strong>, especialmente cuando el cliente ha tenido la posibilidad de evaluar el sistema previamente mediante demostración, periodo de prueba o validación funcional.</p>
+                </div>
+
+                <div class="legal-block">
+                    <h3><span class="dot cian"></span> 9. Modificaciones a estos términos</h3>
+                    <p>UnicornioSoftware se reserva el derecho de actualizar estos Términos y Condiciones. Los cambios relevantes serán publicados en esta página y, cuando corresponda, comunicados por los canales habituales. El uso continuado del sistema tras la publicación o notificación de cambios implica la aceptación de los términos actualizados.</p>
+                </div>
+
+                <div class="legal-block">
+                    <h3><span class="dot cian"></span> 10. Legislación aplicable y contacto legal</h3>
+                    <p>Estos términos se rigen por las leyes de la República de Cuba. Cualquier disputa será atendida ante las instancias competentes conforme a la normativa aplicable. Para consultas legales, solicitudes o notificaciones formales, puede contactarnos a través de nuestro <a href="<?= $base ?>/contacto.php">formulario de contacto</a>.</p>
                 </div>
             </div>
         </section>
@@ -384,6 +498,11 @@
                 btn.innerHTML = '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
             });
         });
+    })();
+    (function () {
+        var btnPrint = document.getElementById('btnImprimir');
+        if (!btnPrint) return;
+        btnPrint.addEventListener('click', function () { window.print(); });
     })();
     (function () {
         var arriba = document.getElementById('btnScrollTop');
