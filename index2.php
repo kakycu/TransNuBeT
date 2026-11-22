@@ -119,7 +119,7 @@ if (!function_exists('BD_parse_wmi_date')) {
 }
 if (!function_exists('BD_mysql_start_from_pidfile')) {
     function BD_mysql_start_from_pidfile(): ?int {
-        $candidatos = [dirname(__DIR__, 2) . '/mysql/my.ini', dirname(__DIR__) . '/mysql/my.ini', 'C:/Users/kakyc/Desktop/TRANSNUBET/mysql/my.ini', 'C:/USBWebserver/mysql/my.ini', 'C:/xampp/mysql/bin/my.ini'];
+        $candidatos = [dirname(__DIR__, 2) . '/mysql/my.ini', dirname(__DIR__) . '/mysql/my.ini', 'C:/Users/kakyc/Desktop/sistemas/mysql/my.ini', 'C:/USBWebserver/mysql/my.ini', 'C:/xampp/mysql/bin/my.ini'];
         $datadirs = [];
         foreach ($candidatos as $ini) {
             if (!is_file($ini)) continue;
@@ -771,6 +771,22 @@ $faq = [
     .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
     .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
     @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
+    .integraciones-block{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
+    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gris-3);text-align:center;margin:0 0 .5rem}
+    .integraciones-block > p{text-align:center;color:var(--gris-3);font-size:.78rem;line-height:1.5;margin:0 0 1.75rem}
+    .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
+    .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
+    .integracion-item i{font-size:1.8rem;line-height:1}
+    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:inherit}
+    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.72rem;color:#6b7280;line-height:1.3}
+    .integracion-item:hover{color:#fff}
+    .integracion-item.int-wa:hover{color:#25D366}
+    .integracion-item.int-cian:hover{color:var(--cian)}
+    .integracion-item.int-fuego:hover{color:var(--fuego)}
+    .integracion-item.int-drive:hover{color:var(--fuego)}
+    .integracion-item.int-excel:hover{color:#21A366}
+    @media(max-width:1023px){.integracion-item{flex-basis:calc(33.333% - 1rem)}}
+    @media(max-width:639px){.integracion-item{flex-basis:calc(50% - 1rem)}}
     .escena {
         position: relative; justify-self: center;
         width: min(100%, 32rem);
@@ -871,6 +887,22 @@ $faq = [
     .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
     .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
     @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
+    .integraciones-block{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
+    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gris-3);text-align:center;margin:0 0 .5rem}
+    .integraciones-block > p{text-align:center;color:var(--gris-3);font-size:.78rem;line-height:1.5;margin:0 0 1.75rem}
+    .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
+    .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
+    .integracion-item i{font-size:1.8rem;line-height:1}
+    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:inherit}
+    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.72rem;color:#6b7280;line-height:1.3}
+    .integracion-item:hover{color:#fff}
+    .integracion-item.int-wa:hover{color:#25D366}
+    .integracion-item.int-cian:hover{color:var(--cian)}
+    .integracion-item.int-fuego:hover{color:var(--fuego)}
+    .integracion-item.int-drive:hover{color:var(--fuego)}
+    .integracion-item.int-excel:hover{color:#21A366}
+    @media(max-width:1023px){.integracion-item{flex-basis:calc(33.333% - 1rem)}}
+    @media(max-width:639px){.integracion-item{flex-basis:calc(50% - 1rem)}}
     .escena { margin-top: 3.25rem; }
     }
     @media (max-width: 40rem) {
@@ -1596,6 +1628,22 @@ $faq = [
     .db-health-item b{display:block;font-family:'Exo 2',sans-serif;font-size:1.15rem;font-weight:800;color:var(--txt);line-height:1.1}
     .db-health-item span{display:block;font-size:.74rem;color:var(--gris-3);margin-top:.2rem}
     @media(max-width:640px){.db-health-grid{grid-template-columns:1fr}}
+    .integraciones-block{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08)}
+    .integraciones-block h3{font-family:'Exo 2',sans-serif;font-weight:700;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gris-3);text-align:center;margin:0 0 .5rem}
+    .integraciones-block > p{text-align:center;color:var(--gris-3);font-size:.78rem;line-height:1.5;margin:0 0 1.75rem}
+    .integraciones-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.5rem 1rem}
+    .integracion-item{flex:0 1 calc(25% - 1rem);min-width:120px;display:flex;flex-direction:column;align-items:center;gap:.45rem;text-align:center;color:var(--gris-3);transition:color .25s ease}
+    .integracion-item i{font-size:1.8rem;line-height:1}
+    .integracion-item .int-name{font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:inherit}
+    .integracion-item .int-desc{font-family:'Inter',sans-serif;font-size:.72rem;color:#6b7280;line-height:1.3}
+    .integracion-item:hover{color:#fff}
+    .integracion-item.int-wa:hover{color:#25D366}
+    .integracion-item.int-cian:hover{color:var(--cian)}
+    .integracion-item.int-fuego:hover{color:var(--fuego)}
+    .integracion-item.int-drive:hover{color:var(--fuego)}
+    .integracion-item.int-excel:hover{color:#21A366}
+    @media(max-width:1023px){.integracion-item{flex-basis:calc(33.333% - 1rem)}}
+    @media(max-width:639px){.integracion-item{flex-basis:calc(50% - 1rem)}}
     .escena { animation: none; }
         .pantalla, .movil, .escena::before { transform: none; }
         .btn:hover, .card:hover, .serv:hover, .paso:hover, .equipo-card:hover { transform: none; }
