@@ -58,6 +58,7 @@
     .nav-links a:hover i,.nav-links a:focus-visible i { color:var(--cian); }
     .nav-links .nav-icon-btn { width:2rem; height:2rem; justify-content:center; border:1px solid var(--acero); border-radius:.35rem; background:rgba(255,255,255,.03); padding:0; flex-shrink:0; }
     .nav-links .nav-icon-btn i { font-size:1rem; color:var(--gris-2); }
+    .nav-links button.nav-icon-btn { display:inline-flex; align-items:center; justify-content:center; padding:0; font:inherit; cursor:pointer; }
     .nav-links .nav-icon-btn:hover,.nav-links .nav-icon-btn:focus-visible { border-color:rgba(0,212,255,.45); background:rgba(0,212,255,.08); color:var(--txt); }
     .nav-links .nav-icon-btn:hover i,.nav-links .nav-icon-btn:focus-visible i { color:var(--cian); }
     .nav-links a:hover,.nav-links a:focus-visible { color:var(--txt); }
@@ -80,12 +81,18 @@
     .legal-hero p { color:var(--gris-2); margin:1rem auto 0; max-width:36rem; line-height:1.75; font-size:1rem; }
     .legal-hero .updated { color:var(--gris-3); font-size:.75rem; margin-top:1rem; }
     .print-brand { display:none; }
-    .hero-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:1rem; margin-top:2rem; }
+    .hero-actions { display:flex; flex-wrap:nowrap; justify-content:center; align-items:center; gap:1rem; margin-top:2rem; }
+    @media (max-width:700px){
+        .hero-actions{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;}
+        .hero-btn{justify-content:center;padding:.75rem .6rem;font-size:.6rem;letter-spacing:.04em;gap:.4rem;text-align:center;}
+    }
     .hero-btn { display:inline-flex; align-items:center; gap:.5rem; font-family:"Exo 2",sans-serif; font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; padding:.85rem 1.5rem; border:1px solid var(--acero); border-radius:.25rem; color:var(--gris); text-decoration:none; transition:all .25s ease; background:transparent; }
     .hero-btn:hover,.hero-btn:focus-visible { color:#fff; transform:translateY(-2px); }
     .hero-btn.is-fuego:hover,.hero-btn.is-fuego:focus-visible { border-color:var(--fuego); box-shadow:0 10px 24px -12px rgba(255,107,0,.45); }
     .hero-btn.is-cian:hover,.hero-btn.is-cian:focus-visible { border-color:var(--cian); box-shadow:0 10px 24px -12px rgba(0,212,255,.35); }
     .hero-btn.is-print:hover,.hero-btn.is-print:focus-visible { border-color:var(--gris-2); box-shadow:0 10px 24px -12px rgba(255,255,255,.18); }
+    .hero-btn.is-pdf:hover,.hero-btn.is-pdf:focus-visible { border-color:var(--fuego); box-shadow:0 10px 24px -12px rgba(255,107,0,.45); }
+    .hero-btn:disabled { opacity:.6; cursor:progress; }
 
     .legal-main { max-width:56rem; margin:0 auto; padding:5rem 1.5rem; }
     .legal-section { scroll-margin-top:7rem; }
@@ -149,12 +156,86 @@
 
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}.reveal{opacity:1;transform:none;transition:none;}.hero-btn:hover,.scroll-fab:hover{transform:none;}}
 
+    /* ===== DOCUMENTO PAGINADO: se mide en pantalla y se imprime hoja por hoja ===== */
+    /* Mismas reglas tipográficas que @media print, aplicadas al clon medible. */
+    #printClip { position:fixed; left:0; top:0; width:0; height:0; overflow:hidden; }
+    #printDoc { visibility:hidden; pointer-events:none; }
+    .print-doc {
+        width:8.5in;
+        background:#fff; color:#000;
+        font-family:"Calibri","Segoe UI",Arial,sans-serif;
+        font-size:11pt; line-height:1.08;
+    }
+    .print-doc .print-page {
+        width:8.5in;
+        height:10.99in;
+        padding:17.5mm 13.4mm 17.5mm 30mm;
+        box-sizing:border-box;
+        display:flex; flex-direction:column;
+        background:#fff; overflow:hidden;
+        break-after:page; page-break-after:always;
+    }
+    .print-doc .print-page:last-child { break-after:auto; page-break-after:auto; }
+    .print-doc .print-page-head { flex:0 0 auto; display:flex; align-items:center; margin:0 0 10pt; }
+    .print-doc .print-page-head img { height:11mm; width:auto; display:block; }
+    .print-doc .print-page-body { flex:1 1 auto; overflow:hidden; }
+    .print-doc .print-page-foot {
+        flex:0 0 auto; margin-top:8pt; padding-top:4pt;
+        border-top:.75pt solid #000;
+        display:flex; align-items:baseline; justify-content:space-between; gap:12pt;
+        font-size:9pt; line-height:1.2; color:#000;
+    }
+    .print-doc .print-page-num { white-space:nowrap; }
+
+    .print-doc .eyebrow, .print-doc .hero-actions, .print-doc .sec-icon,
+    .print-doc .legal-block h3 .dot, .print-doc .legal-list li i,
+    .print-doc .legal-divider { display:none !important; }
+
+    .print-doc .print-hero { max-width:none; padding:0; text-align:center; }
+    .print-doc .print-brand { display:block !important; font-size:11pt; line-height:1.08; margin:0 0 6pt; color:#000; }
+    .print-doc .print-hero h1 {
+        font-family:"Calibri Light","Calibri",Arial,sans-serif;
+        font-size:18pt; font-weight:700; line-height:1.1;
+        color:#000; letter-spacing:0; text-transform:uppercase; margin:0 0 6pt;
+    }
+    .print-doc .print-hero p { color:#000; font-size:11pt; line-height:1.08; margin:0 0 4pt; max-width:none; }
+    .print-doc .print-hero .updated { margin-top:2pt; }
+
+    .print-doc .print-sec-head { display:block; margin:8pt 0 8pt; padding:0; border:0; }
+    .print-doc .print-sec-head h2 {
+        font-family:"Calibri",Arial,sans-serif; font-size:11pt; font-weight:700;
+        color:#000; text-transform:uppercase; letter-spacing:0; line-height:1.08; margin:0;
+        break-after:avoid; page-break-after:avoid;
+    }
+    .print-doc .print-sec-head.is-priv h2 { text-decoration:underline; }
+
+    .print-doc .legal-block { margin:0 0 8pt; }
+    .print-doc .legal-block h3 {
+        display:block; font-family:"Calibri",Arial,sans-serif; font-size:11pt;
+        font-weight:700; color:#000; text-transform:none; letter-spacing:0; margin:0 0 8pt;
+        break-after:avoid; page-break-after:avoid;
+    }
+    .print-doc .legal-block p {
+        font-size:11pt; line-height:1.08; color:#000; margin:0 0 8pt; text-align:justify;
+        orphans:3; widows:3;
+    }
+    .print-doc .legal-block p + p { margin-top:0; }
+    .print-doc .legal-block strong { color:#000; font-weight:700; }
+    .print-doc .legal-block a { color:#000; text-decoration:underline; }
+    .print-doc .legal-list { list-style:disc; display:block; margin:0 0 8pt 1.5em; padding-left:1.5em; }
+    .print-doc .legal-list li {
+        display:list-item; font-size:11pt; line-height:1.08; color:#000;
+        margin:0 0 2pt; text-align:justify;
+    }
+    .print-doc .legal-list li::marker { color:#000; }
+
     /* ===== IMPRESIÓN: salida tipo documento Word (carta, Calibri 11 pt) ===== */
     @media print {
-        @page { size: letter; margin: 17.5mm 13.4mm 17.5mm 30mm; }
+        @page { size: letter; margin: 0; }
 
         html, body { background:#fff !important; color:#000 !important; }
         body { font-family:"Calibri","Segoe UI",Arial,sans-serif !important; font-size:11pt; line-height:1.08; margin:0; }
+        body:not(.is-paginated) { padding:17.5mm 13.4mm 17.5mm 30mm; }
 
         .scroll-progress, .nav, .menu-movil, .scroll-fabs, .pie,
         .hero-actions, .eyebrow, .legal-divider, .sec-icon,
@@ -215,6 +296,28 @@
         }
         .legal-list li::marker { color:#000; }
         .legal-block a[href]::after { content:""; }
+
+        /* Modo paginado: se imprime solo el documento generado con pie y numeración */
+        body.is-paginated .legal-hero,
+        body.is-paginated .legal-main,
+        body.is-paginated .pie,
+        body.is-paginated .nav,
+        body.is-paginated .menu-movil,
+        body.is-paginated .scroll-fabs,
+        body.is-paginated .scroll-progress { display:none !important; }
+        body.is-paginated #printClip {
+            position:static !important;
+            width:auto !important;
+            height:auto !important;
+            overflow:visible !important;
+        }
+        body.is-paginated #printDoc {
+            display:block !important;
+            visibility:visible !important;
+            position:static !important;
+            left:auto !important;
+            top:auto !important;
+        }
     }
     </style>
 </head>
@@ -238,6 +341,8 @@
                 <a href="#privacidad"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
                 <a href="#terminos"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
                 <a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Sobre nosotros</a>
+                <button type="button" class="nav-icon-btn" data-accion="imprimir" aria-label="Imprimir documento" title="Imprimir documento (Ctrl+P)"><i class="fa-solid fa-print" aria-hidden="true"></i></button>
+                <button type="button" class="nav-icon-btn" data-accion="pdf" aria-label="Exportar a PDF" title="Exportar el documento a PDF"><i class="fa-solid fa-file-pdf" aria-hidden="true"></i></button>
             </div>
             <button type="button" class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">
                 <i class="fa-solid fa-bars" aria-hidden="true"></i>
@@ -266,8 +371,11 @@
                 <a href="#terminos" class="hero-btn is-cian">
                     <i class="fa-solid fa-file-contract" style="color:var(--cian)" aria-hidden="true"></i> Términos de Servicio
                 </a>
-                <button type="button" class="hero-btn is-print" id="btnImprimir" title="Imprimir documento (Ctrl+P)">
+                <button type="button" class="hero-btn is-print" id="btnImprimir" data-accion="imprimir" title="Imprimir documento (Ctrl+P)">
                     <i class="fa-solid fa-print" style="color:var(--gris)" aria-hidden="true"></i> Imprimir documento
+                </button>
+                <button type="button" class="hero-btn is-pdf" id="btnPdf" data-accion="pdf" title="Exportar el documento tal como se imprime">
+                    <i class="fa-solid fa-file-pdf" style="color:var(--fuego)" aria-hidden="true"></i> Exportar PDF
                 </button>
             </div>
         </div>
@@ -464,6 +572,9 @@
         </div>
     </footer>
 
+    <!-- Documento paginado que se usa al imprimir y al exportar a PDF (se genera con JS) -->
+    <div id="printClip" aria-hidden="true"><div id="printDoc" class="print-doc"></div></div>
+
     <div class="scroll-fabs">
         <button type="button" class="scroll-fab" id="btnScrollTop" title="Ir hasta arriba" aria-label="Ir hasta arriba de la página">
             <i class="fa-solid fa-angles-up" aria-hidden="true"></i>
@@ -473,6 +584,7 @@
         </button>
     </div>
 
+    <script src="/servicios/js/html2pdf.bundle.min.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         var observer = new IntersectionObserver(function (entries) {
@@ -500,9 +612,161 @@
         });
     })();
     (function () {
-        var btnPrint = document.getElementById('btnImprimir');
-        if (!btnPrint) return;
-        btnPrint.addEventListener('click', function () { window.print(); });
+        var host = document.getElementById('printDoc');
+        if (!host) return;
+
+        function crearPagina() {
+            var pagina = document.createElement('div');
+            pagina.className = 'print-page';
+            var cabecera = document.createElement('div');
+            cabecera.className = 'print-page-head';
+            var logo = document.createElement('img');
+            logo.src = '/servicios/images/Unicorn.png';
+            logo.alt = 'UnicornioSoftware';
+            cabecera.appendChild(logo);
+            var cuerpo = document.createElement('div');
+            cuerpo.className = 'print-page-body';
+            var pie = document.createElement('div');
+            pie.className = 'print-page-foot';
+            var marca = document.createElement('span');
+            marca.className = 'print-page-brand';
+            marca.innerHTML = 'Documento Legal - UnicornioSoftware&reg;';
+            var num = document.createElement('span');
+            num.className = 'print-page-num';
+            num.textContent = 'Página 1 de 1';
+            pie.appendChild(marca);
+            pie.appendChild(num);
+            pagina.appendChild(cabecera);
+            pagina.appendChild(cuerpo);
+            pagina.appendChild(pie);
+            host.appendChild(pagina);
+            return { cuerpo: cuerpo, num: num };
+        }
+
+        function clonarBloques() {
+            var salida = [];
+            var hero = document.querySelector('.legal-hero-inner');
+            if (hero) {
+                var h = hero.cloneNode(true);
+                h.classList.add('print-hero');
+                salida.push(h);
+            }
+            var nodos = document.querySelectorAll('.legal-main .sec-head, .legal-main .legal-block');
+            Array.prototype.forEach.call(nodos, function (el) {
+                var c = el.cloneNode(true);
+                if (el.classList.contains('sec-head')) {
+                    c.classList.add('print-sec-head');
+                    if (el.closest('#privacidad')) c.classList.add('is-priv');
+                }
+                salida.push(c);
+            });
+            return salida;
+        }
+
+        function desborda(cuerpo) { return cuerpo.scrollHeight > cuerpo.clientHeight + 1; }
+
+        function construir() {
+            host.innerHTML = '';
+            var paginas = [];
+            var actual = crearPagina();
+            paginas.push(actual);
+
+            clonarBloques().forEach(function (bloque) {
+                actual.cuerpo.appendChild(bloque);
+                if (!desborda(actual.cuerpo)) return;
+                actual.cuerpo.removeChild(bloque);
+                if (actual.cuerpo.children.length) {
+                    actual = crearPagina();
+                    paginas.push(actual);
+                    actual.cuerpo.appendChild(bloque);
+                } else {
+                    actual.cuerpo.appendChild(bloque);
+                }
+            });
+
+            paginas.forEach(function (p, i) {
+                var ultimo = p.cuerpo.lastElementChild;
+                if (ultimo && ultimo.classList.contains('print-sec-head') && i < paginas.length - 1) {
+                    p.cuerpo.removeChild(ultimo);
+                    paginas[i + 1].cuerpo.insertBefore(ultimo, paginas[i + 1].cuerpo.firstChild);
+                }
+            });
+
+            var total = paginas.length;
+            paginas.forEach(function (p, i) {
+                p.num.textContent = 'Página ' + (i + 1) + ' de ' + total;
+            });
+
+            document.body.classList.add('is-paginated');
+        }
+
+        function iniciar() {
+            try { construir(); }
+            catch (e) { document.body.classList.remove('is-paginated'); }
+        }
+
+        if (document.readyState === 'complete') iniciar();
+        else window.addEventListener('load', iniciar);
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(iniciar);
+        window.addEventListener('beforeprint', iniciar);
+
+        /* ---------- Acciones: imprimir y exportar a PDF ---------- */
+        var opcionesPdf = {
+            margin: 0,
+            filename: 'Documentos-Legales-UnicornioSoftware.pdf',
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait', compress: true },
+            pagebreak: { mode: ['css'] }
+        };
+
+        function exportarPdf(boton) {
+            if (typeof html2pdf === 'undefined') {
+                window.alert('No se pudo cargar el generador de PDF.');
+                return null;
+            }
+            if (boton && boton.disabled) return null;
+            if (!host.querySelector('.print-page')) iniciar();
+
+            var esTexto = !!(boton && boton.classList.contains('hero-btn'));
+            var htmlOriginal = boton ? boton.innerHTML : '';
+            if (boton) {
+                boton.disabled = true;
+                boton.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>' + (esTexto ? ' Generando…' : '');
+            }
+
+            host.style.visibility = 'visible';
+
+            function terminar() {
+                host.style.visibility = '';
+                if (boton) {
+                    boton.disabled = false;
+                    boton.innerHTML = htmlOriginal;
+                }
+            }
+
+            var tarea;
+            try {
+                tarea = html2pdf().set(opcionesPdf).from(host).save();
+            } catch (e) {
+                terminar();
+                window.alert('No se pudo generar el PDF.');
+                return null;
+            }
+            return Promise.resolve(tarea).then(terminar, function () {
+                terminar();
+                window.alert('No se pudo generar el PDF.');
+            });
+        }
+
+        window.__exportarPdf = exportarPdf;
+
+        Array.prototype.forEach.call(document.querySelectorAll('[data-accion="imprimir"]'), function (b) {
+            b.addEventListener('click', function () { window.print(); });
+        });
+        Array.prototype.forEach.call(document.querySelectorAll('[data-accion="pdf"]'), function (b) {
+            b.addEventListener('click', function () { exportarPdf(b); });
+        });
     })();
     (function () {
         var arriba = document.getElementById('btnScrollTop');
