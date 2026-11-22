@@ -627,7 +627,7 @@
                 mismo equipo que hace nuestro propio software. La primera reunión es sin costo.
             </p>
             <div class="flex flex-col sm:flex-row gap-4">
-                <a href="/servicios/contacto.php" id="btn-medida-contacto"
+                <a href="/contacto.php" id="btn-medida-contacto"
                     class="pulso-brasas inline-flex items-center justify-center gap-2 font-exo font-black text-sm md:text-base uppercase tracking-wider px-7 py-3.5 rounded-sm bg-fuego text-[#0A0F1A] w-full sm:w-auto transition-all duration-300 hover:-translate-y-1">
                     <i class="fa-solid fa-comment-dots" aria-hidden="true"></i> Cuéntanos tu proyecto
                 </a>
@@ -984,7 +984,7 @@
         <div class="flex flex-col sm:flex-row gap-4 justify-center items-stretch">
 
             <!-- CTA principal -->
-            <a href="/servicios/contacto.php"
+            <a href="/contacto.php"
                id="btn-medida-cierre"
                class="group pulso-brasas inline-flex items-center justify-center gap-3 font-exo font-black uppercase tracking-wider px-8 py-4 rounded-sm bg-fuego text-[#0A0F1A] transition-all duration-300 hover:-translate-y-1">
                 <i class="fas fa-paper-plane text-sm" aria-hidden="true"></i>
@@ -1053,8 +1053,8 @@
                     <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
                     <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
                     <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
-                    <li><a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
-                    <li><a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
+                    <li><a href="<?= $base ?>/costos/index.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
+                    <li><a href="<?= $base ?>/inventarios/index.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
                     <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
                 </ul>
             </nav>
@@ -1085,7 +1085,7 @@
                 <p class="pie-legal">
                     <a href="/legal.php#terminos"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
                     <a href="/legal.php#privacidad"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
-                    <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+                    <a href="/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
                 </p>
             </div>
         </div>

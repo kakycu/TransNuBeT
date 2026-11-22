@@ -1,0 +1,587 @@
+<?php
+declare(strict_types=1);
+session_start();
+
+$base = '/servicios';
+$nombreEmpresa = 'UnicornioSoftware';
+
+$correoDisponible = is_file(__DIR__ . '/servicios/correo_privado.php')
+    && is_file(__DIR__ . '/servicios/lib/phpmailer/PHPMailer.php');
+
+$mensaje = null;
+$exito = false;
+
+if (empty($_SESSION['csrf_contacto'])) {
+    $_SESSION['csrf_contacto'] = bin2hex(random_bytes(16));
+}
+$csrfToken = (string)$_SESSION['csrf_contacto'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $tokenPost = (string)($_POST['csrf_token'] ?? '');
+    if (!hash_equals($csrfToken, $tokenPost)) {
+        $mensaje = ['tipo' => 'error', 'titulo' => 'Sesión no válida', 'texto' => 'Actualiza la página e inténtalo de nuevo.'];
+    } elseif (!empty($_POST['website'])) {
+        /* Honeypot anti-bots */
+        $exito = true;
+        $mensaje = ['tipo' => 'ok', 'titulo' => 'Solicitud recibida', 'texto' => 'Gracias por escribirnos.'];
+    } elseif (!$correoDisponible) {
+        $mensaje = ['tipo' => 'error', 'titulo' => 'Envío no disponible', 'texto' => 'El servicio de correo no está configurado en este momento. Escríbenos por WhatsApp o correo directo.'];
+    } else {
+        $nombre   = trim((string)($_POST['nombre'] ?? ''));
+        $empresa  = trim((string)($_POST['empresa'] ?? ''));
+        $correo   = trim((string)($_POST['correo'] ?? ''));
+        $telefono = trim((string)($_POST['telefono'] ?? ''));
+        $servicio = trim((string)($_POST['servicio'] ?? ''));
+        $cuerpo   = trim((string)($_POST['mensaje'] ?? ''));
+
+        $serviciosPermitidos = [
+            'sigesnom'    => 'SiGesNom / Nóminas',
+            'ecosistema'  => 'Ecosistema Financiero',
+            'amedida'     => 'Desarrollo a Medida',
+            'soporte'     => 'Soporte técnico',
+            'otra'        => 'Otra consulta',
+        ];
+
+        if ($nombre === '' || $cuerpo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            $mensaje = ['tipo' => 'error', 'titulo' => 'Datos incompletos', 'texto' => 'Completa tu nombre, un correo válido y el mensaje.'];
+        } elseif ($servicio === '' || !isset($serviciosPermitidos[$servicio])) {
+            $mensaje = ['tipo' => 'error', 'titulo' => 'Selecciona una opción', 'texto' => 'Indica qué necesitas para poder orientarte mejor.'];
+        } else {
+            @set_time_limit(120);
+
+            require __DIR__ . '/servicios/lib/phpmailer/Exception.php';
+            require __DIR__ . '/servicios/lib/phpmailer/PHPMailer.php';
+            require __DIR__ . '/servicios/lib/phpmailer/SMTP.php';
+            require __DIR__ . '/servicios/correo_privado.php';
+
+            $fecha = date('d/m/Y H:i');
+            $ip    = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+
+            $eNombre   = htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8');
+            $eEmpresa  = htmlspecialchars($empresa !== '' ? $empresa : '—', ENT_QUOTES, 'UTF-8');
+            $eCorreo   = htmlspecialchars($correo, ENT_QUOTES, 'UTF-8');
+            $eTelefono = htmlspecialchars($telefono !== '' ? $telefono : '—', ENT_QUOTES, 'UTF-8');
+            $eServicio = htmlspecialchars($serviciosPermitidos[$servicio], ENT_QUOTES, 'UTF-8');
+            $eCuerpo   = nl2br(htmlspecialchars($cuerpo, ENT_QUOTES, 'UTF-8'));
+            $eFecha    = htmlspecialchars($fecha, ENT_QUOTES, 'UTF-8');
+            $eIp       = htmlspecialchars($ip, ENT_QUOTES, 'UTF-8');
+            $eDestino  = htmlspecialchars($nombreEmpresa, ENT_QUOTES, 'UTF-8');
+
+            $asuntoMail = '[Sitio Principal] ' . $serviciosPermitidos[$servicio] . ' — ' . $nombre;
+
+            $html = '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+                . '<body style="margin:0;padding:0;background:#0a0f1a;font-family:Arial,Helvetica,sans-serif;">'
+                . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0a0f1a;padding:28px 12px;">'
+                . '<tr><td align="center">'
+                . '<table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:#111827;border:1px solid #1e293b;border-radius:16px;overflow:hidden;">'
+                . '<tr><td style="padding:0;">'
+                . '<div style="height:5px;background:linear-gradient(90deg,#ff6b00 0%,#00d4ff 100%);font-size:0;line-height:0;">&nbsp;</div>'
+                . '</td></tr>'
+                . '<tr><td style="padding:28px 30px 22px;background:#0f172a;">'
+                . '<div style="display:inline-block;padding:5px 12px;border-radius:999px;background:rgba(255,107,0,.14);border:1px solid rgba(255,107,0,.35);color:#ff8a33;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">Sitio principal · Contacto web</div>'
+                . '<div style="margin-top:14px;font-size:28px;line-height:1.1;font-weight:800;color:#ffffff;">' . $eDestino . '</div>'
+                . '<div style="margin-top:8px;color:#94a3b8;font-size:14px;line-height:1.6;">Nueva solicitud recibida desde el formulario de contacto de la landing principal.</div>'
+                . '</td></tr>'
+                . '<tr><td style="padding:24px 30px 8px;">'
+                . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
+                . '<tr>'
+                . '<td style="width:50%;vertical-align:top;padding:0 8px 16px 0;"><div style="background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:14px 16px;"><div style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;">Nombre</div><div style="color:#ffffff;font-size:15px;font-weight:700;line-height:1.4;">' . $eNombre . '</div></div></td>'
+                . '<td style="width:50%;vertical-align:top;padding:0 0 16px 8px;"><div style="background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:14px 16px;"><div style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;">Empresa / Negocio</div><div style="color:#e5e7eb;font-size:15px;line-height:1.4;">' . $eEmpresa . '</div></div></td>'
+                . '</tr>'
+                . '<tr>'
+                . '<td style="width:50%;vertical-align:top;padding:0 8px 16px 0;"><div style="background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:14px 16px;"><div style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;">Correo</div><div style="font-size:15px;line-height:1.4;"><a href="mailto:' . $eCorreo . '" style="color:#00d4ff;text-decoration:none;font-weight:600;">' . $eCorreo . '</a></div></div></td>'
+                . '<td style="width:50%;vertical-align:top;padding:0 0 16px 8px;"><div style="background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:14px 16px;"><div style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;">Teléfono / WhatsApp</div><div style="color:#e5e7eb;font-size:15px;line-height:1.4;">' . $eTelefono . '</div></div></td>'
+                . '</tr>'
+                . '</table>'
+                . '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:14px 16px;margin-bottom:16px;"><div style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;">Necesidad</div><div style="color:#ff8a33;font-size:15px;font-weight:700;line-height:1.4;">' . $eServicio . '</div></div>'
+                . '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px;"><div style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">Mensaje</div><div style="color:#d1d5db;font-size:14px;line-height:1.75;">' . $eCuerpo . '</div></div>'
+                . '<div style="padding:4px 2px 0;color:#64748b;font-size:12px;line-height:1.6;">Fecha: <span style="color:#94a3b8;">' . $eFecha . '</span> &nbsp;·&nbsp; IP: <span style="color:#94a3b8;">' . $eIp . '</span></div>'
+                . '</td></tr>'
+                . '<tr><td style="padding:18px 30px 26px;border-top:1px solid #1e293b;color:#64748b;font-size:12px;line-height:1.7;">Este correo fue generado por el <strong style="color:#94a3b8;">formulario de contacto del sitio principal</strong> de ' . $eDestino . '. Responde directamente a este mensaje para contactar al remitente.</td></tr>'
+                . '</table>'
+                . '</td></tr></table></body></html>';
+
+            $textoPlano = "UNICORNIOSOFTWARE - SITIO PRINCIPAL\n"
+                . "Nueva solicitud desde el formulario de contacto web\n"
+                . "==================================================\n\n"
+                . "Nombre: {$nombre}\n"
+                . "Empresa / Negocio: " . ($empresa !== '' ? $empresa : '-') . "\n"
+                . "Correo: {$correo}\n"
+                . "Teléfono / WhatsApp: " . ($telefono !== '' ? $telefono : '-') . "\n"
+                . "Necesidad: {$serviciosPermitidos[$servicio]}\n"
+                . "Fecha: {$fecha}\n"
+                . "IP: {$ip}\n\n"
+                . "Mensaje:\n"
+                . "--------------------------------------------------\n"
+                . "{$cuerpo}\n"
+                . "--------------------------------------------------\n\n"
+                . "Origen: Formulario de contacto del sitio principal de {$nombreEmpresa}.\n";
+
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            try {
+                $mail->isSMTP();
+                $mail->Host       = 'smtp.gmail.com';
+                $mail->Port       = 587;
+                $mail->SMTPAuth   = true;
+                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Timeout    = 30;
+                $mail->Username   = CORREO_SMTP_USER;
+                $mail->Password   = CORREO_SMTP_PASS;
+                $mail->CharSet    = 'UTF-8';
+                $mail->setFrom(CORREO_SMTP_USER, $nombreEmpresa);
+                $mail->addAddress('unicorniosoftwarecuba@gmail.com');
+                $mail->addReplyTo($correo, $nombre);
+                $mail->Subject = $asuntoMail;
+                $mail->isHTML(true);
+                $mail->Body    = $html;
+                $mail->AltBody = $textoPlano;
+                $mail->send();
+
+                $exito = true;
+                $mensaje = [
+                    'tipo'   => 'ok',
+                    'titulo' => 'Solicitud recibida',
+                    'texto'  => 'Tus datos han sido recibidos en nuestro servidor. Analizaremos tu caso y te contactaremos en breve.',
+                ];
+                $_SESSION['csrf_contacto'] = bin2hex(random_bytes(16));
+                $csrfToken = (string)$_SESSION['csrf_contacto'];
+                $_POST = [];
+            } catch (Throwable $e) {
+                error_log('Contacto root: ' . ($mail->ErrorInfo ?? $e->getMessage()));
+                $mensaje = [
+                    'tipo'   => 'error',
+                    'titulo' => 'No se pudo enviar',
+                    'texto'  => 'Ocurrió un problema temporal. Intenta nuevamente o escríbenos por WhatsApp o correo directo.',
+                ];
+            }
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contacto — UnicornioSoftware</title>
+    <meta name="description" content="Contacta con UnicornioSoftware. Cuéntanos tu operación y te ayudaremos a encontrar la solución adecuada: SiGesNom, Ecosistema Financiero o desarrollo a medida.">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+    <style>
+    :root {
+        --abismo:#0a0f1a; --panel:#0b0e14; --tarjeta:#090e18; --acero:#1e293b;
+        --cian:#00d4ff; --fuego:#ff6b00; --fuego-h:#ff8a33;
+        --txt:#ffffff; --gris:#d1d5db; --gris-2:#9ca3af; --gris-3:#6b7280;
+        --nav-h:5rem; --wrap:80rem; --radio:.5rem;
+        --ok:#22c55e; --err:#ef4444;
+    }
+    *,*::before,*::after { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:calc(var(--nav-h) + 2rem); }
+    body { background:var(--abismo); color:var(--txt); font-family:"Inter","Segoe UI",Roboto,Arial,sans-serif; margin:0; }
+    .wrap { width:100%; max-width:var(--wrap); margin-inline:auto; padding-inline:clamp(1.25rem,4vw,3rem); }
+    .bebas { font-family:"Bebas Neue",Impact,sans-serif; font-weight:400; line-height:.95; letter-spacing:.03em; }
+
+    .nav { position:fixed; inset:0 0 auto 0; z-index:50; height:var(--nav-h); background:rgba(10,15,26,.9); -webkit-backdrop-filter:blur(18px) saturate(140%); backdrop-filter:blur(18px) saturate(140%); border-bottom:1px solid rgba(30,41,59,.7); }
+    .nav-in { height:100%; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .marca { display:inline-flex; align-items:center; gap:.65rem; flex:0 0 auto; text-decoration:none; color:inherit; }
+    .marca img { width:2.5rem; height:2.5rem; object-fit:contain; filter:drop-shadow(0 0 10px rgba(0,212,255,.2)); }
+    .marca-txt b { display:block; font-family:"Bebas Neue",Impact,sans-serif; font-weight:400; font-size:1.5rem; line-height:.9; letter-spacing:.03em; }
+    .marca-txt b i { font-style:normal; color:var(--cian); }
+    .marca-txt b em { font-style:normal; color:var(--fuego); }
+    .marca-txt small { display:block; margin-top:.2rem; font-size:.58rem; letter-spacing:.22em; text-transform:uppercase; color:var(--gris-3); font-weight:600; }
+    .nav-links { display:none; align-items:center; gap:1.5rem; }
+    .nav-links a { display:inline-flex; align-items:center; gap:.45rem; font-family:"Exo 2",sans-serif; font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--gris-2); text-decoration:none; transition:color .2s; }
+    .nav-links a i { font-size:1em; color:var(--gris-3); transition:color .2s; }
+    .nav-links a:hover i,.nav-links a:focus-visible i { color:var(--cian); }
+    .nav-links a:hover,.nav-links a:focus-visible { color:var(--txt); }
+    .menu-btn { display:inline-grid; place-items:center; width:2.75rem; height:2.75rem; border:1px solid var(--acero); border-radius:2px; background:transparent; color:var(--gris-2); font-size:1.1rem; cursor:pointer; }
+    .menu-movil { display:none; padding:.25rem 1.25rem 1.25rem; background:rgba(10,15,26,.97); border-bottom:1px solid rgba(30,41,59,.7); }
+    .menu-movil.is-open { display:block; }
+    .menu-movil a { display:flex; align-items:center; gap:.6rem; padding:.7rem 0; font-family:"Exo 2",sans-serif; font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--gris-2); border-bottom:1px solid rgba(30,41,59,.45); text-decoration:none; }
+    .menu-movil a i { width:1.25rem; text-align:center; color:var(--gris-3); }
+    .menu-movil a:last-child { border-bottom:0; }
+    @media (min-width:768px){ .nav-links{display:flex;} .menu-btn,.menu-movil{display:none !important;} }
+
+    .hero { position:relative; padding:calc(var(--nav-h) + 3.5rem) 0 4.5rem; overflow:hidden; border-bottom:1px solid rgba(30,41,59,.55); }
+    .hero-bg { position:absolute; inset:0; background:
+        radial-gradient(ellipse at 15% 10%, rgba(255,107,0,.14), transparent 45%),
+        radial-gradient(ellipse at 85% 80%, rgba(0,212,255,.10), transparent 45%),
+        linear-gradient(180deg, #05080f 0%, #0a0f1a 100%); }
+    .hero-bg::after { content:""; position:absolute; inset:0; background-image:linear-gradient(rgba(30,41,59,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(30,41,59,.18) 1px, transparent 1px); background-size:48px 48px; opacity:.35; }
+    .hero-in { position:relative; z-index:1; text-align:center; max-width:56rem; margin:0 auto; }
+    .eyebrow { display:inline-block; font-family:"Exo 2",sans-serif; font-size:.72rem; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--fuego); margin-bottom:.85rem; }
+    .hero h1 { margin:0; font-size:clamp(2.8rem,7vw,5rem); text-transform:uppercase; }
+    .hero p { max-width:42rem; margin:1.1rem auto 0; color:var(--gris-2); font-size:1.02rem; line-height:1.8; }
+
+    .sec { padding:4.5rem 0 5.5rem; }
+    .contact-grid { display:grid; gap:2rem; align-items:start; }
+    @media (min-width:980px){ .contact-grid { grid-template-columns: minmax(0,.95fr) minmax(0,1.05fr); gap:2.5rem; } }
+
+    .kicker { font-family:"Exo 2",sans-serif; font-size:.72rem; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:var(--cian); margin:0 0 .75rem; }
+    .left-col h2 { margin:0 0 1rem; font-size:clamp(2rem,4.2vw,3.2rem); text-transform:uppercase; }
+    .left-col h2 .fuego { color:var(--fuego); }
+    .left-col > p { color:var(--gris-2); line-height:1.8; margin:0 0 1.75rem; max-width:38rem; }
+
+    .canales { display:grid; gap:1rem; margin:0 0 1.5rem; }
+    .canal { display:flex; gap:1rem; align-items:flex-start; padding:1.15rem 1.2rem; background:linear-gradient(145deg,#111827,#0b111d); border:1px solid rgba(30,41,59,.9); border-radius:.85rem; text-decoration:none; color:inherit; transition:transform .25s,border-color .25s,box-shadow .25s; }
+    .canal:hover { transform:translateY(-2px); border-color:rgba(0,212,255,.35); box-shadow:0 18px 40px -24px rgba(0,212,255,.35); }
+    .canal-ico { width:2.85rem; height:2.85rem; border-radius:.7rem; display:grid; place-items:center; flex-shrink:0; font-size:1.2rem; }
+    .canal-ico.wa { background:rgba(37,211,102,.14); color:#25D366; border:1px solid rgba(37,211,102,.3); }
+    .canal-ico.mail { background:rgba(255,107,0,.14); color:var(--fuego); border:1px solid rgba(255,107,0,.3); }
+    .canal-ico.tel { background:rgba(0,212,255,.12); color:var(--cian); border:1px solid rgba(0,212,255,.28); }
+    .canal h3 { margin:0; font-family:"Exo 2",sans-serif; font-size:.72rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--gris-3); }
+    .canal p { margin:.35rem 0 0; font-size:1rem; font-weight:600; color:#fff; word-break:break-word; }
+    .canal span.cta { display:inline-flex; align-items:center; gap:.4rem; margin-top:.55rem; font-size:.78rem; font-weight:700; color:var(--cian); }
+    .canal:hover span.cta { color:#fff; }
+
+    .compromiso { margin-top:3rem; padding:24px; border:1px solid rgb(30,41,59); background:rgba(0,0,0,.5); border-radius:8px; position:relative; overflow:hidden; }
+    .compromiso-barra { position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--fuego); }
+    .compromiso h3 { margin:0 0 8px; font-family:"Exo 2",sans-serif; font-size:14px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:var(--fuego); display:block; }
+    .compromiso h3 i { margin-right:.5rem; }
+    .compromiso p { margin:0; color:rgb(156,163,175); font-size:14px; line-height:22.75px; }
+    .compromiso-resalte { color:#fff; font-weight:700; }
+
+    .form-card { background:linear-gradient(160deg, rgba(17,24,39,.95), rgba(10,15,26,.98)); border:1px solid rgba(30,41,59,.95); border-radius:1rem; padding:clamp(1.25rem,3vw,2rem); box-shadow:0 30px 80px -40px rgba(0,0,0,.8); }
+    .form-card h2 { margin:0 0 .4rem; font-size:clamp(1.6rem,3vw,2.2rem); text-transform:uppercase; }
+    .form-card > p { margin:0 0 1.5rem; color:var(--gris-2); font-size:.92rem; line-height:1.7; }
+
+    .alerta { padding:1rem 1.1rem; border-radius:.75rem; margin-bottom:1.25rem; font-size:.92rem; line-height:1.6; }
+    .alerta.ok { background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.35); color:#dcfce7; }
+    .alerta.error { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.35); color:#fee2e2; }
+    .alerta strong { display:block; margin-bottom:.2rem; font-family:"Exo 2",sans-serif; letter-spacing:.04em; text-transform:uppercase; font-size:.78rem; }
+
+    .campo { margin-bottom:1rem; }
+    .campo label { display:block; margin-bottom:.45rem; font-family:"Exo 2",sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--gris); }
+    .campo input, .campo select, .campo textarea {
+        width:100%; padding:.85rem 1rem; border-radius:.55rem; border:1px solid var(--acero);
+        background:#0f172a; color:#fff; font:inherit; font-size:.95rem; transition:border-color .2s, box-shadow .2s;
+    }
+    .campo input:focus, .campo select:focus, .campo textarea:focus {
+        outline:none; border-color:rgba(0,212,255,.55); box-shadow:0 0 0 3px rgba(0,212,255,.12);
+    }
+    .campo textarea { min-height:140px; resize:vertical; }
+    .campo select option { background:#0f172a; color:#fff; }
+    .grid-2 { display:grid; gap:1rem; }
+    @media (min-width:640px){ .grid-2 { grid-template-columns:1fr 1fr; } }
+    .hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+
+    .btn-enviar {
+        display:inline-flex; align-items:center; justify-content:center; gap:.6rem; width:100%;
+        padding:1rem 1.5rem; border:0; border-radius:.55rem; cursor:pointer;
+        font-family:"Exo 2",sans-serif; font-size:.8rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+        color:#0a0f1a; background:linear-gradient(135deg, var(--fuego), #ff8a33);
+        box-shadow:0 16px 36px -16px rgba(255,107,0,.7); transition:transform .2s, box-shadow .2s, filter .2s;
+    }
+    .btn-enviar:hover { transform:translateY(-2px); box-shadow:0 22px 42px -16px rgba(255,107,0,.85); filter:saturate(1.05); }
+    .btn-enviar:active { transform:translateY(0); }
+
+    .exito-box { text-align:center; padding:2rem 1rem 1rem; }
+    .exito-icon { width:4.5rem; height:4.5rem; margin:0 auto 1.25rem; border-radius:50%; display:grid; place-items:center; font-size:2rem; color:var(--ok); background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.35); }
+    .exito-box h2 { margin:0 0 .75rem; font-size:clamp(2rem,4vw,3rem); text-transform:uppercase; }
+    .exito-box p { color:var(--gris-2); line-height:1.8; max-width:30rem; margin:0 auto 1.5rem; }
+    .btn-ghost { display:inline-flex; align-items:center; gap:.5rem; padding:.85rem 1.4rem; border-radius:.55rem; border:1px solid var(--acero); color:var(--gris); text-decoration:none; font-family:"Exo 2",sans-serif; font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; transition:all .2s; }
+    .btn-ghost:hover { color:#fff; border-color:rgba(0,212,255,.45); }
+
+    .pie{padding:3.5rem 0 0;background:#060a12;border-top:1px solid rgba(30,41,59,.7);}
+    .pie-grid{display:grid;gap:2.25rem;padding-bottom:2.5rem;grid-template-columns:minmax(0,1fr);}
+    @media(min-width:640px){.pie-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media(min-width:1024px){.pie-grid{grid-template-columns:1.3fr 1fr 1fr 1fr;gap:2.5rem;}}
+    .pie-marca{display:flex;align-items:center;gap:.65rem;margin-bottom:1rem;text-decoration:none;color:inherit;}
+    .pie-marca img{width:2.4rem;height:2.4rem;object-fit:contain;}
+    .pie-grid p,.pie-grid a{color:var(--gris-2);font-size:.86rem;line-height:1.7;text-decoration:none;}
+    .pie-grid a:hover,.pie-grid a:focus-visible{color:var(--txt);}
+    .pie h4{font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--txt);margin:0 0 .85rem;}
+    .pie-lista{list-style:none;padding:0;margin:0;display:grid;gap:.45rem;}
+    .pie-lista a{display:inline-flex;align-items:center;gap:.5rem;}
+    .pie-lista a i{color:var(--gris-3);font-size:.8rem;width:.9rem;text-align:center;transition:color .2s;}
+    .pie-lista a:hover i{color:var(--cian);}
+    .pie-social{display:flex;flex-wrap:nowrap;gap:.55rem;margin-top:1rem;overflow-x:auto;padding-bottom:.15rem;}
+    .pie-social a{display:inline-grid;place-items:center;flex:0 0 auto;width:2.25rem;height:2.25rem;border-radius:999px;border:1px solid rgba(255,255,255,.12);color:var(--gris-2);font-size:.9rem;transition:color .25s,border-color .25s,background .25s,transform .25s;}
+    .pie-social a:hover{color:var(--cian);border-color:rgba(0,212,255,.45);background:rgba(0,212,255,.08);transform:translateY(-2px);}
+    .pie-social svg{width:1em;height:1em;display:block;}
+    .pie-legal-title{margin-top:1.4rem;}
+    .pie-legal{display:grid;gap:.45rem;}
+    .pie-legal a{display:inline-flex;align-items:center;gap:.5rem;}
+    .pie-legal a i{color:var(--gris-3);font-size:.8rem;width:.9rem;text-align:center;transition:color .2s;}
+    .pie-legal a:hover i{color:var(--cian);}
+    .pie-barra{display:flex;flex-direction:column;gap:.5rem;padding:1.15rem 0 1.6rem;border-top:1px solid rgba(30,41,59,.55);color:var(--gris-3);font-size:.75rem;}
+    @media(min-width:640px){.pie-barra{flex-direction:row;align-items:center;justify-content:space-between;}}
+
+    .reveal { opacity:0; transform:translateY(24px); transition:opacity .7s cubic-bezier(.22,.8,.24,1),transform .7s cubic-bezier(.22,.8,.24,1); }
+    .reveal.active { opacity:1; transform:none; }
+    @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none;}}
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="wrap nav-in">
+            <a class="marca" href="/index.php" title="UnicornioSoftware Cuba">
+                <img src="/images/logo.png" alt="UnicornioSoftware Cuba">
+                <span class="marca-txt">
+                    <b><i>UNICORNIO</i><em>SOFTWARE</em></b>
+                    <small>Cuba · Gestión empresarial</small>
+                </span>
+            </a>
+            <div class="nav-links">
+                <a href="/index.php"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+                <a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Sobre nosotros</a>
+                <a href="/index.php#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Precios</a>
+                <a href="/servicios/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
+            </div>
+            <button type="button" class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="menu-movil" id="menuMovil">
+            <a href="/index.php"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+            <a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Sobre nosotros</a>
+            <a href="/index.php#precios"><i class="fa-solid fa-tags" aria-hidden="true"></i> Precios</a>
+            <a href="/servicios/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Soporte</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-bg" aria-hidden="true"></div>
+        <div class="wrap hero-in reveal active">
+            <span class="eyebrow">Contacto</span>
+            <h1 class="bebas">IMPULSA TU <span style="color:var(--fuego)">OPERACIÓN</span></h1>
+            <p>Si estás perdiendo tiempo con procesos manuales, descontrol en nóminas, inventarios o costos, estás en el lugar correcto. Cuéntanos tu problema y construiremos la solución adecuada.</p>
+        </div>
+    </header>
+
+    <main class="sec">
+        <div class="wrap">
+            <div class="contact-grid">
+                <div class="left-col reveal">
+                    <p class="kicker">Atención directa</p>
+                    <h2 class="bebas">NO HABLAMOS CON BOTS.<br><span class="fuego">HABLAMOS DE NEGOCIOS.</span></h2>
+                    <p>Tu operación no puede depender de herramientas débiles o soporte que nunca responde. Selecciona tu canal de comunicación o detalla tu situación para recibir una orientación clara sobre lo que tu negocio necesita.</p>
+
+                    <div class="canales">
+                        <a class="canal" href="https://api.whatsapp.com/send?phone=5352712861&text=Hola%2C%20necesito%20informaci%C3%B3n%20sobre%20UnicornioSoftware" target="_blank" rel="noopener noreferrer">
+                            <div class="canal-ico wa"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></div>
+                            <div>
+                                <h3>Línea directa / WhatsApp</h3>
+                                <p>+53 5 2712861</p>
+                                <span class="cta">Enviar mensaje <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>
+                            </div>
+                        </a>
+
+                        <div class="canal canal-static">
+                            <div class="canal-ico mail"><i class="fa-solid fa-envelope" aria-hidden="true"></i></div>
+                            <div>
+                                <h3>Correo electrónico</h3>
+                                <p><a href="mailto:kakycu@gmail.com" style="color:inherit;text-decoration:none;">kakycu@gmail.com</a><br><a href="mailto:unicorniosoftwarecuba@gmail.com" style="color:inherit;text-decoration:none;">unicorniosoftwarecuba@gmail.com</a></p>
+                                <span class="cta"><a href="mailto:kakycu@gmail.com,unicorniosoftwarecuba@gmail.com" style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;">Escribir correo <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></span>
+                            </div>
+                        </div>
+
+                        <div class="canal canal-static">
+                            <div class="canal-ico tel"><i class="fa-solid fa-phone" aria-hidden="true"></i></div>
+                            <div>
+                                <h3>Teléfono</h3>
+                                <p><a href="tel:+5352712861" style="color:inherit;text-decoration:none;">+53 5 2712861</a><br><a href="tel:+5332415418" style="color:inherit;text-decoration:none;">+53 32 415418</a></p>
+                                <span class="cta"><a href="tel:+5352712861" style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;">Llamar ahora <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="compromiso">
+                        <div class="compromiso-barra" aria-hidden="true"></div>
+                        <h3><i class="fa-solid fa-clock" aria-hidden="true"></i> Nuestro Compromiso</h3>
+                        <p>Respondemos a todas las solicitudes <span class="compromiso-resalte">lo antes posible</span>. Si tu consulta se realiza fuera del horario laboral, la respuesta puede demorar unas horas más, pero siempre priorizamos la atención de nuestros usuarios para que tu negocio nunca se detenga.</p>
+                    </div>
+                </div>
+
+                <div class="form-card reveal" id="formulario">
+                    <?php if ($exito && $mensaje): ?>
+                        <div class="exito-box">
+                            <div class="exito-icon"><i class="fa-solid fa-check" aria-hidden="true"></i></div>
+                            <h2 class="bebas"><?= htmlspecialchars($mensaje['titulo'], ENT_QUOTES, 'UTF-8') ?></h2>
+                            <p><?= htmlspecialchars($mensaje['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                            <a href="/contacto.php" class="btn-ghost"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar otro mensaje</a>
+                        </div>
+                    <?php else: ?>
+                        <h2 class="bebas">SOLICITA TU COTIZACIÓN</h2>
+                        <p>Cuéntanos qué necesitas y te responderemos con una orientación clara.</p>
+
+                        <?php if ($mensaje): ?>
+                            <div class="alerta <?= $mensaje['tipo'] === 'ok' ? 'ok' : 'error' ?>" role="alert">
+                                <strong><?= htmlspecialchars($mensaje['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                <?= htmlspecialchars($mensaje['texto'], ENT_QUOTES, 'UTF-8') ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <form method="post" action="/contacto.php#formulario" novalidate>
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                            <div class="hp" aria-hidden="true">
+                                <label for="website">Sitio web</label>
+                                <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                            </div>
+
+                            <div class="grid-2">
+                                <div class="campo">
+                                    <label for="nombre">Nombre completo *</label>
+                                    <input type="text" id="nombre" name="nombre" required maxlength="120" autocomplete="off">
+                                </div>
+                                <div class="campo">
+                                    <label for="empresa">Empresa / Negocio</label>
+                                    <input type="text" id="empresa" name="empresa" maxlength="120" autocomplete="off">
+                                </div>
+                            </div>
+
+                            <div class="grid-2">
+                                <div class="campo">
+                                    <label for="correo">Correo electrónico *</label>
+                                    <input type="email" id="correo" name="correo" required maxlength="150" autocomplete="off">
+                                </div>
+                                <div class="campo">
+                                    <label for="telefono">Teléfono / WhatsApp</label>
+                                    <input type="text" id="telefono" name="telefono" maxlength="40" autocomplete="off">
+                                </div>
+                            </div>
+
+                            <div class="campo">
+                                <label for="servicio">¿Qué necesitas? *</label>
+                                <select id="servicio" name="servicio" required autocomplete="off">
+                                    <option value="" selected>Selecciona una opción...</option>
+                                    <option value="sigesnom">SiGesNom / Nóminas</option>
+                                    <option value="ecosistema">Ecosistema Financiero (Facturación, Costos, Inventarios)</option>
+                                    <option value="amedida">Desarrollo a medida</option>
+                                    <option value="soporte">Soporte técnico</option>
+                                    <option value="otra">Otra consulta</option>
+                                </select>
+                            </div>
+
+                            <div class="campo">
+                                <label for="mensaje">Háblanos de tu operación *</label>
+                                <textarea id="mensaje" name="mensaje" required maxlength="5000" autocomplete="off" placeholder="Describe brevemente tu negocio, el problema que quieres resolver o el sistema que necesitas..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn-enviar">
+                                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Enviar solicitud
+                            </button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="pie">
+        <div class="wrap">
+            <div class="pie-grid">
+                <div>
+                    <div class="pie-marca">
+                        <img src="/images/logo.png" alt="">
+                        <span class="bebas" style="font-size:1.5rem"><i style="font-style:normal;color:var(--cian)">UNICORNIO</i><i style="font-style:normal;color:var(--fuego)">SOFTWARE</i></span>
+                    </div>
+                    <p>Entorno de Aplicaciones Web de UnicornioSoftware&#174; Cuba. Kaky&#174;. Facturación, nóminas, costos e inventarios en tu propia red.</p>
+                    <p style="margin-top:.6rem;color:var(--gris-2);font-style:italic">&laquo;Donde tu visión toma forma&raquo;</p>
+                </div>
+
+                <nav aria-label="Enlaces del pie">
+                    <h4>Explorar</h4>
+                    <ul class="pie-lista">
+                        <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
+                        <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
+                        <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
+                        <li><a href="<?= $base ?>/costos/index.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
+                        <li><a href="<?= $base ?>/inventarios/index.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
+                        <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
+                    </ul>
+                </nav>
+
+                <div>
+                    <h4>Contacto</h4>
+                    <p><a href="mailto:kakycu@gmail.com"><i class="fa-solid fa-envelope" aria-hidden="true"></i> kakycu@gmail.com</a></p>
+                    <p><a href="tel:+5352712861"><i class="fa-solid fa-phone" aria-hidden="true"></i> +53 5 2712861</a></p>
+                    <p><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>Sábados: 9:00 AM - 1:00 PM</p>
+                    <p><a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Centro de soporte</a></p>
+                    <p><a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Sobre nosotros</a></p>
+                </div>
+
+                <div>
+                    <h4>Síguenos</h4>
+                    <div class="pie-social">
+                        <a href="https://www.facebook.com/unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
+                        <a href="https://www.x.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true"><path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn"><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
+                        <a href="https://www.instagram.com/unicorniosoftcuba" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
+                        <a href="https://www.youtube.com/@unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><i class="fa-brands fa-youtube" aria-hidden="true"></i></a>
+                        <a href="https://api.whatsapp.com/send?phone=5352712861" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a>
+                    </div>
+
+                    <h4 class="pie-legal-title">Legal</h4>
+                    <p class="pie-legal">
+                        <a href="/legal.php#terminos"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
+                        <a href="/legal.php#privacidad"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
+                        <a href="/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+                    </p>
+                </div>
+            </div>
+            <div class="pie-barra">
+                <span>© <?= date('Y') ?> UnicornioSoftware® Cuba. Todos los derechos reservados.</span>
+                <span>Licencia registrada · datos alojados en este equipo</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/servicios/js/sweetalert211.js"></script>
+    <script>
+    (function () {
+        var btn = document.getElementById('menuBtn');
+        var menu = document.getElementById('menuMovil');
+        if (!btn || !menu) return;
+        btn.addEventListener('click', function () {
+            var abierto = menu.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+            btn.innerHTML = abierto ? '<i class="fa-solid fa-xmark" aria-hidden="true"></i>' : '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
+        });
+    })();
+    document.addEventListener('DOMContentLoaded', function () {
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) { entry.target.classList.add('active'); observer.unobserve(entry.target); }
+            });
+        }, { threshold: 0.12 });
+        document.querySelectorAll('.reveal').forEach(function (el) { observer.observe(el); });
+
+        var form = document.querySelector('#formulario form');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                if (form.dataset.enviando === '1') return;
+                if (!form.checkValidity()) return;
+                e.preventDefault();
+                form.dataset.enviando = '1';
+                var btnEnviar = form.querySelector('.btn-enviar');
+                if (btnEnviar) btnEnviar.disabled = true;
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'ENVIANDO MENSAJE A UNICORNIOSOFTWARE',
+                        text: 'Por favor, espera mientras se envía tu solicitud...',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: function () {
+                            Swal.showLoading();
+                            form.submit();
+                        }
+                    });
+                } else {
+                    form.submit();
+                }
+            });
+        }
+    });
+    </script>
+</body>
+</html>

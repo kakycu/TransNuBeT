@@ -2769,7 +2769,10 @@ body::after {
                 <i class="fas fa-sign-in-alt"></i> Inicio de Sesión en SiGesNom®
             </div>
             <div class="titlebar-buttons">
-                <a href="../../" class="titlebar-btn tb-home" id="btnHomeLogin" title="Volver al inicio" data-tooltip="Volver al inicio" data-tooltip-theme="info" aria-label="Volver al inicio">
+                <a href="/index.php" class="titlebar-btn tb-home" id="btnSiteLogin" title="Volver al Sitio Principal" data-tooltip="Volver al Sitio Principal" data-tooltip-theme="info" aria-label="Volver al Sitio Principal">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <a href="../index.php" class="titlebar-btn tb-home" id="btnHomeLogin" title="Volver al Ecosistema" data-tooltip="Volver al Ecosistema" data-tooltip-theme="info" aria-label="Volver al Ecosistema">
                     <i class="fas fa-house"></i>
                 </a>
                 <div class="custom-dropdown" id="otrosServiciosDropdown">
@@ -2866,7 +2869,7 @@ body::after {
                     <i class="fas fa-arrow-right-to-bracket"></i> Iniciar Sesión
                 </button>
                 <button type="button" class="btn-back-home" id="backHomeBtn">
-                    <i class="fas fa-arrow-left"></i> Regresar
+                    <i class="fas fa-arrow-left"></i> Ecosistema
                 </button>
             </div>
 
@@ -3672,7 +3675,7 @@ if (backHomeBtn) {
     backHomeBtn.addEventListener('click', function(e) {
         e.preventDefault();
         Swal.fire({
-            title: '<i class="fas fa-arrow-left" style="color: #f59e0b; font-size:2rem;"></i><br>¿Regresar al inicio?',
+            title: '<i class="fas fa-arrow-left" style="color: #f59e0b; font-size:2rem;"></i><br>¿Regresar al Ecosistema?',
             html: '<p style="font-size:1rem;">Se cerrará el acceso al sistema de nóminas.</p>',
             icon: 'question',
             background: '#0f172a',

@@ -433,7 +433,7 @@
 
                 <div class="legal-block">
                     <h3><span class="dot fuego"></span> 7. Derechos del usuario</h3>
-                    <p>Usted puede solicitar la corrección, actualización, eliminación o limitación del tratamiento de sus datos personales, siempre que ello no entre en conflicto con obligaciones legales, laborales, fiscales o de auditoría. Para ejercer estos derechos, contacte al administrador del sistema o utilice nuestro <a href="<?= $base ?>/contacto.php">formulario de contacto</a>.</p>
+                    <p>Usted puede solicitar la corrección, actualización, eliminación o limitación del tratamiento de sus datos personales, siempre que ello no entre en conflicto con obligaciones legales, laborales, fiscales o de auditoría. Para ejercer estos derechos, contacte al administrador del sistema o utilice nuestro <a href="/contacto.php">formulario de contacto</a>.</p>
                 </div>
 
                 <div class="legal-block">
@@ -504,7 +504,7 @@
 
                 <div class="legal-block">
                     <h3><span class="dot cian"></span> 10. Legislación aplicable y contacto legal</h3>
-                    <p>Estos términos se rigen por las leyes de la República de Cuba. Cualquier disputa será atendida ante las instancias competentes conforme a la normativa aplicable. Para consultas legales, solicitudes o notificaciones formales, puede contactarnos a través de nuestro <a href="<?= $base ?>/contacto.php">formulario de contacto</a>.</p>
+                    <p>Estos términos se rigen por las leyes de la República de Cuba. Cualquier disputa será atendida ante las instancias competentes conforme a la normativa aplicable. Para consultas legales, solicitudes o notificaciones formales, puede contactarnos a través de nuestro <a href="/contacto.php">formulario de contacto</a>.</p>
                 </div>
             </div>
         </section>
@@ -529,8 +529,8 @@
                         <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
                         <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
                         <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
-                        <li><a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
-                        <li><a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
+                        <li><a href="<?= $base ?>/costos/index.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
+                        <li><a href="<?= $base ?>/inventarios/index.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
                         <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
                     </ul>
                 </nav>
@@ -561,7 +561,7 @@
                     <p class="pie-legal">
                         <a href="/legal.php#terminos"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
                         <a href="/legal.php#privacidad"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
-                        <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+                        <a href="/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
                     </p>
                 </div>
             </div>

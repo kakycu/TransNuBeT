@@ -624,7 +624,7 @@
                 <p>Conversemos sobre lo que necesitas. Te ayudamos a definir el alcance, la mejor aproximación y los próximos pasos para construirlo.</p>
                 <div class="hero-acciones">
                     <a class="btn btn-verde" href="/desamedida.php"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i> Solicitar software a medida</a>
-                    <a class="btn btn-ghost" href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contactar con UnicornioSoftware</a>
+                    <a class="btn btn-ghost" href="/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contactar con UnicornioSoftware</a>
                     <a class="btn-outline-fuego" href="/index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Regresar a la página principal</a>
                 </div>
             </div>
@@ -649,8 +649,8 @@
                     <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
                     <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
                     <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
-                    <li><a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
-                    <li><a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
+                    <li><a href="<?= $base ?>/costos/index.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
+                    <li><a href="<?= $base ?>/inventarios/index.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
                     <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
                 </ul>
             </nav>
@@ -681,7 +681,7 @@
                 <p class="pie-legal">
                     <a href="/legal.php#terminos"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
                     <a href="/legal.php#privacidad"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
-                    <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+                    <a href="/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
                 </p>
             </div>
         </div>

@@ -1285,6 +1285,11 @@ body.maintenance-modal-open #maintenanceModal * {
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center">
         <li class="nav-item">
+          <a class="nav-link" href="/index.php" title="Regresar al Sitio Original" aria-label="Regresar al Sitio Original" data-bs-toggle="tooltip" data-bs-placement="bottom">
+            <i class="fa-solid fa-arrow-left"></i>
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link active" aria-current="page" href="#hero">
             <i class="fa-solid fa-house me-1"></i> Inicio
           </a>
@@ -1731,6 +1736,9 @@ body.maintenance-modal-open #maintenanceModal * {
     
     <!-- MODIFICADO: Contenedor para los dos botones -->
     <div class="button-group">
+        <a href="/index.php" class="back-to-top" title="Regresar al Sitio Original" aria-label="Regresar al Sitio Original" style="text-decoration:none;">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
         <button class="back-to-top" id="back-to-top">
             <i class="fa-solid fa-arrow-up"></i> Ir al inicio
         </button>

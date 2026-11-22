@@ -483,7 +483,7 @@ $current_year = date('Y');
         width: 100%;
     }
 
-    .btn-access, .btn-secondary-info, .btn-back-home {
+    .btn-access, .btn-secondary-info, .btn-back-home, .btn-site-main {
         padding: clamp(0.75rem, 2vw, 1rem) clamp(1rem, 2.5vw, 1.75rem);
         border-radius: 3.75rem;
         font-size: clamp(0.85rem, 2vw, 1rem);
@@ -497,6 +497,16 @@ $current_year = date('Y');
         text-align: center;
         line-height: 1.3;
         word-break: break-word;
+    }
+
+    .btn-row {
+        display: flex;
+        gap: 0.75rem;
+        width: 100%;
+    }
+    .btn-row > button {
+        flex: 1;
+        min-width: 0;
     }
 
     .btn-access {
@@ -541,6 +551,20 @@ $current_year = date('Y');
         background: #334155;
         border-color: #ef4444;
         color: #fca5a5;
+    }
+
+    .btn-site-main {
+        background: linear-gradient(95deg, #f59e0b, #d97706);
+        border: 0.0625rem solid #fbbf24;
+        font-weight: 700;
+        color: #1f2937;
+        box-shadow: 0 0.375rem 1.25rem rgba(245, 158, 11, 0.28);
+    }
+    .btn-site-main:hover {
+        transform: translateY(-0.125rem);
+        filter: brightness(1.06);
+        box-shadow: 0 0.75rem 1.75rem rgba(245, 158, 11, 0.4);
+        color: #111827;
     }
 
     /* ===== FOOTER ===== */
@@ -627,7 +651,7 @@ $current_year = date('Y');
         .logo-text h2 { font-size: 0.9rem; }
         .logo-text span { font-size: 0.6rem; }
         .welcome-card h1 { font-size: 1.15rem; }
-        .btn-access, .btn-secondary-info, .btn-back-home {
+        .btn-access, .btn-secondary-info, .btn-back-home, .btn-site-main {
             font-size: 0.78rem;
             padding: 0.65rem 0.75rem;
         }
@@ -765,16 +789,21 @@ $current_year = date('Y');
                 <div class="feature-item"><i class="fas fa-lock"></i> Control de accesos</div>
             </div>
             
-            <!-- Grupo de 3 botones -->
+            <!-- Grupo de botones -->
             <div class="button-group">
                 <button class="btn-access" id="accessMainBtn">
                     <i class="fas fa-arrow-right-to-bracket"></i> Acceder al Sistema
                 </button>
-                <button class="btn-secondary-info" id="infoSystemBtnModern">
-                    <i class="fas fa-circle-info"></i> Especificaciones
-                </button>
-                <button class="btn-back-home" id="backHomeBtn">
-                    <i class="fas fa-arrow-left"></i> Regresar al inicio
+                <div class="btn-row">
+                    <button class="btn-secondary-info" id="infoSystemBtnModern">
+                        <i class="fas fa-circle-info"></i> Especificaciones
+                    </button>
+                    <button class="btn-back-home" id="backHomeBtn">
+                        <i class="fas fa-arrow-left"></i> Regresar al Ecosistema
+                    </button>
+                </div>
+                <button class="btn-site-main" id="backSiteBtn">
+                    <i class="fas fa-globe"></i> Regresar al Sitio Principal
                 </button>
             </div>
         </div>
@@ -879,13 +908,13 @@ if (accessButton) {
     });
 }
 
-// Botón de regresar al inicio
+// Botón de regresar al ecosistema
 const backButton = document.getElementById('backHomeBtn');
 if (backButton) {
     backButton.addEventListener('click', (e) => {
         e.preventDefault();
         Swal.fire({
-            title: '¿Regresar al inicio?',
+            title: '¿Regresar al Ecosistema?',
             text: 'Se cerrará el acceso al sistema de nóminas',
             icon: 'question',
             background: '#0f172a',
@@ -897,6 +926,28 @@ if (backButton) {
             cancelButtonText: '<i class="fas fa-times"></i> Cancelar'
         }).then((result) => {
             if (result.isConfirmed) window.location.href = '../index.php';
+        });
+    });
+}
+
+// Botón de regresar al sitio principal
+const backSiteButton = document.getElementById('backSiteBtn');
+if (backSiteButton) {
+    backSiteButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        Swal.fire({
+            title: '¿Regresar al Sitio Principal?',
+            text: 'Saldrás del entorno de servicios y volverás al sitio principal',
+            icon: 'question',
+            background: '#0f172a',
+            color: '#e2e8f0',
+            showCancelButton: true,
+            confirmButtonColor: '#0ea5e9',
+            cancelButtonColor: '#475569',
+            confirmButtonText: '<i class="fas fa-globe"></i> Sí, ir al sitio',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) window.location.href = '/index.php';
         });
     });
 }

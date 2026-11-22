@@ -394,21 +394,21 @@ $ecosistema = [
         'titulo'   => 'Gestión de Costos',
         'texto'    => 'Fichas de costo, gastos operativos, márgenes y proyecciones para controlar la rentabilidad.',
         'icono'    => 'fa-solid fa-calculator',
-        'url'      => $base . '/costos/login.php',
+        'url'      => $base . '/costos/index.php',
         'etiqueta' => 'Módulo de costos',
     ],
     [
         'titulo'   => 'Inventarios',
         'texto'    => 'Control de stock, entradas y salidas, alertas de inventario mínimo y gestión de proveedores.',
         'icono'    => 'fa-solid fa-boxes-stacked',
-        'url'      => $base . '/inventarios/login.php',
+        'url'      => $base . '/inventarios/index.php',
         'etiqueta' => 'Módulo de inventarios',
     ],
     [
         'titulo'   => 'Administración',
         'texto'    => 'Usuarios, roles, parámetros globales, auditoría y configuración del sistema en un solo panel.',
         'icono'    => 'fa-solid fa-user-shield',
-        'url'      => $base . '/administracion/index.php',
+        'url'      => $base . '/admin/index.php',
         'etiqueta' => 'Módulo de administración',
     ],
     [
@@ -1368,11 +1368,11 @@ $faq = [
                     <i class="fa-solid fa-percent" aria-hidden="true"></i>
                     <span><strong>Paga menos por ciclo</strong>Consulta opciones de pago semestral o anual y elige el plan que mejor te convenga.</span>
                 </a>
-                <a href="<?= $base ?>/contacto.php" class="precios-link">
+                <a href="/contacto.php" class="precios-link">
                     <i class="fa-solid fa-file-signature" aria-hidden="true"></i>
                     <span><strong>Cómo contratar</strong>Habla con nuestro equipo y recibe orientación sobre el plan, la activación y la puesta en marcha.</span>
                 </a>
-                <a href="<?= $base ?>/contacto.php" class="precios-link">
+                <a href="/contacto.php" class="precios-link">
                     <i class="fa-solid fa-user-check" aria-hidden="true"></i>
                     <span><strong>¿Te lo instalan?</strong>Busca un socio técnico acreditado en tu zona, con presupuesto acordado.</span>
                 </a>
@@ -1441,8 +1441,8 @@ $faq = [
                     <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
                     <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
                     <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
-                    <li><a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
-                    <li><a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
+                    <li><a href="<?= $base ?>/costos/index.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
+                    <li><a href="<?= $base ?>/inventarios/index.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
                     <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
                 </ul>
             </nav>
@@ -1473,7 +1473,7 @@ $faq = [
                 <p class="pie-legal">
                     <a href="/legal.php#terminos"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
                     <a href="/legal.php#privacidad"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
-                    <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+                    <a href="/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
                 </p>
             </div>
         </div>

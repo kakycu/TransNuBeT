@@ -37,8 +37,8 @@ ErrorDocument 403 /servicios/403.php
     RewriteRule ^images/(costos|inventario|admin|nominas|facturacion|sigesnom)\.png$ - [L,NC]
     RewriteRule ^(assets|css|js|images|lib|Documentos|fcostoAdhesivo|fcostoCharangon|InstalarBD|facturacion|nominas|phpinfo)(/.*)?$ /servicios/$1$2 [R=301,L,NC]
 
-    # Paginas sueltas del sistema
-    RewriteRule ^(403|404|no-index|contacto|correo_privado|explorer|sg|privacidad|soporte|terminos)\.php$ /servicios/$1.php [R=301,L,NC]
+    # Paginas sueltas del sistema (contacto.php ahora vive en la raíz)
+    RewriteRule ^(403|404|no-index|correo_privado|explorer|sg|privacidad|soporte|terminos)\.php$ /servicios/$1.php [R=301,L,NC]
 </IfModule>
 
 # =====================================================================
