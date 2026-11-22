@@ -2302,6 +2302,87 @@ $faq = [
             </div>
         </div>
     </section>
+<section class="sec" id="plataforma">
+        <div class="wrap">
+            <div class="sec-head reveal">
+                <span class="eyebrow">Bajo el capó</span>
+                <h2 class="bebas">La plataforma</h2>
+                <p>Un stack local probado en producción: Apache, PHP y MySQL, con respaldo y soporte del equipo que lo construyó.</p>
+            </div>
+
+                        <div class="metrics" role="list" aria-label="Indicadores de la plataforma" style="padding:0 0 1.5rem">
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-cubes" aria-hidden="true"></i>
+                    <div><b><?= count($ecosistema) ?></b><span>Módulos de gestión</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-brands fa-php" aria-hidden="true"></i>
+                    <div><b>PHP <?= htmlspecialchars($phpVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Servidor local</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-database" aria-hidden="true"></i>
+                    <div><b>MySQL <?= htmlspecialchars($mysqlVersionDisplay, ENT_QUOTES, 'UTF-8') ?></b><span>Base de datos</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-server" aria-hidden="true"></i>
+                    <div><b>Apache <?= htmlspecialchars($apacheVersion, ENT_QUOTES, 'UTF-8') ?></b><span>HTTPD</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+                    <div><b><?= htmlspecialchars($phpmyadminVersion, ENT_QUOTES, 'UTF-8') ?></b><span>phpMyAdmin</span></div>
+                </div>
+                <div class="metric" role="listitem">
+                    <i class="fa-solid fa-headset" aria-hidden="true"></i>
+                    <div><b>24/7</b><span>Soporte técnico</span></div>
+                </div>
+            </div>
+<div class="serv-grid">
+                <?php foreach ($servicios as $srv): ?>
+                <div class="serv reveal">
+                    <i class="<?= htmlspecialchars($srv['icono'], ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i>
+                    <div>
+                        <strong><?= htmlspecialchars($srv['titulo'], ENT_QUOTES, 'UTF-8') ?></strong>
+                        <p><?= htmlspecialchars($srv['texto'], ENT_QUOTES, 'UTF-8') ?></p>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+                        <div class="db-health reveal">
+                <div class="db-health-head">
+                    <i class="fa-solid fa-heart-pulse" aria-hidden="true"></i>
+                    <span>Salud de la Base de Datos (<?= htmlspecialchars($dbName !== '' ? $dbName : 'No conectada', ENT_QUOTES, 'UTF-8') ?>)</span>
+                </div>
+                <div class="db-health-grid">
+                    <div class="db-health-item">
+                        <i class="fa-solid fa-database" style="color:var(--cian)" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbSize, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Tamaño BD</span>
+                    </div>
+                    <div class="db-health-item">
+                        <i class="fa-solid fa-table" style="color:#4ade80" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbTables, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Tablas</span>
+                    </div>
+                    <div class="db-health-item" title="<?= htmlspecialchars($dbUptimeTitle, ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="fa-solid fa-clock" style="color:#fbbf24" aria-hidden="true"></i>
+                        <b><?= htmlspecialchars($dbUptime, ENT_QUOTES, 'UTF-8') ?></b>
+                        <span>Uptime MySQL</span>
+                    </div>
+                </div>
+            </div>
+<div class="lic-acciones reveal" style="margin-top:1.6rem">
+                <a class="btn btn-ghost btn-sm" href="<?= $base ?>/phpinfo/">
+                    <i class="fa-solid fa-server" aria-hidden="true"></i> Estado del servidor
+                </a>
+                <a class="btn btn-ghost btn-sm" href="<?= $base ?>/InstalarBD/InstalarBD.php">
+                    <i class="fa-solid fa-database" aria-hidden="true"></i> Instalador de base de datos
+                </a>
+            </div>
+        </div>
+    </section>
+
+
     <!-- ===== Precios ===== -->
     <section class="sec" id="precios">
         <div class="wrap">
