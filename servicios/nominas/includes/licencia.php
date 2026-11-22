@@ -523,7 +523,7 @@ function licencia_guardar($nombre, $usuario, $serial, $fecha_activacion = null, 
     $fecha = ($fecha_activacion === null) ? time() : (int)$fecha_activacion;
     $datosCheck = array(
         'fecha_activacion' => $fecha,
-        'info' => licencia_info_tipo($tipo),
+        'info' => licencia_tipo_info($tipo),
     );
     if (licencia_vencida($datosCheck) || licencia_fecha_futura($datosCheck)) return false;
     // Solo se re-registra si la licencia actual no es válida ni está activa,

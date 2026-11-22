@@ -72,6 +72,8 @@
     .lic-msg i { margin-top: .15rem; }
     .lic-msg-ok i { color: var(--mint); }
     .lic-msg-error i { color: var(--danger); }
+    .lic-cta-fade { font-weight: 700; color: #facc15; animation: licFade 1.2s ease-in-out infinite; }
+    @keyframes licFade { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
     .lic-alt { display: grid; gap: .6rem; margin-top: 1.15rem; }
     .lic-alt details {
         padding: .55rem .85rem;

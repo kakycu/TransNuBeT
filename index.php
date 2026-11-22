@@ -344,6 +344,25 @@ $licEdoRegistro = $licRegistro;
 $licEdoUsuario  = $licUsuario;
 $licEdoTipo     = $licTipo;
 $licEdoVence    = $licVence;
+$licEdoRestante = '—';
+if ($licenciaDatos !== null && function_exists('licencia_vencimiento')) {
+    $venceTs = licencia_vencimiento($licenciaDatos);
+    if ($venceTs === null) {
+        $licEdoRestante = 'No aplica (licencia permanente)';
+    } elseif (function_exists('licencia_vencida') && licencia_vencida($licenciaDatos)) {
+        $diasVencida = max(0, (int)floor((time() - (int)$venceTs) / 86400));
+        $licEdoRestante = $diasVencida === 1 ? 'Vencida hace 1 día' : 'Vencida hace ' . $diasVencida . ' días';
+    } elseif (function_exists('licencia_dias_restantes')) {
+        $dias = (int)licencia_dias_restantes($licenciaDatos);
+        if ($dias === 0) {
+            $licEdoRestante = 'Vence hoy';
+        } elseif ($dias === 1) {
+            $licEdoRestante = '1 día';
+        } else {
+            $licEdoRestante = $dias . ' días';
+        }
+    }
+}
 
 /* ---------------------------------------------------------------------------
  * Contenido de la portada.
@@ -1213,6 +1232,10 @@ $faq = [
                             <dd><?= $licVence !== '' ? htmlspecialchars($licVence, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
                         </div>
                         <div class="dato">
+                            <dt>Tiempo restante</dt>
+                            <dd><?= htmlspecialchars($licEdoRestante, ENT_QUOTES, 'UTF-8') ?></dd>
+                        </div>
+                        <div class="dato">
                             <dt>Código de equipo</dt>
                             <dd class="mono"><?= $licHuella !== '' ? htmlspecialchars($licHuella, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
                         </div>
@@ -1500,10 +1523,7 @@ $faq = [
             </div>
         </div>
         <div class="lic-modal-actions" style="margin-top:1.1rem;">
-            <a class="btn btn-primary" href="<?= $base ?>/nominas/login.php">
-                <i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar al sistema
-            </a>
-            <button type="button" class="btn btn-glass" data-lic-close>Cerrar</button>
+            <button type="button" class="btn btn-primary" data-lic-close><i class="fa-solid fa-xmark" aria-hidden="true"></i> Cerrar</button>
         </div>
         <?php else: ?>
         <?php if ($licError !== ''): ?>
@@ -1514,7 +1534,7 @@ $faq = [
         <?php elseif ($licAviso !== ''): ?>
         <div class="lic-msg <?= $licAvisoTipo === 'ok' ? 'lic-msg-ok' : 'lic-msg-error' ?>" role="status">
             <i class="fa-solid <?= $licAvisoTipo === 'ok' ? 'fa-circle-check' : 'fa-triangle-exclamation' ?>" aria-hidden="true"></i>
-            <span><?= $licAviso ?></span>
+            <span><?= str_replace('«Activar licencia»', '<span class="lic-cta-fade">«Activar licencia»</span>', $licAviso) ?></span>
         </div>
         <?php endif; ?>
 
@@ -1729,6 +1749,10 @@ $faq = [
             <div class="lic-estado-fila">
                 <dt>Vence</dt>
                 <dd><?= $licEdoVence !== '' ? htmlspecialchars($licEdoVence, ENT_QUOTES, 'UTF-8') : '—' ?></dd>
+            </div>
+            <div class="lic-estado-fila">
+                <dt>Tiempo restante</dt>
+                <dd><?= htmlspecialchars($licEdoRestante, ENT_QUOTES, 'UTF-8') ?></dd>
             </div>
             <div class="lic-estado-fila">
                 <dt>Código de equipo</dt>
