@@ -1,4 +1,4 @@
-﻿<?php $base = '/servicios'; ?>
+<?php $base = '/servicios'; ?>
 <!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 
@@ -7,15 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Software a medida en Cuba | UnicornioSoftware</title>
     <meta name="description"
-        content="Desarrollo de software a medida en Cuba: ERP, CRM, producciÃ³n y logÃ­stica, aplicaciones web, apps mÃ³viles y asesorÃ­a. La primera reuniÃ³n es sin costo.">
+        content="Desarrollo de software a medida en Cuba: ERP, CRM, producción y logística, aplicaciones web, apps móviles y asesoría. La primera reunión es sin costo.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="/desamedida.php">
     <meta property="og:site_name" content="UnicornioSoftware">
     <meta property="og:title" content="Software a medida en Cuba | UnicornioSoftware">
-    <meta property="og:description" content="ERP, CRM, producciÃ³n y logÃ­stica, aplicaciones web, apps mÃ³viles y asesorÃ­a. Primera reuniÃ³n sin costo y propuesta con tiempo, dinero e insumos.">
+    <meta property="og:description" content="ERP, CRM, producción y logística, aplicaciones web, apps móviles y asesoría. Primera reunión sin costo y propuesta con tiempo, dinero e insumos.">
 	<meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Software a medida en Cuba | UnicornioSoftware">
-    <meta name="twitter:description" content="DiseÃ±amos y programamos el software que tu proyecto necesita. Primera reuniÃ³n sin costo.">
+    <meta name="twitter:description" content="Diseñamos y programamos el software que tu proyecto necesita. Primera reunión sin costo.">
 
     <link rel="icon" type="image/png" href="/desamedida/assets/images/favicon.png">
     <link rel="apple-touch-icon" href="/desamedida/assets/images/favicon.png">
@@ -39,7 +39,7 @@
   "@type": "Service",
   "name": "Desarrollo de software a medida",
   "serviceType": "Desarrollo de software a medida",
-  "description": "ERP, CRM, sistemas de producciÃ³n y logÃ­stica, aplicaciones web, apps mÃ³viles y asesorÃ­a para el desarrollo de proyectos, para empresas, organizaciones y profesionales en Cuba.",
+  "description": "ERP, CRM, sistemas de producción y logística, aplicaciones web, apps móviles y asesoría para el desarrollo de proyectos, para empresas, organizaciones y profesionales en Cuba.",
   "provider": {
     "@type": "Organization",
     "name": "UnicornioSoftware",
@@ -79,42 +79,42 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "Â¿CuÃ¡nto cuesta un desarrollo a medida?",
+      "name": "¿Cuánto cuesta un desarrollo a medida?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Depende de lo que necesites. DespuÃ©s de la primera reuniÃ³n, que es sin costo, te presentamos una propuesta con el tiempo, el dinero y los insumos del proyecto, y decides con todo sobre la mesa."
+        "text": "Depende de lo que necesites. Después de la primera reunión, que es sin costo, te presentamos una propuesta con el tiempo, el dinero y los insumos del proyecto, y decides con todo sobre la mesa."
       }
     },
     {
       "@type": "Question",
-      "name": "Â¿CÃ³mo se paga?",
+      "name": "¿Cómo se paga?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "SegÃºn el tipo de proyecto. Por lo general hay un pago inicial y otro al final. Si el proyecto dura mucho tiempo, los pagos son mensuales."
+        "text": "Según el tipo de proyecto. Por lo general hay un pago inicial y otro al final. Si el proyecto dura mucho tiempo, los pagos son mensuales."
       }
     },
     {
       "@type": "Question",
-      "name": "Â¿CuÃ¡nto tarda?",
+      "name": "¿Cuánto tarda?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "El plazo forma parte de la propuesta: lo calculamos segÃºn el alcance y lo acordamos contigo antes de empezar. Vas viendo el avance en entregas por partes."
+        "text": "El plazo forma parte de la propuesta: lo calculamos según el alcance y lo acordamos contigo antes de empezar. Vas viendo el avance en entregas por partes."
       }
     },
     {
       "@type": "Question",
-      "name": "Â¿QuÃ© pasa despuÃ©s de la entrega?",
+      "name": "¿Qué pasa después de la entrega?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Te acompaÃ±amos: instalamos el sistema, enseÃ±amos a tu equipo a usarlo y seguimos disponibles para ajustes y soporte."
+        "text": "Te acompañamos: instalamos el sistema, enseñamos a tu equipo a usarlo y seguimos disponibles para ajustes y soporte."
       }
     },
     {
       "@type": "Question",
-      "name": "Â¿Tengo que saber de informÃ¡tica?",
+      "name": "¿Tengo que saber de informática?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. TÃº pones el conocimiento de tu negocio y nosotros lo convertimos en software. Te explicamos cada paso en palabras sencillas."
+        "text": "No. Tú pones el conocimiento de tu negocio y nosotros lo convertimos en software. Te explicamos cada paso en palabras sencillas."
       }
     }
   ]
@@ -165,7 +165,7 @@
 
     .wrap { width: 100%; max-width: var(--wrap); margin-inline: auto; padding-inline: clamp(1.25rem, 4vw, 3rem); }
 
-    /* ===== TipografÃ­as ===== */
+    /* ===== Tipografías ===== */
     .bebas { font-family: "Bebas Neue", "Bebas Neue Fallback", Impact, sans-serif; font-weight: 400; letter-spacing: .02em; line-height: .92; }
     .exo   { font-family: "Exo 2", "Inter", system-ui, sans-serif; }
 
@@ -208,7 +208,7 @@
     }
     .btn-glass:hover { background: rgba(255, 255, 255, .09); border-color: rgba(0, 212, 255, .45); }
 
-    /* ===== NavegaciÃ³n ===== */
+    /* ===== Navegación ===== */
     .nav {
         position: fixed; inset: 0 0 auto 0; z-index: 50;
         height: var(--nav-h);
@@ -295,7 +295,7 @@
         background: rgba(0, 212, 255, .1); color: var(--txt);
     }
     @media (min-width: 900px) {
-        /* Nueve enlaces: primero compactos y sin iconos, luego con mÃ¡s aire. */
+        /* Nueve enlaces: primero compactos y sin iconos, luego con más aire. */
         .nav-links { display: flex; gap: .8rem; }
         .nav-links a { font-size: .64rem; letter-spacing: .05em; white-space: nowrap; }
         .nav-links a i { display: none; }
@@ -419,7 +419,7 @@
         .scroll-fab { width: 2.55rem; height: 2.55rem; font-size: .9rem; }
     }
 
-    /* Topbar: texto un punto mÃ¡s pequeÃ±o e iconos un poco mÃ¡s grandes */
+    /* Topbar: texto un punto más pequeño e iconos un poco más grandes */
     .nav-links a { font-size: .84rem; letter-spacing: .04em; }
     .nav-links a i { display: inline-block; margin-right: .32rem; font-size: .9em; }
     .menu-movil a { font-size: .86rem; }
@@ -440,7 +440,7 @@
     }
 
     /* ===== Tarjetas del ecosistema: iguales a index2.php =====
-       Se limitan a #servicios para no alterar las demÃ¡s rejillas Tailwind. */
+       Se limitan a #servicios para no alterar las demás rejillas Tailwind. */
     #servicios .grid { display: grid; gap: 1rem; margin-top: 2.5rem; grid-template-columns: minmax(0, 1fr); }
     @media (min-width: 640px) { #servicios .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (min-width: 1024px) { #servicios .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -514,7 +514,7 @@
     #servicios .card.destacada .card-link { color: var(--fuego); }
     #servicios .card.destacada:hover { border-color: var(--fuego); box-shadow: 0 26px 54px -26px rgba(255, 107, 0, .35); }
 
-    /* ApariciÃ³n al hacer scroll, igual que index2.php (aquÃ­ el observador aÃ±ade .active) */
+    /* Aparición al hacer scroll, igual que index2.php (aquí el observador añade .active) */
     #servicios .card.reveal {
         opacity: 0;
         transform: translateY(30px);
@@ -542,33 +542,33 @@
             <img src="/images/logo.png" alt="UnicornioSoftware Cuba">
             <span class="marca-txt">
                 <b><i>UNICORNIO</i><em>SOFTWARE</em></b>
-                <small>Cuba Â· GestiÃ³n empresarial</small>
+                <small>Cuba · Gestión empresarial</small>
             </span>
         </a>
 
         <div class="nav-links">
             <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-            <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> QuÃ© hacemos</a>
-            <a href="#como-trabajamos"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> CÃ³mo trabajamos</a>
+            <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Qué hacemos</a>
+            <a href="#como-trabajamos"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Cómo trabajamos</a>
             <a href="#lo-que-construimos"><i class="fa-solid fa-hammer" aria-hidden="true"></i> Construimos</a>
             <a href="#faq"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
             <a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
-            <a href="#cuentanos"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> CUÃ‰NTANOS</a>
+            <a href="#cuentanos"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> CUÉNTANOS</a>
         </div>
 
         <div class="nav-acc">
             <div class="nav-login" id="navLogin">
                 <button type="button" class="btn btn-cian btn-sm" id="navLoginBtn"
                         aria-haspopup="true" aria-expanded="false" aria-controls="navLoginMenu">
-                    <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Iniciar sesiÃ³n
+                    <i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Iniciar sesión
                     <i class="fa-solid fa-chevron-down nav-login-caret" aria-hidden="true"></i>
                 </button>
                 <div class="nav-login-menu" id="navLoginMenu" role="menu" aria-labelledby="navLoginBtn">
                     <a role="menuitem" href="<?= $base ?>/nominas/login.php">
-                        <i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> NÃ³minas
+                        <i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas
                     </a>
                     <a role="menuitem" href="<?= $base ?>/facturacion/login.php">
-                        <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> FacturaciÃ³n
+                        <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación
                     </a>
                     <a role="menuitem" href="<?= $base ?>/costos/login.php">
                         <i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos
@@ -577,11 +577,11 @@
                         <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios
                     </a>
                     <a role="menuitem" href="<?= $base ?>/administracion/index.php">
-                        <i class="fa-solid fa-user-shield" aria-hidden="true"></i> AdministraciÃ³n
+                        <i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración
                     </a>
                 </div>
             </div>
-            <button type="button" class="menu-btn" id="menuBtn" aria-label="Abrir menÃº" aria-expanded="false">
+            <button type="button" class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">
                 <i class="fa-solid fa-bars" aria-hidden="true"></i>
             </button>
         </div>
@@ -589,19 +589,19 @@
 
     <div class="menu-movil" id="menuMovil">
         <a href="#inicio"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
-        <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> QuÃ© hacemos</a>
+        <a href="#servicios"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Qué hacemos</a>
         <a href="#sectores-especializados"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Trayectoria</a>
-        <a href="#como-trabajamos"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> CÃ³mo trabajamos</a>
+        <a href="#como-trabajamos"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Cómo trabajamos</a>
         <a href="#lo-que-construimos"><i class="fa-solid fa-hammer" aria-hidden="true"></i> Construimos</a>
         <a href="#faq"><i class="fa-solid fa-circle-question" aria-hidden="true"></i> Preguntas</a>
         <a href="/about.php"><i class="fa-solid fa-users" aria-hidden="true"></i> Nosotros</a>
-        <a href="#cuentanos"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> CUÃ‰NTANOS</a>
-        <span class="menu-movil-titulo">Iniciar sesiÃ³n</span>
-        <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> NÃ³minas</a>
-        <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> FacturaciÃ³n</a>
+        <a href="#cuentanos"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i> CUÉNTANOS</a>
+        <span class="menu-movil-titulo">Iniciar sesión</span>
+        <a href="<?= $base ?>/nominas/login.php"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a>
+        <a href="<?= $base ?>/facturacion/login.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a>
         <a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a>
         <a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a>
-        <a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> AdministraciÃ³n</a>
+        <a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a>
     </div>
 </nav>
 
@@ -623,13 +623,13 @@
             </h1>
             <p class="font-inter text-gray-300 text-base sm:text-lg md:text-xl leading-relaxed mb-10 max-w-2xl font-medium"
                 style="text-shadow: 0 2px 12px rgba(0,0,0,0.9);">
-                Cuando ningÃºn programa resuelve lo que necesitas, lo diseÃ±amos y lo programamos contigo, con el
-                mismo equipo que hace nuestro propio software. La primera reuniÃ³n es sin costo.
+                Cuando ningún programa resuelve lo que necesitas, lo diseñamos y lo programamos contigo, con el
+                mismo equipo que hace nuestro propio software. La primera reunión es sin costo.
             </p>
             <div class="flex flex-col sm:flex-row gap-4">
                 <a href="/servicios/contacto.php" id="btn-medida-contacto"
                     class="pulso-brasas inline-flex items-center justify-center gap-2 font-exo font-black text-sm md:text-base uppercase tracking-wider px-7 py-3.5 rounded-sm bg-fuego text-[#0A0F1A] w-full sm:w-auto transition-all duration-300 hover:-translate-y-1">
-                    <i class="fa-solid fa-comment-dots" aria-hidden="true"></i> CuÃ©ntanos tu proyecto
+                    <i class="fa-solid fa-comment-dots" aria-hidden="true"></i> Cuéntanos tu proyecto
                 </a>
 				<a href="https://api.whatsapp.com/send?phone=5352712861&amp;text=Hola%20%F0%9F%91%8B%2C%20quiero%20conversar%20sobre%20un%20proyecto%20de%20software%20a%20medida.%0A%0A%F0%9F%93%8C%20*Detalles%20del%20proyecto*%3A%0A%E2%80%A2%20Tipo%20de%20software%3A%20%0A%E2%80%A2%20Funcionalidades%20clave%3A%20%0A%E2%80%A2%20Plazo%20estimado%3A%20%0A%E2%80%A2%20Presupuesto%20aproximado%3A%20%0A%0A%F0%9F%92%A1%20%C2%BFMe%20ayudas%20a%20definir%20la%20mejor%20soluci%C3%B3n%3F%20%C2%A1Gracias!%20%F0%9F%99%8C"
 				   target="_blank"
@@ -647,7 +647,7 @@
 							Respuesta en minutos
 						</span>
 						<span class="flex items-center gap-2">
-							EscrÃ­benos por WhatsApp
+							Escríbenos por WhatsApp
 							<i class="fas fa-arrow-right text-xs text-[#25D366] transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true"></i>
 						</span>
 					</span>
@@ -670,12 +670,12 @@
 
     <main>
 
-    <!-- QUÃ‰ HACEMOS (servicios confirmados por el dueÃ±o el 07/10/2026) -->
+    <!-- QUÉ HACEMOS (servicios confirmados por el dueño el 07/10/2026) -->
     <section id="servicios" class="py-24 bg-abismo border-t border-acero relative overflow-hidden">
         <div class="cf-brasa-fondo" aria-hidden="true"></div>
         <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
             <div class="text-center mb-14 reveal">
-                <span class="text-fuego font-exo font-bold uppercase tracking-widest text-sm">QuÃ© hacemos</span>
+                <span class="text-fuego font-exo font-bold uppercase tracking-widest text-sm">Qué hacemos</span>
                 <h2 class="font-bebas text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white mt-2 tracking-wider">LO QUE PODEMOS <span class="text-cian">CONSTRUIR CONTIGO.</span></h2>
             </div>
             <div class="grid">
@@ -688,7 +688,7 @@
                             <p class="card-sub">Sistema integrado</p>
                         </div>
                     </div>
-                    <p>Compras, ventas, inventario, contabilidad y personal en un solo sistema, a la medida de cÃ³mo trabaja tu empresa.</p>
+                    <p>Compras, ventas, inventario, contabilidad y personal en un solo sistema, a la medida de cómo trabaja tu empresa.</p>
                 </div>
                 <div class="card reveal" data-spotlight style="--card-sheen: rgba(0, 212, 255, .18)">
                     <span class="card__sheen" aria-hidden="true"></span>
@@ -696,7 +696,7 @@
                         <span class="card-ico"><i class="fa-solid fa-address-book" aria-hidden="true"></i></span>
                         <div>
                             <h3>CRM</h3>
-                            <p class="card-sub">GestiÃ³n de clientes</p>
+                            <p class="card-sub">Gestión de clientes</p>
                         </div>
                     </div>
                     <p>Tus clientes, sus pedidos y su historial en un solo lugar, para venderles mejor y no perder ninguno.</p>
@@ -706,11 +706,11 @@
                     <div class="card-head">
                         <span class="card-ico"><i class="fa-solid fa-industry" aria-hidden="true"></i></span>
                         <div>
-                            <h3>ProducciÃ³n y logÃ­stica</h3>
-                            <p class="card-sub">OperaciÃ³n y entregas</p>
+                            <h3>Producción y logística</h3>
+                            <p class="card-sub">Operación y entregas</p>
                         </div>
                     </div>
-                    <p>Ã“rdenes de producciÃ³n, insumos, almacenes y entregas, con el control que tu operaciÃ³n necesita.</p>
+                    <p>Órdenes de producción, insumos, almacenes y entregas, con el control que tu operación necesita.</p>
                 </div>
                 <div class="card reveal" data-spotlight style="--card-sheen: rgba(0, 212, 255, .18)">
                     <span class="card__sheen" aria-hidden="true"></span>
@@ -728,33 +728,33 @@
                     <div class="card-head">
                         <span class="card-ico"><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i></span>
                         <div>
-                            <h3>Apps mÃ³viles</h3>
-                            <p class="card-sub">Android sin conexiÃ³n</p>
+                            <h3>Apps móviles</h3>
+                            <p class="card-sub">Android sin conexión</p>
                         </div>
                     </div>
-                    <p>Aplicaciones para Android que funcionan aunque no haya conexiÃ³n, como nuestro propio punto de venta.</p>
+                    <p>Aplicaciones para Android que funcionan aunque no haya conexión, como nuestro propio punto de venta.</p>
                 </div>
                 <div class="card reveal" data-spotlight style="--card-sheen: rgba(0, 212, 255, .18)">
                     <span class="card__sheen" aria-hidden="true"></span>
                     <div class="card-head">
                         <span class="card-ico"><i class="fa-solid fa-compass-drafting" aria-hidden="true"></i></span>
                         <div>
-                            <h3>AsesorÃ­a de proyectos</h3>
+                            <h3>Asesoría de proyectos</h3>
                             <p class="card-sub">Tu idea, bien definida</p>
                         </div>
                     </div>
-                    <p>Te ayudamos a definir quÃ© necesitas, cÃ³mo hacerlo y cuÃ¡nto puede costar antes de escribir una lÃ­nea de cÃ³digo.</p>
+                    <p>Te ayudamos a definir qué necesitas, cómo hacerlo y cuánto puede costar antes de escribir una línea de código.</p>
                 </div>
                 <div id="capacidades-interactivas" class="card reveal destacada" data-spotlight style="--card-sheen: rgba(255, 107, 0, .22)">
                     <span class="card__sheen" aria-hidden="true"></span>
                     <div class="card-head">
                         <span class="card-ico"><i class="fa-solid fa-cube" aria-hidden="true"></i></span>
                         <div>
-                            <h3>SimulaciÃ³n y aplicaciones interactivas</h3>
+                            <h3>Simulación y aplicaciones interactivas</h3>
                             <p class="card-sub">2D / 3D e interactividad</p>
                         </div>
                     </div>
-                    <p>Desarrollamos herramientas interactivas 2D/3D para formaciÃ³n, simulaciÃ³n, visualizaciÃ³n de informaciÃ³n y procesos especializados, utilizando tecnologÃ­as adaptadas a cada proyecto.</p>
+                    <p>Desarrollamos herramientas interactivas 2D/3D para formación, simulación, visualización de información y procesos especializados, utilizando tecnologías adaptadas a cada proyecto.</p>
                 </div>
                 <div class="card reveal" data-spotlight style="--card-sheen: rgba(0, 212, 255, .18)">
                     <span class="card__sheen" aria-hidden="true"></span>
@@ -765,16 +765,16 @@
                             <p class="card-sub">Unity y C#</p>
                         </div>
                     </div>
-                    <p>DiseÃ±amos y desarrollamos experiencias con Unity y C#, incluyendo mecÃ¡nicas de interacciÃ³n, interfaces, sistemas de simulaciÃ³n y aplicaciones multiplataforma.</p>
+                    <p>Diseñamos y desarrollamos experiencias con Unity y C#, incluyendo mecánicas de interacción, interfaces, sistemas de simulación y aplicaciones multiplataforma.</p>
                 </div>
             </div>        </div>
     </section>
 
-    <!-- CÃ“MO TRABAJAMOS -->
+    <!-- CÓMO TRABAJAMOS -->
     <section id="como-trabajamos" class="py-24 bg-[#05080f] border-t border-acero">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="text-center mb-16 reveal">
-                <span class="text-fuego font-exo font-bold uppercase tracking-widest text-sm">CÃ³mo trabajamos</span>
+                <span class="text-fuego font-exo font-bold uppercase tracking-widest text-sm">Cómo trabajamos</span>
                 <h2 class="font-bebas text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white mt-2 tracking-wider">DE LA IDEA AL SISTEMA, <span class="text-cian">EN CUATRO PASOS.</span></h2>
             </div>
             <ol class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8 list-none p-0 m-0">
@@ -783,7 +783,7 @@
                         <i class="fas fa-comments text-xl text-fuego" aria-hidden="true"></i>
                     </div>
                     <span class="font-exo font-black text-xs uppercase tracking-widest text-gray-500 mb-2">Paso 1</span>
-                    <h3 class="font-exo font-bold text-white text-lg uppercase mb-2">Primera reuniÃ³n, sin costo</h3>
+                    <h3 class="font-exo font-bold text-white text-lg uppercase mb-2">Primera reunión, sin costo</h3>
                     <p class="text-gray-400 text-sm leading-relaxed max-w-xs">Nos cuentas tu negocio y lo que necesitas. Escuchamos, preguntamos y te decimos con franqueza si podemos ayudarte.</p>
                 </li>
                 <li class="reveal delay-200 relative flex flex-col items-center text-center">
@@ -792,7 +792,7 @@
                     </div>
                     <span class="font-exo font-black text-xs uppercase tracking-widest text-gray-500 mb-2">Paso 2</span>
                     <h3 class="font-exo font-bold text-white text-lg uppercase mb-2">Propuesta de contrato</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed max-w-xs">Hacemos una planificaciÃ³n preliminar y te presentamos una propuesta con el tiempo, el dinero y los insumos que hacen falta.</p>
+                    <p class="text-gray-400 text-sm leading-relaxed max-w-xs">Hacemos una planificación preliminar y te presentamos una propuesta con el tiempo, el dinero y los insumos que hacen falta.</p>
                 </li>
                 <li class="reveal delay-300 relative flex flex-col items-center text-center">
                     <div class="w-16 h-16 rounded-full flex items-center justify-center bg-abismo border-2 border-fuego mb-5 relative z-10">
@@ -807,14 +807,14 @@
                         <i class="fas fa-handshake text-xl text-cian" aria-hidden="true"></i>
                     </div>
                     <span class="font-exo font-black text-xs uppercase tracking-widest text-gray-500 mb-2">Paso 4</span>
-                    <h3 class="font-exo font-bold text-white text-lg uppercase mb-2">AcompaÃ±amiento</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed max-w-xs">Instalamos, enseÃ±amos a tu equipo a usarlo y seguimos contigo despuÃ©s de la entrega.</p>
+                    <h3 class="font-exo font-bold text-white text-lg uppercase mb-2">Acompañamiento</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed max-w-xs">Instalamos, enseñamos a tu equipo a usarlo y seguimos contigo después de la entrega.</p>
                 </li>
             </ol>
             <div class="reveal mt-16 max-w-3xl mx-auto flex items-start gap-4 p-6 rounded-xl" style="background: rgba(255,107,0,0.06); border: 1px solid rgba(255,107,0,0.25);">
                 <i class="fas fa-money-check-dollar text-fuego text-xl mt-0.5 shrink-0" aria-hidden="true"></i>
                 <p class="text-gray-300 text-sm md:text-base leading-relaxed">
-                    <strong class="block font-exo font-bold text-white uppercase tracking-wide mb-1">CÃ³mo se paga</strong>
+                    <strong class="block font-exo font-bold text-white uppercase tracking-wide mb-1">Cómo se paga</strong>
                     Depende del proyecto. Por lo general, un pago inicial y otro al final. Si el proyecto dura mucho
                     tiempo, los pagos son mensuales. Todo queda escrito en la propuesta antes de empezar.
                 </p>
@@ -829,7 +829,7 @@
                 <span class="text-fuego font-exo font-bold uppercase tracking-widest text-sm">Lo que ya construimos</span>
                 <h2 class="font-bebas text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-white mt-2 mb-5 tracking-wider">NUESTRO SOFTWARE <span class="text-cian">ES LA PRUEBA.</span></h2>
                 <p class="text-gray-400 leading-relaxed mb-8">Antes de hacer software para otros, hicimos el nuestro. Reven ya
-                    estÃ¡ disponible para los negocios de Cuba, y hay mÃ¡s programas en camino. El mismo equipo y la misma forma de
+                    está disponible para los negocios de Cuba, y hay más programas en camino. El mismo equipo y la misma forma de
                     trabajar son los que pondremos en tu proyecto.</p>
                 <a href="/servicios/index.php" class="inline-flex items-center gap-2 font-exo font-bold uppercase tracking-widest text-sm px-7 py-3 border border-cian/60 text-cian hover:bg-cian hover:text-abismo transition-all rounded-sm">
                     Ver nuestro software <span aria-hidden="true">&rarr;</span>
@@ -837,61 +837,61 @@
             </div>
             <div class="reveal delay-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <a href="<?= $base ?>/nominas/" class="card-acero rounded-xl p-6 flex flex-col items-center text-center gap-3 hover:-translate-y-1 transition-transform">
-                    <img src="/images/nominas.png" alt="MÃ³dulo de NÃ³minas" loading="lazy" class="w-16 h-16 object-contain">
-                    <span class="font-exo font-black text-white uppercase tracking-widest">NÃ³minas</span>
+                    <img src="/images/nominas.png" alt="Módulo de Nóminas" loading="lazy" class="w-16 h-16 object-contain">
+                    <span class="font-exo font-black text-white uppercase tracking-widest">Nóminas</span>
                     <span class="text-[11px] font-exo font-black uppercase tracking-widest px-2 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">â— Disponible</span>
-                    <span class="text-gray-400 text-xs">NÃ³minas y pagos del personal</span>
+                    <span class="text-gray-400 text-xs">Nóminas y pagos del personal</span>
                 </a>
                 <a href="<?= $base ?>/facturacion/index.php" class="card-acero rounded-xl p-6 flex flex-col items-center text-center gap-3 hover:-translate-y-1 transition-transform">
-                    <img src="/images/facturacion.png" alt="MÃ³dulo de FacturaciÃ³n" loading="lazy" class="w-16 h-16 object-contain">
-                    <span class="font-exo font-black text-white uppercase tracking-widest">FacturaciÃ³n</span>
+                    <img src="/images/facturacion.png" alt="Módulo de Facturación" loading="lazy" class="w-16 h-16 object-contain">
+                    <span class="font-exo font-black text-white uppercase tracking-widest">Facturación</span>
                     <span class="text-[11px] font-exo font-black uppercase tracking-widest px-2 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">â— Disponible</span>
                     <span class="text-gray-400 text-xs">Facturas, contratos y cotizaciones</span>
                 </a>
                 <a href="<?= $base ?>/inventarios/login.php" class="card-acero rounded-xl p-6 flex flex-col items-center text-center gap-3 hover:-translate-y-1 transition-transform">
-                    <img src="/images/inventario.png" alt="MÃ³dulo de Inventarios" loading="lazy" class="w-16 h-16 object-contain">
+                    <img src="/images/inventario.png" alt="Módulo de Inventarios" loading="lazy" class="w-16 h-16 object-contain">
                     <span class="font-exo font-black text-white uppercase tracking-widest">Inventarios</span>
                     <span class="text-[11px] font-exo font-black uppercase tracking-widest px-2 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">â— Disponible</span>
-                    <span class="text-gray-400 text-xs">AlmacÃ©n, existencias y movimientos</span>
+                    <span class="text-gray-400 text-xs">Almacén, existencias y movimientos</span>
                 </a>
                 <a href="<?= $base ?>/costos/login.php" class="card-acero rounded-xl p-6 flex flex-col items-center text-center gap-3 hover:-translate-y-1 transition-transform">
-                    <img src="/images/costos.png" alt="MÃ³dulo de Costos" loading="lazy" class="w-16 h-16 object-contain">
+                    <img src="/images/costos.png" alt="Módulo de Costos" loading="lazy" class="w-16 h-16 object-contain">
                     <span class="font-exo font-black text-white uppercase tracking-widest">Costos</span>
                     <span class="text-[11px] font-exo font-black uppercase tracking-widest px-2 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">â— Disponible</span>
-                    <span class="text-gray-400 text-xs">Costos, presupuestos y anÃ¡lisis</span>
+                    <span class="text-gray-400 text-xs">Costos, presupuestos y análisis</span>
                 </a>
                 <a href="<?= $base ?>/administracion/index.php" class="card-acero rounded-xl p-6 flex flex-col items-center text-center gap-3 hover:-translate-y-1 transition-transform">
-                    <img src="/images/admin.png" alt="MÃ³dulo de AdministraciÃ³n" loading="lazy" class="w-16 h-16 object-contain">
-                    <span class="font-exo font-black text-white uppercase tracking-widest">AdministraciÃ³n</span>
+                    <img src="/images/admin.png" alt="Módulo de Administración" loading="lazy" class="w-16 h-16 object-contain">
+                    <span class="font-exo font-black text-white uppercase tracking-widest">Administración</span>
                     <span class="text-[11px] font-exo font-black uppercase tracking-widest px-2 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">â— Disponible</span>
-                    <span class="text-gray-400 text-xs">Usuarios, permisos y configuraciÃ³n</span>
+                    <span class="text-gray-400 text-xs">Usuarios, permisos y configuración</span>
                 </a>
             </div>
         </div>
     </section>
 
-    <!-- CÃ“MO LO CONSTRUIMOS -->
+    <!-- CÓMO LO CONSTRUIMOS -->
     <section id="principios" class="py-20 bg-[#05080f] border-t border-acero">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
-            <h2 class="font-exo font-bold text-gray-400 uppercase tracking-widest text-sm mb-10 text-center reveal">Nuestros principios de ingenierÃ­a</h2>
+            <h2 class="font-exo font-bold text-gray-400 uppercase tracking-widest text-sm mb-10 text-center reveal">Nuestros principios de ingeniería</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 reveal">
                 <div class="flex items-start gap-4">
                     <div class="w-11 h-11 shrink-0 rounded-lg flex items-center justify-center" style="background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25);">
                         <i class="fas fa-layer-group text-cian" aria-hidden="true"></i>
                     </div>
-                    <p class="leading-snug"><span class="block font-exo font-bold text-white uppercase tracking-wide text-sm mb-1">Arquitectura a tu medida</span><span class="text-gray-400 text-sm">DiseÃ±amos la arquitectura y el modelo de conectividad de cada soluciÃ³n segÃºn sus necesidades operativas, tÃ©cnicas y de seguridad.</span></p>
+                    <p class="leading-snug"><span class="block font-exo font-bold text-white uppercase tracking-wide text-sm mb-1">Arquitectura a tu medida</span><span class="text-gray-400 text-sm">Diseñamos la arquitectura y el modelo de conectividad de cada solución según sus necesidades operativas, técnicas y de seguridad.</span></p>
                 </div>
                 <div class="flex items-start gap-4">
                     <div class="w-11 h-11 shrink-0 rounded-lg flex items-center justify-center" style="background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25);">
                         <i class="fas fa-coins text-cian" aria-hidden="true"></i>
                     </div>
-                    <p class="leading-snug"><span class="block font-exo font-bold text-white uppercase tracking-wide text-sm mb-1">Monedas e integraciones</span><span class="text-gray-400 text-sm">ConfiguraciÃ³n multimoneda y pasarelas de pago cuando el modelo de negocio lo requiere.</span></p>
+                    <p class="leading-snug"><span class="block font-exo font-bold text-white uppercase tracking-wide text-sm mb-1">Monedas e integraciones</span><span class="text-gray-400 text-sm">Configuración multimoneda y pasarelas de pago cuando el modelo de negocio lo requiere.</span></p>
                 </div>
                 <div class="flex items-start gap-4">
                     <div class="w-11 h-11 shrink-0 rounded-lg flex items-center justify-center" style="background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25);">
                         <i class="fas fa-shield-halved text-cian" aria-hidden="true"></i>
                     </div>
-                    <p class="leading-snug"><span class="block font-exo font-bold text-white uppercase tracking-wide text-sm mb-1">Seguridad y control</span><span class="text-gray-400 text-sm">TÃº decides dÃ³nde residen los datos, quiÃ©n tiene acceso y cÃ³mo se respaldan.</span></p>
+                    <p class="leading-snug"><span class="block font-exo font-bold text-white uppercase tracking-wide text-sm mb-1">Seguridad y control</span><span class="text-gray-400 text-sm">Tú decides dónde residen los datos, quién tiene acceso y cómo se respaldan.</span></p>
                 </div>
                 <div class="flex items-start gap-4">
                     <div class="w-11 h-11 shrink-0 rounded-lg flex items-center justify-center" style="background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25);">
@@ -913,38 +913,38 @@
             <div class="space-y-4 reveal">
                 <details class="group rounded-xl overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);">
                     <summary class="flex items-center justify-between p-6 cursor-pointer list-none font-exo font-bold text-white hover:text-fuego transition-colors">
-                        <span>Â¿CuÃ¡nto cuesta un desarrollo a medida?</span>
+                        <span>¿Cuánto cuesta un desarrollo a medida?</span>
                         <i class="fas fa-plus text-fuego transition-transform duration-300 group-open:rotate-45 shrink-0 ml-4"></i>
                     </summary>
-                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">Depende de lo que necesites. DespuÃ©s de la primera reuniÃ³n, que es sin costo, te presentamos una propuesta con el tiempo, el dinero y los insumos del proyecto, y decides con todo sobre la mesa.</div>
+                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">Depende de lo que necesites. Después de la primera reunión, que es sin costo, te presentamos una propuesta con el tiempo, el dinero y los insumos del proyecto, y decides con todo sobre la mesa.</div>
                 </details>
                 <details class="group rounded-xl overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);">
                     <summary class="flex items-center justify-between p-6 cursor-pointer list-none font-exo font-bold text-white hover:text-fuego transition-colors">
-                        <span>Â¿CÃ³mo se paga?</span>
+                        <span>¿Cómo se paga?</span>
                         <i class="fas fa-plus text-fuego transition-transform duration-300 group-open:rotate-45 shrink-0 ml-4"></i>
                     </summary>
-                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">SegÃºn el tipo de proyecto. Por lo general hay un pago inicial y otro al final. Si el proyecto dura mucho tiempo, los pagos son mensuales.</div>
+                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">Según el tipo de proyecto. Por lo general hay un pago inicial y otro al final. Si el proyecto dura mucho tiempo, los pagos son mensuales.</div>
                 </details>
                 <details class="group rounded-xl overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);">
                     <summary class="flex items-center justify-between p-6 cursor-pointer list-none font-exo font-bold text-white hover:text-fuego transition-colors">
-                        <span>Â¿CuÃ¡nto tarda?</span>
+                        <span>¿Cuánto tarda?</span>
                         <i class="fas fa-plus text-fuego transition-transform duration-300 group-open:rotate-45 shrink-0 ml-4"></i>
                     </summary>
-                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">El plazo forma parte de la propuesta: lo calculamos segÃºn el alcance y lo acordamos contigo antes de empezar. Vas viendo el avance en entregas por partes.</div>
+                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">El plazo forma parte de la propuesta: lo calculamos según el alcance y lo acordamos contigo antes de empezar. Vas viendo el avance en entregas por partes.</div>
                 </details>
                 <details class="group rounded-xl overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);">
                     <summary class="flex items-center justify-between p-6 cursor-pointer list-none font-exo font-bold text-white hover:text-fuego transition-colors">
-                        <span>Â¿QuÃ© pasa despuÃ©s de la entrega?</span>
+                        <span>¿Qué pasa después de la entrega?</span>
                         <i class="fas fa-plus text-fuego transition-transform duration-300 group-open:rotate-45 shrink-0 ml-4"></i>
                     </summary>
-                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">Te acompaÃ±amos: instalamos el sistema, enseÃ±amos a tu equipo a usarlo y seguimos disponibles para ajustes y soporte.</div>
+                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">Te acompañamos: instalamos el sistema, enseñamos a tu equipo a usarlo y seguimos disponibles para ajustes y soporte.</div>
                 </details>
                 <details class="group rounded-xl overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);">
                     <summary class="flex items-center justify-between p-6 cursor-pointer list-none font-exo font-bold text-white hover:text-fuego transition-colors">
-                        <span>Â¿Tengo que saber de informÃ¡tica?</span>
+                        <span>¿Tengo que saber de informática?</span>
                         <i class="fas fa-plus text-fuego transition-transform duration-300 group-open:rotate-45 shrink-0 ml-4"></i>
                     </summary>
-                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">No. TÃº pones el conocimiento de tu negocio y nosotros lo convertimos en software. Te explicamos cada paso en palabras sencillas.</div>
+                    <div class="px-6 pb-6 text-gray-400 text-sm leading-relaxed">No. Tú pones el conocimiento de tu negocio y nosotros lo convertimos en software. Te explicamos cada paso en palabras sencillas.</div>
                 </details>
             </div>
         </div>
@@ -966,17 +966,17 @@
             Hablemos
         </span>
 
-        <!-- TÃ­tulo -->
+        <!-- Título -->
         <h2 class="font-bebas text-3xl sm:text-4xl md:text-5xl tracking-wider text-white mb-4 leading-tight">
-            CUÃ‰NTANOS <span class="text-fuego">TU PROYECTO.</span>
+            CUÉNTANOS <span class="text-fuego">TU PROYECTO.</span>
         </h2>
 
         <!-- Separador con gradiente -->
         <div class="mx-auto mb-6 h-px w-24 bg-gradient-to-r from-transparent via-fuego to-transparent" aria-hidden="true"></div>
 
-        <!-- SubtÃ­tulo -->
+        <!-- Subtítulo -->
         <p class="font-inter text-gray-400 text-base md:text-lg mb-10 max-w-xl mx-auto">
-            La primera reuniÃ³n es <span class="text-white font-medium">sin costo</span> y
+            La primera reunión es <span class="text-white font-medium">sin costo</span> y
             <span class="text-white font-medium">sin compromiso</span>. Te respondemos en menos de 24&nbsp;h.
         </p>
 
@@ -1043,19 +1043,19 @@
                     <img src="/images/logo.png" alt="">
                     <span class="bebas" style="font-size:1.5rem"><i style="font-style:normal;color:var(--cian)">UNICORNIO</i><i style="font-style:normal;color:var(--fuego)">SOFTWARE</i></span>
                 </div>
-                <p>Entorno de Aplicaciones Web de UnicornioSoftware&#174; Cuba. Kaky&#174;. FacturaciÃ³n, nÃ³minas, costos e inventarios en tu propia red.</p>
-                <p style="margin-top:.6rem;color:var(--gris-2);font-style:italic">&laquo;Donde tu visiÃ³n toma forma&raquo;</p>
+                <p>Entorno de Aplicaciones Web de UnicornioSoftware&#174; Cuba. Kaky&#174;. Facturación, nóminas, costos e inventarios en tu propia red.</p>
+                <p style="margin-top:.6rem;color:var(--gris-2);font-style:italic">&laquo;Donde tu visión toma forma&raquo;</p>
             </div>
 
             <nav aria-label="Enlaces del pie">
                 <h4>Explorar</h4>
                 <ul class="pie-lista">
                     <li><a href="<?= $base ?>/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
-                    <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> NÃ³minas</a></li>
-                    <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> FacturaciÃ³n</a></li>
+                    <li><a href="<?= $base ?>/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
+                    <li><a href="<?= $base ?>/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
                     <li><a href="<?= $base ?>/costos/login.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
                     <li><a href="<?= $base ?>/inventarios/login.php"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Inventarios</a></li>
-                    <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> AdministraciÃ³n</a></li>
+                    <li><a href="<?= $base ?>/administracion/index.php"><i class="fa-solid fa-user-shield" aria-hidden="true"></i> Administración</a></li>
                 </ul>
             </nav>
 
@@ -1063,12 +1063,12 @@
                 <h4>Contacto</h4>
                 <p><a href="mailto:kakycu@gmail.com"><i class="fa-solid fa-envelope" aria-hidden="true"></i> kakycu@gmail.com</a></p>
                 <p><a href="tel:+5352712861"><i class="fa-solid fa-phone" aria-hidden="true"></i> +53 5 2712861</a></p>
-                <p><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>SÃ¡bados: 9:00 AM - 1:00 PM</p>
+                <p><i class="fa-solid fa-clock" aria-hidden="true"></i> Lun - Vie, 8:00 AM - 5:00 PM<br>Sábados: 9:00 AM - 1:00 PM</p>
                 <p><a href="<?= $base ?>/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Centro de soporte</a></p>
             </div>
 
             <div>
-                <h4>SÃ­guenos</h4>
+                <h4>Síguenos</h4>
                 <div class="pie-social">
                     <a href="https://www.facebook.com/unicorniosoftwarecuba" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a>
                     <a href="https://www.x.com/unicorniocuba" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)">
@@ -1082,31 +1082,31 @@
 
                 <h4 class="pie-legal-title">Legal</h4>
                 <p class="pie-legal">
-                    <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> TÃ©rminos</a>
+                    <a href="<?= $base ?>/terminos.php"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
                     <a href="<?= $base ?>/privacidad.php"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
                     <a href="<?= $base ?>/contacto.php"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
                 </p>
             </div>
         </div>
         <div class="pie-barra">
-            <span>Â© <?= date('Y') ?> UnicornioSoftwareÂ® Cuba. Todos los derechos reservados.</span>
-            <span>Licencia registrada Â· datos alojados en este equipo</span>
+            <span>© <?= date('Y') ?> UnicornioSoftware® Cuba. Todos los derechos reservados.</span>
+            <span>Licencia registrada · datos alojados en este equipo</span>
         </div>
     </div>
 </footer>
 
 <div class="scroll-fabs">
     <button type="button" class="scroll-fab" id="btnScrollTop"
-            title="Ir hasta arriba" aria-label="Ir hasta arriba de la pÃ¡gina">
+            title="Ir hasta arriba" aria-label="Ir hasta arriba de la página">
         <i class="fa-solid fa-angles-up" aria-hidden="true"></i>
     </button>
     <button type="button" class="scroll-fab" id="btnScrollBottom"
-            title="Ir hasta abajo" aria-label="Ir hasta abajo de la pÃ¡gina">
+            title="Ir hasta abajo" aria-label="Ir hasta abajo de la página">
         <i class="fa-solid fa-angles-down" aria-hidden="true"></i>
     </button>
 </div>
     <script>
-        // ApariciÃ³n al desplazarse (secciones propias del clon).
+        // Aparición al desplazarse (secciones propias del clon).
         document.addEventListener('DOMContentLoaded', function () {
             var observer = new IntersectionObserver(function (entries) {
                 entries.forEach(function (entry) {
@@ -1115,7 +1115,7 @@
             }, { threshold: 0.15 });
             document.querySelectorAll('.reveal').forEach(function (el) { observer.observe(el); });
         });
-/* Botones flotantes: arriba / abajo segÃºn la posiciÃ³n de lectura */
+/* Botones flotantes: arriba / abajo según la posición de lectura */
 (function () {
     var arriba = document.getElementById('btnScrollTop');
     var abajo = document.getElementById('btnScrollBottom');
@@ -1145,7 +1145,7 @@
 })();
 
 
-/* MenÃº mÃ³vil */
+/* Menú móvil */
 (function () {
     var btn = document.getElementById('menuBtn');
     var menu = document.getElementById('menuMovil');
@@ -1202,7 +1202,7 @@
     }
 })();
 
-/* Enlaces del topbar a las secciones de esta pÃ¡gina */
+/* Enlaces del topbar a las secciones de esta página */
 (function () {
     var enlaces = document.querySelectorAll('nav.nav a[href^="#"]');
     enlaces.forEach(function (enlace) {
@@ -1221,7 +1221,7 @@
             var yAntes = window.scrollY || document.documentElement.scrollTop || 0;
             destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
             history.replaceState(null, '', '#' + id);
-            /* Si el navegador no anima el desplazamiento (pestaÃ±a en segundo plano),
+            /* Si el navegador no anima el desplazamiento (pestaña en segundo plano),
                caemos al salto inmediato para que el enlace siempre funcione. */
             window.setTimeout(function () {
                 var yAhora = window.scrollY || document.documentElement.scrollTop || 0;
