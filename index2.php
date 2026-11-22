@@ -572,6 +572,15 @@ $faq = [
     @media (prefers-reduced-motion:reduce){
       .rv-mov .rv-ap.rv-visto{animation:rv-funde .25s ease backwards}
     }
+
+    /* ===== Métricas / stats ===== */
+    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
+    .metric{display:flex;align-items:center;gap:.75rem;padding:1rem 1rem;border-radius:.85rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
+    .metric i{width:2.25rem;height:2.25rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.6rem;background:rgba(0,212,255,.08);color:var(--cian);font-size:.95rem;flex-shrink:0}
+    .metric b{display:block;font-family:'Exo 2',sans-serif;font-size:1rem;font-weight:800;color:var(--txt);line-height:1.1}
+    .metric span{display:block;font-size:.75rem;color:var(--gris-3);margin-top:.15rem;line-height:1.3}
+    @media(max-width:900px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.metrics{grid-template-columns:1fr}}
     .escena {
         position: relative; justify-self: center;
         width: min(100%, 32rem);
@@ -654,7 +663,16 @@ $faq = [
     }
     @media (max-width: 1023px) {
         .hero { max-height: none; padding-bottom: 4rem; }
-        .escena { margin-top: 3.25rem; }
+    
+    /* ===== Métricas / stats ===== */
+    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
+    .metric{display:flex;align-items:center;gap:.75rem;padding:1rem 1rem;border-radius:.85rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
+    .metric i{width:2.25rem;height:2.25rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.6rem;background:rgba(0,212,255,.08);color:var(--cian);font-size:.95rem;flex-shrink:0}
+    .metric b{display:block;font-family:'Exo 2',sans-serif;font-size:1rem;font-weight:800;color:var(--txt);line-height:1.1}
+    .metric span{display:block;font-size:.75rem;color:var(--gris-3);margin-top:.15rem;line-height:1.3}
+    @media(max-width:900px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.metrics{grid-template-columns:1fr}}
+    .escena { margin-top: 3.25rem; }
     }
     @media (max-width: 40rem) {
         .movil { width: 24%; bottom: -8%; }
@@ -1361,7 +1379,16 @@ $faq = [
         .js .paso .paso-num, .js .cifra b { opacity: 1; transform: none; transition: none; }
         .sec::before { transform: scaleX(1); transition: none; }
         .js .hero-copy > * { opacity: 1; animation: none; }
-        .escena { animation: none; }
+    
+    /* ===== Métricas / stats ===== */
+    .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;max-width:80rem;margin:0 auto;padding:1.25rem 1rem 0}
+    .metric{display:flex;align-items:center;gap:.75rem;padding:1rem 1rem;border-radius:.85rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08)}
+    .metric i{width:2.25rem;height:2.25rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.6rem;background:rgba(0,212,255,.08);color:var(--cian);font-size:.95rem;flex-shrink:0}
+    .metric b{display:block;font-family:'Exo 2',sans-serif;font-size:1rem;font-weight:800;color:var(--txt);line-height:1.1}
+    .metric span{display:block;font-size:.75rem;color:var(--gris-3);margin-top:.15rem;line-height:1.3}
+    @media(max-width:900px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.metrics{grid-template-columns:1fr}}
+    .escena { animation: none; }
         .pantalla, .movil, .escena::before { transform: none; }
         .btn:hover, .card:hover, .serv:hover, .paso:hover, .equipo-card:hover { transform: none; }
     }
@@ -1696,6 +1723,26 @@ $faq = [
         </div>
     </section>
 
+
+    <!-- Métricas -->
+    <div class="metrics" role="list" aria-label="Indicadores de la plataforma">
+        <div class="metric" role="listitem">
+            <i class="fa-solid fa-cubes" aria-hidden="true"></i>
+            <div><b><?= 5 ?></b><span>Módulos de gestión</span></div>
+        </div>
+        <div class="metric" role="listitem">
+            <i class="fa-brands fa-php" aria-hidden="true"></i>
+            <div><b>PHP <?= PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ?></b><span>Servidor local</span></div>
+        </div>
+        <div class="metric" role="listitem">
+            <i class="fa-solid fa-database" aria-hidden="true"></i>
+            <div><b>MySQL 5.7</b><span>Base de datos</span></div>
+        </div>
+        <div class="metric" role="listitem">
+            <i class="fa-solid fa-headset" aria-hidden="true"></i>
+            <div><b>24/7</b><span>Soporte técnico</span></div>
+        </div>
+    </div>
 <main>
     <!-- ===== Ecosistema ===== -->
     <section class="sec" id="ecosistema">
