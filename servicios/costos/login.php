@@ -24,7 +24,7 @@ main{flex:1;display:flex;align-items:center;justify-content:center;position:rela
 .bg-grid{position:absolute;inset:0;opacity:.08;background-image:linear-gradient(rgba(30,41,59,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(30,41,59,.6) 1px,transparent 1px);background-size:48px 48px;z-index:0}
 .card{position:relative;z-index:1;width:100%;max-width:52rem;padding:2rem;border-radius:.85rem;background:rgba(5,8,15,.72);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 25px 50px -15px rgba(0,0,0,.9),0 0 60px rgba(var(--accent-rgb),.05)}
 .card-grid{display:grid;gap:2rem;align-items:stretch}
-@media(min-width:760px){.card-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2.5rem}.card-head{text-align:left;margin-bottom:0;display:flex;flex-direction:column;justify-content:center}.module-img{margin:0 0 1.25rem}.back-link-wrap{text-align:left}}
+@media(min-width:760px){.card-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2.5rem}.card-head{text-align:left;margin-bottom:0;display:flex;flex-direction:column;justify-content:center}.module-img{margin:0 0 1.25rem}.back-link-wrap{text-align:left;justify-content:flex-start}}
 .card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,rgba(var(--accent-rgb),.55),rgba(255,107,0,.45),transparent)}
 .card-head{text-align:center;padding:.5rem 0}
 .module-img{display:block;width:min(100%,260px);height:auto;margin:0 auto 1.25rem;border-radius:.85rem;border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 45px -20px rgba(0,0,0,.8)}
@@ -44,10 +44,10 @@ main{flex:1;display:flex;align-items:center;justify-content:center;position:rela
 .input-wrap input::placeholder{color:#4b5563}
 .btn-login{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:.6rem;padding:.95rem 1rem;border:none;border-radius:.4rem;background:linear-gradient(135deg,#4b5563,#374151);color:#9ca3af;font-family:"Exo 2",sans-serif;font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;cursor:not-allowed;box-shadow:none}
 .btn-login i{font-size:.85rem}
-.back-link{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.25rem;color:var(--gris);font-size:.82rem;font-weight:600;transition:color .2s}
+.back-link{display:inline-flex;align-items:center;gap:.5rem;color:var(--gris);font-size:.82rem;font-weight:600;transition:color .2s}
 .back-link:hover{color:var(--cian)}
 .footer-note{text-align:center;padding:1.25rem;color:#4b5563;font-size:.72rem;letter-spacing:.04em}
-.back-link-wrap{text-align:center}
+.back-link-wrap{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:1.25rem;text-align:center}
 @media(max-width:480px){.card{padding:1.5rem 1.25rem 1.75rem}}
 
 .wrap{width:100%;max-width:80rem;margin:0 auto;padding:0 clamp(1.25rem,4vw,3rem)}
@@ -194,7 +194,8 @@ main{flex:1;display:flex;align-items:center;justify-content:center;position:rela
         </form>
 
                 <div class="back-link-wrap">
-                    <a class="back-link" href="/index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Volver al inicio</a>
+                    <a class="back-link" href="index.php"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+                    <a class="back-link" href="/index.php"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Sitio Principal</a>
                 </div>
             </div>
         </div>

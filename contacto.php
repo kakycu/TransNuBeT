@@ -568,6 +568,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     Swal.fire({
                         title: 'ENVIANDO MENSAJE A UNICORNIOSOFTWARE',
                         text: 'Por favor, espera mientras se envía tu solicitud...',
+                        background: '#0f1724',
+                        color: '#e5e7eb',
+                        iconColor: '#00d4ff',
                         allowOutsideClick: false,
                         allowEscapeKey: false,
                         showConfirmButton: false,
