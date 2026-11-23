@@ -214,7 +214,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideOfflineUi() {
-        offlineOverlay.visibility = View.GONE
         offlineDialog?.dismiss()
     }
 
