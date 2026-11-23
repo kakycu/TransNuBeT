@@ -10,6 +10,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.webkit.CookieManager
@@ -35,6 +37,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var offlineDialog: AlertDialog? = null
+    private var retryDialog: AlertDialog? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var lastTriedUrl: String = "https://unicorniosoftware.gt.tc/"
 
     private val remoteStartUrl = "https://unicorniosoftware.gt.tc/"
@@ -193,13 +197,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun retryConnection() {
-        if (isNetworkAvailable()) {
-            hideOfflineUi()
-            val target = if (lastTriedUrl.startsWith("file:///android_asset")) remoteStartUrl else lastTriedUrl
-            webView.loadUrl(target)
-        } else {
-            showOfflineUi()
-        }
+        if (offlineDialog?.isShowing == true) offlineDialog?.dismiss()
+        showRetryDialog()
+        mainHandler.postDelayed({
+            retryDialog?.dismiss()
+            if (isNetworkAvailable()) {
+                hideOfflineUi()
+                val target = if (lastTriedUrl.startsWith("file:///android_asset")) remoteStartUrl else lastTriedUrl
+                webView.loadUrl(target)
+            } else {
+                showOfflineUi()
+            }
+        }, 1400)
     }
 
     private fun showOfflineUi() {
@@ -214,6 +223,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideOfflineUi() {
+        retryDialog?.dismiss()
         offlineDialog?.dismiss()
     }
 
@@ -236,6 +246,18 @@ class MainActivity : AppCompatActivity() {
             .create()
         offlineDialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         offlineDialog?.show()
+    }
+
+    private fun showRetryDialog() {
+        if (retryDialog?.isShowing == true) return
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_retrying, null, false)
+        view.findViewById<TextView>(R.id.retryStatus).text = "Comprobando tu conexión a internet..."
+        retryDialog = AlertDialog.Builder(this)
+            .setView(view)
+            .setCancelable(false)
+            .create()
+        retryDialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        retryDialog?.show()
     }
 
     inner class WebAppBridge {

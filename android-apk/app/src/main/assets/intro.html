@@ -97,9 +97,14 @@
     .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
     .btn {
       flex: 1; height: 48px; border: 0; border-radius: 14px; font-size: .95rem; font-weight: 700; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }
+    .btn svg { width: 18px; height: 18px; fill: currentColor; flex: 0 0 auto; }
     .btn-close { background: #334a63; color: #eaf2fa; }
     .btn-retry { background: linear-gradient(90deg, #00a8cc, #007ea7); color: #fff; }
+    .btn[disabled] { opacity: .75; cursor: wait; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .btn:active { transform: scale(.985); }
     .hidden { display: none !important; }
 
@@ -139,13 +144,22 @@
   <div class="modal-overlay" id="offlineModal" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="offlineTitle">
       <div class="modal-icon"><img src="logo.png" alt="Logo UnicornioSoftware"></div>
-      <div class="modal-title" id="offlineTitle">Sin conexión a internet</div>
-      <div class="modal-text">Esta aplicación necesita conexión a internet para funcionar.<br><br>Verifica tu Wi-Fi o datos móviles e inténtalo de nuevo.</div>
+      <div class="modal-title" id="offlineTitle"><span style="display:inline-flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="22" height="22" fill="#00d4ff" aria-hidden="true"><path d="M23.64 7c-.45-.34-4.93-4-11.64-4-1.5 0-2.89.19-4.15.48L18.18 13.8 23.64 7zM17.04 15.22L3.27 1.44 2 2.72l2.05 2.06C1.91 5.76.59 6.82.36 7l11.63 14.49.01.01.01-.01 3.9-4.86 3.32 3.32 1.27-1.27-3.46-3.46z"/></svg>Sin conexión a internet</span></div>
+      <div class="modal-text" id="offlineText">Esta aplicación necesita conexión a internet para funcionar.<br><br>Verifica tu Wi-Fi o datos móviles e inténtalo de nuevo.</div>
       <div class="modal-brand">UnicornioSoftware</div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-close" id="offlineClose">Cerrar</button>
-        <button type="button" class="btn btn-retry" id="offlineRetry">Reintentar</button>
+        <button type="button" class="btn btn-close" id="offlineClose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Cerrar</button>
+        <button type="button" class="btn btn-retry" id="offlineRetry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg><span>Reintentar</span></button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="retryModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="retryTitle">
+      <div class="retry-spinner" aria-hidden="true"></div>
+      <div class="modal-title" id="retryTitle"><span style="display:inline-flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="22" height="22" fill="#00d4ff" class="spin" aria-hidden="true"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>Reintentando conexión</span></div>
+      <div class="modal-text">Comprobando tu conexión a internet...</div>
+      <div class="modal-brand">UnicornioSoftware</div>
     </div>
   </div>
 
@@ -231,13 +245,25 @@
     if (noMostrar) noMostrar.addEventListener('click', function () { try { localStorage.setItem('introOculta', '1'); } catch (e) {} finalizarIntro(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !terminado) finalizarIntro(); });
 
+    var retryModal = document.getElementById('retryModal');
+    function mostrarRetryModal() { retryModal.classList.add('show'); retryModal.setAttribute('aria-hidden', 'false'); }
+    function ocultarRetryModal() { retryModal.classList.remove('show'); retryModal.setAttribute('aria-hidden', 'true'); }
+
     btnRetry.addEventListener('click', function () {
+      if (btnRetry.disabled) return;
+      btnRetry.disabled = true;
       ocultarModal();
-      if (isOnline()) {
-        window.location.href = 'https://unicorniosoftware.gt.tc/?from_intro=1';
-      } else {
-        mostrarModal();
-      }
+      mostrarRetryModal();
+      setTimeout(function () {
+        ocultarRetryModal();
+        btnRetry.disabled = false;
+        if (isOnline()) {
+          window.location.href = 'https://unicorniosoftware.gt.tc/?from_intro=1';
+        } else {
+          document.getElementById('offlineText').innerHTML = 'No se pudo restablecer la conexión.<br><br>Verifica tu Wi-Fi o datos móviles e inténtalo de nuevo.';
+          mostrarModal();
+        }
+      }, 1400);
     });
     btnClose.addEventListener('click', function () {
       if (window.AndroidApp && window.AndroidApp.closeApp) window.AndroidApp.closeApp();
