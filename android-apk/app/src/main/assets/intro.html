@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>UnicornioSoftware</title>
+  <style>
+    :root {
+      --bg-1: #071018; --bg-2: #0b1a2b; --cian: #00d4ff; --fuego: #ff6a00; --text: #eaf2fa; --muted: #b8c7d9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(circle at 30% 20%, #13263d 0%, var(--bg-2) 45%, var(--bg-1) 100%); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    body { position: relative; }
+
+    .intro {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 50% 40%, rgba(0,212,255,.08), transparent 45%),
+                  radial-gradient(circle at 50% 60%, rgba(255,106,0,.08), transparent 50%),
+                  linear-gradient(180deg, #0b1a2b 0%, #060d17 100%);
+      transition: opacity .7s ease, visibility .7s ease;
+      z-index: 10;
+    }
+    .intro.is-out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .intro-stage { position: relative; width: min(86vw, 520px); aspect-ratio: 1; }
+    .intro-halo {
+      position: absolute; inset: 10%; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,212,255,.18), rgba(0,212,255,0) 65%);
+      filter: blur(2px); opacity: .8;
+    }
+    .intro-layer, .intro-final {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transform: scale(.88) translateY(12px);
+      transition: opacity .6s ease, transform .7s cubic-bezier(.2,.8,.2,1);
+      will-change: opacity, transform;
+    }
+    .intro-layer img, .intro-final img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 12px 30px rgba(0,0,0,.35)); }
+    .intro-layer.is-on, .intro-final.is-on { opacity: 1; transform: scale(1) translateY(0); }
+    .intro-final { z-index: 6; }
+    .intro-final.is-on img { animation: introPulse 2.6s ease-in-out infinite; }
+    @keyframes introPulse { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.015); } }
+
+    .intro-sheen {
+      position: absolute; inset: 0; opacity: 0; pointer-events: none;
+      background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.65) 48%, transparent 66%);
+      background-size: 220% 100%; background-position: 135% 0;
+      mix-blend-mode: screen;
+      -webkit-mask-size: contain; mask-size: contain;
+      -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+      -webkit-mask-position: center; mask-position: center;
+    }
+    .intro.is-sheen .intro-sheen { opacity: 1; animation: introSheen 1.4s cubic-bezier(.4,0,.5,1) 2; }
+    @keyframes introSheen { 0%{background-position:135% 0} 100%{background-position:-45% 0} }
+
+    .intro-bar {
+      position: absolute; left: 50%; bottom: max(2.25rem, 5vh);
+      width: min(76vw, 480px); height: 3px; transform: translateX(-50%);
+      background: rgba(255,255,255,.14); border-radius: 2px; overflow: hidden;
+    }
+    .intro-bar span { display:block; width:0; height:100%; background: linear-gradient(90deg, var(--cian), var(--fuego)); transition: width .35s ease; }
+
+    .intro-acciones {
+      position: absolute; right: max(1rem, 2vw); bottom: max(1rem, 2vh);
+      display: flex; flex-direction: column; gap: .5rem; align-items: flex-end; z-index: 20;
+    }
+    .intro-skip {
+      padding: .5rem .95rem; font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      color: #cfd6ff; background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.18); border-radius: 999px; cursor: pointer;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    .intro-skip:active { background: rgba(255,255,255,.14); border-color: rgba(0,212,255,.5); color: #fff; }
+
+    /* No connection modal */
+    .modal-overlay {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      padding: 24px; background: rgba(5,11,20,.62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      z-index: 100; opacity: 0; transition: opacity .35s ease;
+    }
+    .modal-overlay.show { display: flex; opacity: 1; }
+    .modal-card {
+      width: min(100%, 430px); background: linear-gradient(180deg, #16263a, #0f1c2e);
+      border: 1px solid #2a4a6a; border-radius: 24px; padding: 28px 24px;
+      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      transform: translateY(12px) scale(.98); transition: transform .35s ease;
+    }
+    .modal-overlay.show .modal-card { transform: translateY(0) scale(1); }
+    .modal-icon {
+      width: 88px; height: 88px; margin: 0 auto; border-radius: 50%;
+      background: #1e3550; border: 1px solid #355c7d; padding: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-icon img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+    .modal-title { margin-top: 18px; font-size: 1.45rem; font-weight: 800; letter-spacing: .02em; }
+    .modal-text { margin-top: 10px; color: var(--muted); font-size: .96rem; line-height: 1.55; }
+    .modal-brand { margin-top: 14px; color: var(--cian); font-size: .82rem; font-weight: 600; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+    .btn {
+      flex: 1; height: 48px; border: 0; border-radius: 14px; font-size: .95rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-close { background: #334a63; color: #eaf2fa; }
+    .btn-retry { background: linear-gradient(90deg, #00a8cc, #007ea7); color: #fff; }
+    .btn:active { transform: scale(.985); }
+    .hidden { display: none !important; }
+
+    @media (max-width: 520px) {
+      .intro-acciones { top: max(1rem, 2vh); bottom: auto; right: 1rem; }
+      .intro-bar { bottom: max(1.25rem, 3vh); width: min(82vw, 360px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .intro-layer, .intro-final, .intro, .modal-overlay, .modal-card, .intro-bar span { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="intro" id="introAnim">
+    <div class="intro-stage">
+      <div class="intro-halo"></div>
+      <div class="intro-layer" data-paso="1"><img src="anim/01_Circulo.png" alt="" decoding="async"></div>
+      <div class="intro-layer" data-paso="2"><img src="anim/02_Unicornio.png" alt="" decoding="async"></div>
+      <div class="intro-layer" data-paso="3"><img src="anim/03_Trabajadores.png" alt="" decoding="async"></div>
+      <div class="intro-layer" data-paso="4"><img src="anim/04_Elementos_Nomina.png" alt="" decoding="async"></div>
+      <div class="intro-layer" data-paso="5"><img src="anim/05_Logo_SiGesNom.png" alt="" decoding="async"></div>
+      <div class="intro-final">
+        <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+          <img src="anim/final.png" alt="UnicornioSoftware" decoding="async">
+          <span class="intro-sheen" aria-hidden="true" style="-webkit-mask-image:url('anim/final.png');mask-image:url('anim/final.png');"></span>
+        </div>
+      </div>
+    </div>
+    <div class="intro-bar"><span id="introBar"></span></div>
+    <div class="intro-acciones">
+      <button type="button" class="intro-skip" id="introNoMostrar">No volver a mostrar</button>
+      <button type="button" class="intro-skip" id="introReplay">Repetir</button>
+      <button type="button" class="intro-skip" id="introSkip">Saltar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="offlineModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="offlineTitle">
+      <div class="modal-icon"><img src="logo.png" alt="Logo UnicornioSoftware"></div>
+      <div class="modal-title" id="offlineTitle">Sin conexión a internet</div>
+      <div class="modal-text">Esta aplicación necesita conexión a internet para funcionar.<br><br>Verifica tu Wi-Fi o datos móviles e inténtalo de nuevo.</div>
+      <div class="modal-brand">UnicornioSoftware</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-close" id="offlineClose">Cerrar</button>
+        <button type="button" class="btn btn-retry" id="offlineRetry">Reintentar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var intro = document.getElementById('introAnim');
+    var barra = document.getElementById('introBar');
+    var saltar = document.getElementById('introSkip');
+    var noMostrar = document.getElementById('introNoMostrar');
+    var replay = document.getElementById('introReplay');
+    var capas = intro.querySelectorAll('.intro-layer');
+    var capaFinal = intro.querySelector('.intro-final');
+    var modal = document.getElementById('offlineModal');
+    var btnRetry = document.getElementById('offlineRetry');
+    var btnClose = document.getElementById('offlineClose');
+    var pasos = capas.length + 1;
+    var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var terminado = false;
+    var temporizadores = [];
+    var ocultarIntro = false;
+    try { ocultarIntro = localStorage.getItem('introOculta') === '1'; } catch (e) {}
+
+    function esperar(fn, ms) { var t = setTimeout(fn, ms); temporizadores.push(t); return t; }
+    function pintar(paso) { if (barra) { barra.style.width = Math.round((paso / pasos) * 100) + '%'; } }
+    function limpiarTimers() { for (var i = 0; i < temporizadores.length; i++) clearTimeout(temporizadores[i]); temporizadores = []; }
+
+    function isOnline() { return navigator.onLine !== false; }
+    function mostrarModal() { modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); }
+    function ocultarModal() { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+
+    function finalizarIntro() {
+      if (terminado) return;
+      terminado = true;
+      limpiarTimers();
+      if (barra) barra.style.width = '100%';
+      intro.classList.add('is-out');
+      esperar(function () {
+        if (isOnline()) {
+          // Señal para Android WebView: la intro local terminó y hay conexión.
+          window.location.href = 'https://unicorniosoftware.gt.tc/?from_intro=1';
+        } else {
+          mostrarModal();
+        }
+      }, 650);
+    }
+
+    function mostrarFinal() {
+      if (terminado) return;
+      pintar(pasos);
+      intro.classList.add('is-final');
+      if (capaFinal) capaFinal.classList.add('is-on');
+      esperar(function () { if (!terminado) intro.classList.add('is-sheen'); }, 1050);
+      esperar(finalizarIntro, 4100);
+    }
+
+    function mostrarCapa(indice) {
+      if (terminado) return;
+      if (indice >= capas.length) { esperar(mostrarFinal, 1000); return; }
+      capas[indice].classList.add('is-on');
+      pintar(indice + 1);
+      esperar(function () { mostrarCapa(indice + 1); }, 820);
+    }
+
+    function reiniciar() {
+      limpiarTimers();
+      terminado = false;
+      ocultarModal();
+      intro.classList.remove('is-out', 'is-final', 'is-sheen');
+      if (barra) barra.style.width = '0%';
+      for (var j = 0; j < capas.length; j++) capas[j].classList.remove('is-on');
+      if (capaFinal) capaFinal.classList.remove('is-on');
+      iniciar();
+    }
+
+    function iniciar() {
+      if (reducido) { finalizarIntro(); return; }
+      esperar(finalizarIntro, 14000); // safety net
+      esperar(function () { mostrarCapa(0); }, 220);
+    }
+
+    if (saltar) saltar.addEventListener('click', finalizarIntro);
+    if (replay) replay.addEventListener('click', reiniciar);
+    if (noMostrar) noMostrar.addEventListener('click', function () { try { localStorage.setItem('introOculta', '1'); } catch (e) {} finalizarIntro(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !terminado) finalizarIntro(); });
+
+    btnRetry.addEventListener('click', function () {
+      ocultarModal();
+      if (isOnline()) {
+        window.location.href = 'https://unicorniosoftware.gt.tc/?from_intro=1';
+      } else {
+        mostrarModal();
+      }
+    });
+    btnClose.addEventListener('click', function () {
+      if (window.AndroidApp && window.AndroidApp.closeApp) window.AndroidApp.closeApp();
+      else window.close();
+    });
+
+    if (ocultarIntro) {
+      intro.classList.add('is-out');
+      terminado = true;
+      if (isOnline()) {
+        window.location.replace('https://unicorniosoftware.gt.tc/?from_intro=1');
+        return;
+      }
+      mostrarModal();
+      return;
+    }
+
+    iniciar();
+  })();
+  </script>
+</body>
+</html>

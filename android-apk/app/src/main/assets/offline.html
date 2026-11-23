@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sin conexión</title>
+  <style>
+    :root { --bg-1:#071018; --bg-2:#0b1a2b; --cian:#00d4ff; --muted:#b8c7d9; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+      background:radial-gradient(circle at 30% 20%, #13263d 0%, var(--bg-2) 45%, var(--bg-1) 100%);
+      color:#eaf2fa; font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    }
+    .card{
+      width:min(100%,430px); background:linear-gradient(180deg,#16263a,#0f1c2e);
+      border:1px solid #2a4a6a; border-radius:24px; padding:28px 24px; text-align:center;
+      box-shadow:0 20px 60px rgba(0,0,0,.45);
+    }
+    .icon{width:88px;height:88px;margin:0 auto;border-radius:50%;background:#1e3550;border:1px solid #355c7d;padding:14px}
+    .icon img{width:100%;height:100%;object-fit:contain;border-radius:50%}
+    h1{margin-top:18px;font-size:1.45rem;font-weight:800}
+    p{margin-top:10px;color:var(--muted);line-height:1.55;font-size:.96rem}
+    .brand{margin-top:14px;color:var(--cian);font-size:.82rem;font-weight:600}
+    .actions{display:flex;gap:10px;margin-top:22px}
+    button{flex:1;height:48px;border:0;border-radius:14px;font-size:.95rem;font-weight:700}
+    .close{background:#334a63;color:#eaf2fa}
+    .retry{background:linear-gradient(90deg,#00a8cc,#007ea7);color:#fff}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon"><img src="logo.png" alt="Logo UnicornioSoftware"></div>
+    <h1>Sin conexión a internet</h1>
+    <p>Esta aplicación necesita conexión a internet para funcionar.<br><br>Verifica tu Wi-Fi o datos móviles e inténtalo de nuevo.</p>
+    <div class="brand">UnicornioSoftware</div>
+    <div class="actions">
+      <button class="close" onclick="window.AndroidApp && window.AndroidApp.closeApp ? window.AndroidApp.closeApp() : window.close()">Cerrar</button>
+      <button class="retry" onclick="window.AndroidApp && window.AndroidApp.retryConnection ? window.AndroidApp.retryConnection() : location.reload()">Reintentar</button>
+    </div>
+  </div>
+</body>
+</html>
