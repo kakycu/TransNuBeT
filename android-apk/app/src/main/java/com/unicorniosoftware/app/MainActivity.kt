@@ -126,7 +126,10 @@ class MainActivity : AppCompatActivity() {
                 error: WebResourceError
             ) {
                 if (request.isForMainFrame) {
-                    lastTriedUrl = request.url.toString()
+                    val failingUrl = request.url.toString()
+                    // No mostrar modal por fallos de carga en páginas locales empaquetadas.
+                    if (failingUrl.startsWith("file:///android_asset/")) return
+                    lastTriedUrl = failingUrl
                     showOfflineUi()
                 }
             }
@@ -160,7 +163,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         swipeRefresh.setOnRefreshListener {
-            if (isNetworkAvailable()) {
+            val current = webView.url ?: ""
+            if (current.startsWith("file:///android_asset/")) {
+                // Las páginas locales no necesitan conexión para recargarse.
+                hideOfflineUi()
+                webView.reload()
+            } else if (isNetworkAvailable()) {
                 hideOfflineUi()
                 webView.reload()
             } else {

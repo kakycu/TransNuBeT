@@ -197,12 +197,8 @@
       if (barra) barra.style.width = '100%';
       intro.classList.add('is-out');
       esperar(function () {
-        if (isOnline()) {
-          // Señal para Android WebView: la intro local terminó y hay conexión.
-          window.location.href = './index.html?from_intro=1';
-        } else {
-          mostrarModal();
-        }
+        // La portada está empaquetada localmente; navegar aunque no haya conexión.
+        window.location.href = './index.html?from_intro=1';
       }, 650);
     }
 
@@ -273,11 +269,8 @@
     if (ocultarIntro) {
       intro.classList.add('is-out');
       terminado = true;
-      if (isOnline()) {
-        window.location.replace('./index.html?from_intro=1');
-        return;
-      }
-      mostrarModal();
+      // La portada está empaquetada localmente; navegar aunque no haya conexión.
+      window.location.replace('./index.html?from_intro=1');
       return;
     }
 
