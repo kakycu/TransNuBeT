@@ -633,7 +633,7 @@
                         </div>
                         <i class="fa-solid fa-arrow-up-right-from-square ms-auto small theme-muted"></i>
                     </a>
-                    <a href="/" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+                    <a href="/servicios/index.php" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
                         <i class="fa-solid fa-file-invoice-dollar text-success fs-5"></i>
                         <div>
                             <div class="fw-semibold theme-text">Ecosistema Financiero</div>
