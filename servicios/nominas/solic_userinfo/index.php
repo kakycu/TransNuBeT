@@ -1006,10 +1006,40 @@ table.su-tabla tbody tr.vac-excedida .vac-saldo-total { color: #fca5a5 !importan
 table.su-tabla #vacRepCabecera tr:nth-child(2) th { top: 1.95rem; z-index: 2; }
 table.su-tabla #vacRepCabecera tr:first-child th { top: 0; z-index: 3; }
 table.su-tabla #vacRepCabecera tr:nth-child(2) th { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.25); }
+
+/* ===================== TEMAS POR VISTA ===================== */
+/* Salario: cyan (por defecto en :root). Vacaciones: violeta para diferenciar. */
+body[data-vista="vacaciones"] {
+    --accent: #8b5cf6;
+    --accent-rgb: 139, 92, 246;
+    --accent-dark: #7c3aed;
+    --accent-light: #c4b5fd;
+    --accent-bg: rgba(139, 92, 246, 0.12);
+}
+body[data-vista="vacaciones"] .su-reloj-analog > circle:first-of-type { stroke: #8b5cf6; }
+body[data-vista="vacaciones"] .su-reloj-analog > circle:last-of-type { fill: #8b5cf6; }
+body[data-vista="vacaciones"] #suManecillaMinuto { stroke: #c4b5fd; }
+body[data-vista="vacaciones"] .su-cabecera {
+    background: linear-gradient(135deg, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.05) 100%);
+}
+body[data-vista="vacaciones"] .su-cabecera-icono {
+    background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+    box-shadow: 0 0.25rem 0.875rem rgba(139,92,246,0.35);
+}
+body[data-vista="vacaciones"] .su-side-nav a.activa {
+    background: linear-gradient(135deg, rgba(139,92,246,0.30), rgba(139,92,246,0.10));
+    border-color: rgba(139,92,246,0.55);
+    box-shadow: 0 0 0.6rem rgba(139,92,246,0.18);
+}
+body[data-vista="salario"] .su-side-nav a#navSalario i,
+body[data-vista="vacaciones"] .su-side-nav a#navVacaciones i { color: #fff; }
+/* Pista visual en nav inactivo para anticipar el color de cada vista */
+#navSalario:not(.activa) i { color: #67e8f9; }
+#navVacaciones:not(.activa) i { color: #c4b5fd; }
     </style>
 
 </head>
-<body>
+<body data-vista="salario">
 
 <!-- ===================== BARRA LATERAL IZQUIERDA ===================== -->
 <button type="button" class="su-btn-menu" id="suBtnMenu" title="Menú" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
@@ -2750,10 +2780,19 @@ table.su-tabla #vacRepCabecera tr:nth-child(2) th { box-shadow: 0 0.125rem 0.25r
 
     function mostrarVista(nombre) {
         var esVac = (nombre === 'vacaciones');
+        document.body.setAttribute('data-vista', esVac ? 'vacaciones' : 'salario');
         $('#vistaSalario').style.display = esVac ? 'none' : '';
         $('#vistaVacaciones').style.display = esVac ? '' : 'none';
         $('#navSalario').classList.toggle('activa', !esVac);
         $('#navVacaciones').classList.toggle('activa', esVac);
+        var cabIcono = document.querySelector('.su-cabecera-icono i');
+        if (cabIcono) { cabIcono.className = esVac ? 'fas fa-umbrella-beach fa-lg' : 'fas fa-user-tie fa-lg'; cabIcono.style.color = '#fff'; }
+        document.querySelectorAll('#suRelojTicks line').forEach(function (ln) {
+            var mayor = ln.getAttribute('data-mayor') === '1';
+            ln.setAttribute('stroke', esVac
+                ? (mayor ? '#c4b5fd' : 'rgba(196,181,253,0.45)')
+                : (mayor ? '#67e8f9' : 'rgba(103,232,249,0.45)'));
+        });
         $('#cabTitulo').innerHTML = esVac
             ? '<i class="fas fa-umbrella-beach"></i> Consulta del Submayor de Vacaciones'
             : '<i class="fas fa-user-tie"></i> Listado de Salarios Devengados por Trabajador';
@@ -4072,6 +4111,7 @@ document.addEventListener('keydown', function (e) {
             ln.setAttribute('stroke-width', mayor ? '2.5' : '1.5');
             ln.setAttribute('stroke-linecap', 'round');
             ln.setAttribute('transform', 'rotate(' + (i * 30) + ' 50 50)');
+            if (mayor) ln.setAttribute('data-mayor', '1');
             ticks.appendChild(ln);
         }
     }
