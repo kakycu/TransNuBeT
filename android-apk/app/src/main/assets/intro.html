@@ -199,7 +199,7 @@
       esperar(function () {
         if (isOnline()) {
           // Señal para Android WebView: la intro local terminó y hay conexión.
-          window.location.href = 'https://unicorniosoftware.gt.tc/?from_intro=1';
+          window.location.href = './index.html?from_intro=1';
         } else {
           mostrarModal();
         }
@@ -258,7 +258,7 @@
         ocultarRetryModal();
         btnRetry.disabled = false;
         if (isOnline()) {
-          window.location.href = 'https://unicorniosoftware.gt.tc/?from_intro=1';
+          window.location.href = './index.html?from_intro=1';
         } else {
           document.getElementById('offlineText').innerHTML = 'No se pudo restablecer la conexión.<br><br>Verifica tu Wi-Fi o datos móviles e inténtalo de nuevo.';
           mostrarModal();
@@ -274,7 +274,7 @@
       intro.classList.add('is-out');
       terminado = true;
       if (isOnline()) {
-        window.location.replace('https://unicorniosoftware.gt.tc/?from_intro=1');
+        window.location.replace('./index.html?from_intro=1');
         return;
       }
       mostrarModal();

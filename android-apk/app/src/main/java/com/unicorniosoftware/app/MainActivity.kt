@@ -39,10 +39,11 @@ class MainActivity : AppCompatActivity() {
     private var offlineDialog: AlertDialog? = null
     private var retryDialog: AlertDialog? = null
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var lastTriedUrl: String = "https://unicorniosoftware.gt.tc/"
+    private var lastTriedUrl: String = "file:///android_asset/index.html"
 
     private val remoteStartUrl = "https://unicorniosoftware.gt.tc/"
     private val localIntroUrl = "file:///android_asset/intro.html"
+    private val localHomeUrl = "file:///android_asset/index.html"
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -97,6 +98,7 @@ class MainActivity : AppCompatActivity() {
                             true
                         } else {
                             hideOfflineUi()
+                            lastTriedUrl = url
                             false
                         }
                     }
@@ -203,7 +205,12 @@ class MainActivity : AppCompatActivity() {
             retryDialog?.dismiss()
             if (isNetworkAvailable()) {
                 hideOfflineUi()
-                val target = if (lastTriedUrl.startsWith("file:///android_asset")) remoteStartUrl else lastTriedUrl
+                val target = when {
+                    lastTriedUrl.startsWith("file:///android_asset/offline.html") -> localHomeUrl
+                    lastTriedUrl.startsWith("file:///android_asset/intro.html") -> localHomeUrl
+                    lastTriedUrl.isNotBlank() -> lastTriedUrl
+                    else -> localHomeUrl
+                }
                 webView.loadUrl(target)
             } else {
                 showOfflineUi()
