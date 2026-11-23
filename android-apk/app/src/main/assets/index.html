@@ -1220,7 +1220,7 @@
         </div>
 
                 
-        <form class="lic-form" method="post" action="#licencia" autocomplete="off">
+        <form class="lic-form" method="post" action="https://unicorniosoftware.gt.tc/index.php#licencia" autocomplete="off">
             <input type="hidden" name="licencia_accion" value="activar">
             <div class="lic-grid">
                 <label class="lic-field">Nombre de Registro
@@ -1260,14 +1260,14 @@
         <div class="lic-alt">
             <details>
                 <summary><i class="fa-solid fa-file-import" aria-hidden="true"></i> Importar desde un archivo .lic</summary>
-                <form method="post" action="#licencia" enctype="multipart/form-data">
+                <form method="post" action="https://unicorniosoftware.gt.tc/index.php#licencia" enctype="multipart/form-data">
                     <input type="hidden" name="licencia_accion" value="examinar_archivo">
                     <input type="file" name="archivo_lic" accept=".lic" required onchange="this.form.submit()">
                 </form>
             </details>
             <details>
                 <summary><i class="fa-solid fa-file-signature" aria-hidden="true"></i> Pegar el texto de la licencia</summary>
-                <form method="post" action="#licencia">
+                <form method="post" action="https://unicorniosoftware.gt.tc/index.php#licencia">
                     <input type="hidden" name="licencia_accion" value="examinar_texto">
                     <textarea name="licencia_texto" rows="3" spellcheck="false"
                               placeholder="Pegue aquí el texto de la licencia..."></textarea>
@@ -2533,3 +2533,4 @@
 </script>
 </body>
 </html>
+
