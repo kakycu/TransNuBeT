@@ -801,17 +801,33 @@
       if (window.AndroidApp && window.AndroidApp.retryConnection) {
         window.AndroidApp.retryConnection();
       } else {
-        if (intentos === 1) location.reload();
+        if (intentos < MAX_INTENTOS) {
+          setTimeout(function () { if (retryCard.style.display !== 'none') ejecutarIntento(); }, 2000);
+        } else {
+          mostrarSinConexion();
+        }
+        return;
       }
 
       if (intentos < MAX_INTENTOS) {
         setTimeout(function () {
-          if (retryCard.style.display !== 'none') {
-            ejecutarIntento();
-          }
+          if (retryCard.style.display !== 'none') ejecutarIntento();
         }, 2000);
       }
     }
+
+    function mostrarSinConexion() {
+      retryCard.style.display = 'none';
+      offlineCard.style.display = 'block';
+      offlineCard.style.animation = 'none';
+      void offlineCard.offsetWidth;
+      offlineCard.style.animation = '';
+      btnRetry.disabled = false;
+      intentos = 0;
+      setProgress(0, 'Intento 1 de 2');
+    }
+
+    window.__onRetryFailed = function () { mostrarSinConexion(); };
 
     btnRetry.addEventListener('click', function () {
       if (btnRetry.disabled) return;
@@ -822,15 +838,9 @@
       void retryCard.offsetWidth;
       retryCard.style.animation = '';
 
-      /* Reinicia la barra */
       intentos = 0;
       setProgress(0, 'Intento 1 de 2');
-
-      /* Pequeño delay para que la barra arranque desde 0 de forma visible */
-      setTimeout(function () {
-        setProgress(15, 'Intento 1 de 2');
-      }, 100);
-
+      setTimeout(function () { setProgress(15, 'Intento 1 de 2'); }, 100);
       setTimeout(ejecutarIntento, 1200);
     });
   </script>

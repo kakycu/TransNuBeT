@@ -255,12 +255,9 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
     }
 
     private fun retryConnection() {
-        if (offlineDialog?.isShowing == true) offlineDialog?.dismiss()
-        showRetryDialog()
+        hideOfflineUi()
         mainHandler.postDelayed({
-            retryDialog?.dismiss()
             if (isNetworkAvailable()) {
-                hideOfflineUi()
                 val target = when {
                     lastTriedUrl.startsWith("file:///android_asset/offline.html") -> localHomeUrl
                     lastTriedUrl.isNotBlank() -> lastTriedUrl
@@ -268,17 +265,22 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                 }
                 webView.loadUrl(target)
             } else {
-                showOfflineUi()
+                val current = webView.url ?: ""
+                if (current.startsWith("file:///android_asset/offline.html")) {
+                    webView.evaluateJavascript("window.__onRetryFailed && window.__onRetryFailed();", null)
+                } else {
+                    showOfflineUi()
+                }
             }
         }, 1400)
     }
 
     private fun showOfflineUi() {
         swipeRefresh.isRefreshing = false
+        hideOfflineUi()
         if (webView.url?.startsWith("file:///android_asset/offline.html") != true) {
             webView.loadUrl("file:///android_asset/offline.html")
         }
-        showOfflineDialog()
     }
 
     private fun hideOfflineUi() {

@@ -2083,14 +2083,20 @@
 (function () {
     var arriba = document.getElementById('btnScrollTop');
     var abajo = document.getElementById('btnScrollBottom');
-    
+    var animar = document.getElementById('btnMostrarIntro');
     var progreso = document.getElementById('scrollProgress');
-    if (!arriba && !abajo) { return; }
+    if (!arriba && !abajo && !animar) { return; }
 
     function irArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
     function irAbajo() {
         var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
         window.scrollTo({ top: max, behavior: 'smooth' });
+    }
+    if (animar) {
+        animar.addEventListener('click', function () {
+            try { localStorage.removeItem('introOculta'); } catch (e) {}
+            window.location.href = './intro.html';
+        });
     }
     if (arriba) { arriba.addEventListener('click', irArriba); }
     if (abajo) { abajo.addEventListener('click', irAbajo); }

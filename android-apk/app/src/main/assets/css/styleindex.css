@@ -138,7 +138,7 @@
     }
     .menu-btn:hover { color: var(--txt); border-color: var(--fuego); }
     .menu-movil { display: none; border-top: 1px solid var(--acero); background: var(--abismo); }
-    .menu-movil.is-open { display: block; max-height: calc(100dvh - var(--nav-h, 70px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    .menu-movil.is-open { display: block; max-height: calc(100dvh - var(--nav-h, 70px) - env(safe-area-inset-top, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
     .menu-movil a {
         display: block; padding: .9rem 1.5rem;
         font-family: "Exo 2", sans-serif; font-size: .8rem; font-weight: 700;
