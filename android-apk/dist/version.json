@@ -5,7 +5,7 @@
   "versionName": "1.0.5",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Mejora del control de versiones para el usuario, correcciones en facturación y en la pantalla de acceso.",
+  "changelog": "Mejora del control de versiones, correcciones en Facturación y mejoras en la pantalla de acceso.",
   "required": false,
   "releasedAt": "2026-11-24",
   "minSupportedVersionCode": 1,
@@ -16,171 +16,188 @@
       "versionCode": 7,
       "versionName": "1.0.5",
       "date": "2026-11-24",
-      "title": "Noviembre 2026 · Facturación y mejoras para el usuario",
-      "summary": "Se mejoró la forma de ver las novedades de cada versión y se corrigieron detalles importantes en Facturación y en el acceso al sistema.",
-      "items": [
-        "Mejora del control de versiones para el usuario final: ahora puedes ver las novedades en una página clara y fácil de leer.",
-        "Corrección de errores en el sistema de Facturación.",
+      "title": "Facturación, acceso y control de versiones",
+      "summary": "Esta versión hace más fácil ver las novedades, mejora la pantalla de acceso y corrige detalles importantes en Facturación.",
+      "novedades": [
+        "Nuevo control de versiones para el usuario final: ahora puedes ver las novedades en una página clara y fácil de leer.",
+        "La página de novedades muestra el historial completo con la versión más reciente destacada.",
+        "Se agregó acceso rápido a la descarga de la aplicación Android desde la página de novedades.",
+        "Se mejoró la presentación visual de la información de versión para que sea más fácil de entender."
+      ],
+      "correcciones": [
+        "Corrección de errores en el sistema de Facturación al crear y revisar comprobantes.",
         "Ajustes en los estilos de la pantalla de inicio de sesión para que se vea mejor y sea más fácil de usar.",
-        "Mejoras en la emisión y revisión de facturas para evitar errores al trabajar.",
-        "Ajustes visuales en formularios y botones de Facturación para una experiencia más clara.",
-        "Correcciones generales de estabilidad y presentación en el módulo de Facturación."
+        "Se corrigieron problemas de visualización en formularios y botones del módulo de Facturación.",
+        "Mejoras de estabilidad al emitir y consultar facturas para evitar errores durante el trabajo."
       ]
     },
     {
       "versionCode": 6,
       "versionName": "1.0.4",
-      "date": "2026-12-15",
-      "title": "Diciembre 2026 · Mejoras en nóminas y actualizaciones",
-      "summary": "Esta versión corrige detalles importantes en Nóminas y hace más claro el aviso cuando hay una nueva actualización.",
-      "items": [
-        "Se corrigieron problemas al generar e imprimir nóminas.",
+      "date": "2026-10-20",
+      "title": "Mejoras en nóminas y actualizaciones",
+      "summary": "Se corrigieron detalles importantes en Nóminas y se hizo más claro el aviso cuando hay una nueva actualización.",
+      "novedades": [
         "Ahora la aplicación muestra con más claridad si hay una nueva versión disponible.",
-        "Al tocar la versión en la página, se abre una ventana con los cambios de forma sencilla.",
-        "Se mejoró la descarga de la aplicación para Android desde la página principal."
+        "Se mejoró el mensaje de versión en la página principal para que sea más fácil de entender.",
+        "Se facilitó el acceso a la descarga de la aplicación desde la portada."
+      ],
+      "correcciones": [
+        "Se corrigieron problemas al generar e imprimir nóminas.",
+        "Se ajustaron detalles de presentación en los documentos de nómina impresos.",
+        "Se mejoró la estabilidad al preparar nóminas con varios trabajadores."
       ]
     },
     {
       "versionCode": 5,
       "versionName": "1.0.3",
-      "date": "2026-11-24",
-      "title": "Noviembre 2026 · Correcciones en Nóminas",
+      "date": "2026-09-15",
+      "title": "Correcciones en Nóminas",
       "summary": "Se arreglaron varios detalles para que el trabajo con nóminas sea más confiable.",
-      "items": [
+      "novedades": [
+        "Se mejoró la ventana de novedades para que sea más fácil de leer.",
+        "Se añadió información más clara sobre la versión disponible en el servidor."
+      ],
+      "correcciones": [
         "Se corrigieron errores menores en Nóminas, especialmente al generar nóminas impresas.",
         "Se mejoró la estabilidad al preparar e imprimir documentos de nómina.",
-        "Se ajustó la ventana de novedades para que sea más fácil de leer.",
-        "Se mejoró el mensaje que indica la versión disponible en el servidor."
+        "Se corrigieron detalles de formato en reportes de nómina."
       ]
     },
     {
       "versionCode": 3,
       "versionName": "1.0.2",
-      "date": "2026-10-20",
-      "title": "Octubre 2026 · Avisos de nueva versión",
+      "date": "2026-08-12",
+      "title": "Avisos de nueva versión",
       "summary": "La aplicación comenzó a avisar cuando existe una versión más reciente para descargar.",
-      "items": [
+      "novedades": [
         "La página principal ahora muestra la versión disponible para descargar.",
         "La aplicación puede avisar cuando hay una actualización nueva.",
-        "Se agregó un botón claro para descargar la aplicación para Android.",
-        "Se mejoró la forma en que la aplicación comprueba la versión más reciente."
+        "Se agregó un botón claro para descargar la aplicación para Android."
+      ],
+      "correcciones": [
+        "Se mejoró la forma en que la aplicación comprueba la versión más reciente.",
+        "Se corrigieron errores que impedían mostrar correctamente el estado de actualización.",
+        "Se ajustó la visualización del bloque de descarga en celulares."
       ]
     },
     {
       "versionCode": 2,
       "versionName": "1.0.1",
-      "date": "2026-09-15",
-      "title": "Septiembre 2026 · Descarga más fácil de la app",
+      "date": "2026-07-18",
+      "title": "Descarga más fácil de la app",
       "summary": "Se facilitó encontrar y descargar la aplicación para Android desde la página.",
-      "items": [
+      "novedades": [
         "Se agregó una sección visible en la portada para descargar la aplicación Android.",
         "Se añadió el logo y un botón de descarga más fácil de identificar.",
-        "Se mejoró el acceso a la descarga desde el celular.",
-        "Se corrigieron detalles visuales en la portada para que se vea mejor."
+        "Se mejoró el acceso a la descarga desde el celular."
+      ],
+      "correcciones": [
+        "Se corrigieron detalles visuales en la portada para que se vea mejor.",
+        "Se ajustaron enlaces de descarga para que funcionen correctamente.",
+        "Se mejoró la compatibilidad de la portada en distintos tamaños de pantalla."
       ]
     },
     {
       "versionCode": 1,
       "versionName": "1.0.0",
-      "date": "2026-08-12",
-      "title": "Agosto 2026 · Primera versión de la aplicación Android",
+      "date": "2026-06-16",
+      "title": "Primera versión de la aplicación Android",
       "summary": "Primera versión de la aplicación para usar el sistema desde el celular.",
-      "items": [
+      "novedades": [
         "Se publicó la primera versión de la aplicación Android de UnicornioSoftware.",
         "Se puede abrir la página principal y navegar por las secciones desde el celular.",
-        "La aplicación muestra un aviso cuando no hay conexión a internet.",
-        "Se mejoró la carga de las páginas dentro de la aplicación."
+        "Se incluyó acceso rápido a los módulos principales del sistema."
+      ],
+      "correcciones": [
+        "Se mejoró la carga de las páginas dentro de la aplicación.",
+        "Se corrigieron ajustes iniciales de visualización en pantallas móviles.",
+        "Se mejoró la estabilidad general de la primera versión."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.9.0",
-      "date": "2026-07-18",
-      "title": "Julio 2026 · Uso sin conexión y mejor acceso",
+      "date": "2026-05-14",
+      "title": "Uso sin conexión y mejor acceso",
       "summary": "Se mejoró el comportamiento de la aplicación cuando el internet falla o es lento.",
-      "items": [
+      "novedades": [
         "Se agregó un mensaje claro cuando no hay conexión a internet.",
         "Se añadió un botón para volver a intentar la conexión.",
-        "Se mejoró la apertura de páginas importantes dentro de la aplicación.",
-        "Se hicieron ajustes para que la aplicación funcione mejor en celulares."
+        "Se mejoró la apertura de páginas importantes dentro de la aplicación."
+      ],
+      "correcciones": [
+        "Se corrigieron fallos al abrir enlaces sin conexión disponible.",
+        "Se hicieron ajustes para que la aplicación funcione mejor en celulares.",
+        "Se mejoró el manejo de errores cuando la conexión es inestable."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.8.0",
-      "date": "2026-06-16",
-      "title": "Junio 2026 · Licencias y documentos",
+      "date": "2026-04-10",
+      "title": "Licencias y documentos",
       "summary": "Se hicieron mejoras en la activación de licencias y en los documentos legales.",
-      "items": [
-        "Se mejoró la revisión de licencias para evitar usar licencias vencidas o incorrectas.",
-        "Se organizó mejor la información legal y los documentos del sistema.",
+      "novedades": [
+        "Se mejoró la información legal y los documentos del sistema.",
         "Se facilitaron los botones de contacto y ayuda en la página.",
-        "Se corrigieron textos y detalles para que la información sea más clara."
+        "Se agregó información más clara sobre el estado de las licencias."
+      ],
+      "correcciones": [
+        "Se mejoró la revisión de licencias para evitar usar licencias vencidas o incorrectas.",
+        "Se corrigieron textos y detalles para que la información sea más clara.",
+        "Se ajustaron validaciones al importar o guardar licencias."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.7.0",
-      "date": "2026-05-14",
-      "title": "Mayo 2026 · Página principal más clara",
+      "date": "2026-03-12",
+      "title": "Página principal más clara",
       "summary": "Se renovó la portada para que sea más fácil entender qué ofrece el sistema.",
-      "items": [
+      "novedades": [
         "Se mejoró la presentación de los planes y precios.",
         "Se añadieron botones y secciones más claras en la página principal.",
-        "Se mejoró el menú para celulares, permitiendo ver todas las opciones.",
-        "Se hicieron cambios visuales para que la página se vea más ordenada."
+        "Se mejoró el menú para celulares, permitiendo ver todas las opciones."
+      ],
+      "correcciones": [
+        "Se hicieron cambios visuales para que la página se vea más ordenada.",
+        "Se corrigieron problemas de espaciado y lectura en pantallas pequeñas.",
+        "Se ajustaron colores y contrastes para mejorar la legibilidad."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.6.0",
-      "date": "2026-04-10",
-      "title": "Abril 2026 · Módulos y organización",
+      "date": "2026-02-10",
+      "title": "Módulos y organización",
       "summary": "Se organizaron mejor los módulos del sistema y la información principal.",
-      "items": [
+      "novedades": [
         "Se mejoró la presentación de los módulos: Nóminas, Facturación, Costos, Inventarios y Administración.",
         "Se reorganizó el menú superior para encontrar más rápido cada sección.",
-        "Se añadieron tarjetas con información del sistema y sus servicios.",
-        "Se hicieron correcciones para que la navegación sea más sencilla."
+        "Se añadieron tarjetas con información del sistema y sus servicios."
+      ],
+      "correcciones": [
+        "Se hicieron correcciones para que la navegación sea más sencilla.",
+        "Se corrigieron enlaces que llevaban a páginas incorrectas.",
+        "Se ajustó el orden de secciones para evitar confusiones al navegar."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.5.0",
-      "date": "2026-03-12",
-      "title": "Marzo 2026 · Mejoras en el trabajo diario",
-      "summary": "Se realizaron ajustes para que el uso diario del sistema sea más cómodo y estable.",
-      "items": [
-        "Se mejoraron pantallas y procesos usados en el trabajo diario.",
-        "Se corrigieron errores en la navegación entre módulos.",
-        "Se ajustaron formularios y pantallas para evitar confusiones.",
-        "Se hicieron mejoras generales de estabilidad."
-      ]
-    },
-    {
-      "versionCode": 0,
-      "versionName": "0.4.0",
-      "date": "2026-02-10",
-      "title": "Febrero 2026 · Datos más confiables",
-      "summary": "Se mejoró la forma en que el sistema guarda y muestra la información.",
-      "items": [
-        "Se mejoró la instalación y preparación de la base de datos del sistema.",
-        "Se hicieron ajustes para que la información se muestre con mayor precisión.",
-        "Se reforzaron las validaciones para evitar datos incorrectos.",
-        "Se mejoró el rendimiento general del sistema."
-      ]
-    },
-    {
-      "versionCode": 0,
-      "versionName": "0.3.0",
       "date": "2026-01-15",
-      "title": "Enero 2026 · Inicio del sistema",
+      "title": "Inicio del sistema",
       "summary": "Primeros pasos del sistema, con la base principal para trabajar con los módulos.",
-      "items": [
+      "novedades": [
         "Se creó la base del portal UnicornioSoftware.",
         "Se prepararon los módulos principales del sistema.",
-        "Se organizaron las primeras pantallas, imágenes y estilos.",
-        "Se estableció la estructura inicial para seguir mejorando el sistema."
+        "Se organizaron las primeras pantallas, imágenes y estilos."
+      ],
+      "correcciones": [
+        "Se corrigieron errores iniciales de carga y visualización.",
+        "Se ajustaron los primeros flujos de acceso y navegación.",
+        "Se mejoró la estabilidad básica del sistema en su puesta en marcha."
       ]
     }
   ]
