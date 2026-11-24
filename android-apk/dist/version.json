@@ -5,5 +5,32 @@
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
   "changelog": "Correcciones de estabilidad y mejoras generales.",
   "required": false,
-  "releasedAt": "2026-11-23"
+  "releasedAt": "2026-11-23",
+  "minSupportedVersionCode": 1,
+  "sizeBytes": 22835073,
+  "sha256": "",
+  "changes": [
+    {
+      "versionCode": 2,
+      "versionName": "1.0.1",
+      "date": "2026-11-23",
+      "title": "Mejoras de descarga y actualización",
+      "items": [
+        "Se agregó sección de descarga de APK en la portada.",
+        "Se añadió comprobación de versión disponible desde el servidor.",
+        "La APK ahora puede avisar cuando existe una actualización.",
+        "El enlace de descarga apunta al APK publicado en GitHub."
+      ]
+    },
+    {
+      "versionCode": 1,
+      "versionName": "1.0.0",
+      "date": "2026-11-01",
+      "title": "Versión inicial",
+      "items": [
+        "Primera publicación de la APK de UnicornioSoftware.",
+        "Acceso a la portada y navegación principal dentro de la app."
+      ]
+    }
+  ]
 }
