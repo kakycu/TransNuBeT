@@ -1,11 +1,13 @@
 {
+  "appName": "EcosisUnicorn",
+  "packageName": "com.unicorniosoftware.app",
   "versionCode": 3,
   "versionName": "1.0.2",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Cambios menores en bugs de Nóminas - Generar Nómina Impresas y mejoras de estabilidad.",
+  "changelog": "Correcciones en Nóminas - Generar Nómina Impresas, mejoras del modal de novedades y sistema de actualización.",
   "required": false,
-  "releasedAt": "2026-01-24",
+  "releasedAt": "2026-03-24",
   "minSupportedVersionCode": 1,
   "sizeBytes": 22835073,
   "sha256": "",
@@ -13,34 +15,44 @@
     {
       "versionCode": 3,
       "versionName": "1.0.2",
-      "date": "2026-01-24",
-      "title": "Correcciones en Nóminas y mejoras menores",
+      "date": "2026-03-24",
+      "title": "Nóminas, actualizaciones y novedades",
+      "summary": "Versión enfocada en correcciones operativas de Nóminas y en mejorar la experiencia de actualización de la APK.",
       "items": [
-        "Cambios menores en bugs de Nóminas - Generar Nómina Impresas.",
+        "Correcciones menores en Nóminas - Generar Nómina Impresas.",
         "Ajustes de estabilidad en la generación e impresión de nóminas.",
-        "Mejoras visuales en el aviso/modal de actualización de la APK."
+        "Modal de novedades al pulsar la versión actual en servidor, sin cierre al hacer click fuera.",
+        "Comprobación de versión más robusta con fallback local/remoto y timeout de seguridad.",
+        "Despliegue automático de la APK a InfinityFree desde el workflow de build."
       ]
     },
     {
       "versionCode": 2,
       "versionName": "1.0.1",
-      "date": "2026-01-15",
-      "title": "Mejoras de descarga y actualización",
+      "date": "2026-02-14",
+      "title": "Distribución APK y comprobación de versiones",
+      "summary": "Se incorporó la descarga oficial de la APK y la base del sistema de detección de actualizaciones.",
       "items": [
-        "Se agregó sección de descarga de APK en la portada.",
-        "Se añadió comprobación de versión disponible desde el servidor.",
-        "La APK ahora puede avisar cuando existe una actualización.",
-        "El enlace de descarga apunta al APK publicado en GitHub."
+        "Sección de descarga de APK en la portada web con logo y enlace directo.",
+        "Publicación del APK en dist y enlace de descarga desde GitHub raw.",
+        "Creación de version.json como fuente remota de versión para web y APK.",
+        "La web muestra la versión disponible en servidor y detecta si la APK instalada está desactualizada.",
+        "La APK expone getAppVersion al WebView y avisa cuando existe una nueva versión.",
+        "Ajustes de visibilidad del carrusel/topbar/menú móvil en WebView y correcciones de modales offline/contacto."
       ]
     },
     {
       "versionCode": 1,
       "versionName": "1.0.0",
-      "date": "2026-01-01",
-      "title": "Versión inicial",
+      "date": "2026-01-10",
+      "title": "Lanzamiento inicial de la APK",
+      "summary": "Primera versión de la aplicación Android WebView con soporte offline y empaquetado de contenido local.",
       "items": [
-        "Primera publicación de la APK de UnicornioSoftware.",
-        "Acceso a la portada y navegación principal dentro de la app."
+        "Creación del proyecto WebView APK y workflow de compilación en GitHub Actions.",
+        "Firma de APK debug con keystore estable para facilitar instalación.",
+        "Intro local offline, modal sin conexión y botón de reintento cuando no hay internet.",
+        "Empaquetado de páginas HTML/assets locales dentro de la APK.",
+        "Correcciones de impresión/PDF, ajustes de assets y publicación inicial de EcosisUnicorn.apk."
       ]
     }
   ]
