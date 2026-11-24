@@ -71,3 +71,34 @@ jobs:
           fi
           git commit -m "Actualizar APK dist EcosisUnicorn [skip ci]"
           git push
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Obtener codigo actualizado
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Descargar APK generado
+        uses: actions/download-artifact@v4
+        with:
+          name: EcosisUnicorn-apk
+          path: android-apk/dist
+
+      - name: Subir APK por FTP a InfinityFree
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          server-dir: /htdocs/
+          protocol: ftps
+          state-name: .ftp-deploy-sync-state-apk.json
+          dangerous-clean-slate: false
+          exclude: |
+            **/*
+            !android-apk/dist/EcosisUnicorn.apk
