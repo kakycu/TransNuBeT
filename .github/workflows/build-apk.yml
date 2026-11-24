@@ -70,7 +70,19 @@ jobs:
             exit 0
           fi
           git commit -m "Actualizar APK dist EcosisUnicorn [skip ci]"
-          git pull --rebase origin main
+          for i in 1 2 3; do
+            if git pull --rebase origin main; then
+              break
+            fi
+            if git status --porcelain | grep -q "android-apk/dist/EcosisUnicorn.apk"; then
+              git checkout --ours android-apk/dist/EcosisUnicorn.apk
+              git add android-apk/dist/EcosisUnicorn.apk
+              GIT_EDITOR=true git rebase --continue || true
+            else
+              git rebase --abort || true
+              exit 1
+            fi
+          done
           git push origin HEAD:main
 
   deploy:
