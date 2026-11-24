@@ -36,6 +36,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
@@ -49,6 +53,9 @@ class MainActivity : AppCompatActivity() {
 
     private val remoteStartUrl = "https://unicorniosoftware.gt.tc/"
     private val localHomeUrl = "file:///android_asset/index.html"
+    private val versionCheckUrl = "https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/version.json"
+    private val versionPrefs = "app_version"
+    private val dismissedVersionCodeKey = "dismissed_version_code"
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -240,6 +247,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         } else {
             webView.restoreState(savedInstanceState)
         }
+        checkForAppUpdate()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -321,6 +329,64 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         retryDialog?.show()
     }
 
+    private fun checkForAppUpdate() {
+        if (!isNetworkAvailable()) return
+        thread(name = "apk-update-check") {
+            try {
+                val conn = (URL(versionCheckUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    useCaches = false
+                    setRequestProperty("Accept", "application/json")
+                }
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                conn.disconnect()
+                val json = JSONObject(body)
+                val latestCode = json.optInt("versionCode", -1)
+                val latestName = json.optString("versionName", "")
+                val apkUrl = json.optString("apkUrl", "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk")
+                val changelog = json.optString("changelog", "")
+                val required = json.optBoolean("required", false)
+                val currentCode = BuildConfig.VERSION_CODE
+                if (latestCode <= currentCode) return@thread
+
+                val prefs = getSharedPreferences(versionPrefs, MODE_PRIVATE)
+                val dismissed = prefs.getInt(dismissedVersionCodeKey, -1)
+                if (!required && dismissed == latestCode) return@thread
+
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    val msg = buildString {
+                        append("Hay una nueva versión disponible")
+                        if (latestName.isNotBlank()) append(" (v$latestName)")
+                        append(".\n\n")
+                        append("Versión instalada: v${BuildConfig.VERSION_NAME}\n")
+                        if (changelog.isNotBlank()) append("\nNovedades: $changelog")
+                    }
+                    val builder = AlertDialog.Builder(this)
+                        .setTitle("Actualización disponible")
+                        .setMessage(msg)
+                        .setPositiveButton("Descargar") { _, _ ->
+                            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl))) }
+                            catch (_: Exception) { Toast.makeText(this, "No se pudo abrir la descarga", Toast.LENGTH_SHORT).show() }
+                        }
+                    if (required) {
+                        builder.setCancelable(false)
+                    } else {
+                        builder.setNegativeButton("Más tarde") { _, _ ->
+                            prefs.edit().putInt(dismissedVersionCodeKey, latestCode).apply()
+                        }
+                        builder.setNeutralButton("Omitir esta versión") { _, _ ->
+                            prefs.edit().putInt(dismissedVersionCodeKey, latestCode).apply()
+                        }
+                    }
+                    builder.show()
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     inner class WebAppBridge {
         @JavascriptInterface
         fun retryConnection() {
@@ -334,6 +400,19 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
 
         @JavascriptInterface
         fun isConnected(): Boolean = isNetworkAvailable()
+
+        @JavascriptInterface
+        fun getAppVersion(): String {
+            return try {
+                JSONObject()
+                    .put("versionCode", BuildConfig.VERSION_CODE)
+                    .put("versionName", BuildConfig.VERSION_NAME)
+                    .put("packageName", BuildConfig.APPLICATION_ID)
+                    .toString()
+            } catch (_: Exception) {
+                "{\"versionCode\":${BuildConfig.VERSION_CODE},\"versionName\":\"${BuildConfig.VERSION_NAME}\"}"
+            }
+        }
 
         @JavascriptInterface
         fun printPage() {

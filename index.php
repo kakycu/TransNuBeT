@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Portada alternativa (index2.php) con el lenguaje visual de cyberforja.com:
  * fondo abismo, acentos cian y fuego, titulares en Bebas Neue, etiquetas y
@@ -810,11 +810,15 @@ $faq = [
     <a href="#ecosistema" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
 </header>
 
-<section class="apk-download" aria-label="Descarga la app para Android">
+<section class="apk-download" aria-label="Descarga la app para Android" id="apk-download" data-apk-version-url="https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/version.json">
     <div class="wrap apk-download__inner">
         <img src="/images/logo.png" alt="Logo UnicornioSoftware" class="apk-download__logo" width="56" height="56" loading="lazy" decoding="async">
-        <p class="apk-download__text">¡DESCARGA LA APK PARA ANDROID!</p>
-        <a class="btn btn-fuego apk-download__btn" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download>
+        <div class="apk-download__copy">
+            <p class="apk-download__text">¡DESCARGA LA APK PARA ANDROID!</p>
+            <p class="apk-download__version" id="apkVersionInfo">Comprobando versión disponible...</p>
+            <p class="apk-download__status" id="apkUpdateStatus" aria-live="polite"></p>
+        </div>
+        <a class="btn btn-fuego apk-download__btn" id="apkDownloadBtn" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download>
             <i class="fa-brands fa-android" aria-hidden="true"></i> Descargar APK
         </a>
     </div>
@@ -2803,7 +2807,49 @@ $faq = [
   });
 })();
 </script>
-<script>
+/* Comprobación de versión APK (web y APK embebida) */
+(function () {
+    var section = document.getElementById("apk-download");
+    var info = document.getElementById("apkVersionInfo");
+    var status = document.getElementById("apkUpdateStatus");
+    var btn = document.getElementById("apkDownloadBtn");
+    if (!section || !info || !status || !btn) return;
+    var versionUrl = section.getAttribute("data-apk-version-url");
+    function getInstalled() {
+        try {
+            if (window.AndroidApp && typeof window.AndroidApp.getAppVersion === "function") {
+                var raw = window.AndroidApp.getAppVersion();
+                var obj = typeof raw === "string" ? JSON.parse(raw) : raw;
+                return { versionCode: parseInt(obj.versionCode, 10) || 0, versionName: String(obj.versionName || "") };
+            }
+        } catch (e) {}
+        return null;
+    }
+    function setStatus(text, cls) { status.textContent = text || ""; status.className = "apk-download__status" + (cls ? " " + cls : ""); }
+    fetch(versionUrl, { cache: "no-store", headers: { "Accept": "application/json" } })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (data) {
+            var latestCode = parseInt(data.versionCode, 10) || 0;
+            var latestName = String(data.versionName || "");
+            var apkUrl = String(data.apkUrl || btn.href);
+            var changelog = String(data.changelog || "");
+            btn.href = apkUrl;
+            info.textContent = "Última versión disponible: v" + (latestName || latestCode);
+            var installed = getInstalled();
+            if (!installed) { setStatus("Si ya tienes la app instalada, ábrela para comprobar si necesitas actualizar.", ""); return; }
+            info.textContent = "Instalada: v" + installed.versionName + " · Última: v" + (latestName || latestCode);
+            if (latestCode > installed.versionCode) {
+                setStatus("Hay una actualización disponible. " + (changelog ? changelog : ""), "is-update");
+                btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar actualización";
+            } else {
+                setStatus("Tu app está actualizada.", "is-ok");
+                btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar APK";
+            }
+        })
+        .catch(function () { info.textContent = "No se pudo comprobar la versión más reciente."; setStatus("Puedes descargar la APK desde el botón.", ""); });
+})();
+</script>
+<script><script>
 /* Tasa USD->CUP dinámica (inspirado en cyberforja tasa.js/product-page.js) */
 (function () {
     var KEY = 'cf_tasa_usd_cup';

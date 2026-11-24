@@ -341,6 +341,7 @@
         flex-shrink: 0;
         filter: drop-shadow(0 0 12px rgba(0,212,255,.35));
     }
+    .apk-download__copy{ min-width: 240px; }
     .apk-download__text{
         margin: 0;
         font-family: 'Bebas Neue', sans-serif;
@@ -350,9 +351,27 @@
         color: var(--txt);
         text-shadow: 0 0 24px rgba(255,107,0,.25);
     }
+    .apk-download__version{
+        margin: .45rem 0 0;
+        font-family: 'Exo 2', sans-serif;
+        font-size: .82rem;
+        color: var(--gris-2);
+        letter-spacing: .03em;
+    }
+    .apk-download__status{
+        margin: .35rem 0 0;
+        font-family: 'Exo 2', sans-serif;
+        font-size: .82rem;
+        font-weight: 600;
+        color: var(--gris-3);
+        min-height: 1.2em;
+    }
+    .apk-download__status.is-update{ color: #ffb347; }
+    .apk-download__status.is-ok{ color: #7dffb2; }
     .apk-download__btn{ white-space: nowrap; }
     @media (max-width: 640px){
         .apk-download__inner{ gap: .85rem; }
+        .apk-download__copy{ min-width: 0; width: 100%; }
         .apk-download__btn{ width: 100%; max-width: 320px; }
     }
 
