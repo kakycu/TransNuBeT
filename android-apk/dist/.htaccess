@@ -1,8 +1,0 @@
-Options -Indexes
-
-<FilesMatch "(?i)\.apk$">
-    <IfModule mod_headers.c>
-        Header set Content-Disposition "attachment"
-        Header set Content-Type "application/vnd.android.package-archive"
-    </IfModule>
-</FilesMatch>
