@@ -815,7 +815,7 @@ $faq = [
         <img src="/images/logo.png" alt="Logo UnicornioSoftware" class="apk-download__logo" width="56" height="56" loading="lazy" decoding="async">
         <div class="apk-download__copy">
             <p class="apk-download__text">¡DESCARGA LA APK PARA ANDROID!</p>
-            <p class="apk-download__version"><button type="button" class="apk-version-btn" id="apkVersionBtn" aria-haspopup="dialog" aria-controls="apkVersionModal"><span id="apkVersionInfo">Versión actual en servidor: v1.0.2 (código 3)</span><i class="fa-solid fa-circle-info" aria-hidden="true"></i></button></p>
+            <p class="apk-download__version"><button type="button" class="apk-version-btn" id="apkVersionBtn" aria-haspopup="dialog" aria-controls="apkVersionModal"><span id="apkVersionInfo">Versión actual en servidor: v1.0.4 (código 6)</span><i class="fa-solid fa-circle-info" aria-hidden="true"></i></button></p>
             <p class="apk-download__status" id="apkUpdateStatus" aria-live="polite"></p>
         </div>
         <a class="btn btn-fuego apk-download__btn" id="apkDownloadBtn" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download>
@@ -826,14 +826,18 @@ $faq = [
 
 <div class="apk-modal" id="apkVersionModal" hidden aria-hidden="true">
     <div class="apk-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="apkVersionModalTitle">
-        <button type="button" class="apk-modal__close" id="apkVersionModalClose" aria-label="Cerrar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-        <div class="apk-modal__head">
+        <div class="apk-modal__header">
+            <button type="button" class="apk-modal__close" id="apkVersionModalClose" aria-label="Cerrar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             <p class="apk-modal__eyebrow">Actualizaciones APK</p>
             <h2 class="apk-modal__title" id="apkVersionModalTitle">Novedades de la versión</h2>
             <p class="apk-modal__meta" id="apkVersionModalMeta">Cargando información de versión...</p>
         </div>
         <div class="apk-modal__body" id="apkVersionModalBody">
             <p class="apk-modal__loading">Cargando cambios...</p>
+        </div>
+        <div class="apk-modal__footer">
+            <button type="button" class="apk-modal__btn apk-modal__btn--ghost" id="apkVersionModalFooterClose"><i class="fa-solid fa-xmark" aria-hidden="true"></i> Cerrar</button>
+            <a class="apk-modal__btn apk-modal__btn--primary" id="apkVersionModalDownload" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download><i class="fa-brands fa-android" aria-hidden="true"></i> Descargar</a>
         </div>
     </div>
 </div>
@@ -2910,7 +2914,10 @@ $faq = [
         if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
     if (versionBtn) versionBtn.addEventListener('click', openModal);
+    var modalFooterClose = document.getElementById("apkVersionModalFooterClose");
+    var modalDownload = document.getElementById("apkVersionModalDownload");
     if (modalClose) modalClose.addEventListener('click', closeModal);
+    if (modalFooterClose) modalFooterClose.addEventListener('click', closeModal);
     if (modal) {
         modal.addEventListener('click', function (e) { if (e.target === modal) { e.preventDefault(); e.stopPropagation(); } });
         modal.addEventListener('mousedown', function (e) { if (e.target === modal) { e.preventDefault(); } });
@@ -2930,7 +2937,7 @@ $faq = [
         var latestName = String(data.versionName || "");
         var apkUrl = String(data.apkUrl || btn.href);
         var changelog = String(data.changelog || "");
-        btn.href = apkUrl;
+        btn.href = apkUrl; if (modalDownload) modalDownload.href = apkUrl;
         info.textContent = "Versión actual en servidor: v" + (latestName || latestCode) + " (código " + latestCode + ")";
         var installed = getInstalled();
         if (!installed) {

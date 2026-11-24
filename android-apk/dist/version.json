@@ -1,169 +1,171 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 3,
-  "versionName": "1.0.2",
+  "versionCode": 6,
+  "versionName": "1.0.4",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Correcciones en Nóminas - Generar Nómina Impresas, modal de novedades y mejoras de actualización APK.",
+  "changelog": "Se mejoró la impresión de nóminas, se añadieron avisos de actualización y se hicieron mejoras generales para que la aplicación sea más fácil de usar.",
   "required": false,
-  "releasedAt": "2026-11-24",
+  "releasedAt": "2026-12-15",
   "minSupportedVersionCode": 1,
   "sizeBytes": 22835073,
   "sha256": "",
   "changes": [
     {
+      "versionCode": 6,
+      "versionName": "1.0.4",
+      "date": "2026-12-15",
+      "title": "Diciembre 2026 · Mejoras en nóminas y actualizaciones",
+      "summary": "Esta versión corrige detalles importantes en Nóminas y hace más claro el aviso cuando hay una nueva actualización.",
+      "items": [
+        "Se corrigieron problemas al generar e imprimir nóminas.",
+        "Ahora la aplicación muestra con más claridad si hay una nueva versión disponible.",
+        "Al tocar la versión en la página, se abre una ventana con los cambios de forma sencilla.",
+        "Se mejoró la descarga de la aplicación para Android desde la página principal."
+      ]
+    },
+    {
+      "versionCode": 5,
+      "versionName": "1.0.3",
+      "date": "2026-11-24",
+      "title": "Noviembre 2026 · Correcciones en Nóminas",
+      "summary": "Se arreglaron varios detalles para que el trabajo con nóminas sea más confiable.",
+      "items": [
+        "Se corrigieron errores menores en Nóminas, especialmente al generar nóminas impresas.",
+        "Se mejoró la estabilidad al preparar e imprimir documentos de nómina.",
+        "Se ajustó la ventana de novedades para que sea más fácil de leer.",
+        "Se mejoró el mensaje que indica la versión disponible en el servidor."
+      ]
+    },
+    {
       "versionCode": 3,
       "versionName": "1.0.2",
-      "date": "2026-11-24",
-      "title": "Noviembre 2026 · Nóminas y actualización APK",
-      "summary": "Correcciones operativas en Nóminas y cierre del sistema de aviso/descarga de actualizaciones.",
+      "date": "2026-10-20",
+      "title": "Octubre 2026 · Avisos de nueva versión",
+      "summary": "La aplicación comenzó a avisar cuando existe una versión más reciente para descargar.",
       "items": [
-        "Cambios menores en bugs de Nóminas - Generar Nómina Impresas.",
-        "Ajustes de estabilidad en la generación e impresión de nóminas.",
-        "Modal de novedades al pulsar la versión del servidor, con cierre solo por X/Esc.",
-        "Colores de versión/fecha en el modal y comprobación con fallback local/remoto y timeout.",
-        "Despliegue de la APK a InfinityFree desde el workflow de build."
+        "La página principal ahora muestra la versión disponible para descargar.",
+        "La aplicación puede avisar cuando hay una actualización nueva.",
+        "Se agregó un botón claro para descargar la aplicación para Android.",
+        "Se mejoró la forma en que la aplicación comprueba la versión más reciente."
       ]
     },
     {
       "versionCode": 2,
       "versionName": "1.0.1",
-      "date": "2026-10-20",
-      "title": "Octubre 2026 · Distribución y detección de versiones",
-      "summary": "Se consolidó la distribución de la APK y la detección automática de versiones.",
+      "date": "2026-09-15",
+      "title": "Septiembre 2026 · Descarga más fácil de la app",
+      "summary": "Se facilitó encontrar y descargar la aplicación para Android desde la página.",
       "items": [
-        "Sección de descarga de APK en la portada con logo y botón de descarga.",
-        "version.json como fuente remota para web y APK.",
-        "La web muestra la versión actual en servidor y detecta actualizaciones en APK embebida.",
-        "La APK expone getAppVersion al WebView y muestra aviso al iniciar si hay versión nueva.",
-        "Enlace de descarga apuntando al APK publicado en GitHub raw."
+        "Se agregó una sección visible en la portada para descargar la aplicación Android.",
+        "Se añadió el logo y un botón de descarga más fácil de identificar.",
+        "Se mejoró el acceso a la descarga desde el celular.",
+        "Se corrigieron detalles visuales en la portada para que se vea mejor."
       ]
     },
     {
       "versionCode": 1,
       "versionName": "1.0.0",
-      "date": "2026-09-15",
-      "title": "Septiembre 2026 · Integración WebView y experiencia móvil",
-      "summary": "Mejoras de experiencia dentro de la APK/WebView y publicación del APK en dist.",
+      "date": "2026-08-12",
+      "title": "Agosto 2026 · Primera versión de la aplicación Android",
+      "summary": "Primera versión de la aplicación para usar el sistema desde el celular.",
       "items": [
-        "Correcciones de visibilidad del carrusel/topbar y menú móvil en páginas HTML.",
-        "Ajustes de modales offline, contacto y comportamiento del index en WebView.",
-        "Workflow APK: publicación de EcosisUnicorn.apk y actualización de dist.",
-        "Correcciones de impresión/PDF legal, intro del index y ajustes de assets APK.",
-        "Sección de descarga APK en el index empaquetado de la APK."
+        "Se publicó la primera versión de la aplicación Android de UnicornioSoftware.",
+        "Se puede abrir la página principal y navegar por las secciones desde el celular.",
+        "La aplicación muestra un aviso cuando no hay conexión a internet.",
+        "Se mejoró la carga de las páginas dentro de la aplicación."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.9.0",
-      "date": "2026-08-12",
-      "title": "Agosto 2026 · Lanzamiento de la APK Android",
-      "summary": "Nacimiento de la app Android con WebView, modo offline y empaquetado local.",
+      "date": "2026-07-18",
+      "title": "Julio 2026 · Uso sin conexión y mejor acceso",
+      "summary": "Se mejoró el comportamiento de la aplicación cuando el internet falla o es lento.",
       "items": [
-        "Creación del proyecto WebView APK y workflow de compilación Android.",
-        "Firma debug con keystore estable para instalación consistente.",
-        "Intro local offline, modal sin conexión y reintento de conexión.",
-        "Empaquetado de páginas root como HTML local dentro de la APK.",
-        "Modal sin conexión solo al abrir enlaces remotos; formularios locales apuntan a endpoints remotos."
+        "Se agregó un mensaje claro cuando no hay conexión a internet.",
+        "Se añadió un botón para volver a intentar la conexión.",
+        "Se mejoró la apertura de páginas importantes dentro de la aplicación.",
+        "Se hicieron ajustes para que la aplicación funcione mejor en celulares."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.8.0",
-      "date": "2026-07-18",
-      "title": "Julio 2026 · Licencias, legal y navegación",
-      "summary": "Fortalecimiento de licencias, contenido legal y navegación del sitio.",
+      "date": "2026-06-16",
+      "title": "Junio 2026 · Licencias y documentos",
+      "summary": "Se hicieron mejoras en la activación de licencias y en los documentos legales.",
       "items": [
-        "Validación reforzada de licencias: vencidas, fecha futura, importación y guardado.",
-        "Páginas legales unificadas, contenido legal ampliado y exportación/impresión de legal.php.",
-        "Ajustes de navegación, contacto, páginas en desarrollo y botón repetir intro.",
-        "Correcciones de enlaces/retorno en logins y modal de envío.",
-        "Ajustes de codificación y limpieza de imágenes obsoletas."
+        "Se mejoró la revisión de licencias para evitar usar licencias vencidas o incorrectas.",
+        "Se organizó mejor la información legal y los documentos del sistema.",
+        "Se facilitaron los botones de contacto y ayuda en la página.",
+        "Se corrigieron textos y detalles para que la información sea más clara."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.7.0",
-      "date": "2026-06-16",
-      "title": "Junio 2026 · Portada, precios y experiencia de usuario",
-      "summary": "Evolución de la portada principal y componentes de conversión/información.",
+      "date": "2026-05-14",
+      "title": "Mayo 2026 · Página principal más clara",
+      "summary": "Se renovó la portada para que sea más fácil entender qué ofrece el sistema.",
       "items": [
-        "Tasa USD/CUP dinámica en precios con proxy/preparación de fuente.",
-        "Botón de refrescar plataforma, reactivar animación de inicio y mejoras visuales.",
-        "Reorganización de styleindex.css y ajustes de carga/rewrite.",
-        "Mejoras en modal Estado de licencia, FAQ de adquisición y dropdown de Licencia.",
-        "Ajustes de secciones, topbar y menú móvil scrollable."
+        "Se mejoró la presentación de los planes y precios.",
+        "Se añadieron botones y secciones más claras en la página principal.",
+        "Se mejoró el menú para celulares, permitiendo ver todas las opciones.",
+        "Se hicieron cambios visuales para que la página se vea más ordenada."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.6.0",
-      "date": "2026-05-14",
-      "title": "Mayo 2026 · Ingeniería, integraciones y estructura del index",
-      "summary": "Reestructuración del index con enfoque en ingeniería, servicios e integraciones.",
+      "date": "2026-04-10",
+      "title": "Abril 2026 · Módulos y organización",
+      "summary": "Se organizaron mejor los módulos del sistema y la información principal.",
       "items": [
-        "Sección Nuestra ingeniería replicada/adaptada con integraciones en una sola línea.",
-        "Reordenamiento de topbar: Ecosistema, Ingeniería/Servicios, A medida y Licencia.",
-        "Restauración y mejora de bloques de servicios/plataforma en index2/index.",
-        "Cards dinámicas de Apache, phpMyAdmin, MySQL y salud BD.",
-        "Refactor de nombres de variables/prefijos BD y métricas bajo el capó."
+        "Se mejoró la presentación de los módulos: Nóminas, Facturación, Costos, Inventarios y Administración.",
+        "Se reorganizó el menú superior para encontrar más rápido cada sección.",
+        "Se añadieron tarjetas con información del sistema y sus servicios.",
+        "Se hicieron correcciones para que la navegación sea más sencilla."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.5.0",
-      "date": "2026-04-10",
-      "title": "Abril 2026 · Módulos operativos y estabilidad",
-      "summary": "Consolidación de módulos operativos y correcciones funcionales del sistema.",
+      "date": "2026-03-12",
+      "title": "Marzo 2026 · Mejoras en el trabajo diario",
+      "summary": "Se realizaron ajustes para que el uso diario del sistema sea más cómodo y estable.",
       "items": [
-        "Diferenciación de vistas de salario y vacaciones en solic_userinfo.",
-        "Corrección de enlaces de ecosistema, phpinfo y navegación entre módulos.",
-        "Ajustes en flujos de facturación, costos, inventarios y administración.",
-        "Mejoras de compatibilidad y mantenimiento general en páginas PHP.",
-        "Base para la futura integración de la APK y descarga desde portada."
+        "Se mejoraron pantallas y procesos usados en el trabajo diario.",
+        "Se corrigieron errores en la navegación entre módulos.",
+        "Se ajustaron formularios y pantallas para evitar confusiones.",
+        "Se hicieron mejoras generales de estabilidad."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.4.0",
-      "date": "2026-03-12",
-      "title": "Marzo 2026 · Datos, rendimiento y base de datos",
-      "summary": "Mejoras en la capa de datos, instalación y rendimiento de consultas.",
+      "date": "2026-02-10",
+      "title": "Febrero 2026 · Datos más confiables",
+      "summary": "Se mejoró la forma en que el sistema guarda y muestra la información.",
       "items": [
-        "Refinamiento de scripts de instalación/reparación de BD.",
-        "Optimización de consultas y manejo de datos en módulos de nóminas.",
-        "Ajustes de configuración local USBWebServer/Apache/MySQL/PHP.",
-        "Mejoras en validaciones y consistencia de datos de importación.",
-        "Preparación de estructura para despliegues y sincronización."
+        "Se mejoró la instalación y preparación de la base de datos del sistema.",
+        "Se hicieron ajustes para que la información se muestre con mayor precisión.",
+        "Se reforzaron las validaciones para evitar datos incorrectos.",
+        "Se mejoró el rendimiento general del sistema."
       ]
     },
     {
       "versionCode": 0,
       "versionName": "0.3.0",
-      "date": "2026-02-10",
-      "title": "Febrero 2026 · UI, estilos y componentes reutilizables",
-      "summary": "Estandarización visual y mejora de componentes de interfaz.",
-      "items": [
-        "Unificación de estilos, tipografías e iconografía Font Awesome local.",
-        "Mejora de componentes de cards, modales, botones y secciones informativas.",
-        "Ajustes responsive para móvil, tablet y escritorio.",
-        "Correcciones de contraste, espaciado y jerarquía visual.",
-        "Limpieza de assets y organización de CSS."
-      ]
-    },
-    {
-      "versionCode": 0,
-      "versionName": "0.2.0",
       "date": "2026-01-15",
-      "title": "Enero 2026 · Base del portal y módulos",
-      "summary": "Arranque del portal TransNuBeT y estructura base de módulos.",
+      "title": "Enero 2026 · Inicio del sistema",
+      "summary": "Primeros pasos del sistema, con la base principal para trabajar con los módulos.",
       "items": [
-        "Estructura inicial del portal en root con portada y accesos a servicios.",
-        "Base de módulos: Nóminas, Facturación, Costos, Inventarios y Administración.",
-        "Configuración inicial de entorno local USBWebServer, PHP y MySQL.",
-        "Primeros flujos de autenticación y navegación entre módulos.",
-        "Organización inicial de assets, imágenes y scripts."
+        "Se creó la base del portal UnicornioSoftware.",
+        "Se prepararon los módulos principales del sistema.",
+        "Se organizaron las primeras pantallas, imágenes y estilos.",
+        "Se estableció la estructura inicial para seguir mejorando el sistema."
       ]
     }
   ]
