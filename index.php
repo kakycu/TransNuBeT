@@ -814,7 +814,7 @@ $faq = [
     <div class="wrap apk-download__inner">
         <img src="/images/logo.png" alt="Logo UnicornioSoftware" class="apk-download__logo" width="56" height="56" loading="lazy" decoding="async">
         <p class="apk-download__text">¡DESCARGA LA APK PARA ANDROID!</p>
-        <a class="btn btn-fuego apk-download__btn" href="android-apk/dist/EcosisUnicorn.apk" download>
+        <a class="btn btn-fuego apk-download__btn" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download>
             <i class="fa-brands fa-android" aria-hidden="true"></i> Descargar APK
         </a>
     </div>
