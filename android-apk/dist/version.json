@@ -1,7 +1,7 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 10,
+  "versionCode": 11,
   "versionName": "1.0.6",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
@@ -12,6 +12,21 @@
   "sizeBytes": 0,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 11,
+      "versionName": "1.0.6",
+      "date": "2026-11-24",
+      "title": "Nuevo dise?o de avisos en la app",
+      "summary": "Se renov? el aviso de actualizaci?n y el di?logo para cerrar la aplicaci?n, con un dise?o m?s claro y botones f?ciles de usar.",
+      "changelog": "Nuevo dise?o del modal de actualizaci?n y del cierre de aplicaci?n, con botones Ver lo nuevo y Descargar.",
+      "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
+      "novedades": [
+        "Nuevo dise?o del aviso de actualizaci?n, con la informaci?n m?s clara y mejor organizada.",
+        "Botones Ver lo nuevo y Descargar para revisar los cambios o instalar la actualizaci?n desde el mismo aviso.",
+        "Nuevo dise?o del mensaje de confirmaci?n al cerrar la aplicaci?n, con el mismo estilo visual."
+      ],
+      "correcciones": []
+    },
     {
       "versionCode": 10,
       "versionName": "1.0.6",

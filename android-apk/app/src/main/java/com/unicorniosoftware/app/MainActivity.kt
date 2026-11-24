@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
             b.id = 'unicornioExitBtn';
             b.setAttribute('aria-label', 'Cerrar aplicación');
             b.textContent = 'Cerrar aplicación';
-            b.style.cssText = 'position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2147483000;padding:9px 14px;border-radius:999px;border:1px solid rgba(192,132,252,.55);background:rgba(76,29,149,.92);color:#F5F3FF;font:600 12px/1.1 Inter,system-ui,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.45);cursor:pointer;-webkit-tap-highlight-color:transparent;';
+            b.style.cssText = 'position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2147483000;padding:10px 14px;border-radius:8px;border:1px solid #495057;background:#343A40;color:#DEE2E6;font:600 13px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.45);cursor:pointer;-webkit-tap-highlight-color:transparent;';
             b.onclick = function () {
               if (window.AndroidApp && AndroidApp.requestClose) { AndroidApp.requestClose(); }
             };
@@ -341,15 +341,19 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
 
     private fun showCloseAppDialog() {
         if (isFinishing || isDestroyed) return
-        AlertDialog.Builder(this)
-            .setTitle("Cerrar aplicación")
-            .setMessage("¿Deseas salir de la aplicación?")
-            .setPositiveButton("Sí, cerrar") { dialog, _ ->
-                dialog.dismiss()
-                finish()
-            }
-            .setNegativeButton("Cancelar") { dialog, _ -> dialog.dismiss() }
-            .show()
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_close_app, null, false)
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .setCancelable(true)
+            .create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        view.findViewById<View>(R.id.btnCloseDialogX).setOnClickListener { dialog.dismiss() }
+        view.findViewById<View>(R.id.btnCloseCancel).setOnClickListener { dialog.dismiss() }
+        view.findViewById<View>(R.id.btnCloseConfirm).setOnClickListener {
+            dialog.dismiss()
+            finish()
+        }
+        dialog.show()
     }
 
     private fun showRetryDialog() {
@@ -368,11 +372,13 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         if (!isNetworkAvailable()) return
         thread(name = "apk-update-check") {
             try {
-                val conn = (URL(versionCheckUrl).openConnection() as HttpURLConnection).apply {
+                val bustUrl = versionCheckUrl + (if (versionCheckUrl.contains("?")) "&" else "?") + "t=" + System.currentTimeMillis()
+                val conn = (URL(bustUrl).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 6000
                     readTimeout = 6000
                     useCaches = false
                     setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Cache-Control", "no-cache")
                 }
                 val body = conn.inputStream.bufferedReader().use { it.readText() }
                 conn.disconnect()
@@ -467,64 +473,58 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         val title = view.findViewById<TextView>(R.id.updateTitle)
         val versions = view.findViewById<TextView>(R.id.updateVersions)
         val summary = view.findViewById<TextView>(R.id.updateSummary)
+        val metaRow = view.findViewById<LinearLayout>(R.id.updateMetaRow)
         val sizeView = view.findViewById<TextView>(R.id.updateSize)
         val dateView = view.findViewById<TextView>(R.id.updateDate)
         val requiredView = view.findViewById<TextView>(R.id.updateRequired)
-        val changesScroll = view.findViewById<android.widget.ScrollView>(R.id.updateChangesScroll)
         val changesContainer = view.findViewById<LinearLayout>(R.id.updateChangesContainer)
         val minView = view.findViewById<TextView>(R.id.updateMinSupported)
         val btnDownload = view.findViewById<TextView>(R.id.btnUpdateDownload)
         val btnNotes = view.findViewById<TextView>(R.id.btnUpdateNotes)
-        val btnVersions = view.findViewById<TextView>(R.id.btnUpdateVersions)
         val btnClose = view.findViewById<android.widget.ImageButton>(R.id.btnUpdateClose)
         val btnLater = view.findViewById<TextView>(R.id.btnUpdateLater)
-        val btnSkip = view.findViewById<TextView>(R.id.btnUpdateSkip)
-        val secondaryRow = view.findViewById<LinearLayout>(R.id.updateSecondaryRow)
 
-        title.text = if (required) "Actualización necesaria" else "Actualización disponible"
-        versions.text = "Instalada v${BuildConfig.VERSION_NAME}  ·  Nueva v$latestName (Rev. $latestCode)"
+        val appName = getString(R.string.app_name)
+        val latestLabel = "v$latestName"
+        title.text = if (required) "$appName: actualizaci?n necesaria" else "$appName: ?Nueva versi?n $latestLabel disponible!"
+        versions.text = "Instalada v${BuildConfig.VERSION_NAME} (Rev. ${BuildConfig.VERSION_CODE})  ?  Nueva $latestLabel (Rev. $latestCode)"
 
         val sizeText = formatBytes(sizeBytes)
-        if (sizeText.isNotBlank()) { sizeView.text = "Tamaño: $sizeText"; sizeView.visibility = View.VISIBLE }
+        val hasMeta = sizeText.isNotBlank() || releasedAt.isNotBlank()
+        metaRow.visibility = if (hasMeta) View.VISIBLE else View.GONE
+        if (sizeText.isNotBlank()) { sizeView.text = "Tama?o: $sizeText"; sizeView.visibility = View.VISIBLE }
         if (releasedAt.isNotBlank()) { dateView.text = "Fecha: $releasedAt"; dateView.visibility = View.VISIBLE }
-        if (sizeText.isBlank() && releasedAt.isBlank()) view.findViewById<LinearLayout>(R.id.updateMetaRow).visibility = View.GONE
 
         if (required) {
             requiredView.visibility = View.VISIBLE
-            secondaryRow.visibility = View.GONE
+            btnLater.visibility = View.GONE
         }
 
         if (minSupported > BuildConfig.VERSION_CODE) {
-            minView.text = "Esta versión requiere la app con Rev. $minSupported o superior."
+            minView.text = "Esta versi?n requiere la app con Rev. $minSupported o superior."
             minView.visibility = View.VISIBLE
         }
 
-        if (notes.isNotEmpty()) {
-            changesScroll.visibility = View.VISIBLE
+        val flatItems = notes.flatMap { it.second }
+        val sectionSummary = when {
+            flatItems.isNotEmpty() -> "Esta versi?n incluye mejoras y novedades para tu app."
+            else -> "Hay una nueva versi?n disponible para descargar."
+        }
+        summary.text = sectionSummary
+        summary.visibility = View.VISIBLE
+
+        if (flatItems.isNotEmpty()) {
             val dp = resources.displayMetrics.density
-            notes.forEach { (group, items) ->
-                val header = TextView(this).apply {
-                    text = group
-                    setTextColor(if (group == "Correcciones") Color.parseColor("#FDBA74") else Color.parseColor("#7DD3FC"))
+            flatItems.take(6).forEach { item ->
+                val row = TextView(this).apply {
+                    text = "?  $item"
+                    setTextColor(Color.parseColor("#CED4DA"))
                     textSize = 13f
-                    typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-                    setPadding(0, (8 * dp).toInt(), 0, (4 * dp).toInt())
+                    setLineSpacing(2 * dp, 1f)
+                    setPadding((4 * dp).toInt(), (4 * dp).toInt(), 0, (4 * dp).toInt())
                 }
-                changesContainer.addView(header)
-                items.take(4).forEach { item ->
-                    val row = TextView(this).apply {
-                        text = "• $item"
-                        setTextColor(Color.parseColor("#C9D8E6"))
-                        textSize = 13f
-                        setLineSpacing(2 * dp, 1f)
-                        setPadding((4 * dp).toInt(), (2 * dp).toInt(), 0, (2 * dp).toInt())
-                    }
-                    changesContainer.addView(row)
-                }
+                changesContainer.addView(row)
             }
-        } else {
-            summary.text = "Hay una nueva versión disponible para descargar."
-            summary.visibility = View.VISIBLE
         }
 
         val dialog = AlertDialog.Builder(this)
@@ -538,30 +538,24 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
             catch (_: Exception) { Toast.makeText(this, "No se pudo abrir la descarga", Toast.LENGTH_SHORT).show() }
             if (!required) dialog.dismiss()
         }
-        val openReleases = {
+        btnNotes.setOnClickListener {
             dialog.dismiss()
             try { webView.loadUrl("file:///android_asset/releases.html") }
             catch (_: Exception) { webView.loadUrl("https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/releases.html") }
         }
-        btnNotes.setOnClickListener { openReleases() }
-        btnVersions.setOnClickListener { openReleases() }
         btnClose.setOnClickListener {
             if (required) {
-                Toast.makeText(this, "Esta actualización es necesaria para continuar.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Esta actualizaci?n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
             } else {
                 dialog.dismiss()
             }
         }
         btnLater.setOnClickListener { dialog.dismiss() }
-        btnSkip.setOnClickListener {
-            getSharedPreferences(versionPrefs, MODE_PRIVATE).edit().putInt(dismissedVersionCodeKey, latestCode).apply()
-            dialog.dismiss()
-        }
 
         dialog.show()
     }
 
-    inner class WebAppBridge {
+
         @JavascriptInterface
         fun retryConnection() {
             runOnUiThread { this@MainActivity.retryConnection() }
