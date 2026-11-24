@@ -14,11 +14,26 @@
         android:orientation="vertical"
         android:padding="28dp">
 
+        <FrameLayout
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:background="@drawable/bg_offline_icon"
+            android:padding="14dp">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/app_name"
+                android:scaleType="fitCenter"
+                android:src="@mipmap/ic_launcher_round" />
+        </FrameLayout>
+
         <ProgressBar
             android:id="@+id/retrySpinner"
             style="?android:attr/progressBarStyleLarge"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginTop="14dp"
             android:indeterminate="true"
             android:indeterminateTint="#00D4FF" />
 

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Política de Privacidad y Términos de Servicio — UnicornioSoftware</title>
     <meta name="description" content="Política de Privacidad y Términos de Servicio de UnicornioSoftware. Conoce cómo tratamos tus datos y las condiciones de uso de nuestros sistemas.">
     <meta name="robots" content="index, follow">
@@ -157,7 +157,7 @@
 
     /* ===== DOCUMENTO PAGINADO: se mide en pantalla y se imprime hoja por hoja ===== */
     /* Mismas reglas tipográficas que @media print, aplicadas al clon medible. */
-    #printClip { position:fixed; left:0; top:0; width:0; height:0; overflow:hidden; }
+    #printClip { position:fixed; left:-9999px; top:0; width:8.5in; height:auto; overflow:visible; visibility:hidden; pointer-events:none; }
     #printDoc { visibility:hidden; pointer-events:none; }
     .print-doc {
         width:8.5in;
@@ -176,7 +176,7 @@
     }
     .print-doc .print-page:last-child { break-after:auto; page-break-after:auto; }
     .print-doc .print-page-head { flex:0 0 auto; display:flex; align-items:center; margin:0 0 10pt; }
-    .print-doc .print-page-head img { height:11mm; width:auto; display:block; }
+    .print-doc .print-page-head img { height:11mm; width:auto; display:block; object-fit:contain; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
     .print-doc .print-page-body { flex:1 1 auto; overflow:hidden; }
     .print-doc .print-page-foot {
         flex:0 0 auto; margin-top:8pt; padding-top:4pt;
@@ -306,19 +306,21 @@
         body.is-paginated .scroll-progress { display:none !important; }
         body.is-paginated #printClip {
             position:static !important;
+            left:auto !important;
+            top:auto !important;
             width:auto !important;
             height:auto !important;
             overflow:visible !important;
+            visibility:visible !important;
         }
         body.is-paginated #printDoc {
             display:block !important;
             visibility:visible !important;
-            position:static !important;
-            left:auto !important;
-            top:auto !important;
+            pointer-events:none !important;
         }
     }
     </style>
+<style>@media(max-width:768px){.nav,.topbar,header.nav,header.topbar{padding-top:env(safe-area-inset-top,0px)!important}body{padding-top:env(safe-area-inset-top,0px)!important}.menu-movil{top:calc(var(--nav-h,70px) + env(safe-area-inset-top,0px))!important;max-height:calc(100dvh - var(--nav-h,70px) - env(safe-area-inset-top,0px))!important;overflow-y:auto!important}}</style>
 </head>
 
 <body>
@@ -353,6 +355,8 @@
             <a href="#privacidad"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Privacidad</a>
             <a href="#terminos"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Términos</a>
             <a href="./about.html"><i class="fa-solid fa-users" aria-hidden="true"></i> Sobre nosotros</a>
+            <button type="button" data-accion="imprimir" style="width:100%;display:flex;align-items:center;gap:.6rem;padding:.7rem 0;font:inherit;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gris-2);background:none;border:0;border-bottom:1px solid rgba(30,41,59,.45);cursor:pointer;text-align:left;"><i class="fa-solid fa-print" aria-hidden="true" style="width:1.25rem;text-align:center;color:var(--gris-3);"></i> Imprimir documento</button>
+            <button type="button" data-accion="pdf" style="width:100%;display:flex;align-items:center;gap:.6rem;padding:.7rem 0;font:inherit;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gris-2);background:none;border:0;cursor:pointer;text-align:left;"><i class="fa-solid fa-file-pdf" aria-hidden="true" style="width:1.25rem;text-align:center;color:var(--gris-3);"></i> Exportar PDF</button>
         </div>
     </nav>
 
@@ -361,7 +365,7 @@
             <p class="print-brand">Documentos Legales - UnicornioSoftware&reg;</p>
             <span class="eyebrow">Documentos Legales</span>
             <h1>PRIVACIDAD &amp; TÉRMINOS</h1>
-            <p>Todo lo que necesitas saber sobre cómo tratamos tus datos y las condiciones de uso de los sistemas de UnicornioSoftware. Sin letra pequeña.</p>
+            <p>Todo lo qué necesitas saber sobre cómo tratamos tus datos y las condiciones de uso de los sistemas de UnicornioSoftware. Sin letra pequeña.</p>
             <p class="updated">Última actualización: <strong>22 de noviembre de 2026</strong></p>
             <div class="hero-actions">
                 <a href="#privacidad" class="hero-btn is-fuego">
@@ -373,7 +377,7 @@
                 <button type="button" class="hero-btn is-print" id="btnImprimir" data-accion="imprimir" title="Imprimir documento (Ctrl+P)">
                     <i class="fa-solid fa-print" style="color:var(--gris)" aria-hidden="true"></i> Imprimir documento
                 </button>
-                <button type="button" class="hero-btn is-pdf" id="btnPdf" data-accion="pdf" title="Exportar el documento tal como se imprime">
+                <button type="button" class="hero-btn is-pdf" id="btnPdf" data-accion="pdf" title="Exportar el documento tal cómo se imprime">
                     <i class="fa-solid fa-file-pdf" style="color:var(--fuego)" aria-hidden="true"></i> Exportar PDF
                 </button>
             </div>
@@ -417,12 +421,12 @@
 
                 <div class="legal-block">
                     <h3><span class="dot fuego"></span> 4. Confidencialidad y seguridad local</h3>
-                    <p><strong>Tus datos comerciales son privados.</strong> La información operativa que procesas dentro del sistema (nóminas, trabajadores, pagos, reportes y datos internos de tu organización) reside en el servidor o dispositivo local donde se instala la solución. UnicornioSoftware no accede a la información operativa o financiera de tu negocio, salvo cuando el cliente autoriza expresamente un soporte técnico puntual y limitado a la incidencia.</p>
+                    <p><strong>Tus datos comerciales son privados.</strong> La información operativa qué procesas dentro del sistema (nóminas, trabajadores, pagos, reportes y datos internos de tu organización) reside en el servidor o dispositivo local donde se instala la solución. UnicornioSoftware no accede a la información operativa o financiera de tu negocio, salvo cuando el cliente autoriza expresamente un soporte técnico puntual y limitado a la incidencia.</p>
                 </div>
 
                 <div class="legal-block">
                     <h3><span class="dot fuego"></span> 5. Protección de datos</h3>
-                    <p>La información se almacena en la infraestructura local definida por el cliente, con acceso restringido mediante credenciales, roles y medidas de seguridad como cifrado de contraseñas. El cliente es responsable de proteger el acceso físico y lógico al equipo o servidor donde se aloja el sistema.</p>
+                    <p>La información se almacena en la infraestructura local definida por el cliente, con acceso restringido mediante credenciales, roles y medidas de seguridad cómo cifrado de contraseñas. El cliente es responsable de proteger el acceso físico y lógico al equipo o servidor donde se aloja el sistema.</p>
                 </div>
 
                 <div class="legal-block">
@@ -432,7 +436,7 @@
 
                 <div class="legal-block">
                     <h3><span class="dot fuego"></span> 7. Derechos del usuario</h3>
-                    <p>Usted puede solicitar la corrección, actualización, eliminación o limitación del tratamiento de sus datos personales, siempre que ello no entre en conflicto con obligaciones legales, laborales, fiscales o de auditoría. Para ejercer estos derechos, contacte al administrador del sistema o utilice nuestro <a href="./contacto.html">formulario de contacto</a>.</p>
+                    <p>Usted puede solicitar la corrección, actualización, eliminación o limitación del tratamiento de sus datos personales, siempre qué ello no entre en conflicto con obligaciones legales, laborales, fiscales o de auditoría. Para ejercer estos derechos, contacte al administrador del sistema o utilice nuestro <a href="./contacto.html">formulario de contacto</a>.</p>
                 </div>
 
                 <div class="legal-block">
@@ -458,7 +462,7 @@
             <div class="legal-content">
                 <div class="legal-block">
                     <h3><span class="dot cian"></span> 1. Aceptación de los términos</h3>
-                    <p>Al acceder y utilizar los sistemas de UnicornioSoftware, incluyendo <strong>SiGesNom®</strong> y los módulos del ecosistema, usted acepta quedar vinculado por estos Términos y Condiciones, así como por las leyes y regulaciones aplicables. Si no está de acuerdo con alguno de estos términos, debe abstenerse de utilizar el sistema.</p>
+                    <p>Al acceder y utilizar los sistemas de UnicornioSoftware, incluyendo <strong>SiGesNom®</strong> y los módulos del ecosistema, usted acepta quedar vinculado por estos Términos y Condiciones, así cómo por las leyes y regulaciones aplicables. Si no está de acuerdo con alguno de estos términos, debe abstenerse de utilizar el sistema.</p>
                 </div>
 
                 <div class="legal-block">
@@ -473,12 +477,12 @@
 
                 <div class="legal-block">
                     <h3><span class="dot cian"></span> 4. Periodo de prueba y evaluación</h3>
-                    <p>Cuando se ofrezca un periodo de prueba, demostración o evaluación, este tendrá como único fin valorar el funcionamiento del software antes de su adquisición o activación definitiva. UnicornioSoftware se reserva el derecho de limitar, suspender o finalizar el acceso de prueba ante uso abusivo, intentos de evasión de restricciones técnicas o incumplimiento de estos términos.</p>
+                    <p>Cuando se ofrezca un periodo de prueba, demostración o evaluación, este tendrá cómo único fin valorar el funcionamiento del software antes de su adquisición o activación definitiva. UnicornioSoftware se reserva el derecho de limitar, suspender o finalizar el acceso de prueba ante uso abusivo, intentos de evasión de restricciones técnicas o incumplimiento de estos términos.</p>
                 </div>
 
                 <div class="legal-block">
                     <h3><span class="dot cian"></span> 5. Activación, huella de equipo y abuso de licencia</h3>
-                    <p>Las licencias pueden estar vinculadas a un equipo o entorno autorizado mediante mecanismos técnicos de activación, como la huella del equipo. El <strong>abuso de la licencia</strong>, incluyendo la distribución no autorizada de archivos o claves de activación, la manipulación de validaciones, la ingeniería inversa o el uso fuera de los términos acordados, puede dar lugar a la <strong>suspensión o revocación</strong> de la licencia sin perjuicio de las acciones legales correspondientes.</p>
+                    <p>Las licencias pueden estar vinculadas a un equipo o entorno autorizado mediante mecanismos técnicos de activación, cómo la huella del equipo. El <strong>abuso de la licencia</strong>, incluyendo la distribución no autorizada de archivos o claves de activación, la manipulación de validaciones, la ingeniería inversa o el uso fuera de los términos acordados, puede dar lugar a la <strong>suspensión o revocación</strong> de la licencia sin perjuicio de las acciones legales correspondientes.</p>
                 </div>
 
                 <div class="legal-block">
@@ -493,7 +497,7 @@
 
                 <div class="legal-block">
                     <h3><span class="dot cian"></span> 8. Reembolsos</h3>
-                    <p>Salvo acuerdo comercial escrito que indique lo contrario, una vez entregada, activada o puesta en uso una licencia definitiva, <strong>no se aceptan devoluciones ni reembolsos</strong>, especialmente cuando el cliente ha tenido la posibilidad de evaluar el sistema previamente mediante demostración, periodo de prueba o validación funcional.</p>
+                    <p>Salvo acuerdo comercial escrito qué indique lo contrario, una vez entregada, activada o puesta en uso una licencia definitiva, <strong>no se aceptan devoluciones ni reembolsos</strong>, especialmente cuando el cliente ha tenido la posibilidad de evaluar el sistema previamente mediante demostración, periodo de prueba o validación funcional.</p>
                 </div>
 
                 <div class="legal-block">
@@ -525,7 +529,7 @@
                 <nav aria-label="Enlaces del pie">
                     <h4>Explorar</h4>
                     <ul class="pie-lista">
-                        <li><a href="https://unicorniosoftware.gt.tc/servicios/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero</a></li>
+                        <li><a href="https://unicorniosoftware.gt.tc/servicios/index.php"><i class="fa-solid fa-wallet" aria-hidden="true"></i> Ecosistema Financiero de UnicornioSoftware</a></li>
                         <li><a href="https://unicorniosoftware.gt.tc/servicios/nominas/"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i> Nóminas</a></li>
                         <li><a href="https://unicorniosoftware.gt.tc/servicios/facturacion/index.php"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i> Facturación</a></li>
                         <li><a href="https://unicorniosoftware.gt.tc/servicios/costos/index.php"><i class="fa-solid fa-calculator" aria-hidden="true"></i> Costos</a></li>
@@ -583,7 +587,6 @@
         </button>
     </div>
 
-    <script src="https://unicorniosoftware.gt.tc/servicios/js/html2pdf.bundle.min.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         var observer = new IntersectionObserver(function (entries) {
@@ -602,7 +605,7 @@
             btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
             btn.innerHTML = abierto ? '<i class="fa-solid fa-xmark" aria-hidden="true"></i>' : '<i class="fa-solid fa-bars" aria-hidden="true"></i>';
         });
-        menu.querySelectorAll('a').forEach(function (a) {
+        menu.querySelectorAll('a,button[data-accion]').forEach(function (a) {
             a.addEventListener('click', function () {
                 menu.classList.remove('is-open');
                 btn.setAttribute('aria-expanded', 'false');
@@ -620,7 +623,7 @@
             var cabecera = document.createElement('div');
             cabecera.className = 'print-page-head';
             var logo = document.createElement('img');
-            logo.src = '/servicios/images/Unicorn.png';
+            logo.src = './images/logo.png';
             logo.alt = 'UnicornioSoftware';
             cabecera.appendChild(logo);
             var cuerpo = document.createElement('div');
@@ -666,6 +669,13 @@
 
         function construir() {
             host.innerHTML = '';
+            var clip = document.getElementById('printClip');
+            var prevClipVis = clip.style.visibility;
+            var prevHostVis = host.style.visibility;
+            clip.style.visibility = 'hidden';
+            host.style.visibility = 'hidden';
+            host.style.display = 'block';
+
             var paginas = [];
             var actual = crearPagina();
             paginas.push(actual);
@@ -678,6 +688,14 @@
                     actual = crearPagina();
                     paginas.push(actual);
                     actual.cuerpo.appendChild(bloque);
+                    while (desborda(actual.cuerpo) && actual.cuerpo.children.length > 1) {
+                        var mov = actual.cuerpo.lastElementChild;
+                        actual.cuerpo.removeChild(mov);
+                        var sig = crearPagina();
+                        paginas.push(sig);
+                        sig.cuerpo.appendChild(mov);
+                        actual = sig;
+                    }
                 } else {
                     actual.cuerpo.appendChild(bloque);
                 }
@@ -691,11 +709,22 @@
                 }
             });
 
+            while (paginas.length > 1) {
+                var ult = paginas[paginas.length - 1];
+                var txt = (ult.cuerpo.textContent || '').replace(/\s+/g, '');
+                if (ult.cuerpo.children.length === 0 || txt === '') {
+                    if (ult.cuerpo.parentNode) ult.cuerpo.parentNode.remove();
+                    paginas.pop();
+                } else { break; }
+            }
+
             var total = paginas.length;
             paginas.forEach(function (p, i) {
                 p.num.textContent = 'Página ' + (i + 1) + ' de ' + total;
             });
 
+            clip.style.visibility = prevClipVis;
+            host.style.visibility = prevHostVis;
             document.body.classList.add('is-paginated');
         }
 
@@ -704,67 +733,43 @@
             catch (e) { document.body.classList.remove('is-paginated'); }
         }
 
-        if (document.readyState === 'complete') iniciar();
-        else window.addEventListener('load', iniciar);
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(iniciar);
         window.addEventListener('beforeprint', iniciar);
+        window.addEventListener('afterprint', function () {
+            document.body.classList.remove('is-paginated');
+        });
 
-        /* ---------- Acciones: imprimir y exportar a PDF ---------- */
-        var opcionesPdf = {
-            margin: 0,
-            filename: 'Documentos-Legales-UnicornioSoftware.pdf',
-            image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait', compress: true },
-            pagebreak: { mode: ['css'] }
-        };
-
-        function exportarPdf(boton) {
-            if (typeof html2pdf === 'undefined') {
-                window.alert('No se pudo cargar el generador de PDF.');
-                return null;
-            }
-            if (boton && boton.disabled) return null;
-            if (!host.querySelector('.print-page')) iniciar();
-
-            var esTexto = !!(boton && boton.classList.contains('hero-btn'));
-            var htmlOriginal = boton ? boton.innerHTML : '';
-            if (boton) {
-                boton.disabled = true;
-                boton.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>' + (esTexto ? ' Generando…' : '');
-            }
-
-            host.style.visibility = 'visible';
-
-            function terminar() {
-                host.style.visibility = '';
-                if (boton) {
-                    boton.disabled = false;
-                    boton.innerHTML = htmlOriginal;
-                }
-            }
-
-            var tarea;
-            try {
-                tarea = html2pdf().set(opcionesPdf).from(host).save();
-            } catch (e) {
-                terminar();
-                window.alert('No se pudo generar el PDF.');
-                return null;
-            }
-            return Promise.resolve(tarea).then(terminar, function () {
-                terminar();
-                window.alert('No se pudo generar el PDF.');
+        /* ---------- Acciones: imprimir / PDF nativo ---------- */
+        function esperarImagenesPrint() {
+            var imgs = host.querySelectorAll('img');
+            var pendientes = [];
+            Array.prototype.forEach.call(imgs, function (img) {
+                if (img.complete && img.naturalWidth > 0) return;
+                pendientes.push(new Promise(function (res) {
+                    img.addEventListener('load', res, { once: true });
+                    img.addEventListener('error', res, { once: true });
+                }));
+            });
+            return Promise.all(pendientes);
+        }
+        function imprimirNativo() {
+            iniciar();
+            esperarImagenesPrint().then(function () {
+                return new Promise(function (res) { requestAnimationFrame(function () { requestAnimationFrame(res); }); });
+            }).then(function () {
+                setTimeout(function () {
+                    if (window.AndroidApp && window.AndroidApp.printPage) { window.AndroidApp.printPage(); }
+                    else { window.print(); }
+                }, 80);
             });
         }
-
+        function exportarPdf() { imprimirNativo(); }
         window.__exportarPdf = exportarPdf;
 
         Array.prototype.forEach.call(document.querySelectorAll('[data-accion="imprimir"]'), function (b) {
-            b.addEventListener('click', function () { window.print(); });
+            b.addEventListener('click', imprimirNativo);
         });
         Array.prototype.forEach.call(document.querySelectorAll('[data-accion="pdf"]'), function (b) {
-            b.addEventListener('click', function () { exportarPdf(b); });
+            b.addEventListener('click', imprimirNativo);
         });
     })();
     (function () {

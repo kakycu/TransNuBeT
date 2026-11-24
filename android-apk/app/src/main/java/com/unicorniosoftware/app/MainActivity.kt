@@ -1,4 +1,4 @@
-package com.unicorniosoftware.app
+﻿package com.unicorniosoftware.app
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
@@ -12,6 +12,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.print.PrintAttributes
+import android.print.PrintManager
 import android.view.LayoutInflater
 import android.view.View
 import android.webkit.CookieManager
@@ -29,6 +31,10 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class MainActivity : AppCompatActivity() {
@@ -42,7 +48,6 @@ class MainActivity : AppCompatActivity() {
     private var lastTriedUrl: String = "file:///android_asset/index.html"
 
     private val remoteStartUrl = "https://unicorniosoftware.gt.tc/"
-    private val localIntroUrl = "file:///android_asset/intro.html"
     private val localHomeUrl = "file:///android_asset/index.html"
 
     private val fileChooserLauncher = registerForActivityResult(
@@ -61,10 +66,19 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
+        window.statusBarColor = Color.parseColor("#0A0F1A")
+        window.navigationBarColor = Color.parseColor("#0A0F1A")
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
 
         webView = findViewById(R.id.webView)
         swipeRefresh = findViewById(R.id.swipeRefresh)
+        ViewCompat.setOnApplyWindowInsetsListener(swipeRefresh) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
 
         val settings = webView.settings
         settings.javaScriptEnabled = true
@@ -78,6 +92,8 @@ class MainActivity : AppCompatActivity() {
         settings.displayZoomControls = false
         settings.allowFileAccess = true
         settings.allowContentAccess = true
+        settings.setSupportMultipleWindows(true)
+        settings.javaScriptCanOpenWindowsAutomatically = true
         settings.userAgentString = settings.userAgentString + " UnicornioApp/1.0"
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -86,9 +102,10 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(WebAppBridge(), "AndroidApp")
 
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
-                val host = request.url.host ?: ""
+                val uri = request.url
+                val host = uri.host ?: ""
                 return when {
                     url.startsWith("file:///android_asset/") -> false
                     host == Uri.parse(remoteStartUrl).host || url.startsWith(remoteStartUrl) -> {
@@ -102,12 +119,19 @@ class MainActivity : AppCompatActivity() {
                             false
                         }
                     }
-                    url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") -> {
-                        try { startActivity(Intent(Intent.ACTION_VIEW, request.url)) } catch (_: Exception) {}
+                    url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") ||
+                    url.startsWith("intent:") || url.startsWith("tg:") || url.startsWith("market:") -> {
+                        try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (_: Exception) {}
+                        true
+                    }
+                    url.startsWith("http://") || url.startsWith("https://") -> {
+                        try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (_: Exception) {
+                            Toast.makeText(this@MainActivity, "No se pudo abrir el enlace externo", Toast.LENGTH_SHORT).show()
+                        }
                         true
                     }
                     else -> {
-                        try { startActivity(Intent(Intent.ACTION_VIEW, request.url)) } catch (_: Exception) {}
+                        try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (_: Exception) {}
                         true
                     }
                 }
@@ -118,6 +142,7 @@ class MainActivity : AppCompatActivity() {
                 if (!url.startsWith("file:///android_asset/offline.html")) {
                     hideOfflineUi()
                 }
+                view.evaluateJavascript("window.print=function(){if(window.AndroidApp&&AndroidApp.printPage){AndroidApp.printPage();}else{}};", null)
             }
 
             override fun onReceivedError(
@@ -127,7 +152,7 @@ class MainActivity : AppCompatActivity() {
             ) {
                 if (request.isForMainFrame) {
                     val failingUrl = request.url.toString()
-                    // No mostrar modal por fallos de carga en páginas locales empaquetadas.
+                    // No mostrar modal por fallos de carga en pÃ¡ginas locales empaquetadas.
                     if (failingUrl.startsWith("file:///android_asset/")) return
                     lastTriedUrl = failingUrl
                     showOfflineUi()
@@ -136,6 +161,29 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
+                val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
+                val temp = WebView(this@MainActivity)
+                temp.webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest): Boolean {
+                        val u = r.url.toString()
+                        if (u.startsWith("file:///android_asset/") || u.startsWith(remoteStartUrl) || (r.url.host == Uri.parse(remoteStartUrl).host)) {
+                            if (!u.startsWith("file:///android_asset/") && !isNetworkAvailable()) {
+                                lastTriedUrl = u; showOfflineUi()
+                            } else {
+                                this@MainActivity.webView.loadUrl(u)
+                            }
+                        } else {
+                            try { startActivity(Intent(Intent.ACTION_VIEW, r.url)) } catch (_: Exception) {}
+                        }
+                        return true
+                    }
+                }
+                transport.webView = temp
+                resultMsg.sendToTarget()
+                return true
+            }
+
             override fun onShowFileChooser(
                 webView: WebView,
                 callback: ValueCallback<Array<Uri>>,
@@ -165,7 +213,7 @@ class MainActivity : AppCompatActivity() {
         swipeRefresh.setOnRefreshListener {
             val current = webView.url ?: ""
             if (current.startsWith("file:///android_asset/")) {
-                // Las páginas locales no necesitan conexión para recargarse.
+                // Las pÃ¡ginas locales no necesitan conexiÃ³n para recargarse.
                 hideOfflineUi()
                 webView.reload()
             } else if (isNetworkAvailable()) {
@@ -188,7 +236,7 @@ class MainActivity : AppCompatActivity() {
         })
 
         if (savedInstanceState == null) {
-            webView.loadUrl(localIntroUrl)
+            webView.loadUrl(localHomeUrl)
         } else {
             webView.restoreState(savedInstanceState)
         }
@@ -215,7 +263,6 @@ class MainActivity : AppCompatActivity() {
                 hideOfflineUi()
                 val target = when {
                     lastTriedUrl.startsWith("file:///android_asset/offline.html") -> localHomeUrl
-                    lastTriedUrl.startsWith("file:///android_asset/intro.html") -> localHomeUrl
                     lastTriedUrl.isNotBlank() -> lastTriedUrl
                     else -> localHomeUrl
                 }
@@ -228,9 +275,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun showOfflineUi() {
         swipeRefresh.isRefreshing = false
-        if (webView.url?.startsWith("file:///android_asset/intro.html") == true) {
-            return
-        }
         if (webView.url?.startsWith("file:///android_asset/offline.html") != true) {
             webView.loadUrl("file:///android_asset/offline.html")
         }
@@ -245,7 +289,7 @@ class MainActivity : AppCompatActivity() {
     private fun showOfflineDialog() {
         if (offlineDialog?.isShowing == true) return
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_no_connection, null, false)
-        view.findViewById<TextView>(R.id.offlineStatus).text = "UnicornioSoftware · Se requiere internet"
+        view.findViewById<TextView>(R.id.offlineStatus).text = "Se requiere conexión a internet"
         view.findViewById<View>(R.id.btnOfflineRetry).setOnClickListener {
             offlineDialog?.dismiss()
             retryConnection()
@@ -288,5 +332,20 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun isConnected(): Boolean = isNetworkAvailable()
+
+        @JavascriptInterface
+        fun printPage() {
+            runOnUiThread {
+                try {
+                    val printManager = getSystemService(Context.PRINT_SERVICE) as PrintManager
+                    val jobName = "UnicornioSoftware_Documento"
+                    val adapter = webView.createPrintDocumentAdapter(jobName)
+                    printManager.print(jobName, adapter, PrintAttributes.Builder().build())
+                } catch (_: Exception) {
+                    Toast.makeText(this@MainActivity, "No se pudo iniciar la impresión", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 }
+

@@ -1,4 +1,4 @@
-/*!
+﻿/*!
  * Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com
  * License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
  * Copyright 2026 Fonticons, Inc.
@@ -15,7 +15,7 @@
     font-style: normal;
     font-weight: 900;
     font-display: block;
-    src: url(/desamedida/fonts/fontawesome/fa-solid-900.woff2)
+    src: url(../fonts/fontawesome/fa-solid-900.woff2)
 }
 
 .fas {
@@ -30,3 +30,4 @@
 .fa-solid {
     --fa-style: 900
 }
+

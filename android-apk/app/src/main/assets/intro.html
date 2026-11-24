@@ -59,18 +59,6 @@
     }
     .intro-bar span { display:block; width:0; height:100%; background: linear-gradient(90deg, var(--cian), var(--fuego)); transition: width .35s ease; }
 
-    .intro-acciones {
-      position: absolute; right: max(1rem, 2vw); bottom: max(1rem, 2vh);
-      display: flex; flex-direction: column; gap: .5rem; align-items: flex-end; z-index: 20;
-    }
-    .intro-skip {
-      padding: .5rem .95rem; font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-      color: #cfd6ff; background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.18); border-radius: 999px; cursor: pointer;
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    }
-    .intro-skip:active { background: rgba(255,255,255,.14); border-color: rgba(0,212,255,.5); color: #fff; }
-
     /* No connection modal */
     .modal-overlay {
       position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
@@ -134,11 +122,6 @@
       </div>
     </div>
     <div class="intro-bar"><span id="introBar"></span></div>
-    <div class="intro-acciones">
-      <button type="button" class="intro-skip" id="introNoMostrar">No volver a mostrar</button>
-      <button type="button" class="intro-skip" id="introReplay">Repetir</button>
-      <button type="button" class="intro-skip" id="introSkip">Saltar</button>
-    </div>
   </div>
 
   <div class="modal-overlay" id="offlineModal" aria-hidden="true">
@@ -167,9 +150,9 @@
   (function () {
     var intro = document.getElementById('introAnim');
     var barra = document.getElementById('introBar');
-    var saltar = document.getElementById('introSkip');
-    var noMostrar = document.getElementById('introNoMostrar');
-    var replay = document.getElementById('introReplay');
+    var saltar = null;
+    var noMostrar = null;
+    var replay = null;
     var capas = intro.querySelectorAll('.intro-layer');
     var capaFinal = intro.querySelector('.intro-final');
     var modal = document.getElementById('offlineModal');
@@ -219,16 +202,7 @@
       esperar(function () { mostrarCapa(indice + 1); }, 820);
     }
 
-    function reiniciar() {
-      limpiarTimers();
-      terminado = false;
-      ocultarModal();
-      intro.classList.remove('is-out', 'is-final', 'is-sheen');
-      if (barra) barra.style.width = '0%';
-      for (var j = 0; j < capas.length; j++) capas[j].classList.remove('is-on');
-      if (capaFinal) capaFinal.classList.remove('is-on');
-      iniciar();
-    }
+    /* reinicio manual deshabilitado en APK */
 
     function iniciar() {
       if (reducido) { finalizarIntro(); return; }
@@ -236,9 +210,6 @@
       esperar(function () { mostrarCapa(0); }, 220);
     }
 
-    if (saltar) saltar.addEventListener('click', finalizarIntro);
-    if (replay) replay.addEventListener('click', reiniciar);
-    if (noMostrar) noMostrar.addEventListener('click', function () { try { localStorage.setItem('introOculta', '1'); } catch (e) {} finalizarIntro(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !terminado) finalizarIntro(); });
 
     var retryModal = document.getElementById('retryModal');
