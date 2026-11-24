@@ -2161,7 +2161,7 @@
     if (diapos.length < 2) { return; }
     var capas = [document.getElementById('heroFondoA'), document.getElementById('heroFondoB')];
     /* Mismo par de imágenes para móvil, tablet y PC: cada opción tiene la suya. */
-    var fondos = ['/images/nominas-hero.webp', '/images/hero.webp', '/images/costos.webp', '/images/inventarios.webp', '/images/administracion.webp'];
+    var fondos = ['./images/nominas-hero.webp', './images/hero.webp', './images/costos.webp', './images/inventarios.webp', './images/administracion.webp'];
     var actual = 0, capa = 0, timer = null;
 
     /* Precarga para que el fundido entre sin parpadeos. */
@@ -2196,6 +2196,12 @@
     }
     mostrar(0);
     arrancar();
+    /* Fallback: si la animación de entrada no se aplica (WebView), asegurar visibilidad */
+    window.setTimeout(function () {
+        escena.style.opacity = '1';
+        escena.style.transform = 'none';
+        escena.style.animation = 'none';
+    }, 1800);
 })();
 
 /* Desplegables del topbar (servicios y licencia) */
