@@ -2871,7 +2871,7 @@ $faq = [
         var latestName = String(data.versionName || "");
         var releasedAt = String(data.releasedAt || "");
         var required = !!data.required;
-        modalMeta.textContent = "Versión actual en servidor: v" + (latestName || latestCode) + " (código " + latestCode + ")" + (releasedAt ? " · " + releasedAt : "") + (required ? " · Actualización requerida" : "");
+        modalMeta.innerHTML = 'Versión actual en servidor: <span class="apk-modal__meta-version">v' + esc(latestName || latestCode) + ' (código ' + esc(latestCode) + ')</span>' + (releasedAt ? ' <span class="apk-modal__meta-sep">·</span> <span class="apk-modal__meta-date">' + esc(releasedAt) + '</span>' : '') + (required ? ' <span class="apk-modal__meta-required">· Actualización requerida</span>' : '');
         var changes = Array.isArray(data.changes) ? data.changes : [];
         if (!changes.length) {
             var cl = String(data.changelog || "");

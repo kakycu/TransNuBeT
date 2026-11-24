@@ -2487,7 +2487,7 @@
     function renderModal(data) {
         if (!modalMeta || !modalBody) return;
         var latestCode = parseInt(data.versionCode, 10) || 0, latestName = String(data.versionName || ""), releasedAt = String(data.releasedAt || ""), required = !!data.required;
-        modalMeta.textContent = "Versión actual en servidor: v" + (latestName || latestCode) + " (código " + latestCode + ")" + (releasedAt ? " · " + releasedAt : "") + (required ? " · Actualización requerida" : "");
+        modalMeta.innerHTML = 'Versión actual en servidor: <span class="apk-modal__meta-version">v' + esc(latestName || latestCode) + ' (código ' + esc(latestCode) + ')</span>' + (releasedAt ? ' <span class="apk-modal__meta-sep">·</span> <span class="apk-modal__meta-date">' + esc(releasedAt) + '</span>' : '') + (required ? ' <span class="apk-modal__meta-required">· Actualización requerida</span>' : '');
         var changes = Array.isArray(data.changes) ? data.changes : [];
         if (!changes.length) { modalBody.innerHTML = '<div class="apk-change is-latest"><div class="apk-change__head"><p class="apk-change__version">v' + esc(latestName || latestCode) + ' <span class="apk-change__badge">Actual</span></p><span class="apk-change__date">' + esc(releasedAt) + '</span></div><p class="apk-change__title">Cambios</p><ul class="apk-change__list"><li>' + esc(String(data.changelog||"No hay detalles adicionales.")) + '</li></ul></div>'; return; }
         modalBody.innerHTML = changes.map(function (c, idx) {

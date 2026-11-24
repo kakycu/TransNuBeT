@@ -414,6 +414,10 @@
     .apk-modal__eyebrow{ margin: 0; font-family:'Exo 2',sans-serif; font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color: var(--cian); }
     .apk-modal__title{ margin:.35rem 0 0; font-family:'Bebas Neue',sans-serif; font-size: clamp(2rem,4vw,3rem); line-height:.95; letter-spacing:.03em; color:var(--txt); }
     .apk-modal__meta{ margin:.6rem 0 0; color:var(--gris-2); font-family:'Exo 2',sans-serif; font-size:.88rem; }
+    .apk-modal__meta-version{ color: var(--cian); font-weight: 700; }
+    .apk-modal__meta-date{ color: #ffb347; font-weight: 600; }
+    .apk-modal__meta-sep{ color: var(--gris-3); }
+    .apk-modal__meta-required{ color: #ff7b7b; font-weight: 700; }
     .apk-modal__body{ margin-top:1rem; display:grid; gap:.85rem; }
     .apk-modal__loading,.apk-modal__empty{ color:var(--gris-2); font-family:'Exo 2',sans-serif; }
     .apk-change{ padding:1rem; border-radius:.85rem; background: rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); }
