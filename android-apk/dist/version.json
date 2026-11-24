@@ -5,7 +5,7 @@
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
   "changelog": "Cambios menores en bugs de Nóminas - Generar Nómina Impresas y mejoras de estabilidad.",
   "required": false,
-  "releasedAt": "2026-11-24",
+  "releasedAt": "2026-01-24",
   "minSupportedVersionCode": 1,
   "sizeBytes": 22835073,
   "sha256": "",
@@ -13,7 +13,7 @@
     {
       "versionCode": 3,
       "versionName": "1.0.2",
-      "date": "2026-11-24",
+      "date": "2026-01-24",
       "title": "Correcciones en Nóminas y mejoras menores",
       "items": [
         "Cambios menores en bugs de Nóminas - Generar Nómina Impresas.",
@@ -24,7 +24,7 @@
     {
       "versionCode": 2,
       "versionName": "1.0.1",
-      "date": "2026-11-23",
+      "date": "2026-01-15",
       "title": "Mejoras de descarga y actualización",
       "items": [
         "Se agregó sección de descarga de APK en la portada.",
@@ -36,7 +36,7 @@
     {
       "versionCode": 1,
       "versionName": "1.0.0",
-      "date": "2026-11-01",
+      "date": "2026-01-01",
       "title": "Versión inicial",
       "items": [
         "Primera publicación de la APK de UnicornioSoftware.",
