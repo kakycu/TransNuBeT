@@ -1,17 +1,35 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 7,
+  "versionCode": 8,
   "versionName": "1.0.5",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Mejora del control de versiones, correcciones en Facturación y mejoras en la pantalla de acceso.",
+  "changelog": "Nuevo aviso de actualizaciones en la app Android, mejoras en novedades y visualizaci?n de revisiones.",
   "required": false,
   "releasedAt": "2026-11-24",
   "minSupportedVersionCode": 1,
   "sizeBytes": 22835073,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 8,
+      "versionName": "1.0.5",
+      "date": "2026-11-24",
+      "title": "Aviso de actualizaciones y mejoras en novedades",
+      "summary": "Se mejor? el aviso de actualizaciones dentro de la app Android y se sincroniz? la p?gina de novedades con la versi?n web.",
+      "novedades": [
+        "Nuevo di?logo de actualizaci?n en la app Android con m?s detalles: versi?n instalada, nueva revisi?n, fecha, tama?o y novedades.",
+        "La app ahora detecta actualizaciones tambi?n cuando cambia la revisi?n (Rev.), aunque el nombre de versi?n sea el mismo.",
+        "La p?gina de novedades de la APK se sincroniz? con el dise?o y comportamiento de la p?gina web.",
+        "Se agreg? acceso r?pido a Ver novedades desde el aviso de actualizaci?n."
+      ],
+      "correcciones": [
+        "Se corrigi? la visualizaci?n de la revisi?n, mostrando Rev. N en lugar de C?digo N.",
+        "Se mejor? la consistencia visual entre releases web y releases de la APK.",
+        "Se ajust? el flujo de omitir actualizaci?n para que solo se oculte la revisi?n descartada cuando la actualizaci?n no es obligatoria."
+      ]
+    },
     {
       "versionCode": 7,
       "versionName": "1.0.5",
