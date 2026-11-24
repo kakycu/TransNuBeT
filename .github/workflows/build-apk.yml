@@ -70,7 +70,8 @@ jobs:
             exit 0
           fi
           git commit -m "Actualizar APK dist EcosisUnicorn [skip ci]"
-          git push
+          git pull --rebase origin main
+          git push origin HEAD:main
 
   deploy:
     needs: build
