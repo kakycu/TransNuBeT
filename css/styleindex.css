@@ -319,6 +319,43 @@
 
     /* Escena: monitor en perspectiva + móvil + ficha */
     /* ===== Strip beneficios (mismo estilo/animación que Reven) ===== */
+    /* ===== Descarga APK Android ===== */
+    .apk-download{
+        background: linear-gradient(90deg, rgba(255,107,0,.1), rgba(0,212,255,.06) 55%, rgba(255,107,0,.08));
+        border-top: 1px solid rgba(255,107,0,.25);
+        border-bottom: 1px solid rgba(0,212,255,.12);
+    }
+    .apk-download__inner{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem 1.25rem;
+        padding: 1.25rem 1rem;
+        flex-wrap: wrap;
+        text-align: center;
+    }
+    .apk-download__logo{
+        width: 56px;
+        height: 56px;
+        object-fit: contain;
+        flex-shrink: 0;
+        filter: drop-shadow(0 0 12px rgba(0,212,255,.35));
+    }
+    .apk-download__text{
+        margin: 0;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: clamp(1.6rem, 3.5vw, 2.5rem);
+        letter-spacing: .04em;
+        line-height: 1;
+        color: var(--txt);
+        text-shadow: 0 0 24px rgba(255,107,0,.25);
+    }
+    .apk-download__btn{ white-space: nowrap; }
+    @media (max-width: 640px){
+        .apk-download__inner{ gap: .85rem; }
+        .apk-download__btn{ width: 100%; max-width: 320px; }
+    }
+
     .reven-feats-strip{background:var(--abismo);border-bottom:1px solid rgba(255,255,255,.04)}
     .reven-feats-grid{max-width:80rem;margin:0 auto;padding:0 1rem;display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:1rem}
     @media(min-width:640px){.reven-feats-grid{padding:0 1.5rem;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem}}
