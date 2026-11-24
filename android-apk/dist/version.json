@@ -23,13 +23,10 @@
         "Cambios menores en el sistema de Facturación para que el trabajo diario sea más fluido.",
         "Exportación de facturas OFFLINE: puedes descargar tus facturas aunque no tengas conexión a internet.",
         "Registro de Importación SQL y Exportación XLSX de Excel para mover datos entre el sistema y tus hojas de cálculo.",
-        "Mejoras en la línea de tiempo de versiones: cada revisión tiene su propio enlace y se muestra la etiqueta Rev. N.",
-        "Corrección de tildes y eñes en los textos de la app y de la página de novedades."
+        "Mejoras en la línea de tiempo de versiones: cada revisión tiene su propio enlace y se muestra la etiqueta Rev. N."
       ],
       "correcciones": [
-        "Se corrigieron textos que mostraban caracteres incorrectos en lugar de tildes y eñes.",
-        "Se evitó que dos revisiones con el mismo nombre de versión compartieran el mismo enlace.",
-        "Se ajustó el aviso de actualización para que los botones y los textos se lean correctamente."
+        "Se evitó que dos revisiones con el mismo nombre de versión compartieran el mismo enlace."
       ]
     },
     {
