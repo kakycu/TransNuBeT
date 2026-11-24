@@ -3,17 +3,29 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
       - 'android-apk/**'
       - '.github/workflows/build-apk.yml'
 
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -35,9 +47,27 @@ jobs:
         working-directory: android-apk
         run: gradle assembleDebug
 
+      - name: Prepare APK artifact
+        run: |
+          mkdir -p android-apk/dist
+          cp android-apk/app/build/outputs/apk/debug/app-debug.apk android-apk/dist/EcosisUnicorn.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: UnicornioSoftware-debug-apk
-          path: android-apk/app/build/outputs/apk/debug/app-debug.apk
+          name: EcosisUnicorn-apk
+          path: android-apk/dist/EcosisUnicorn.apk
           if-no-files-found: error
+
+      - name: Commit updated APK to dist
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f android-apk/dist/EcosisUnicorn.apk
+          if git diff --cached --quiet; then
+            echo "No APK changes to commit"
+            exit 0
+          fi
+          git commit -m "Actualizar APK dist EcosisUnicorn [skip ci]"
+          git push

@@ -1,14 +1,16 @@
-# UnicornioSoftware - WebView APK
+# Ecosistema Financiero de Unicornio Software - WebView APK
 
-APK Android (WebView) que apunta a `https://unicorniosoftware.gt.tc/`.
+APK Android (WebView) que carga el ecosistema local empaquetado y apunta los servicios remotos a `https://unicorniosoftware.gt.tc/`.
 
 ## Compilar sin Android Studio (GitHub Actions)
 
-1. Haz commit y push de estos cambios al repo.
+1. Haz commit y push de los cambios al repo.
 2. En GitHub, ve a **Actions** > workflow **Build Android APK**.
 3. Ejecútalo con **Run workflow** (o espera el trigger por push).
-4. Al terminar, descarga el artifact **UnicornioSoftware-debug-apk**.
-5. Dentro viene `app-debug.apk` para instalar en Android (habilita "Instalar apps desconocidas" si hace falta).
+4. Al terminar, descarga el artifact **EcosisUnicorn-apk**.
+5. Dentro viene `EcosisUnicorn.apk` para instalar en Android (habilita "Instalar apps desconocidas" si hace falta).
+
+El workflow también actualiza automáticamente `android-apk/dist/EcosisUnicorn.apk` en el repo (commit automático con `[skip ci]`), para que al hacer `git pull` tengas la última APK en tu carpeta local.
 
 ## Compilar por línea de comandos (PC)
 
@@ -19,7 +21,8 @@ cd android-apk
 gradle assembleDebug
 ```
 
-APK generado: `app/build/outputs/apk/debug/app-debug.apk`
+APK generada por Gradle: `app/build/outputs/apk/debug/app-debug.apk`  
+Copia local recomendada: `dist/EcosisUnicorn.apk`
 
 ## Notas
 
