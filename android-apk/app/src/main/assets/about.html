@@ -280,7 +280,23 @@
     @media(min-width:640px){.maestro-modal-shell{max-height:85vh;}.maestro-modal-header{padding:3.5rem 2rem 1rem;}.maestro-modal-scroll{padding:0 2rem .5rem;}.maestro-modal-footer{flex-direction:row;padding:1rem 2rem 1.5rem;}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}.reveal,.card.reveal{opacity:1;transform:none;transition:none;}.btn:hover,.card:hover{transform:none;}}
     </style>
-<style>@media(max-width:768px){.nav,.topbar,header.nav,header.topbar{padding-top:env(safe-area-inset-top,0px)!important}body{padding-top:env(safe-area-inset-top,0px)!important}.menu-movil{top:calc(var(--nav-h,70px) + env(safe-area-inset-top,0px))!important;max-height:calc(100dvh - var(--nav-h,70px) - env(safe-area-inset-top,0px))!important;overflow-y:auto!important}}</style>
+<style>
+@media (max-width:768px){
+  .nav,.topbar,header.nav,header.topbar{padding-top:env(safe-area-inset-top,0px)!important}
+  body{padding-top:env(safe-area-inset-top,0px)!important}
+  .nav-in{gap:.5rem!important}
+  .marca{min-width:0!important;flex:1 1 auto!important;overflow:hidden!important}
+  .marca img{width:2.25rem!important;height:2.25rem!important;flex:0 0 auto!important}
+  .marca-txt{min-width:0!important;overflow:hidden!important}
+  .marca-txt b{font-size:1.2rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .marca-txt small{display:none!important}
+  .nav-acc{flex:0 0 auto!important;gap:.4rem!important}
+  .menu-btn{width:2.5rem!important;height:2.5rem!important;flex:0 0 auto!important}
+  .menu-movil{max-height:calc(100dvh - var(--nav-h,70px) - env(safe-area-inset-top,0px))!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;padding-bottom:max(1rem,env(safe-area-inset-bottom,0px))!important}
+}
+@media (max-width:380px){ .marca-txt b{font-size:1.02rem!important} }
+@media (max-width:300px){ .marca-txt{display:none!important} }
+</style>
 </head>
 <body class="bg-abismo text-white font-inter antialiased selection:bg-fuego selection:text-white">
 
