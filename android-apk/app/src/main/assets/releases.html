@@ -138,6 +138,7 @@
     .breadcrumbs a,.breadcrumbs span{display:inline-flex;align-items:center;gap:.45rem;padding:.45rem .8rem;border-radius:6px;background:transparent;border:2px solid #7949B5;color:#7949B5;font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-decoration:none;transition:background .2s,color .2s,border-color .2s;}
     .breadcrumbs a:hover,.breadcrumbs a.is-active{background:#7949B5;color:#fff;border-color:#7949B5;}
     .breadcrumbs .bc-latest{background:rgba(121,73,181,.18);border-color:#7949B5;color:#c084fc;}.breadcrumbs .bc-latest:hover,.breadcrumbs .bc-latest.is-active{background:#7949B5;color:#fff;border-color:#7949B5;}
+    .breadcrumbs .bc-rev{display:inline-flex;align-items:center;padding:.08rem .4rem;border-radius:999px;background:rgba(121,73,181,.28);border:1px solid rgba(121,73,181,.55);color:#fff;font-size:.62rem;letter-spacing:.03em;text-transform:uppercase;}
     .release-right{display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;}
     .release-platforms{display:inline-flex;align-items:center;gap:.5rem;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#cbd5e1;font-family:"Exo 2",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;}
     .release-platforms i{color:#94a3b8;font-size:.85rem;}
@@ -214,13 +215,13 @@
             <div class="wrap">
                 <span class="eyebrow">Historial de versiones y cambios</span>
                 <h1>Novedades <span style="color:var(--fuego);">Ecosistema Financiero</span> de UnicornioSoftware<span class="reg-mark">&reg;</span></h1>
-                <p>Aquí puedes ver, de forma sencilla, qué ha mejorado en cada versión. Encontrarás correcciones, novedades y cambios importantes para que sepas qué trae cada actualización. Evolución continua, notas de lanzamiento y actualizaciones oficiales del software.</p>
+                <p>Aquí puedes ver, de forma sencilla, qué ha mejorado en cada versión: encontrarás correcciones, novedades y cambios importantes para saber qué trae cada actualización. Evolución continua, notas de lanzamiento y actualizaciones oficiales del software.</p>
                 <div class="rel-meta">
                     <span class="rel-pill"><i class="fa-solid fa-tag" aria-hidden="true"></i> Versión actual: <strong id="currentVersion">Cargando...</strong></span>
                     <span class="rel-pill"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Última actualización: <strong id="currentDate">—</strong></span>
                     <span class="rel-pill"><i class="fa-brands fa-android" aria-hidden="true"></i> App Android disponible</span>
                 </div>
-                <div class="rel-loading" id="releasesLoading" aria-live="polite"><span class="spin" aria-hidden="true"></span><span>Cargando Línea de Tiempo de Versiones...</span></div>
+                <div class="rel-loading" id="releasesLoading" aria-live="polite"><span class="spin" aria-hidden="true"></span><span>Cargando la línea de tiempo de versiones…</span></div>
             </div>
         </section>
 
@@ -229,14 +230,14 @@
                 <div>
                                         <nav aria-label="Versiones" class="breadcrumbs-wrap"><ul class="breadcrumbs" id="versionBreadcrumbs"></ul></nav>
                     <div id="releasesTimeline" class="timeline" aria-live="polite">
-                        <div class="loading"><span class="rel-loading" style="margin:0"><span class="spin" aria-hidden="true"></span><span>Cargando Línea de Tiempo de Versiones...</span></span></div>
+                        <div class="loading"><span class="rel-loading" style="margin:0"><span class="spin" aria-hidden="true"></span><span>Cargando la línea de tiempo de versiones…</span></span></div>
                     </div>
 
                                         <div class="support-card release-card">
                         <div>
                             <h2>¿Tienes alguna sugerencia o encontraste un fallo?</h2>
                             <p>Tu retroalimentación impulsa nuestras próximas versiones. Escríbenos directamente a nuestro equipo de soporte.</p>
-                            <a class="btn btn-fuego" href="https://unicorniosoftware.gt.tc/servicios/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Contactar Soporte</a>
+                            <a class="btn btn-fuego" href="https://unicorniosoftware.gt.tc/servicios/soporte.php"><i class="fa-solid fa-headset" aria-hidden="true"></i> Contactar con soporte</a>
                         </div>
                     </div>
                 </div>
@@ -388,10 +389,17 @@
         function renderBreadcrumbs(changes, latestCode) {
             var bc = document.getElementById('versionBreadcrumbs');
             if (!bc) return;
+            var counts = {};
+            changes.forEach(function (c) {
+                var n = String(c.versionName || c.versionCode || '');
+                counts[n] = (counts[n] || 0) + 1;
+            });
             bc.innerHTML = changes.map(function(c, idx){
                 var vc = parseInt(c.versionCode,10)||0; var vn = String(c.versionName||vc||'');
                 var latest = idx===0 || vc===latestCode;
-                return '<li><a href="#release-v' + esc(vn) + '" class="' + (latest?'bc-latest':'') + '">' + (latest?'<i class="fa-solid fa-star" aria-hidden="true"></i> ':'') + 'v' + esc(vn) + '</a></li>';
+                var dup = counts[vn] > 1;
+                var label = 'v' + esc(vn) + (dup ? ' <span class="bc-rev">Rev. ' + esc(vc) + '</span>' : '');
+                return '<li><a href="#release-v' + esc(vc) + '" class="' + (latest?'bc-latest':'') + '">' + (latest?'<i class="fa-solid fa-star" aria-hidden="true"></i> ':'') + label + '</a></li>';
             }).join('');
         }
         function hideReleasesLoading(){ var l=document.getElementById('releasesLoading'); if(l) l.style.display='none'; }
@@ -462,7 +470,7 @@
                 var body = groupHTML('Novedades y Mejoras', 'fa-wand-magic-sparkles', 'group-novedades', novedades) +
                            groupHTML('Correcciones de Errores', 'fa-screwdriver-wrench', 'group-correcciones', correcciones) +
                            groupHTML('Cambios', 'fa-circle-check', 'group-novedades', legacy);
-                return '<article id="release-v' + esc(vn) + '" class="release ' + (latest ? 'is-latest' : '') + '">' +
+                return '<article id="release-v' + esc(vc) + '" class="release ' + (latest ? 'is-latest' : '') + '">' +
                     '<span class="release-dot" aria-hidden="true"><i class="fa-solid ' + (latest ? 'fa-star' : 'fa-code-branch') + '"></i></span>' +
                     '<div class="release-card" data-spotlight style="--card-sheen:rgba(121,73,181,.22)"><span class="card__sheen" aria-hidden="true"></span>' +
                         '<div class="release-top"><div>' +
