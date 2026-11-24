@@ -1,17 +1,32 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 8,
-  "versionName": "1.0.5",
+  "versionCode": 9,
+  "versionName": "1.0.6",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Nuevo aviso de actualizaciones en la app Android, mejoras en novedades y visualizaci?n de revisiones.",
+  "changelog": "Cambios en sistema de archivos, explorador de archivos en N?minas y nuevas opciones en la barra lateral de Facturaci?n.",
   "required": false,
   "releasedAt": "2026-11-24",
   "minSupportedVersionCode": 1,
-  "sizeBytes": 22835073,
+  "sizeBytes": 0,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 9,
+      "versionName": "1.0.6",
+      "date": "2026-11-24",
+      "title": "Archivos, N?minas y Facturaci?n",
+      "summary": "Esta versi?n incorpora cambios en el sistema de archivos, mejoras en el explorador de N?minas y nuevas opciones en la barra lateral de Facturaci?n.",
+      "novedades": [
+        "Cambios en el sistema de archivos para una gesti?n m?s organizada y confiable de los documentos.",
+        "Nueva estructura del Explorador de Archivos en N?minas, con una navegaci?n m?s clara por carpetas y archivos.",
+        "Nuevas opciones en la barra lateral de Facturaci?n para acceder m?s r?pido a las funciones del m?dulo.",
+        "Mejoras de rendimiento al abrir y gestionar documentos dentro del sistema.",
+        "Ajustes visuales en la navegaci?n para una experiencia m?s clara en escritorio y m?vil."
+      ],
+      "correcciones": []
+    },
     {
       "versionCode": 8,
       "versionName": "1.0.5",

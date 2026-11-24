@@ -11,8 +11,8 @@ android {
         applicationId = "com.unicorniosoftware.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.0.5"
+        versionCode = 9
+        versionName = "1.0.6"
     }
 
     signingConfigs {
@@ -58,4 +58,5 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }
+
 
