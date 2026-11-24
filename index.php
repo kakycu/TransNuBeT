@@ -815,7 +815,7 @@ $faq = [
         <img src="/images/logo.png" alt="Logo UnicornioSoftware" class="apk-download__logo" width="56" height="56" loading="lazy" decoding="async">
         <div class="apk-download__copy">
             <p class="apk-download__text">¡DESCARGA LA APK PARA ANDROID!</p>
-            <p class="apk-download__version"><a class="apk-version-btn" id="apkVersionBtn" href="releases.php"><span id="apkVersionInfo">Versión actual en servidor: v1.0.5 (código 7)</span><i class="fa-solid fa-circle-info" aria-hidden="true"></i></a></p>
+            <p class="apk-download__version"><a class="apk-version-btn" id="apkVersionBtn" href="releases.php"><span id="apkVersionInfo">Versi?n actual en servidor: v1.0.5 (Rev. 7)</span><i class="fa-solid fa-circle-info" aria-hidden="true"></i></a></p>
             <p class="apk-download__status" id="apkUpdateStatus" aria-live="polite"></p>
         </div>
         <a class="btn btn-fuego apk-download__btn" id="apkDownloadBtn" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download>
@@ -2853,7 +2853,7 @@ $faq = [
         var apkUrl = String(data.apkUrl || btn.href);
         var changelog = String(data.changelog || "");
         btn.href = apkUrl;
-        info.textContent = "Versión actual en servidor: v" + (latestName || latestCode) + " (código " + latestCode + ")";
+        info.textContent = "Versión actual en servidor: v" + (latestName || latestCode) + " (Rev. " + latestCode + ")";
         var installed = getInstalled();
         if (!installed) {
             setStatus("Si ya tienes la app instalada, ábrela para comprobar si necesitas actualizar.", "");

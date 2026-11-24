@@ -343,10 +343,13 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                 conn.disconnect()
                 val json = JSONObject(body)
                 val latestCode = json.optInt("versionCode", -1)
-                val latestName = json.optString("versionName", "")
+                val latestName = json.optString("versionName", BuildConfig.VERSION_NAME)
                 val apkUrl = json.optString("apkUrl", "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk")
                 val changelog = json.optString("changelog", "")
                 val required = json.optBoolean("required", false)
+                val releasedAt = json.optString("releasedAt", "")
+                val sizeBytes = json.optLong("sizeBytes", -1L)
+                val minSupported = json.optInt("minSupportedVersionCode", -1)
                 val currentCode = BuildConfig.VERSION_CODE
                 if (latestCode <= currentCode) return@thread
 
@@ -354,37 +357,161 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                 val dismissed = prefs.getInt(dismissedVersionCodeKey, -1)
                 if (!required && dismissed == latestCode) return@thread
 
+                val notes = extractUpdateNotes(json, latestCode, changelog)
+
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
-                    val msg = buildString {
-                        append("Hay una nueva versión disponible")
-                        if (latestName.isNotBlank()) append(" (v$latestName)")
-                        append(".\n\n")
-                        append("Versión instalada: v${BuildConfig.VERSION_NAME}\n")
-                        if (changelog.isNotBlank()) append("\nNovedades: $changelog")
-                    }
-                    val builder = AlertDialog.Builder(this)
-                        .setTitle("Actualización disponible")
-                        .setMessage(msg)
-                        .setPositiveButton("Descargar") { _, _ ->
-                            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl))) }
-                            catch (_: Exception) { Toast.makeText(this, "No se pudo abrir la descarga", Toast.LENGTH_SHORT).show() }
-                        }
-                    if (required) {
-                        builder.setCancelable(false)
-                    } else {
-                        builder.setNegativeButton("Más tarde") { _, _ ->
-                            prefs.edit().putInt(dismissedVersionCodeKey, latestCode).apply()
-                        }
-                        builder.setNeutralButton("Omitir esta versión") { _, _ ->
-                            prefs.edit().putInt(dismissedVersionCodeKey, latestCode).apply()
-                        }
-                    }
-                    builder.show()
+                    showAppUpdateDialog(
+                        latestCode = latestCode,
+                        latestName = latestName,
+                        apkUrl = apkUrl,
+                        required = required || (minSupported > currentCode),
+                        releasedAt = releasedAt,
+                        sizeBytes = sizeBytes,
+                        notes = notes,
+                        minSupported = minSupported
+                    )
                 }
             } catch (_: Exception) {
             }
         }
+    }
+
+    private fun extractUpdateNotes(json: JSONObject, latestCode: Int, fallback: String): List<Pair<String, List<String>>> {
+        val result = mutableListOf<Pair<String, List<String>>>()
+        try {
+            val changes = json.optJSONArray("changes") ?: return if (fallback.isNotBlank()) listOf("Novedades" to listOf(fallback)) else emptyList()
+            var target: JSONObject? = null
+            for (i in 0 until changes.length()) {
+                val c = changes.optJSONObject(i) ?: continue
+                if (c.optInt("versionCode", -2) == latestCode) { target = c; break }
+            }
+            if (target == null) target = changes.optJSONObject(0)
+            val novedades = jsonArrayToStrings(target?.optJSONArray("novedades"))
+            val correcciones = jsonArrayToStrings(target?.optJSONArray("correcciones"))
+            if (novedades.isNotEmpty()) result.add("Novedades" to novedades)
+            if (correcciones.isNotEmpty()) result.add("Correcciones" to correcciones)
+            if (result.isEmpty()) {
+                val summary = target?.optString("summary", "") ?: ""
+                val text = if (summary.isNotBlank()) summary else fallback
+                if (text.isNotBlank()) result.add("Novedades" to listOf(text))
+            }
+        } catch (_: Exception) {
+            if (fallback.isNotBlank()) result.add("Novedades" to listOf(fallback))
+        }
+        return result
+    }
+
+    private fun jsonArrayToStrings(arr: org.json.JSONArray?): List<String> {
+        if (arr == null) return emptyList()
+        val out = mutableListOf<String>()
+        for (i in 0 until arr.length()) {
+            val v = arr.optString(i, "").trim()
+            if (v.isNotBlank()) out.add(v)
+        }
+        return out
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes <= 0L) return ""
+        val mb = bytes / (1024.0 * 1024.0)
+        return String.format(java.util.Locale.US, "%.1f MB", mb)
+    }
+
+    private fun showAppUpdateDialog(
+        latestCode: Int,
+        latestName: String,
+        apkUrl: String,
+        required: Boolean,
+        releasedAt: String,
+        sizeBytes: Long,
+        notes: List<Pair<String, List<String>>>,
+        minSupported: Int
+    ) {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_app_update, null, false)
+        val title = view.findViewById<TextView>(R.id.updateTitle)
+        val versions = view.findViewById<TextView>(R.id.updateVersions)
+        val summary = view.findViewById<TextView>(R.id.updateSummary)
+        val sizeView = view.findViewById<TextView>(R.id.updateSize)
+        val dateView = view.findViewById<TextView>(R.id.updateDate)
+        val requiredView = view.findViewById<TextView>(R.id.updateRequired)
+        val changesScroll = view.findViewById<android.widget.ScrollView>(R.id.updateChangesScroll)
+        val changesContainer = view.findViewById<LinearLayout>(R.id.updateChangesContainer)
+        val minView = view.findViewById<TextView>(R.id.updateMinSupported)
+        val btnDownload = view.findViewById<TextView>(R.id.btnUpdateDownload)
+        val btnNotes = view.findViewById<TextView>(R.id.btnUpdateNotes)
+        val btnLater = view.findViewById<TextView>(R.id.btnUpdateLater)
+        val btnSkip = view.findViewById<TextView>(R.id.btnUpdateSkip)
+        val secondaryRow = view.findViewById<LinearLayout>(R.id.updateSecondaryRow)
+
+        title.text = if (required) "Actualizaci?n necesaria" else "Actualizaci?n disponible"
+        versions.text = "Instalada v${BuildConfig.VERSION_NAME}  ?  Nueva v$latestName (Rev. $latestCode)"
+
+        val sizeText = formatBytes(sizeBytes)
+        if (sizeText.isNotBlank()) { sizeView.text = "Tama?o: $sizeText"; sizeView.visibility = View.VISIBLE }
+        if (releasedAt.isNotBlank()) { dateView.text = "Fecha: $releasedAt"; dateView.visibility = View.VISIBLE }
+        if (sizeText.isBlank() && releasedAt.isBlank()) view.findViewById<LinearLayout>(R.id.updateMetaRow).visibility = View.GONE
+
+        if (required) {
+            requiredView.visibility = View.VISIBLE
+            secondaryRow.visibility = View.GONE
+        }
+
+        if (minSupported > BuildConfig.VERSION_CODE) {
+            minView.text = "Esta versi?n requiere la app con Rev. $minSupported o superior."
+            minView.visibility = View.VISIBLE
+        }
+
+        if (notes.isNotEmpty()) {
+            changesScroll.visibility = View.VISIBLE
+            val dp = resources.displayMetrics.density
+            notes.forEach { (group, items) ->
+                val header = TextView(this).apply {
+                    text = group
+                    setTextColor(if (group == "Correcciones") Color.parseColor("#FDBA74") else Color.parseColor("#7DD3FC"))
+                    textSize = 13f
+                    typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                    setPadding(0, (8 * dp).toInt(), 0, (4 * dp).toInt())
+                }
+                changesContainer.addView(header)
+                items.take(4).forEach { item ->
+                    val row = TextView(this).apply {
+                        text = "? $item"
+                        setTextColor(Color.parseColor("#C9D8E6"))
+                        textSize = 13f
+                        setLineSpacing(2 * dp, 1f)
+                        setPadding((4 * dp).toInt(), (2 * dp).toInt(), 0, (2 * dp).toInt())
+                    }
+                    changesContainer.addView(row)
+                }
+            }
+        } else {
+            summary.text = "Hay una nueva versi?n disponible para descargar."
+            summary.visibility = View.VISIBLE
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .setCancelable(!required)
+            .create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        btnDownload.setOnClickListener {
+            try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl))) }
+            catch (_: Exception) { Toast.makeText(this, "No se pudo abrir la descarga", Toast.LENGTH_SHORT).show() }
+            if (!required) dialog.dismiss()
+        }
+        btnNotes.setOnClickListener {
+            dialog.dismiss()
+            webView.loadUrl(localHomeUrl + "releases.html")
+        }
+        btnLater.setOnClickListener { dialog.dismiss() }
+        btnSkip.setOnClickListener {
+            getSharedPreferences(versionPrefs, MODE_PRIVATE).edit().putInt(dismissedVersionCodeKey, latestCode).apply()
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     inner class WebAppBridge {
