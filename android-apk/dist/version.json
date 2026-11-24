@@ -1,15 +1,26 @@
 {
-  "versionCode": 2,
-  "versionName": "1.0.1",
+  "versionCode": 3,
+  "versionName": "1.0.2",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Correcciones de estabilidad y mejoras generales.",
+  "changelog": "Cambios menores en bugs de Nóminas - Generar Nómina Impresas y mejoras de estabilidad.",
   "required": false,
-  "releasedAt": "2026-11-23",
+  "releasedAt": "2026-11-24",
   "minSupportedVersionCode": 1,
   "sizeBytes": 22835073,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 3,
+      "versionName": "1.0.2",
+      "date": "2026-11-24",
+      "title": "Correcciones en Nóminas y mejoras menores",
+      "items": [
+        "Cambios menores en bugs de Nóminas - Generar Nómina Impresas.",
+        "Ajustes de estabilidad en la generación e impresión de nóminas.",
+        "Mejoras visuales en el aviso/modal de actualización de la APK."
+      ]
+    },
     {
       "versionCode": 2,
       "versionName": "1.0.1",
