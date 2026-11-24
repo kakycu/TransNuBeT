@@ -5,9 +5,9 @@
   "versionName": "1.0.2",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Correcciones en Nóminas - Generar Nómina Impresas, mejoras del modal de novedades y sistema de actualización.",
+  "changelog": "Correcciones en Nóminas - Generar Nómina Impresas, modal de novedades y mejoras de actualización APK.",
   "required": false,
-  "releasedAt": "2026-03-24",
+  "releasedAt": "2026-11-24",
   "minSupportedVersionCode": 1,
   "sizeBytes": 22835073,
   "sha256": "",
@@ -15,44 +15,155 @@
     {
       "versionCode": 3,
       "versionName": "1.0.2",
-      "date": "2026-03-24",
-      "title": "Nóminas, actualizaciones y novedades",
-      "summary": "Versión enfocada en correcciones operativas de Nóminas y en mejorar la experiencia de actualización de la APK.",
+      "date": "2026-11-24",
+      "title": "Noviembre 2026 · Nóminas y actualización APK",
+      "summary": "Correcciones operativas en Nóminas y cierre del sistema de aviso/descarga de actualizaciones.",
       "items": [
-        "Correcciones menores en Nóminas - Generar Nómina Impresas.",
+        "Cambios menores en bugs de Nóminas - Generar Nómina Impresas.",
         "Ajustes de estabilidad en la generación e impresión de nóminas.",
-        "Modal de novedades al pulsar la versión actual en servidor, sin cierre al hacer click fuera.",
-        "Comprobación de versión más robusta con fallback local/remoto y timeout de seguridad.",
-        "Despliegue automático de la APK a InfinityFree desde el workflow de build."
+        "Modal de novedades al pulsar la versión del servidor, con cierre solo por X/Esc.",
+        "Colores de versión/fecha en el modal y comprobación con fallback local/remoto y timeout.",
+        "Despliegue de la APK a InfinityFree desde el workflow de build."
       ]
     },
     {
       "versionCode": 2,
       "versionName": "1.0.1",
-      "date": "2026-02-14",
-      "title": "Distribución APK y comprobación de versiones",
-      "summary": "Se incorporó la descarga oficial de la APK y la base del sistema de detección de actualizaciones.",
+      "date": "2026-10-20",
+      "title": "Octubre 2026 · Distribución y detección de versiones",
+      "summary": "Se consolidó la distribución de la APK y la detección automática de versiones.",
       "items": [
-        "Sección de descarga de APK en la portada web con logo y enlace directo.",
-        "Publicación del APK en dist y enlace de descarga desde GitHub raw.",
-        "Creación de version.json como fuente remota de versión para web y APK.",
-        "La web muestra la versión disponible en servidor y detecta si la APK instalada está desactualizada.",
-        "La APK expone getAppVersion al WebView y avisa cuando existe una nueva versión.",
-        "Ajustes de visibilidad del carrusel/topbar/menú móvil en WebView y correcciones de modales offline/contacto."
+        "Sección de descarga de APK en la portada con logo y botón de descarga.",
+        "version.json como fuente remota para web y APK.",
+        "La web muestra la versión actual en servidor y detecta actualizaciones en APK embebida.",
+        "La APK expone getAppVersion al WebView y muestra aviso al iniciar si hay versión nueva.",
+        "Enlace de descarga apuntando al APK publicado en GitHub raw."
       ]
     },
     {
       "versionCode": 1,
       "versionName": "1.0.0",
-      "date": "2026-01-10",
-      "title": "Lanzamiento inicial de la APK",
-      "summary": "Primera versión de la aplicación Android WebView con soporte offline y empaquetado de contenido local.",
+      "date": "2026-09-15",
+      "title": "Septiembre 2026 · Integración WebView y experiencia móvil",
+      "summary": "Mejoras de experiencia dentro de la APK/WebView y publicación del APK en dist.",
       "items": [
-        "Creación del proyecto WebView APK y workflow de compilación en GitHub Actions.",
-        "Firma de APK debug con keystore estable para facilitar instalación.",
-        "Intro local offline, modal sin conexión y botón de reintento cuando no hay internet.",
-        "Empaquetado de páginas HTML/assets locales dentro de la APK.",
-        "Correcciones de impresión/PDF, ajustes de assets y publicación inicial de EcosisUnicorn.apk."
+        "Correcciones de visibilidad del carrusel/topbar y menú móvil en páginas HTML.",
+        "Ajustes de modales offline, contacto y comportamiento del index en WebView.",
+        "Workflow APK: publicación de EcosisUnicorn.apk y actualización de dist.",
+        "Correcciones de impresión/PDF legal, intro del index y ajustes de assets APK.",
+        "Sección de descarga APK en el index empaquetado de la APK."
+      ]
+    },
+    {
+      "versionCode": 0,
+      "versionName": "0.9.0",
+      "date": "2026-08-12",
+      "title": "Agosto 2026 · Lanzamiento de la APK Android",
+      "summary": "Nacimiento de la app Android con WebView, modo offline y empaquetado local.",
+      "items": [
+        "Creación del proyecto WebView APK y workflow de compilación Android.",
+        "Firma debug con keystore estable para instalación consistente.",
+        "Intro local offline, modal sin conexión y reintento de conexión.",
+        "Empaquetado de páginas root como HTML local dentro de la APK.",
+        "Modal sin conexión solo al abrir enlaces remotos; formularios locales apuntan a endpoints remotos."
+      ]
+    },
+    {
+      "versionCode": 0,
+      "versionName": "0.8.0",
+      "date": "2026-07-18",
+      "title": "Julio 2026 · Licencias, legal y navegación",
+      "summary": "Fortalecimiento de licencias, contenido legal y navegación del sitio.",
+      "items": [
+        "Validación reforzada de licencias: vencidas, fecha futura, importación y guardado.",
+        "Páginas legales unificadas, contenido legal ampliado y exportación/impresión de legal.php.",
+        "Ajustes de navegación, contacto, páginas en desarrollo y botón repetir intro.",
+        "Correcciones de enlaces/retorno en logins y modal de envío.",
+        "Ajustes de codificación y limpieza de imágenes obsoletas."
+      ]
+    },
+    {
+      "versionCode": 0,
+      "versionName": "0.7.0",
+      "date": "2026-06-16",
+      "title": "Junio 2026 · Portada, precios y experiencia de usuario",
+      "summary": "Evolución de la portada principal y componentes de conversión/información.",
+      "items": [
+        "Tasa USD/CUP dinámica en precios con proxy/preparación de fuente.",
+        "Botón de refrescar plataforma, reactivar animación de inicio y mejoras visuales.",
+        "Reorganización de styleindex.css y ajustes de carga/rewrite.",
+        "Mejoras en modal Estado de licencia, FAQ de adquisición y dropdown de Licencia.",
+        "Ajustes de secciones, topbar y menú móvil scrollable."
+      ]
+    },
+    {
+      "versionCode": 0,
+      "versionName": "0.6.0",
+      "date": "2026-05-14",
+      "title": "Mayo 2026 · Ingeniería, integraciones y estructura del index",
+      "summary": "Reestructuración del index con enfoque en ingeniería, servicios e integraciones.",
+      "items": [
+        "Sección Nuestra ingeniería replicada/adaptada con integraciones en una sola línea.",
+        "Reordenamiento de topbar: Ecosistema, Ingeniería/Servicios, A medida y Licencia.",
+        "Restauración y mejora de bloques de servicios/plataforma en index2/index.",
+        "Cards dinámicas de Apache, phpMyAdmin, MySQL y salud BD.",
+        "Refactor de nombres de variables/prefijos BD y métricas bajo el capó."
+      ]
+    },
+    {
+      "versionCode": 0,
+      "versionName": "0.5.0",
+      "date": "2026-04-10",
+      "title": "Abril 2026 · Módulos operativos y estabilidad",
+      "summary": "Consolidación de módulos operativos y correcciones funcionales del sistema.",
+      "items": [
+        "Diferenciación de vistas de salario y vacaciones en solic_userinfo.",
+        "Corrección de enlaces de ecosistema, phpinfo y navegación entre módulos.",
+        "Ajustes en flujos de facturación, costos, inventarios y administración.",
+        "Mejoras de compatibilidad y mantenimiento general en páginas PHP.",
+        "Base para la futura integración de la APK y descarga desde portada."
+      ]
+    },
+    {
+      "versionCode": 0,
+      "versionName": "0.4.0",
+      "date": "2026-03-12",
+      "title": "Marzo 2026 · Datos, rendimiento y base de datos",
+      "summary": "Mejoras en la capa de datos, instalación y rendimiento de consultas.",
+      "items": [
+        "Refinamiento de scripts de instalación/reparación de BD.",
+        "Optimización de consultas y manejo de datos en módulos de nóminas.",
+        "Ajustes de configuración local USBWebServer/Apache/MySQL/PHP.",
+        "Mejoras en validaciones y consistencia de datos de importación.",
+        "Preparación de estructura para despliegues y sincronización."
+      ]
+    },
+    {
+      "versionCode": 0,
+      "versionName": "0.3.0",
+      "date": "2026-02-10",
+      "title": "Febrero 2026 · UI, estilos y componentes reutilizables",
+      "summary": "Estandarización visual y mejora de componentes de interfaz.",
+      "items": [
+        "Unificación de estilos, tipografías e iconografía Font Awesome local.",
+        "Mejora de componentes de cards, modales, botones y secciones informativas.",
+        "Ajustes responsive para móvil, tablet y escritorio.",
+        "Correcciones de contraste, espaciado y jerarquía visual.",
+        "Limpieza de assets y organización de CSS."
+      ]
+    },
+    {
+      "versionCode": 0,
+      "versionName": "0.2.0",
+      "date": "2026-01-15",
+      "title": "Enero 2026 · Base del portal y módulos",
+      "summary": "Arranque del portal TransNuBeT y estructura base de módulos.",
+      "items": [
+        "Estructura inicial del portal en root con portada y accesos a servicios.",
+        "Base de módulos: Nóminas, Facturación, Costos, Inventarios y Administración.",
+        "Configuración inicial de entorno local USBWebServer, PHP y MySQL.",
+        "Primeros flujos de autenticación y navegación entre módulos.",
+        "Organización inicial de assets, imágenes y scripts."
       ]
     }
   ]
