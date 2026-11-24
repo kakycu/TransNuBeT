@@ -2820,6 +2820,7 @@ $faq = [
       });
   });
 })();
+</script>
 <script>
 /* Comprobación de versión APK + modal de cambios */
 (function () {
@@ -2961,7 +2962,7 @@ $faq = [
     }
     load(0, false);
 })();
-</script></script>
+</script>
 <script>
 /* Tasa USD->CUP dinámica (inspirado en cyberforja tasa.js/product-page.js) */
 (function () {
