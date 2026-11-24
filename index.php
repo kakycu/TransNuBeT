@@ -810,7 +810,7 @@ $faq = [
     <a href="#ecosistema" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
 </header>
 
-<section class="apk-download" aria-label="Descarga la app para Android" id="apk-download" data-apk-version-url="https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/version.json">
+<section class="apk-download" aria-label="Descarga la app para Android" id="apk-download" data-apk-version-url="android-apk/dist/version.json" data-apk-version-fallback="https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/version.json">
     <div class="wrap apk-download__inner">
         <img src="/images/logo.png" alt="Logo UnicornioSoftware" class="apk-download__logo" width="56" height="56" loading="lazy" decoding="async">
         <div class="apk-download__copy">
@@ -2814,7 +2814,7 @@ $faq = [
     var status = document.getElementById("apkUpdateStatus");
     var btn = document.getElementById("apkDownloadBtn");
     if (!section || !info || !status || !btn) return;
-    var versionUrl = section.getAttribute("data-apk-version-url");
+    var urls = [section.getAttribute("data-apk-version-url"), section.getAttribute("data-apk-version-fallback")].filter(Boolean);
     function getInstalled() {
         try {
             if (window.AndroidApp && typeof window.AndroidApp.getAppVersion === "function") {
@@ -2826,27 +2826,35 @@ $faq = [
         return null;
     }
     function setStatus(text, cls) { status.textContent = text || ""; status.className = "apk-download__status" + (cls ? " " + cls : ""); }
-    fetch(versionUrl, { cache: "no-store", headers: { "Accept": "application/json" } })
-        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-        .then(function (data) {
-            var latestCode = parseInt(data.versionCode, 10) || 0;
-            var latestName = String(data.versionName || "");
-            var apkUrl = String(data.apkUrl || btn.href);
-            var changelog = String(data.changelog || "");
-            btn.href = apkUrl;
-            info.textContent = "Última versión disponible: v" + (latestName || latestCode);
-            var installed = getInstalled();
-            if (!installed) { setStatus("Si ya tienes la app instalada, ábrela para comprobar si necesitas actualizar.", ""); return; }
-            info.textContent = "Instalada: v" + installed.versionName + " · Última: v" + (latestName || latestCode);
-            if (latestCode > installed.versionCode) {
-                setStatus("Hay una actualización disponible. " + (changelog ? changelog : ""), "is-update");
-                btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar actualización";
-            } else {
-                setStatus("Tu app está actualizada.", "is-ok");
-                btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar APK";
-            }
-        })
-        .catch(function () { info.textContent = "No se pudo comprobar la versión más reciente."; setStatus("Puedes descargar la APK desde el botón.", ""); });
+    function load(i) {
+        if (i >= urls.length) {
+            info.textContent = "No se pudo comprobar la versión más reciente.";
+            setStatus("Puedes descargar la APK desde el botón.", "");
+            return;
+        }
+        fetch(urls[i], { cache: "no-store", headers: { "Accept": "application/json" } })
+            .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+            .then(function (data) {
+                var latestCode = parseInt(data.versionCode, 10) || 0;
+                var latestName = String(data.versionName || "");
+                var apkUrl = String(data.apkUrl || btn.href);
+                var changelog = String(data.changelog || "");
+                btn.href = apkUrl;
+                info.textContent = "Última versión disponible: v" + (latestName || latestCode);
+                var installed = getInstalled();
+                if (!installed) { setStatus("Si ya tienes la app instalada, ábrela para comprobar si necesitas actualizar.", ""); return; }
+                info.textContent = "Instalada: v" + installed.versionName + " · Última: v" + (latestName || latestCode);
+                if (latestCode > installed.versionCode) {
+                    setStatus("Hay una actualización disponible. " + (changelog ? changelog : ""), "is-update");
+                    btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar actualización";
+                } else {
+                    setStatus("Tu app está actualizada.", "is-ok");
+                    btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar APK";
+                }
+            })
+            .catch(function () { load(i + 1); });
+    }
+    load(0);
 })();
 </script>
 <script>
