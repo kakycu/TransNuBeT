@@ -815,7 +815,7 @@ $faq = [
         <img src="/images/logo.png" alt="Logo UnicornioSoftware" class="apk-download__logo" width="56" height="56" loading="lazy" decoding="async">
         <div class="apk-download__copy">
             <p class="apk-download__text">¡DESCARGA LA APK PARA ANDROID!</p>
-            <p class="apk-download__version"><button type="button" class="apk-version-btn" id="apkVersionBtn" aria-haspopup="dialog" aria-controls="apkVersionModal"><span id="apkVersionInfo">Versión actual en servidor: v1.0.4 (código 6)</span><i class="fa-solid fa-circle-info" aria-hidden="true"></i></button></p>
+            <p class="apk-download__version"><a class="apk-version-btn" id="apkVersionBtn" href="releases.php"><span id="apkVersionInfo">Versión actual en servidor: v1.0.5 (código 7)</span><i class="fa-solid fa-circle-info" aria-hidden="true"></i></a></p>
             <p class="apk-download__status" id="apkUpdateStatus" aria-live="polite"></p>
         </div>
         <a class="btn btn-fuego apk-download__btn" id="apkDownloadBtn" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download>
@@ -824,25 +824,7 @@ $faq = [
     </div>
 </section>
 
-<div class="apk-modal" id="apkVersionModal" hidden aria-hidden="true">
-    <div class="apk-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="apkVersionModalTitle">
-        <div class="apk-modal__header">
-            <button type="button" class="apk-modal__close" id="apkVersionModalClose" aria-label="Cerrar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-            <p class="apk-modal__eyebrow">Actualizaciones APK</p>
-            <h2 class="apk-modal__title" id="apkVersionModalTitle">Novedades de la versión</h2>
-            <p class="apk-modal__meta" id="apkVersionModalMeta">Cargando información de versión...</p>
-        </div>
-        <div class="apk-modal__body" id="apkVersionModalBody">
-            <p class="apk-modal__loading">Cargando cambios...</p>
-        </div>
-        <div class="apk-modal__footer">
-            <button type="button" class="apk-modal__btn apk-modal__btn--ghost" id="apkVersionModalFooterClose"><i class="fa-solid fa-xmark" aria-hidden="true"></i> Cerrar</button>
-            <a class="apk-modal__btn apk-modal__btn--primary" id="apkVersionModalDownload" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download><i class="fa-brands fa-android" aria-hidden="true"></i> Descargar</a>
-        </div>
-    </div>
-</div>
-
-    <!-- Strip de beneficios (estilo Reven/CyberForja) -->
+<!-- Strip de beneficios (estilo Reven/CyberForja) -->
     <section class="reven-feats-strip" aria-label="Beneficios principales">
         <div class="reven-feats-grid">
             <div class="rv-ap reven-feat" style="--rv-i:0">
@@ -2826,22 +2808,14 @@ $faq = [
 })();
 </script>
 <script>
-/* Comprobación de versión APK + modal de cambios */
+/* Comprobación de versión APK */
 (function () {
     var section = document.getElementById("apk-download");
     var info = document.getElementById("apkVersionInfo");
     var status = document.getElementById("apkUpdateStatus");
     var btn = document.getElementById("apkDownloadBtn");
-    var versionBtn = document.getElementById("apkVersionBtn");
-    var modal = document.getElementById("apkVersionModal");
-    var modalClose = document.getElementById("apkVersionModalClose");
-    var modalMeta = document.getElementById("apkVersionModalMeta");
-    var modalBody = document.getElementById("apkVersionModalBody");
     if (!section || !info || !status || !btn) return;
     var urls = [section.getAttribute("data-apk-version-url"), section.getAttribute("data-apk-version-fallback")].filter(Boolean);
-    var lastData = null;
-    var lastFocus = null;
-
     function getInstalled() {
         try {
             if (window.AndroidApp && typeof window.AndroidApp.getAppVersion === "function") {
@@ -2853,7 +2827,6 @@ $faq = [
         return null;
     }
     function setStatus(text, cls) { status.textContent = text || ""; status.className = "apk-download__status" + (cls ? " " + cls : ""); }
-    function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
     function fetchJson(url, ms) {
         ms = ms || 6000;
         if (window.AbortController) {
@@ -2868,76 +2841,18 @@ $faq = [
             new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout")); }, ms); })
         ]);
     }
-
-    function renderModal(data) {
-        if (!modalMeta || !modalBody) return;
-        var latestCode = parseInt(data.versionCode, 10) || 0;
-        var latestName = String(data.versionName || "");
-        var releasedAt = String(data.releasedAt || "");
-        var required = !!data.required;
-        modalMeta.innerHTML = 'Versión actual en servidor: <span class="apk-modal__meta-version">v' + esc(latestName || latestCode) + ' (código ' + esc(latestCode) + ')</span>' + (releasedAt ? ' <span class="apk-modal__meta-sep">·</span> <span class="apk-modal__meta-date">' + esc(releasedAt) + '</span>' : '') + (required ? ' <span class="apk-modal__meta-required">· Actualización requerida</span>' : '');
-        var changes = Array.isArray(data.changes) ? data.changes : [];
-        if (!changes.length) {
-            var cl = String(data.changelog || "");
-            modalBody.innerHTML = '<div class="apk-change is-latest"><div class="apk-change__head"><p class="apk-change__version">v' + esc(latestName || latestCode) + ' <span class="apk-change__badge">Actual</span></p><span class="apk-change__date">' + esc(releasedAt) + '</span></div><p class="apk-change__title">Cambios</p><ul class="apk-change__list"><li>' + esc(cl || 'No hay detalles adicionales.') + '</li></ul></div>';
-            return;
-        }
-        modalBody.innerHTML = changes.map(function (c, idx) {
-            var vc = parseInt(c.versionCode, 10) || 0;
-            var vn = String(c.versionName || vc || "");
-            var date = String(c.date || "");
-            var title = String(c.title || "Cambios");
-            var items = Array.isArray(c.items) ? c.items : [];
-            var latest = idx === 0 || vc === latestCode;
-            return '<article class="apk-change ' + (latest ? 'is-latest' : '') + '">' +
-                '<div class="apk-change__head"><div><p class="apk-change__version">v' + esc(vn) + (latest ? ' <span class="apk-change__badge">Actual</span>' : '') + '</p><p class="apk-change__title">' + esc(title) + '</p></div>' +
-                (date ? '<span class="apk-change__date">' + esc(date) + '</span>' : '') + '</div>' +
-                '<ul class="apk-change__list">' + (items.length ? items.map(function (it) { return '<li>' + esc(it) + '</li>'; }).join('') : '<li>Sin detalles.</li>') + '</ul></article>';
-        }).join('');
-    }
-
-    function openModal() {
-        if (!modal) return;
-        lastFocus = document.activeElement;
-        modal.hidden = false;
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-        if (lastData) renderModal(lastData);
-        else { modalMeta.textContent = 'Cargando información de versión...'; modalBody.innerHTML = '<p class="apk-modal__loading">Cargando cambios...</p>'; load(0, true); }
-        if (modalClose) modalClose.focus();
-    }
-    function closeModal() {
-        if (!modal || modal.hidden) return;
-        modal.hidden = true;
-        modal.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-        if (lastFocus && lastFocus.focus) lastFocus.focus();
-    }
-    if (versionBtn) versionBtn.addEventListener('click', openModal);
-    var modalFooterClose = document.getElementById("apkVersionModalFooterClose");
-    var modalDownload = document.getElementById("apkVersionModalDownload");
-    if (modalClose) modalClose.addEventListener('click', closeModal);
-    if (modalFooterClose) modalFooterClose.addEventListener('click', closeModal);
-    if (modal) {
-        modal.addEventListener('click', function (e) { if (e.target === modal) { e.preventDefault(); e.stopPropagation(); } });
-        modal.addEventListener('mousedown', function (e) { if (e.target === modal) { e.preventDefault(); } });
-    }
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modal && !modal.hidden) closeModal(); });
-
     var safety = setTimeout(function () {
         if (info.textContent.indexOf("Comprobando") !== -1) {
             info.textContent = "No se pudo comprobar la versión más reciente.";
             setStatus("Puedes descargar la APK desde el botón.", "");
         }
     }, 9000);
-
     function applyData(data) {
-        lastData = data;
         var latestCode = parseInt(data.versionCode, 10) || 0;
         var latestName = String(data.versionName || "");
         var apkUrl = String(data.apkUrl || btn.href);
         var changelog = String(data.changelog || "");
-        btn.href = apkUrl; if (modalDownload) modalDownload.href = apkUrl;
+        btn.href = apkUrl;
         info.textContent = "Versión actual en servidor: v" + (latestName || latestCode) + " (código " + latestCode + ")";
         var installed = getInstalled();
         if (!installed) {
@@ -2952,22 +2867,17 @@ $faq = [
                 btn.innerHTML = '<i class="fa-brands fa-android" aria-hidden="true"></i> Descargar APK';
             }
         }
-        if (modal && !modal.hidden) renderModal(data);
     }
-
-    function load(i, fromModal) {
+    function load(i) {
         if (i >= urls.length) {
             clearTimeout(safety);
-            if (!fromModal) {
-                info.textContent = "No se pudo comprobar la versión más reciente.";
-                setStatus("Puedes descargar la APK desde el botón.", "");
-            }
-            if (modal && !modal.hidden) { modalMeta.textContent = 'No se pudo cargar version.json'; modalBody.innerHTML = '<p class="apk-modal__empty">Revisa tu conexión o intenta más tarde.</p>'; }
+            info.textContent = "No se pudo comprobar la versión más reciente.";
+            setStatus("Puedes descargar la APK desde el botón.", "");
             return;
         }
-        fetchJson(urls[i], 6000).then(function (data) { clearTimeout(safety); applyData(data); }).catch(function () { load(i + 1, fromModal); });
+        fetchJson(urls[i], 6000).then(function (data) { clearTimeout(safety); applyData(data); }).catch(function () { load(i + 1); });
     }
-    load(0, false);
+    load(0);
 })();
 </script>
 <script>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Novedades y versiones | UnicornioSoftware</title>
+    <meta name="description" content="Consulta las novedades, mejoras y correcciones de cada versión de UnicornioSoftware.">
+    <link rel="icon" type="image/png" href="./desamedida/assets/images/favicon.png">
+    <link rel="preload" as="font" type="font/woff2" href="./desamedida/fonts/bebas-neue/bebas-neue-v16-latin-regular.woff2" crossorigin>
+    <link rel="stylesheet" href="./desamedida/assets/css/styles.css?v=20261117c">
+    <link rel="preload" as="style" href="./desamedida/fa/fontawesome.min.css" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" as="style" href="./desamedida/fa/solid.min.css" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" as="style" href="./desamedida/fa/brands.min.css" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+        <link rel="stylesheet" href="./desamedida/fa/fontawesome.min.css">
+        <link rel="stylesheet" href="./desamedida/fa/solid.min.css">
+        <link rel="stylesheet" href="./desamedida/fa/brands.min.css">
+    </noscript>
+    <style>
+    html { scroll-padding-top: 5.75rem; }
+    :root {
+        --abismo:#0a0f1a; --panel:#0b0e14; --acero:#1e293b;
+        --cian:#00d4ff; --fuego:#ff6b00; --fuego-h:#ff8a33;
+        --txt:#ffffff; --gris:#d1d5db; --gris-2:#9ca3af; --gris-3:#6b7280;
+        --nav-h:5rem; --wrap:80rem;
+    }
+    body{background:var(--abismo);color:var(--txt);margin:0;font-family:"Exo 2",system-ui,sans-serif;}
+    a{color:inherit;text-decoration:none;}
+    .wrap { width:100%; max-width:var(--wrap); margin-inline:auto; padding-inline:clamp(1.25rem,4vw,3rem); }
+    .nav { position:fixed; inset:0 0 auto 0; z-index:50; height:var(--nav-h); background:rgba(10,15,26,.88); -webkit-backdrop-filter:blur(18px) saturate(140%); backdrop-filter:blur(18px) saturate(140%); border-bottom:1px solid rgba(30,41,59,.7); }
+    .nav-in { height:100%; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .marca { display:inline-flex; align-items:center; gap:.65rem; flex:0 0 auto; text-decoration:none; }
+    .marca img { width:2.5rem; height:2.5rem; object-fit:contain; filter:drop-shadow(0 0 10px rgba(0,212,255,.2)); }
+    .marca-txt b { display:block; font-family:"Bebas Neue",Impact,sans-serif; font-weight:400; font-size:1.5rem; line-height:.9; letter-spacing:.03em; }
+    .marca-txt b i { font-style:normal; color:var(--cian); } .marca-txt b em { font-style:normal; color:var(--fuego); }
+    .marca-txt small { margin-top:.2rem; font-size:.58rem; letter-spacing:.22em; text-transform:uppercase; color:var(--gris-3); font-weight:600; display:block; }
+    .nav-links { display:none; align-items:center; gap:1.4rem; }
+    .nav-links a { font-family:"Exo 2",sans-serif; font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--gris-2); transition:color .2s; }
+    .nav-links a:hover,.nav-links a.is-active { color:var(--txt); }
+    .nav-acc { display:flex; align-items:center; gap:.6rem; }
+    .nav-acc .btn { display:none; }
+    .menu-btn { display:inline-grid; place-items:center; width:2.75rem; height:2.75rem; border:1px solid var(--acero); border-radius:2px; background:transparent; color:var(--gris-2); font-size:1.1rem; cursor:pointer; }
+    .menu-movil { display:none; padding:.25rem 1.25rem 1.25rem; background:rgba(10,15,26,.97); border-bottom:1px solid rgba(30,41,59,.7); }
+    .menu-movil.is-open { display:block; }
+    .menu-movil a { display:block; padding:.7rem 0; font-family:"Exo 2",sans-serif; font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--gris-2); border-bottom:1px solid rgba(30,41,59,.45); }
+    @media (min-width:900px){ .nav-links{display:flex;} .nav-acc .btn{display:inline-flex;} .menu-btn,.menu-movil{display:none !important;} }
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.55rem;padding:.78rem 1.35rem;font-family:"Exo 2",sans-serif;font-size:.74rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;border-radius:2px;border:1px solid transparent;cursor:pointer;white-space:nowrap;transition:.25s;text-decoration:none;}
+    .btn:hover{transform:translateY(-2px);}
+    .btn-fuego{background:var(--fuego);color:var(--abismo);box-shadow:0 14px 30px -14px rgba(255,107,0,.85);}
+    .btn-ghost{background:rgba(255,255,255,.02);color:var(--gris);border-color:rgba(255,255,255,.14);}
+    .rel-hero{padding:calc(var(--nav-h) + 3.5rem) 0 3rem;position:relative;overflow:hidden;background:radial-gradient(ellipse at 20% 0%,rgba(255,107,0,.12),transparent 55%),radial-gradient(ellipse at 85% 100%,rgba(0,212,255,.08),transparent 45%),var(--abismo);border-bottom:1px solid rgba(30,41,59,.5);}
+    .eyebrow{display:inline-flex;align-items:center;gap:.7rem;font-family:"Exo 2",sans-serif;font-size:.7rem;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--fuego);}
+    .eyebrow::before{content:"";width:2rem;height:2px;background:var(--fuego);border-radius:2px;}
+    .rel-hero h1{font-family:"Bebas Neue",Impact,sans-serif;font-size:clamp(2.8rem,7vw,5.5rem);line-height:.92;margin:.7rem 0 1rem;text-transform:uppercase;letter-spacing:.03em;}
+    .rel-hero h1 span{color:var(--cian);} .rel-hero p{max-width:48rem;color:var(--gris-2);font-size:1rem;line-height:1.8;margin:0;}
+    .rel-meta{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.5rem;}
+    .rel-pill{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem .9rem;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--gris);font-size:.78rem;font-family:"Exo 2",sans-serif;}
+    .rel-pill strong{color:var(--txt);} .rel-pill i{color:var(--cian);}
+    .rel-main{padding:3rem 0 4rem;}
+    .rel-layout{display:grid;gap:2rem;}
+    @media(min-width:1024px){.rel-layout{grid-template-columns:minmax(0,1fr) 320px;align-items:start;}}
+    .timeline{position:relative;display:grid;gap:1.25rem;}
+    .timeline::before{content:"";position:absolute;left:1.15rem;top:.5rem;bottom:.5rem;width:2px;background:linear-gradient(180deg,rgba(0,212,255,.45),rgba(255,107,0,.25),rgba(255,255,255,.08));}
+    @media(max-width:640px){.timeline::before{left:.85rem;}}
+    .release{position:relative;padding-left:3.25rem;} @media(max-width:640px){.release{padding-left:2.5rem;}}
+    .release-dot{position:absolute;left:.55rem;top:1.5rem;width:1.25rem;height:1.25rem;border-radius:50%;background:var(--abismo);border:3px solid var(--cian);box-shadow:0 0 0 4px rgba(0,212,255,.12);}
+    .release.is-latest .release-dot{border-color:var(--fuego);box-shadow:0 0 0 4px rgba(255,107,0,.14);}
+    @media(max-width:640px){.release-dot{left:.25rem;}}
+    .release-card{background:linear-gradient(145deg,#131b2c,#0a0f1a);border:1px solid rgba(30,41,59,.9);border-radius:1rem;padding:1.35rem;box-shadow:0 16px 40px -28px rgba(0,0,0,.9);}
+    .release.is-latest .release-card{border-color:rgba(255,107,0,.35);background:linear-gradient(145deg,#1a140e,#0a0f1a 60%);}
+    .release-head{display:flex;flex-wrap:wrap;gap:.75rem 1rem;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem;}
+    .release-ver{font-family:"Bebas Neue",Impact,sans-serif;font-size:2rem;line-height:1;letter-spacing:.03em;margin:0;color:var(--txt);}
+    .release-badge{display:inline-flex;align-items:center;padding:.2rem .55rem;border-radius:999px;font-family:"Exo 2",sans-serif;font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:linear-gradient(90deg,var(--fuego),#ff9a3d);color:#111827;margin-left:.5rem;vertical-align:middle;}
+    .release-date{font-family:"Exo 2",sans-serif;font-size:.8rem;color:var(--gris-3);white-space:nowrap;}
+    .release-title{margin:.15rem 0 0;font-size:1rem;font-weight:700;color:var(--gris);font-family:"Exo 2",sans-serif;}
+    .release-summary{margin:.65rem 0 0;color:var(--gris-2);line-height:1.75;font-size:.92rem;}
+    .release-list{margin:.85rem 0 0;padding-left:1.15rem;display:grid;gap:.45rem;}
+    .release-list li{color:var(--gris-2);line-height:1.65;font-size:.9rem;}
+    .release-list li::marker{color:var(--cian);} .release.is-latest .release-list li::marker{color:var(--fuego);}
+    .side-card{background:linear-gradient(145deg,#101827,#0a0f1a);border:1px solid rgba(30,41,59,.85);border-radius:1rem;padding:1.25rem;position:sticky;top:calc(var(--nav-h) + 1rem);}
+    .side-card h3{font-family:"Bebas Neue",Impact,sans-serif;font-size:1.7rem;line-height:1;margin:0 0 .5rem;letter-spacing:.03em;text-transform:uppercase;}
+    .side-card p{color:var(--gris-2);font-size:.9rem;line-height:1.7;margin:0 0 1rem;}
+    .side-actions{display:grid;gap:.65rem;} .side-actions .btn{width:100%;}
+    .side-note{margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.08);color:var(--gris-3);font-size:.78rem;line-height:1.6;}
+    .support-card{margin-top:2rem;padding:1.5rem;border-radius:1rem;border:1px solid rgba(0,212,255,.18);background:linear-gradient(145deg,rgba(0,212,255,.06),rgba(255,255,255,.02));display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;}
+    .support-card h2{font-family:"Bebas Neue",Impact,sans-serif;font-size:2rem;margin:0;line-height:1;letter-spacing:.03em;text-transform:uppercase;}
+    .support-card p{margin:.35rem 0 0;color:var(--gris-2);max-width:42rem;line-height:1.7;}
+    .loading,.error{padding:1.5rem;border-radius:1rem;border:1px dashed rgba(255,255,255,.18);color:var(--gris-2);font-family:"Exo 2",sans-serif;}
+    .error{border-color:rgba(239,68,68,.35);color:#fca5a5;}
+    .pie{padding:3.5rem 0 0;background:#060a12;border-top:1px solid rgba(30,41,59,.7);}
+    .pie-grid{display:grid;gap:2.25rem;padding-bottom:2.5rem;grid-template-columns:minmax(0,1fr);}
+    @media(min-width:640px){.pie-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media(min-width:1024px){.pie-grid{grid-template-columns:1.3fr 1fr 1fr 1fr;gap:2.5rem;}}
+    .pie-marca{display:flex;align-items:center;gap:.65rem;margin-bottom:1rem;}
+    .pie-marca img{width:2.4rem;height:2.4rem;object-fit:contain;}
+    .pie-grid p,.pie-grid a{color:var(--gris-2);font-size:.86rem;line-height:1.7;}
+    .pie h4{font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--txt);margin-bottom:.85rem;}
+    .pie-lista{list-style:none;display:grid;gap:.45rem;padding:0;margin:0;}
+    .pie-lista a,.pie-legal a{display:inline-flex;align-items:center;gap:.5rem;}
+    .pie-legal{display:grid;gap:.45rem;}
+    .pie-barra{display:flex;flex-direction:column;gap:.5rem;padding:1.15rem 0 1.6rem;border-top:1px solid rgba(30,41,59,.55);color:var(--gris-3);font-size:.75rem;}
+    @media(min-width:640px){.pie-barra{flex-direction:row;align-items:center;justify-content:space-between;}}
+    </style>
+</head>
+<body>
+    <header class="nav" id="topbar">
+        <div class="wrap nav-in">
+            <a href="./index.html" class="marca" aria-label="Ir a la portada de UnicornioSoftware">
+                <img src="./images/logo.png" alt="Logo UnicornioSoftware" width="40" height="40">
+                <span class="marca-txt"><b><i>Unicornio</i><em>Software</em></b><small>Donde tu visión toma forma</small></span>
+            </a>
+            <nav class="nav-links" aria-label="Navegación principal">
+                <a href="./index.html">Inicio</a>
+                <a href="./about.html">Sobre nosotros</a>
+                <a href="./releases.html" class="is-active">Novedades</a>
+            </nav>
+            <div class="nav-acc">
+                <a class="btn btn-ghost" href="./index.html"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a>
+                <button type="button" class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menuMovil" aria-label="Abrir menú"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
+            </div>
+        </div>
+        <div class="menu-movil" id="menuMovil">
+            <div class="wrap">
+                <a href="./index.html">Inicio</a>
+                <a href="./about.html">Sobre nosotros</a>
+                <a href="./releases.html">Novedades</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="rel-hero">
+            <div class="wrap">
+                <span class="eyebrow">Historial de versiones y cambios</span>
+                <h1>Novedades de <span>UnicornioSoftware</span></h1>
+                <p>Aquí puedes ver, de forma sencilla, qué ha mejorado en cada versión. Encontrarás correcciones, novedades y cambios importantes para que sepas qué trae cada actualización.</p>
+                <div class="rel-meta">
+                    <span class="rel-pill"><i class="fa-solid fa-tag" aria-hidden="true"></i> Versión actual: <strong id="currentVersion">Cargando...</strong></span>
+                    <span class="rel-pill"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Última actualización: <strong id="currentDate">—</strong></span>
+                    <span class="rel-pill"><i class="fa-brands fa-android" aria-hidden="true"></i> App Android disponible</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="rel-main">
+            <div class="wrap rel-layout">
+                <div>
+                    <div id="releasesTimeline" class="timeline" aria-live="polite"><div class="loading">Cargando novedades...</div></div>
+                    <div class="support-card">
+                        <div>
+                            <h2>¿Necesitas ayuda?</h2>
+                            <p>Si tienes un problema con la aplicación o necesitas soporte, nuestro equipo puede ayudarte.</p>
+                        </div>
+                        <a class="btn btn-fuego" href="./contacto.html"><i class="fa-solid fa-headset" aria-hidden="true"></i> Contactar Soporte</a>
+                    </div>
+                </div>
+                <aside class="side-card" aria-label="Descarga de la aplicación">
+                    <h3>Descarga la app</h3>
+                    <p>Instala la aplicación para Android y recibe las mejoras más recientes.</p>
+                    <div class="side-actions">
+                        <a class="btn btn-fuego" id="downloadBtn" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download><i class="fa-brands fa-android" aria-hidden="true"></i> Descargar APK</a>
+                        <a class="btn btn-ghost" href="./index.html"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Volver al inicio</a>
+                    </div>
+                    <div class="side-note" id="sideNote">La información de versiones se carga desde el archivo oficial de novedades.</div>
+                </aside>
+            </div>
+        </section>
+    </main>
+
+    <footer class="pie">
+        <div class="wrap">
+            <div class="pie-grid">
+                <div>
+                    <div class="pie-marca">
+                        <img src="./images/logo.png" alt="">
+                        <span style="font-family:'Bebas Neue',Impact,sans-serif;font-size:1.5rem"><i style="font-style:normal;color:var(--cian)">UNICORNIO</i><i style="font-style:normal;color:var(--fuego)">SOFTWARE</i></span>
+                    </div>
+                    <p>Entorno de Aplicaciones Web de UnicornioSoftware&#174; Cuba. Kaky&#174;.</p>
+                    <p style="margin-top:.6rem;color:var(--gris-2);font-style:italic">&laquo;Donde tu visión toma forma&raquo;</p>
+                </div>
+                <nav aria-label="Enlaces del pie">
+                    <h4>Explorar</h4>
+                    <ul class="pie-lista">
+                        <li><a href="./index.html"><i class="fa-solid fa-house" aria-hidden="true"></i> Inicio</a></li>
+                        <li><a href="./about.html"><i class="fa-solid fa-users" aria-hidden="true"></i> Sobre nosotros</a></li>
+                        <li><a href="./releases.html"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Novedades</a></li>
+                    </ul>
+                </nav>
+                <div>
+                    <h4>Contacto</h4>
+                    <p><a href="mailto:kakycu@gmail.com"><i class="fa-solid fa-envelope" aria-hidden="true"></i> kakycu@gmail.com</a></p>
+                    <p><a href="tel:+5352712861"><i class="fa-solid fa-phone" aria-hidden="true"></i> +53 5 2712861</a></p>
+                </div>
+                <div>
+                    <h4>Legal</h4>
+                    <p class="pie-legal">
+                        <a href="./legal.html"><i class="fa-solid fa-file-contract" aria-hidden="true"></i> Legal</a>
+                        <a href="./contacto.html"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Contacto</a>
+                    </p>
+                </div>
+            </div>
+            <div class="pie-barra">
+                <span>© 2026 UnicornioSoftware Cuba. Todos los derechos reservados.</span>
+                <span>Licencia registrada · datos alojados en este equipo</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    (function () {
+        var btn = document.getElementById('menuBtn');
+        var menu = document.getElementById('menuMovil');
+        if (btn && menu) btn.addEventListener('click', function () { var abierto = menu.classList.toggle('is-open'); btn.setAttribute('aria-expanded', abierto ? 'true' : 'false'); });
+        function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+        function fmtDate(iso) {
+            if (!iso) return '';
+            var p = String(iso).split('-'); if (p.length !== 3) return esc(iso);
+            var m = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+            var mi = parseInt(p[1], 10) - 1;
+            return parseInt(p[2],10) + ' de ' + (m[mi] || p[1]) + ' de ' + p[0];
+        }
+        var timeline = document.getElementById('releasesTimeline');
+        var currentVersion = document.getElementById('currentVersion');
+        var currentDate = document.getElementById('currentDate');
+        var downloadBtn = document.getElementById('downloadBtn');
+        var sideNote = document.getElementById('sideNote');
+        var url = 'https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/version.json';
+        fetch(url, { cache: 'no-store', headers: { 'Accept': 'application/json' } })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function (data) {
+                var changes = Array.isArray(data.changes) ? data.changes : [];
+                var latestCode = parseInt(data.versionCode, 10) || 0;
+                var latestName = String(data.versionName || latestCode);
+                currentVersion.textContent = 'v' + latestName + ' (código ' + latestCode + ')';
+                currentDate.textContent = fmtDate(data.releasedAt) || '—';
+                if (data.apkUrl) downloadBtn.href = data.apkUrl;
+                sideNote.textContent = 'Mostrando ' + changes.length + ' actualizaciones. La versión más reciente aparece primero.';
+                if (!changes.length) { timeline.innerHTML = '<div class="error">No hay novedades disponibles por ahora.</div>'; return; }
+                timeline.innerHTML = changes.map(function (c, idx) {
+                    var vc = parseInt(c.versionCode, 10) || 0, vn = String(c.versionName || vc || ''), latest = idx === 0 || vc === latestCode;
+                    var items = Array.isArray(c.items) ? c.items : [];
+                    return '<article class="release ' + (latest ? 'is-latest' : '') + '">' +
+                        '<span class="release-dot" aria-hidden="true"></span>' +
+                        '<div class="release-card">' +
+                            '<div class="release-head"><div>' +
+                                '<h2 class="release-ver">v' + esc(vn) + (latest ? ' <span class="release-badge">Versión actual</span>' : '') + '</h2>' +
+                                '<p class="release-title">' + esc(c.title || 'Novedades') + '</p>' +
+                            '</div><div class="release-date">' + esc(fmtDate(c.date)) + '</div></div>' +
+                            (c.summary ? '<p class="release-summary">' + esc(c.summary) + '</p>' : '') +
+                            '<ul class="release-list">' + (items.length ? items.map(function (it) { return '<li>' + esc(it) + '</li>'; }).join('') : '<li>Sin detalles adicionales.</li>') + '</ul>' +
+                        '</div></article>';
+                }).join('');
+            })
+            .catch(function () { timeline.innerHTML = '<div class="error">No se pudieron cargar las novedades. Comprueba tu conexión e intenta de nuevo.</div>'; });
+    })();
+    </script>
+</body>
+</html>

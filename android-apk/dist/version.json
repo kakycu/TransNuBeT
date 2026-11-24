@@ -1,17 +1,32 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 6,
-  "versionName": "1.0.4",
+  "versionCode": 7,
+  "versionName": "1.0.5",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Se mejoró la impresión de nóminas, se añadieron avisos de actualización y se hicieron mejoras generales para que la aplicación sea más fácil de usar.",
+  "changelog": "Mejora del control de versiones para el usuario, correcciones en facturación y en la pantalla de acceso.",
   "required": false,
-  "releasedAt": "2026-12-15",
+  "releasedAt": "2026-11-24",
   "minSupportedVersionCode": 1,
   "sizeBytes": 22835073,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 7,
+      "versionName": "1.0.5",
+      "date": "2026-11-24",
+      "title": "Noviembre 2026 · Facturación y mejoras para el usuario",
+      "summary": "Se mejoró la forma de ver las novedades de cada versión y se corrigieron detalles importantes en Facturación y en el acceso al sistema.",
+      "items": [
+        "Mejora del control de versiones para el usuario final: ahora puedes ver las novedades en una página clara y fácil de leer.",
+        "Corrección de errores en el sistema de Facturación.",
+        "Ajustes en los estilos de la pantalla de inicio de sesión para que se vea mejor y sea más fácil de usar.",
+        "Mejoras en la emisión y revisión de facturas para evitar errores al trabajar.",
+        "Ajustes visuales en formularios y botones de Facturación para una experiencia más clara.",
+        "Correcciones generales de estabilidad y presentación en el módulo de Facturación."
+      ]
+    },
     {
       "versionCode": 6,
       "versionName": "1.0.4",
