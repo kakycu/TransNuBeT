@@ -46,7 +46,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-black"
-                    android:text="Actualizaci?n disponible"
+                    android:text="Actualización disponible"
                     android:textColor="#FFFFFF"
                     android:textSize="21sp" />
 
@@ -56,7 +56,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:fontFamily="sans-serif-medium"
-                    android:text="v1.0.0 ? v1.0.1"
+                    android:text="v1.0.0 → v1.0.1"
                     android:textColor="#C084FC"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -126,7 +126,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:fontFamily="sans-serif-medium"
-            android:text="Esta actualizaci?n es necesaria para continuar."
+            android:text="Esta actualización es necesaria para continuar."
             android:textColor="#FCA5A5"
             android:textSize="13sp"
             android:visibility="gone" />
@@ -165,7 +165,7 @@
             android:background="@drawable/bg_offline_button"
             android:fontFamily="sans-serif-bold"
             android:gravity="center"
-            android:text="Descargar actualizaci?n"
+            android:text="Descargar actualización"
             android:textColor="#FFFFFF"
             android:textSize="15sp" />
 
@@ -209,7 +209,7 @@
                 android:background="@drawable/bg_offline_button_secondary"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
-                android:text="M?s tarde"
+                android:text="Más tarde"
                 android:textColor="#C9D8E6"
                 android:textSize="14sp" />
 
@@ -222,7 +222,7 @@
                 android:background="@drawable/bg_offline_button_secondary"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="center"
-                android:text="Omitir versi?n"
+                android:text="Omitir versión"
                 android:textColor="#C9D8E6"
                 android:textSize="14sp" />
         </LinearLayout>

@@ -504,14 +504,13 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
             catch (_: Exception) { Toast.makeText(this, "No se pudo abrir la descarga", Toast.LENGTH_SHORT).show() }
             if (!required) dialog.dismiss()
         }
-        btnNotes.setOnClickListener {
+        val openReleases = {
             dialog.dismiss()
-            webView.loadUrl(localHomeUrl + "releases.html")
+            try { webView.loadUrl("file:///android_asset/releases.html") }
+            catch (_: Exception) { webView.loadUrl("https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/releases.html") }
         }
-        btnVersions.setOnClickListener {
-            dialog.dismiss()
-            webView.loadUrl(localHomeUrl + "releases.html")
-        }
+        btnNotes.setOnClickListener { openReleases() }
+        btnVersions.setOnClickListener { openReleases() }
         btnClose.setOnClickListener {
             if (required) {
                 Toast.makeText(this, "Esta actualizaci?n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
