@@ -1,11 +1,11 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 9,
+  "versionCode": 10,
   "versionName": "1.0.6",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Cambios en sistema de archivos, explorador de archivos en N?minas y nuevas opciones en la barra lateral de Facturaci?n.",
+  "changelog": "Nueva opción Cerrar aplicación, cambios menores en Facturación, exportación de facturas OFFLINE e importación SQL con exportación XLSX.",
   "required": false,
   "releasedAt": "2026-11-24",
   "minSupportedVersionCode": 1,
@@ -13,17 +13,37 @@
   "sha256": "",
   "changes": [
     {
+      "versionCode": 10,
+      "versionName": "1.0.6",
+      "date": "2026-11-24",
+      "title": "Cerrar aplicación, facturación sin conexión y exportación",
+      "summary": "Esta revisión agrega la opción Cerrar aplicación en la app Android, cambios menores en Facturación y nuevas formas de exportar e importar información.",
+      "novedades": [
+        "Nueva opción Cerrar aplicación en la app Android para salir de forma segura, con confirmación antes de cerrar.",
+        "Cambios menores en el sistema de Facturación para que el trabajo diario sea más fluido.",
+        "Exportación de facturas OFFLINE: puedes descargar tus facturas aunque no tengas conexión a internet.",
+        "Registro de Importación SQL y Exportación XLSX de Excel para mover datos entre el sistema y tus hojas de cálculo.",
+        "Mejoras en la línea de tiempo de versiones: cada revisión tiene su propio enlace y se muestra la etiqueta Rev. N.",
+        "Corrección de tildes y eñes en los textos de la app y de la página de novedades."
+      ],
+      "correcciones": [
+        "Se corrigieron textos que mostraban caracteres incorrectos en lugar de tildes y eñes.",
+        "Se evitó que dos revisiones con el mismo nombre de versión compartieran el mismo enlace.",
+        "Se ajustó el aviso de actualización para que los botones y los textos se lean correctamente."
+      ]
+    },
+    {
       "versionCode": 9,
       "versionName": "1.0.6",
       "date": "2026-11-24",
-      "title": "Archivos, N?minas y Facturaci?n",
-      "summary": "Esta versi?n incorpora cambios en el sistema de archivos, mejoras en el explorador de N?minas y nuevas opciones en la barra lateral de Facturaci?n.",
+      "title": "Archivos, Nóminas y Facturación",
+      "summary": "Esta versión incorpora cambios en el sistema de archivos, mejoras en el explorador de Nóminas y nuevas opciones en la barra lateral de Facturación.",
       "novedades": [
-        "Cambios en el sistema de archivos para una gesti?n m?s organizada y confiable de los documentos.",
-        "Nueva estructura del Explorador de Archivos en N?minas, con una navegaci?n m?s clara por carpetas y archivos.",
-        "Nuevas opciones en la barra lateral de Facturaci?n para acceder m?s r?pido a las funciones del m?dulo.",
+        "Cambios en el sistema de archivos para una gestión más organizada y confiable de los documentos.",
+        "Nueva estructura del Explorador de Archivos en Nóminas, con una navegación más clara por carpetas y archivos.",
+        "Nuevas opciones en la barra lateral de Facturación para acceder más rápido a las funciones del módulo.",
         "Mejoras de rendimiento al abrir y gestionar documentos dentro del sistema.",
-        "Ajustes visuales en la navegaci?n para una experiencia m?s clara en escritorio y m?vil."
+        "Ajustes visuales en la navegación para una experiencia más clara en escritorio y móvil."
       ],
       "correcciones": []
     },
@@ -32,17 +52,17 @@
       "versionName": "1.0.5",
       "date": "2026-11-24",
       "title": "Aviso de actualizaciones y mejoras en novedades",
-      "summary": "Se mejor? el aviso de actualizaciones dentro de la app Android y se sincroniz? la p?gina de novedades con la versi?n web.",
+      "summary": "Se mejoró el aviso de actualizaciones dentro de la app Android y se sincronizó la página de novedades con la versión web.",
       "novedades": [
-        "Nuevo di?logo de actualizaci?n en la app Android con m?s detalles: versi?n instalada, nueva revisi?n, fecha, tama?o y novedades.",
-        "La app ahora detecta actualizaciones tambi?n cuando cambia la revisi?n (Rev.), aunque el nombre de versi?n sea el mismo.",
-        "La p?gina de novedades de la APK se sincroniz? con el dise?o y comportamiento de la p?gina web.",
-        "Se agreg? acceso r?pido a Ver novedades desde el aviso de actualizaci?n."
+        "Nuevo diálogo de actualización en la app Android con más detalles: versión instalada, nueva revisión, fecha, tamaño y novedades.",
+        "La app ahora detecta actualizaciones también cuando cambia la revisión (Rev.), aunque el nombre de versión sea el mismo.",
+        "La página de novedades de la APK se sincronizó con el diseño y comportamiento de la página web.",
+        "Se agregó acceso rápido a Ver novedades desde el aviso de actualización."
       ],
       "correcciones": [
-        "Se corrigi? la visualizaci?n de la revisi?n, mostrando Rev. N en lugar de C?digo N.",
-        "Se mejor? la consistencia visual entre releases web y releases de la APK.",
-        "Se ajust? el flujo de omitir actualizaci?n para que solo se oculte la revisi?n descartada cuando la actualizaci?n no es obligatoria."
+        "Se corrigió la visualización de la revisión, mostrando Rev. N en lugar de Código N.",
+        "Se mejoró la consistencia visual entre releases web y releases de la APK.",
+        "Se ajustó el flujo de omitir actualización para que solo se oculte la revisión descartada cuando la actualización no es obligatoria."
       ]
     },
     {

@@ -58,6 +58,26 @@ class MainActivity : AppCompatActivity() {
     private val versionPrefs = "app_version"
     private val dismissedVersionCodeKey = "dismissed_version_code"
 
+    // Botón flotante «Cerrar aplicación» que se inyecta en cada página cargada
+    // dentro de la WebView. No depende de que la página web lo incluya.
+    private val exitButtonJs = """
+        (function () {
+          try {
+            if (document.getElementById('unicornioExitBtn')) return;
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.id = 'unicornioExitBtn';
+            b.setAttribute('aria-label', 'Cerrar aplicación');
+            b.textContent = 'Cerrar aplicación';
+            b.style.cssText = 'position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2147483000;padding:9px 14px;border-radius:999px;border:1px solid rgba(192,132,252,.55);background:rgba(76,29,149,.92);color:#F5F3FF;font:600 12px/1.1 Inter,system-ui,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.45);cursor:pointer;-webkit-tap-highlight-color:transparent;';
+            b.onclick = function () {
+              if (window.AndroidApp && AndroidApp.requestClose) { AndroidApp.requestClose(); }
+            };
+            (document.body || document.documentElement).appendChild(b);
+          } catch (e) {}
+        })();
+    """.trimIndent()
+
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -151,6 +171,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                     hideOfflineUi()
                 }
                 view.evaluateJavascript("window.print=function(){if(window.AndroidApp&&AndroidApp.printPage){AndroidApp.printPage();}else{}};", null)
+                view.evaluateJavascript(exitButtonJs, null)
             }
 
             override fun onReceivedError(
@@ -160,7 +181,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
             ) {
                 if (request.isForMainFrame) {
                     val failingUrl = request.url.toString()
-                    // No mostrar modal por fallos de carga en pÃ¡ginas locales empaquetadas.
+                    // No mostrar modal por fallos de carga en páginas locales empaquetadas.
                     if (failingUrl.startsWith("file:///android_asset/")) return
                     lastTriedUrl = failingUrl
                     showOfflineUi()
@@ -221,7 +242,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         swipeRefresh.setOnRefreshListener {
             val current = webView.url ?: ""
             if (current.startsWith("file:///android_asset/")) {
-                // Las pÃ¡ginas locales no necesitan conexiÃ³n para recargarse.
+                // Las páginas locales no necesitan conexión para recargarse.
                 hideOfflineUi()
                 webView.reload()
             } else if (isNetworkAvailable()) {
@@ -238,7 +259,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                 when {
                     offlineDialog?.isShowing == true -> offlineDialog?.dismiss()
                     webView.canGoBack() -> webView.goBack()
-                    else -> finish()
+                    else -> showCloseAppDialog()
                 }
             }
         })
@@ -316,6 +337,19 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
             .create()
         offlineDialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         offlineDialog?.show()
+    }
+
+    private fun showCloseAppDialog() {
+        if (isFinishing || isDestroyed) return
+        AlertDialog.Builder(this)
+            .setTitle("Cerrar aplicación")
+            .setMessage("¿Deseas salir de la aplicación?")
+            .setPositiveButton("Sí, cerrar") { dialog, _ ->
+                dialog.dismiss()
+                finish()
+            }
+            .setNegativeButton("Cancelar") { dialog, _ -> dialog.dismiss() }
+            .show()
     }
 
     private fun showRetryDialog() {
@@ -447,11 +481,11 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         val btnSkip = view.findViewById<TextView>(R.id.btnUpdateSkip)
         val secondaryRow = view.findViewById<LinearLayout>(R.id.updateSecondaryRow)
 
-        title.text = if (required) "Actualizaci?n necesaria" else "Actualizaci?n disponible"
-        versions.text = "Instalada v${BuildConfig.VERSION_NAME}  ?  Nueva v$latestName (Rev. $latestCode)"
+        title.text = if (required) "Actualización necesaria" else "Actualización disponible"
+        versions.text = "Instalada v${BuildConfig.VERSION_NAME}  ·  Nueva v$latestName (Rev. $latestCode)"
 
         val sizeText = formatBytes(sizeBytes)
-        if (sizeText.isNotBlank()) { sizeView.text = "Tama?o: $sizeText"; sizeView.visibility = View.VISIBLE }
+        if (sizeText.isNotBlank()) { sizeView.text = "Tamaño: $sizeText"; sizeView.visibility = View.VISIBLE }
         if (releasedAt.isNotBlank()) { dateView.text = "Fecha: $releasedAt"; dateView.visibility = View.VISIBLE }
         if (sizeText.isBlank() && releasedAt.isBlank()) view.findViewById<LinearLayout>(R.id.updateMetaRow).visibility = View.GONE
 
@@ -461,7 +495,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         }
 
         if (minSupported > BuildConfig.VERSION_CODE) {
-            minView.text = "Esta versi?n requiere la app con Rev. $minSupported o superior."
+            minView.text = "Esta versión requiere la app con Rev. $minSupported o superior."
             minView.visibility = View.VISIBLE
         }
 
@@ -479,7 +513,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                 changesContainer.addView(header)
                 items.take(4).forEach { item ->
                     val row = TextView(this).apply {
-                        text = "? $item"
+                        text = "• $item"
                         setTextColor(Color.parseColor("#C9D8E6"))
                         textSize = 13f
                         setLineSpacing(2 * dp, 1f)
@@ -489,7 +523,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                 }
             }
         } else {
-            summary.text = "Hay una nueva versi?n disponible para descargar."
+            summary.text = "Hay una nueva versión disponible para descargar."
             summary.visibility = View.VISIBLE
         }
 
@@ -513,7 +547,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         btnVersions.setOnClickListener { openReleases() }
         btnClose.setOnClickListener {
             if (required) {
-                Toast.makeText(this, "Esta actualizaci?n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Esta actualización es necesaria para continuar.", Toast.LENGTH_SHORT).show()
             } else {
                 dialog.dismiss()
             }
@@ -536,6 +570,11 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         @JavascriptInterface
         fun closeApp() {
             runOnUiThread { finish() }
+        }
+
+        @JavascriptInterface
+        fun requestClose() {
+            runOnUiThread { this@MainActivity.showCloseAppDialog() }
         }
 
         @JavascriptInterface

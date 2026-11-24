@@ -387,6 +387,12 @@
         var sideNote = document.getElementById('sideNote');
         var urls = ['android-apk/dist/version.json', 'https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/version.json'];
         
+        function releaseAnchor(c) {
+            var vc = parseInt(c.versionCode,10)||0;
+            if (vc > 0) return 'release-v' + vc;
+            var vn = String(c.versionName || '').trim().replace(/[^0-9A-Za-z.]+/g, '-');
+            return 'release-v' + (vn || '0');
+        }
         function renderBreadcrumbs(changes, latestCode) {
             var bc = document.getElementById('versionBreadcrumbs');
             if (!bc) return;
@@ -400,7 +406,7 @@
                 var latest = idx===0 || vc===latestCode;
                 var dup = counts[vn] > 1;
                 var label = 'v' + esc(vn) + (dup ? ' <span class="bc-rev">Rev. ' + esc(vc) + '</span>' : '');
-                return '<li><a href="#release-v' + esc(vc) + '" class="' + (latest?'bc-latest':'') + '">' + (latest?'<i class="fa-solid fa-star" aria-hidden="true"></i> ':'') + label + '</a></li>';
+                return '<li><a href="#' + esc(releaseAnchor(c)) + '" class="' + (latest?'bc-latest':'') + '">' + (latest?'<i class="fa-solid fa-star" aria-hidden="true"></i> ':'') + label + '</a></li>';
             }).join('');
         }
         function hideReleasesLoading(){ var l=document.getElementById('releasesLoading'); if(l) l.style.display='none'; }
@@ -471,7 +477,7 @@
                 var body = groupHTML('Novedades y Mejoras', 'fa-wand-magic-sparkles', 'group-novedades', novedades) +
                            groupHTML('Correcciones de Errores', 'fa-screwdriver-wrench', 'group-correcciones', correcciones) +
                            groupHTML('Cambios', 'fa-circle-check', 'group-novedades', legacy);
-                return '<article id="release-v' + esc(vc) + '" class="release ' + (latest ? 'is-latest' : '') + '">' +
+                return '<article id="' + esc(releaseAnchor(c)) + '" class="release ' + (latest ? 'is-latest' : '') + '">' +
                     '<span class="release-dot" aria-hidden="true"><i class="fa-solid ' + (latest ? 'fa-star' : 'fa-code-branch') + '"></i></span>' +
                     '<div class="release-card" data-spotlight style="--card-sheen:rgba(121,73,181,.22)"><span class="card__sheen" aria-hidden="true"></span>' +
                         '<div class="release-top"><div>' +
