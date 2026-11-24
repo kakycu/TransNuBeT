@@ -2826,37 +2826,56 @@ $faq = [
         return null;
     }
     function setStatus(text, cls) { status.textContent = text || ""; status.className = "apk-download__status" + (cls ? " " + cls : ""); }
+    function fetchJson(url, ms) {
+        ms = ms || 6000;
+        if (window.AbortController) {
+            var ctrl = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); }, ms);
+            return fetch(url, { cache: "no-store", headers: { "Accept": "application/json" }, signal: ctrl.signal })
+                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+                .catch(function (e) { clearTimeout(timer); throw e; });
+        }
+        return Promise.race([
+            fetch(url, { cache: "no-store", headers: { "Accept": "application/json" } }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }),
+            new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout")); }, ms); })
+        ]);
+    }
+    var safety = setTimeout(function () {
+        if (info.textContent.indexOf("Comprobando") !== -1) {
+            info.textContent = "No se pudo comprobar la versión más reciente.";
+            setStatus("Puedes descargar la APK desde el botón.", "");
+        }
+    }, 9000);
     function load(i) {
         if (i >= urls.length) {
+            clearTimeout(safety);
             info.textContent = "No se pudo comprobar la versión más reciente.";
             setStatus("Puedes descargar la APK desde el botón.", "");
             return;
         }
-        fetch(urls[i], { cache: "no-store", headers: { "Accept": "application/json" } })
-            .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-            .then(function (data) {
-                var latestCode = parseInt(data.versionCode, 10) || 0;
-                var latestName = String(data.versionName || "");
-                var apkUrl = String(data.apkUrl || btn.href);
-                var changelog = String(data.changelog || "");
-                btn.href = apkUrl;
-                info.textContent = "Última versión disponible: v" + (latestName || latestCode);
-                var installed = getInstalled();
-                if (!installed) { setStatus("Si ya tienes la app instalada, ábrela para comprobar si necesitas actualizar.", ""); return; }
-                info.textContent = "Instalada: v" + installed.versionName + " · Última: v" + (latestName || latestCode);
-                if (latestCode > installed.versionCode) {
-                    setStatus("Hay una actualización disponible. " + (changelog ? changelog : ""), "is-update");
-                    btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar actualización";
-                } else {
-                    setStatus("Tu app está actualizada.", "is-ok");
-                    btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar APK";
-                }
-            })
-            .catch(function () { load(i + 1); });
+        fetchJson(urls[i], 6000).then(function (data) {
+            clearTimeout(safety);
+            var latestCode = parseInt(data.versionCode, 10) || 0;
+            var latestName = String(data.versionName || "");
+            var apkUrl = String(data.apkUrl || btn.href);
+            var changelog = String(data.changelog || "");
+            btn.href = apkUrl;
+            info.textContent = "Versión actual en servidor: v" + (latestName || latestCode) + " (código " + latestCode + ")";
+            var installed = getInstalled();
+            if (!installed) { setStatus("Si ya tienes la app instalada, ábrela para comprobar si necesitas actualizar.", ""); return; }
+            info.textContent = "Instalada: v" + installed.versionName + " · Última: v" + (latestName || latestCode);
+            if (latestCode > installed.versionCode) {
+                setStatus("Hay una actualización disponible. " + (changelog ? changelog : ""), "is-update");
+                btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar actualización";
+            } else {
+                setStatus("Tu app está actualizada.", "is-ok");
+                btn.innerHTML = "<i class=\"fa-brands fa-android\" aria-hidden=\"true\"></i> Descargar APK";
+            }
+        }).catch(function () { load(i + 1); });
     }
     load(0);
 })();
-</script>
+</script></script>
 <script>
 /* Tasa USD->CUP dinámica (inspirado en cyberforja tasa.js/product-page.js) */
 (function () {
