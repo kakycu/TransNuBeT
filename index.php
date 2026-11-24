@@ -2806,7 +2806,7 @@ $faq = [
       });
   });
 })();
-</script>
+<script>
 /* Comprobación de versión APK (web y APK embebida) */
 (function () {
     var section = document.getElementById("apk-download");
@@ -2849,7 +2849,7 @@ $faq = [
         .catch(function () { info.textContent = "No se pudo comprobar la versión más reciente."; setStatus("Puedes descargar la APK desde el botón.", ""); });
 })();
 </script>
-<script><script>
+<script>
 /* Tasa USD->CUP dinámica (inspirado en cyberforja tasa.js/product-page.js) */
 (function () {
     var KEY = 'cf_tasa_usd_cup';
