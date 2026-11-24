@@ -1,4 +1,4 @@
-﻿package com.unicorniosoftware.app
+package com.unicorniosoftware.app
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
@@ -441,6 +441,8 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         val minView = view.findViewById<TextView>(R.id.updateMinSupported)
         val btnDownload = view.findViewById<TextView>(R.id.btnUpdateDownload)
         val btnNotes = view.findViewById<TextView>(R.id.btnUpdateNotes)
+        val btnVersions = view.findViewById<TextView>(R.id.btnUpdateVersions)
+        val btnClose = view.findViewById<android.widget.ImageButton>(R.id.btnUpdateClose)
         val btnLater = view.findViewById<TextView>(R.id.btnUpdateLater)
         val btnSkip = view.findViewById<TextView>(R.id.btnUpdateSkip)
         val secondaryRow = view.findViewById<LinearLayout>(R.id.updateSecondaryRow)
@@ -505,6 +507,17 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         btnNotes.setOnClickListener {
             dialog.dismiss()
             webView.loadUrl(localHomeUrl + "releases.html")
+        }
+        btnVersions.setOnClickListener {
+            dialog.dismiss()
+            webView.loadUrl(localHomeUrl + "releases.html")
+        }
+        btnClose.setOnClickListener {
+            if (required) {
+                Toast.makeText(this, "Esta actualizaci?n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
+            } else {
+                dialog.dismiss()
+            }
         }
         btnLater.setOnClickListener { dialog.dismiss() }
         btnSkip.setOnClickListener {

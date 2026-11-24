@@ -16,7 +16,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
+            android:gravity="top"
             android:orientation="horizontal">
 
             <FrameLayout
@@ -38,7 +38,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="14dp"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:paddingEnd="8dp">
 
                 <TextView
                     android:id="@+id/updateTitle"
@@ -59,6 +60,16 @@
                     android:textColor="#C084FC"
                     android:textSize="13sp" />
             </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnUpdateClose"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="Cerrar"
+                android:padding="6dp"
+                android:src="@drawable/ic_close"
+                android:tint="#9FB3C8" />
         </LinearLayout>
 
         <TextView
@@ -168,6 +179,18 @@
             android:gravity="center"
             android:text="Ver novedades"
             android:textColor="#EAF2FA"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/btnUpdateVersions"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_update_versions_button"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:text="Control de versiones"
+            android:textColor="#FFFFFF"
             android:textSize="14sp" />
 
         <LinearLayout
