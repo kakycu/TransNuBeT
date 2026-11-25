@@ -309,6 +309,29 @@ function exrate_build_all(): ?array {
 }
 
 /* -------------------------------------------------------------------------
+ * Modo CLI: genera snapshots JSON para la APK (evita CORS en assets locales).
+ * Uso: php api/exchange-rate.php --write-dist
+ * ---------------------------------------------------------------------- */
+if (PHP_SAPI === 'cli' && in_array('--write-dist', $argv ?? [], true)) {
+    $built = exrate_build_all();
+    if ($built === null) {
+        fwrite(STDERR, "No se pudieron obtener tasas
+");
+        exit(1);
+    }
+    $dist = __DIR__ . '/../android-apk/dist';
+    if (!is_dir($dist)) @mkdir($dist, 0777, true);
+    $allPayload = json_encode(['success' => true, 'data' => $built], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $usd = $built['rates']['USD'] ?? null;
+    $usdPayload = json_encode(['success' => true, 'data' => ['rate' => $usd, 'currency_from' => 'USD', 'currency_to' => 'CUP', 'source' => $built['source'] ?? 'eltoque']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    file_put_contents($dist . '/rates.json', $allPayload);
+    file_put_contents($dist . '/rate-usd.json', $usdPayload);
+    fwrite(STDOUT, "ok
+");
+    exit(0);
+}
+
+/* -------------------------------------------------------------------------
  * Modo completo: ?all=1
  * ---------------------------------------------------------------------- */
 $wantAll = isset($_GET['all']) && in_array(strtolower((string)$_GET['all']), ['1', 'true', 'yes'], true);
