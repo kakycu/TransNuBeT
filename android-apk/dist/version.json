@@ -1,17 +1,33 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 16,
-  "versionName": "1.0.8",
+  "versionCode": 17,
+  "versionName": "1.0.9",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Aviso de actualizaci?n m?s compacto, con versiones, fecha y botones Descargar, M?s tarde y Olvidar.",
+  "changelog": "Correcci?n de tasas en APK: lee tasas desde la API remota cuando se abre local, CSS del bot?n de tasas y limpieza de tildes.",
   "required": false,
   "releasedAt": "2026-11-25",
   "minSupportedVersionCode": 1,
   "sizeBytes": 0,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 17,
+      "versionName": "1.0.9",
+      "date": "2026-11-25",
+      "title": "Correcci?n de tasas en APK",
+      "summary": "La APK ya consulta las tasas reales desde la web cuando el asset se abre localmente.",
+      "changelog": "Fix: tasas elTOQUE en APK local, CORS en API, base remota para fetch, estilo del bot?n Ver tasas y correcci?n de mojibake.",
+      "novedades": [
+        "La APK consulta tasas desde unicorniosoftware.gt.tc cuando se abre el asset local.",
+        "Se a?adi? CORS al endpoint de tasas para permitir la consulta remota."
+      ],
+      "correcciones": [
+        "Se corrigi? el bot?n Ver tasas sin estilo en APK.",
+        "Se corrigieron textos con mojibake/tilde mal codificada en el modal de tasas."
+      ]
+    },
     {
       "versionCode": 16,
       "versionName": "1.0.8",

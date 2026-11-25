@@ -9,6 +9,7 @@
  * El token se lee de api/eltoque-token.local.php (no versionado) o de ELTOQUE_API_TOKEN.
  */
 header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
 header('Cache-Control: public, max-age=300');
 
 function exrate_cache_path(): string { return sys_get_temp_dir() . '/transnubet_usd_cup_rate.json'; }

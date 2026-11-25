@@ -3016,6 +3016,7 @@ $faq = [
     var KEY = 'tnb_tasa_usd_cup_v2';
     var REFRESH_MS = 6 * 60 * 60 * 1000;
     var FALLBACK = 960;
+    var RATES_API_BASE = (location.protocol === 'file:') ? 'https://unicorniosoftware.gt.tc' : '';
     function fmt(usd, rate) {
         var cup = Math.round(usd * rate);
         var n = cup.toLocaleString('es-ES');
@@ -3046,7 +3047,7 @@ $faq = [
         return rate;
     }
     function fetchRate() {
-        return fetch('/api/exchange-rate.php', { credentials: 'same-origin' })
+        return fetch(RATES_API_BASE + '/api/exchange-rate.php', { credentials: 'same-origin' })
             .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
             .then(parseRate);
     }
@@ -3199,7 +3200,7 @@ $faq = [
         if (!body.querySelector('table')) {
             body.innerHTML = '<p class="rates-status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cargando tasas...</p>';
         }
-        var url = '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : '');
+        var url = RATES_API_BASE + '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : '');
         fetch(url, { credentials: 'same-origin', cache: 'no-store' })
             .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
             .then(function (j) { if (!j || !j.success) throw new Error('api'); render(j.data || {}); })
