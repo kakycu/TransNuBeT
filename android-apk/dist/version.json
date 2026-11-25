@@ -1,17 +1,36 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 14,
-  "versionName": "1.0.6",
+  "versionCode": 15,
+  "versionName": "1.0.7",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Nueva opción Cerrar aplicación, cambios menores en Facturación, exportación de facturas OFFLINE e importación SQL con exportación XLSX.",
+  "changelog": "Tasas elTOQUE actualizadas en portada y APK, modal de tasas con variaciones, divisas informales y correcci?n del valor CUP en tarjetas.",
   "required": false,
-  "releasedAt": "2026-11-24",
+  "releasedAt": "2026-11-25",
   "minSupportedVersionCode": 1,
   "sizeBytes": 0,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 15,
+      "versionName": "1.0.7",
+      "date": "2026-11-25",
+      "title": "Tasas elTOQUE y modal de tasas en portada",
+      "summary": "La portada web y la APK muestran tasas actualizadas de elTOQUE, con modal detallado y correcci?n del c?lculo CUP en los planes.",
+      "changelog": "Tasas elTOQUE en tiempo real, modal con USD/EUR/MLC/CAD/MXN/ZELLE/CLA y cripto, variaciones 24h y correcci?n de cach? en tarjetas.",
+      "novedades": [
+        "Nuevo modal de \"Ver tasas actuales\" en la secci?n Precios, con tasas del mercado informal y monedas digitales.",
+        "Se muestran variaciones de 24 h, banderas/iconos por moneda, hora en formato 12 h y metadatos en negrita.",
+        "Las tarjetas de planes calculan el CUP con la tasa USD actualizada de elTOQUE.",
+        "Se agreg? modal informativo sobre el mercado informal de divisas en Cuba."
+      ],
+      "correcciones": [
+        "Se corrigi? el valor CUP desactualizado en tarjetas por cach? antigua de tasa (ej. 14.400 CUP con tasa 960).",
+        "Se elimin? la dependencia directa a CyberForja en el frontend; la fuente principal es elTOQUE con cach?/fallback.",
+        "Se ajust? el manejo de actualizaci?n de tasas para refrescar correctamente cuando hay nueva tasa disponible."
+      ]
+    },
     {
       "versionCode": 14,
       "versionName": "1.0.6",
