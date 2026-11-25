@@ -555,7 +555,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         dialog.show()
     }
 
-
+    inner class WebAppBridge {
         @JavascriptInterface
         fun retryConnection() {
             runOnUiThread { this@MainActivity.retryConnection() }
