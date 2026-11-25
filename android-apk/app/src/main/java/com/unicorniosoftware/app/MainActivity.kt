@@ -58,26 +58,7 @@ class MainActivity : AppCompatActivity() {
     private val versionPrefs = "app_version"
     private val dismissedVersionCodeKey = "dismissed_version_code"
 
-    // Botón flotante «Cerrar aplicación» que se inyecta en cada página cargada
-    // dentro de la WebView. No depende de que la página web lo incluya.
-    private val exitButtonJs = """
-        (function () {
-          try {
-            if (document.getElementById('unicornioExitBtn')) return;
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.id = 'unicornioExitBtn';
-            b.setAttribute('aria-label', 'Cerrar aplicación');
-            b.textContent = 'Cerrar aplicación';
-            b.style.cssText = 'position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2147483000;padding:10px 14px;border-radius:8px;border:1px solid #495057;background:#343A40;color:#DEE2E6;font:600 13px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.45);cursor:pointer;-webkit-tap-highlight-color:transparent;';
-            b.onclick = function () {
-              if (window.AndroidApp && AndroidApp.requestClose) { AndroidApp.requestClose(); }
-            };
-            (document.body || document.documentElement).appendChild(b);
-          } catch (e) {}
-        })();
-    """.trimIndent()
-
+    
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->

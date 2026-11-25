@@ -2858,7 +2858,7 @@ $faq = [
         if (!installed) {
             setStatus("Si ya tienes la app instalada, ábrela para comprobar si necesitas actualizar.", "");
         } else {
-            info.textContent = "Instalada: v" + installed.versionName + " · Última: v" + (latestName || latestCode);
+            info.textContent = "Instalada: v" + installed.versionName + " (Rev. " + installed.versionCode + ") · Última: v" + (latestName || latestCode) + " (Rev. " + latestCode + ")";
             if (latestCode > installed.versionCode) {
                 setStatus("Hay una actualización disponible. Toca “Descargar APK” para instalarla.", "is-update");
                 btn.innerHTML = '<i class="fa-brands fa-android" aria-hidden="true"></i> Descargar actualización';

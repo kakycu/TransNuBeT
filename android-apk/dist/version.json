@@ -1,7 +1,7 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 13,
+  "versionCode": 14,
   "versionName": "1.0.6",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
@@ -13,19 +13,23 @@
   "sha256": "",
   "changes": [
     {
-      "versionCode": 13,
+      "versionCode": 14,
       "versionName": "1.0.6",
-      "date": "2026-11-24",
-      "title": "Corrección de acentos y estado de actualización",
-      "summary": "Se corrigieron textos con acentos mal mostrados y se ajustó el mensaje de actualización en la descarga de la APK.",
-      "changelog": "Corrección de tildes/acentos en avisos y mensajes, y estado claro de actualización en la sección APK.",
-      "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
+      "date": "2026-11-25",
+      "title": "Botón de cierre reposicionado y mejoras generales",
+      "summary": "Se movió el cierre de la app a un botón flotante cómodo, se corrigieron acentos y se mejoró el estado de actualización en la descarga APK.",
+      "changelog": "Botón de cerrar app entre los botones flotantes, corrección de tildes y mensaje claro de actualización con Revisiones.",
       "novedades": [
-        "Se corrigieron textos con tildes y acentos que se mostraban mal en avisos y mensajes.",
-        "La sección de descarga APK indica claramente si hay una nueva versión disponible o si ya está actualizada.",
-        "Selector de versiones en Novedades para ir rápido a cualquier revisión."
+        "El botón de cerrar aplicación ahora está entre los botones flotantes de ir arriba e ir abajo, con un icono de salida más cómodo y menos molesto.",
+        "La sección de descarga APK muestra si hay una nueva versión disponible e incluye la Revisión instalada y la última (Rev.).",
+        "Se corrigieron textos con tildes y acentos mal mostrados en avisos y mensajes de la app.",
+        "El selector de versiones en Novedades permite saltar rápido a cualquier revisión sin tapar las tarjetas."
       ],
-      "correcciones": []
+      "correcciones": [
+        "Se reposicionó el botón de cerrar aplicación: antes era un flotante fijo incómodo y ahora queda centrado entre los botones de ir arriba e ir abajo.",
+        "Se corrigieron acentos y caracteres mal mostrados en mensajes, modales y textos de actualización.",
+        "La línea “Instalada / Última” en la descarga APK ahora muestra también la Revisión (Rev.) para evitar confusión cuando el nombre de versión se repite."
+      ]
     },
     {
       "versionCode": 10,
