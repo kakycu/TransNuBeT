@@ -491,6 +491,70 @@ $faq = [
 <link rel="stylesheet" href="/css/portada-licencia.css">
 <link rel="stylesheet" href="/css/styleindex.css">
 <script>document.documentElement.classList.add('js');</script>
+
+<style>
+/* Botón y modal de tasas actuales (elTOQUE) */
+.plan-rates-btn{display:inline-flex;align-items:center;gap:.35rem;margin-top:.95rem;padding:.38rem .9rem;border-radius:999px;border:1px solid rgba(0,212,255,.45);background:rgba(0,212,255,.08);color:#7ee7ff;font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.plan-rates-btn:hover,.plan-rates-btn:focus-visible{background:rgba(0,212,255,.2);border-color:#00D4FF;color:#fff;outline:none}
+.rates-overlay{position:fixed;inset:0;z-index:2200;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(3,7,14,.86);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.rates-overlay[hidden]{display:none}
+.rates-modal{position:relative;width:min(560px,100%);max-height:88vh;overflow:auto;padding:1.4rem 1.4rem 1.1rem;border-radius:16px;border:1px solid rgba(0,212,255,.25);background:linear-gradient(160deg,#0d1524,#070b13);box-shadow:0 30px 80px -20px rgba(0,0,0,.9);color:#e9eef7}
+.rates-x{position:absolute;top:.65rem;right:.65rem;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#cbd5e1;cursor:pointer;transition:background .2s,color .2s}
+.rates-x:hover{background:rgba(255,255,255,.12);color:#fff}
+.rates-head{display:flex;align-items:center;gap:.8rem;padding-right:2.2rem}
+.rates-head-copy{min-width:0;flex:1}
+.rates-title-row{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.rates-head-ico{flex:0 0 auto;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid rgba(0,212,255,.35);background:rgba(0,212,255,.12);color:#00D4FF;font-size:1.15rem}
+.rates-modal h3{margin:0;font-family:"Bebas Neue",Impact,sans-serif;font-size:1.65rem;line-height:1;letter-spacing:.03em;text-transform:uppercase;color:#fff}
+.rates-sub{margin:.25rem 0 0;color:#8fa3bd;font-size:.8rem}
+.rates-sub a{color:#7ee7ff;text-decoration:none}
+.rates-sub a:hover{text-decoration:underline}
+.rates-info-btn{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid rgba(0,212,255,.35);background:rgba(0,212,255,.08);color:#7ee7ff;cursor:pointer;transition:all .2s;font-size:.95rem}
+.rates-info-btn:hover,.rates-info-btn:focus-visible{background:rgba(0,212,255,.22);color:#fff;transform:scale(1.06);outline:none}
+.rates-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin:.85rem 0 .2rem;flex-wrap:wrap}
+.rates-meta{margin:0;color:#8fa3bd;font-size:.78rem;letter-spacing:.02em;flex:1;min-width:180px}
+.rates-toolbar-actions{display:flex;align-items:center;gap:.45rem}
+.rates-icon-btn{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);color:#e9eef7;cursor:pointer;transition:all .2s;font-size:.95rem}
+.rates-icon-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.rates-icon-btn:disabled{opacity:.65;cursor:wait}
+.rates-icon-btn.primary{border-color:#00D4FF;background:rgba(0,212,255,.14);color:#9fefff}
+.rates-icon-btn.primary:hover{background:rgba(0,212,255,.26);color:#fff}
+.rates-icon-btn.is-loading i,.rates-head-ico.is-loading i{animation:rates-spin .85s linear infinite}
+@keyframes rates-spin{to{transform:rotate(360deg)}}
+.rates-info-overlay{z-index:2210}
+.rates-info-modal{max-width:520px}
+.rates-info-body{margin-top:1rem;color:#cbd5e1;font-size:.95rem;line-height:1.7}
+.rates-info-body p{margin:0}
+.rates-table{width:100%;border-collapse:collapse;margin-top:.55rem;font-family:"Exo 2",sans-serif}
+.rates-table th,.rates-table td{padding:.55rem .5rem;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;font-size:.9rem}
+.rates-table th{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#8fa3bd}
+.rates-table tr:last-child td{border-bottom:0}
+.rates-table tbody tr{transition:background .18s ease}
+.rates-table tbody tr:hover{background:rgba(0,212,255,.08)}
+.rates-table tbody tr:hover td{color:#fff}
+.rates-table tbody tr:hover .rates-cur small{color:#a9c0d8}
+.rates-table td.num{text-align:right;font-weight:700;color:#fff;white-space:nowrap}
+.rates-val{display:block}
+.rates-delta{display:block;margin-top:.15rem;font-size:.72rem;font-weight:700;letter-spacing:.02em}
+.rates-delta.is-up{color:#f87171}
+.rates-delta.is-down{color:#34d399}
+.rates-delta.is-flat{color:#94a3b8}
+.rates-cur{display:flex;align-items:center;gap:.6rem;line-height:1.15}
+.rates-cur-txt{display:flex;flex-direction:column}
+.rates-cur b{font-weight:700;color:#fff}
+.rates-cur small{color:#8fa3bd;font-size:.68rem;font-weight:400}
+.rates-flag{flex:0 0 auto;display:block;width:24px;height:16px;border-radius:3px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.18)}
+.rates-flag-coin{width:20px;height:20px;border-radius:50%}
+.rates-status{display:flex;align-items:center;gap:.5rem;margin:.9rem 0 0;padding:.7rem .85rem;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:#cbd5e1;font-size:.85rem}
+.rates-status.is-error{border-color:rgba(255,107,0,.4);background:rgba(255,107,0,.08);color:#ffc9a3}
+.rates-foot{display:flex;align-items:center;justify-content:flex-end;gap:.6rem;flex-wrap:wrap;margin-top:1.1rem;padding-top:.9rem;border-top:1px solid rgba(255,255,255,.08)}
+.rates-btn{display:inline-flex;align-items:center;gap:.45rem;padding:.55rem .95rem;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);color:#e9eef7;font-family:"Exo 2",sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.rates-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.rates-btn:disabled{opacity:.55;cursor:wait}
+.rates-btn.primary{border-color:#00D4FF;background:rgba(0,212,255,.14);color:#9fefff}
+.rates-btn.primary:hover{background:rgba(0,212,255,.26);color:#fff}
+@media (max-width:520px){.rates-modal{padding:1.15rem 1rem .95rem}.rates-table th,.rates-table td{font-size:.82rem;padding:.45rem .35rem}}
+</style>
 </head>
 <body id="top" class="rv-mov">
 
@@ -1301,6 +1365,9 @@ $faq = [
                 <span class="eyebrow">Precios</span>
                 <h2 class="bebas">Planes de licenciamiento</h2>
                 <p>Elige el plan que mejor se adapte al tamaño y ritmo de tu negocio. Activa tu licencia y pon SiGesEmp a trabajar para ti.</p>
+                <button type="button" class="plan-rates-btn" data-rates-open aria-haspopup="dialog">
+                    <i class="fa-solid fa-chart-line" aria-hidden="true"></i> Ver tasas actuales
+                </button>
             </div>
 
             <div class="precios-grid">
@@ -1498,6 +1565,61 @@ $faq = [
         </div>
     </div>
 </footer>
+
+<!-- Modal: tasas de cambio actuales (elTOQUE) -->
+<div class="rates-overlay" id="ratesOverlay" hidden>
+    <div class="rates-modal" role="dialog" aria-modal="true" aria-labelledby="ratesTitle">
+        <button type="button" class="rates-x" id="ratesCloseX" aria-label="Cerrar">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+        <div class="rates-head">
+            <span class="rates-head-ico"><i class="fa-solid fa-money-bill-trend-up" aria-hidden="true"></i></span>
+            <div class="rates-head-copy">
+                <div class="rates-title-row">
+                    <h3 id="ratesTitle">Tasas de cambio actuales</h3>
+                    <button type="button" class="rates-info-btn" id="ratesInfoOpen" aria-label="Informaci?n sobre el mercado informal de divisas" title="Informaci?n">
+                        <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="rates-sub">Fuente: <a href="https://eltoque.com" target="_blank" rel="noopener noreferrer">elTOQUE</a></p>
+            </div>
+        </div>
+        <div class="rates-toolbar">
+            <p class="rates-meta" id="ratesMeta">Consultando tasas...</p>
+            <div class="rates-toolbar-actions">
+                <button type="button" class="rates-icon-btn" id="ratesRefresh" aria-label="Actualizar tasas" title="Actualizar">
+                    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="rates-icon-btn primary" id="ratesClose" aria-label="Entendido" title="Entendido">
+                    <i class="fa-solid fa-check" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        <div id="ratesBody" aria-live="polite"></div>
+    </div>
+</div>
+
+<div class="rates-overlay rates-info-overlay" id="ratesInfoOverlay" hidden>
+    <div class="rates-modal rates-info-modal" role="dialog" aria-modal="true" aria-labelledby="ratesInfoTitle">
+        <button type="button" class="rates-x" id="ratesInfoCloseX" aria-label="Cerrar">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+        <div class="rates-head">
+            <span class="rates-head-ico"><i class="fa-solid fa-image" aria-hidden="true"></i></span>
+            <div class="rates-head-copy">
+                <h3 id="ratesInfoTitle">Mercado informal de divisas en Cuba</h3>
+            </div>
+        </div>
+        <div class="rates-info-body">
+            <p>Consulta aqu? las tasas de cambio de las principales monedas que se intercambian en el mercado informal de divisas en Cuba. Estos valores se calculan en tiempo real y parten de ofertas de compra y venta que monitoreamos en grupos de redes sociales y sirven como una referencia clave para entender el valor real del dinero en la econom?a cubana.</p>
+        </div>
+        <div class="rates-foot">
+            <button type="button" class="rates-btn primary" id="ratesInfoClose">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> Entendido
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Botones flotantes: ir hasta arriba / ir hasta abajo -->
 <div class="scroll-fabs">
@@ -2883,7 +3005,7 @@ $faq = [
 <script>
 /* Tasa USD->CUP dinámica (inspirado en cyberforja tasa.js/product-page.js) */
 (function () {
-    var KEY = 'tnb_tasa_usd_cup';
+    var KEY = 'tnb_tasa_usd_cup_v2';
     var REFRESH_MS = 6 * 60 * 60 * 1000;
     var FALLBACK = 960;
     function fmt(usd, rate) {
@@ -2930,6 +3052,141 @@ $faq = [
     }).catch(function () {
         if (!cached) apply(FALLBACK);
     });
+})();
+</script>
+
+<script>
+/* Modal de tasas actuales (elTOQUE) */
+(function () {
+    var overlay = document.getElementById('ratesOverlay');
+    if (!overlay) return;
+    var body = document.getElementById('ratesBody');
+    var meta = document.getElementById('ratesMeta');
+    var refresh = document.getElementById('ratesRefresh');
+    var lastFocus = null;
+    var loading = false;
+    var LABELS = {
+        USD: 'Dólar estadounidense',
+        EUR: 'Euro',
+        MLC: 'USD en saldo de cuenta bancaria',
+        CAD: 'Dólar canadiense',
+        MXN: 'Peso mexicano',
+        ZELLE: 'Zelle',
+        CLA: 'Clásica',
+        USDT_TRC20: 'Tether (TRC20)',
+        BTC: 'Bitcoin',
+        BNB: 'BNB',
+        TRX: 'TRON'
+    };
+    var ORDER = ['USD', 'EUR', 'MLC', 'CAD', 'MXN', 'ZELLE', 'CLA', 'USDT_TRC20', 'BTC', 'BNB', 'TRX'];
+    var ICONS = {
+        USD: '<svg viewBox="0 0 24 16" class="rates-flag" aria-hidden="true"><rect width="24" height="16" fill="#fff"/><g fill="#B22234"><rect width="24" height="1.23" y="0"/><rect width="24" height="1.23" y="2.46"/><rect width="24" height="1.23" y="4.92"/><rect width="24" height="1.23" y="7.38"/><rect width="24" height="1.23" y="9.84"/><rect width="24" height="1.23" y="12.3"/><rect width="24" height="1.23" y="14.76"/></g><rect width="10" height="8.61" fill="#3C3B6E"/><g fill="#fff"><circle cx="2" cy="2" r=".45"/><circle cx="5" cy="2" r=".45"/><circle cx="8" cy="2" r=".45"/><circle cx="3.5" cy="3.6" r=".45"/><circle cx="6.5" cy="3.6" r=".45"/><circle cx="2" cy="5.2" r=".45"/><circle cx="5" cy="5.2" r=".45"/><circle cx="8" cy="5.2" r=".45"/><circle cx="3.5" cy="6.8" r=".45"/><circle cx="6.5" cy="6.8" r=".45"/></g></svg>',
+        MLC: '<svg viewBox="0 0 24 16" class="rates-flag" aria-hidden="true"><rect width="24" height="16" fill="#fff"/><g fill="#002A8F"><rect width="24" height="3.2" y="0"/><rect width="24" height="3.2" y="6.4"/><rect width="24" height="3.2" y="12.8"/></g><path d="M0 0 L9.6 8 L0 16 Z" fill="#CB1515"/><path d="M4 6.4 L4.63 8.24 L6.57 8.24 L5 9.38 L5.63 11.22 L4 10.08 L2.37 11.22 L3 9.38 L1.43 8.24 L3.37 8.24 Z" fill="#fff"/></svg>',
+        EUR: '<svg viewBox="0 0 24 16" class="rates-flag" aria-hidden="true"><rect width="24" height="16" fill="#003399"/><g fill="#FFCC00"><path transform="translate(12,8) rotate(0) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(30) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(60) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(90) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(120) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(150) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(180) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(210) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(240) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(270) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(300) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/><path transform="translate(12,8) rotate(330) translate(0,-5)" d="M0,-1.1 L0.32,-0.35 L1.1,-0.35 L0.47,0.13 L0.7,0.9 L0,0.42 L-0.7,0.9 L-0.47,0.13 L-1.1,-0.35 L-0.32,-0.35 Z"/></g></svg>',
+        CAD: '<svg viewBox="0 0 24 16" class="rates-flag" aria-hidden="true"><rect width="24" height="16" fill="#fff"/><rect width="6" height="16" fill="#D52B1E"/><rect x="18" width="6" height="16" fill="#D52B1E"/><path d="M12 3.2 L13.4 6 L15.8 5.4 L14.8 7.4 L16.2 8.8 L14 9.2 L14.3 11.4 L12 10.4 L9.7 11.4 L10 9.2 L7.8 8.8 L9.2 7.4 L8.2 5.4 L10.6 6 Z" fill="#D52B1E"/></svg>',
+        MXN: '<svg viewBox="0 0 24 16" class="rates-flag" aria-hidden="true"><rect width="8" height="16" fill="#006847"/><rect x="8" width="8" height="16" fill="#fff"/><rect x="16" width="8" height="16" fill="#CE1126"/><circle cx="12" cy="8" r="1.7" fill="#8C9157"/><path d="M10.8 6.6 L13.2 6.6 L12 9.6 Z" fill="#6B4F1D"/></svg>',
+        ZELLE: '<svg viewBox="0 0 24 16" class="rates-flag" aria-hidden="true"><rect width="24" height="16" rx="3" fill="#6D1ED4"/><text x="12" y="12.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="700" fill="#fff">Z</text></svg>',
+        CLA: '<svg viewBox="0 0 24 16" class="rates-flag" aria-hidden="true"><rect width="24" height="16" rx="2" fill="#1F2937"/><rect width="24" height="3.6" fill="#7C3AED"/><rect x="3" y="9" width="8" height="2.2" rx="1.1" fill="#94A3B8"/><rect x="3" y="12.2" width="5" height="1.6" rx=".8" fill="#475569"/></svg>',
+        USDT_TRC20: '<svg viewBox="0 0 20 20" class="rates-flag rates-flag-coin" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#26A17B"/><text x="10" y="14.4" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="700" fill="#fff">&#8366;</text></svg>',
+        BTC: '<svg viewBox="0 0 20 20" class="rates-flag rates-flag-coin" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#F7931A"/><text x="10" y="14.6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#fff">&#8383;</text></svg>',
+        BNB: '<svg viewBox="0 0 20 20" class="rates-flag rates-flag-coin" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#F3BA2F"/><path d="M10 3.2 L16.8 10 L10 16.8 L3.2 10 Z" fill="#1E2026"/><path d="M10 6.4 L13.6 10 L10 13.6 L6.4 10 Z" fill="#F3BA2F"/></svg>',
+        TRX: '<svg viewBox="0 0 20 20" class="rates-flag rates-flag-coin" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#FF060A"/><path d="M4.2 4.4 L16.2 6 L9.6 16 Z" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M4.2 4.4 L9.6 16" fill="none" stroke="#fff" stroke-width="1.2"/></svg>'
+    };
+
+    function fmt(n) {
+        try { return Number(n).toLocaleString('es-ES', { maximumFractionDigits: 2 }); }
+        catch (e) { return String(n); }
+    }
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+    }
+    function open() {
+        lastFocus = document.activeElement;
+        overlay.hidden = false;
+        document.body.style.overflow = 'hidden';
+        load(false);
+        var x = document.getElementById('ratesCloseX');
+        if (x) x.focus();
+    }
+    function close() {
+        overlay.hidden = true;
+        document.body.style.overflow = '';
+        if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }
+    }
+    function render(data) {
+        var rates = data && data.rates ? data.rates : null;
+        if (!rates) {
+            body.innerHTML = '<p class="rates-status is-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> No se pudieron cargar las tasas.</p>';
+            meta.textContent = '';
+            return;
+        }
+        var keys = ORDER.filter(function (k) { return rates[k] != null; });
+        Object.keys(rates).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+        var changes = data && data.changes ? data.changes : {};
+        var rows = keys.map(function (k) {
+            var ch = changes[k];
+            var delta = '';
+            if (typeof ch === 'number' && isFinite(ch)) {
+                var cls = ch > 0 ? 'is-up' : (ch < 0 ? 'is-down' : 'is-flat');
+                var sign = ch > 0 ? '+' : (ch < 0 ? '\u2212' : '');
+                var arrow = ch > 0 ? '\u25B2' : (ch < 0 ? '\u25BC' : '\u2022');
+                delta = '<span class="rates-delta ' + cls + '">' + arrow + ' ' + sign + fmt(Math.abs(ch)) + '</span>';
+            }
+            return '<tr><td><span class="rates-cur">' + (ICONS[k] || '') +
+                   '<span class="rates-cur-txt"><b>' + esc(k) + '</b><small>' + esc(LABELS[k] || k) + '</small></span></span></td>' +
+                   '<td class="num"><span class="rates-val">' + fmt(rates[k]) + ' CUP</span>' + delta + '</td></tr>';
+        }).join('');
+        body.innerHTML = '<table class="rates-table"><thead><tr><th>Moneda</th><th style="text-align:right">Tasa (CUP)</th></tr></thead><tbody>' + rows + '</tbody></table>';
+        var when = '';
+        if (data.date) {
+            when = String(data.date);
+            if (data.hour != null && data.hour !== '') {
+                var h = parseInt(data.hour, 10);
+                var ampm = h >= 12 ? 'p. m.' : 'a. m.';
+                var h12 = h % 12; if (!h12) h12 = 12;
+                var mm = String(data.minutes == null ? 0 : data.minutes).padStart(2, '0');
+                when += ' ' + h12 + ':' + mm + ' ' + ampm;
+            }
+        }
+        var src = data.source === 'cache' ? 'caché' : 'elTOQUE';
+        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> · ' : '') +
+            'Fuente: <b>' + esc(src) + '</b> · ' +
+            '<b>Valores referenciales (Mercado Informal de Divisas)</b>';
+    }
+    function load(force) {
+        if (loading) return;
+        loading = true;
+        refresh.disabled = true;
+        meta.textContent = 'Consultando tasas…';
+        if (!body.querySelector('table')) {
+            body.innerHTML = '<p class="rates-status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cargando tasas…</p>';
+        }
+        var url = '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : '');
+        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+            .then(function (j) { if (!j || !j.success) throw new Error('api'); render(j.data || {}); })
+            .catch(function () {
+                if (body.querySelector('table')) {
+                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las últimas cargadas.';
+                } else {
+                    body.innerHTML = '<p class="rates-status is-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> No se pudieron obtener las tasas en este momento.</p>';
+                    meta.textContent = '';
+                }
+            })
+            .then(function () { loading = false; refresh.disabled = false; });
+    }
+
+    document.querySelectorAll('[data-rates-open]').forEach(function (b) {
+        b.addEventListener('click', open);
+    });
+    var bx = document.getElementById('ratesCloseX');
+    var bc = document.getElementById('ratesClose');
+    if (bx) bx.addEventListener('click', close);
+    if (bc) bc.addEventListener('click', close);
+    if (refresh) refresh.addEventListener('click', function () { load(true); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) close(); });
 })();
 </script>
 </body>
