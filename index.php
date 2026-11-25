@@ -3047,7 +3047,8 @@ $faq = [
         return rate;
     }
     function fetchRate() {
-        return fetch(RATES_API_BASE + '/api/exchange-rate.php', { credentials: 'same-origin' })
+        var usdUrl = (location.protocol === 'file:') ? 'https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/rate-usd.json?t=' + Date.now() : (RATES_API_BASE + '/api/exchange-rate.php');
+        return fetch(usdUrl, { credentials: location.protocol === 'file:' ? 'omit' : 'same-origin' })
             .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
             .then(parseRate);
     }
@@ -3201,8 +3202,10 @@ $faq = [
         if (!body.querySelector('table')) {
             body.innerHTML = '<p class="rates-status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cargando tasas...</p>';
         }
-        var url = RATES_API_BASE + '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : '');
-        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        var url = (location.protocol === 'file:')
+            ? 'https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/rates.json?t=' + Date.now()
+            : (RATES_API_BASE + '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : ''));
+        fetch(url, { credentials: location.protocol === 'file:' ? 'omit' : 'same-origin', cache: 'no-store' })
             .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
             .then(function (j) { if (!j || !j.success) throw new Error('api'); render(j.data || {}); })
             .catch(function () {

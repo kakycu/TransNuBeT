@@ -1,17 +1,31 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 17,
-  "versionName": "1.0.9",
+  "versionCode": 18,
+  "versionName": "1.0.10",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Correcci?n de tasas en APK: lee tasas desde la API remota cuando se abre local, CSS del bot?n de tasas y limpieza de tildes.",
+  "changelog": "APK lee tasas desde JSON publicado en GitHub raw para evitar CORS en assets locales.",
   "required": false,
   "releasedAt": "2026-11-25",
   "minSupportedVersionCode": 1,
   "sizeBytes": 0,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 18,
+      "versionName": "1.0.10",
+      "date": "2026-11-25",
+      "title": "Tasas en APK sin CORS",
+      "summary": "La APK local lee tasas desde archivos JSON publicados en el repo para evitar bloqueos CORS.",
+      "changelog": "Fix: tasas en APK usando raw.githubusercontent para rate-usd.json y rates.json.",
+      "novedades": [
+        "La APK local consulta rates.json/rate-usd.json publicados en el repo."
+      ],
+      "correcciones": [
+        "Se evit? el bloqueo CORS al abrir el asset local de la APK."
+      ]
+    },
     {
       "versionCode": 17,
       "versionName": "1.0.9",
