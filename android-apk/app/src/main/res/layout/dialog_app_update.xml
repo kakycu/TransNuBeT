@@ -42,7 +42,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-bold"
                     android:lineSpacingExtra="2dp"
-                    android:text="?Nueva versi?n disponible!"
+                    android:text="¡Nueva versión disponible!"
                     android:textColor="#F8F9FA"
                     android:textSize="18sp" />
 
@@ -93,7 +93,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-bold"
                     android:letterSpacing="0.06"
-                    android:text="EN ESTA VERSI?N"
+                    android:text="EN ESTA VERSIÓN"
                     android:textAllCaps="true"
                     android:textColor="#4DABF7"
                     android:textSize="12sp" />
@@ -150,7 +150,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:fontFamily="sans-serif-medium"
-                    android:text="Esta actualizaci?n es necesaria para continuar."
+                    android:text="Esta actualización es necesaria para continuar."
                     android:textColor="#F87171"
                     android:textSize="13sp"
                     android:visibility="gone" />
@@ -188,7 +188,7 @@
                     android:background="@drawable/bg_modal_btn_secondary"
                     android:fontFamily="sans-serif-medium"
                     android:gravity="center"
-                    android:text="M?s tarde"
+                    android:text="Más tarde"
                     android:textColor="#DEE2E6"
                     android:textSize="14sp" />
 
