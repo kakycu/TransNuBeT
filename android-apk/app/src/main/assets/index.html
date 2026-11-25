@@ -2115,7 +2115,7 @@
     var abajo = document.getElementById('btnScrollBottom');
     var cerrarApp = document.getElementById('btnCloseApp');
     var progreso = document.getElementById('scrollProgress');
-    if (!arriba && !abajo && !animar) { return; }
+    if (!arriba && !abajo && !cerrarApp) { return; }
 
     function irArriba() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
     function irAbajo() {
