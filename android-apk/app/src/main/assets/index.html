@@ -28,6 +28,37 @@
 @media (max-width:380px){ .marca-txt b{font-size:1.02rem!important} }
 @media (max-width:300px){ .marca-txt{display:none!important} }
 
+.plan-rates-btn{display:inline-flex;align-items:center;gap:.35rem;margin-top:.95rem;padding:.38rem .9rem;border-radius:999px;border:1px solid rgba(0,212,255,.45);background:rgba(0,212,255,.08);color:#7ee7ff;font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.plan-rates-btn:hover,.plan-rates-btn:focus-visible{background:rgba(0,212,255,.2);border-color:#00D4FF;color:#fff;outline:none}
+.rates-overlay{position:fixed;inset:0;z-index:2200;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(3,7,14,.86);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.rates-overlay[hidden]{display:none}
+.rates-modal{position:relative;width:min(560px,100%);max-height:88vh;overflow:auto;padding:1.4rem 1.4rem 1.1rem;border-radius:16px;border:1px solid rgba(0,212,255,.25);background:linear-gradient(160deg,#0d1524,#070b13);box-shadow:0 30px 80px -20px rgba(0,0,0,.9);color:#e9eef7}
+.rates-x{position:absolute;top:.65rem;right:.65rem;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#cbd5e1;cursor:pointer;transition:background .2s,color .2s}
+.rates-x:hover{background:rgba(255,255,255,.12);color:#fff}
+.rates-head{display:flex;align-items:center;gap:.8rem;padding-right:2.2rem}
+.rates-head-copy{min-width:0;flex:1}
+.rates-title-row{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.rates-head-ico{flex:0 0 auto;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid rgba(0,212,255,.35);background:rgba(0,212,255,.12);color:#00D4FF;font-size:1.15rem}
+.rates-modal h3{margin:0;font-family:"Bebas Neue",Impact,sans-serif;font-size:1.65rem;line-height:1;letter-spacing:.03em;text-transform:uppercase;color:#fff}
+.rates-sub{margin:.25rem 0 0;color:#8fa3bd;font-size:.8rem}
+.rates-sub a{color:#7ee7ff;text-decoration:none}
+.rates-sub a:hover{text-decoration:underline}
+.rates-info-btn{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid rgba(0,212,255,.35);background:rgba(0,212,255,.08);color:#7ee7ff;cursor:pointer;transition:all .2s;font-size:.95rem}
+.rates-info-btn:hover,.rates-info-btn:focus-visible{background:rgba(0,212,255,.22);color:#fff;transform:scale(1.06);outline:none}
+.rates-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin:.85rem 0 .2rem;flex-wrap:wrap}
+.rates-meta{margin:0;color:#8fa3bd;font-size:.78rem;letter-spacing:.02em;flex:1;min-width:180px}
+.rates-toolbar-actions{display:flex;align-items:center;gap:.45rem}
+.rates-icon-btn{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);color:#e9eef7;cursor:pointer;transition:all .2s;font-size:.95rem}
+.rates-icon-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.rates-icon-btn:disabled{opacity:.65;cursor:wait}
+.rates-icon-btn.primary{border-color:#00D4FF;background:rgba(0,212,255,.14);color:#9fefff}
+.rates-icon-btn.primary:hover{background:rgba(0,212,255,.26);color:#fff}
+.rates-icon-btn.is-loading i,.rates-head-ico.is-loading i{animation:rates-spin .85s linear infinite}
+@keyframes rates-spin{to{transform:rotate(360deg)}}
+.rates-info-overlay{z-index:2210}
+.rates-info-modal{max-width:520px}
+.rates-info-body{margin-top:1rem;color:#cbd5e1;font-size:.95rem;line-height:1.7}
+.rates-info-body p{margin:0}
 .rates-overlay{position:fixed;inset:0;z-index:2200;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(3,7,14,.86);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
 .rates-overlay[hidden]{display:none}
 .rates-modal{position:relative;width:min(560px,100%);max-height:88vh;overflow:auto;padding:1.4rem 1.4rem 1.1rem;border-radius:16px;border:1px solid rgba(0,212,255,.25);background:linear-gradient(160deg,#0d1524,#070b13);box-shadow:0 30px 80px -20px rgba(0,0,0,.9);color:#e9eef7}
@@ -1245,6 +1276,7 @@
 </footer>
 
 <!-- Botones flotantes: ir hasta arriba / ir hasta abajo -->
+<!-- Modal: tasas de cambio actuales (elTOQUE) -->
 <div class="rates-overlay" id="ratesOverlay" hidden>
     <div class="rates-modal" role="dialog" aria-modal="true" aria-labelledby="ratesTitle">
         <button type="button" class="rates-x" id="ratesCloseX" aria-label="Cerrar">
@@ -1252,18 +1284,55 @@
         </button>
         <div class="rates-head">
             <span class="rates-head-ico"><i class="fa-solid fa-money-bill-trend-up" aria-hidden="true"></i></span>
-            <div>
-                <h3 id="ratesTitle">Tasas de cambio actuales</h3>
-                <p class="rates-sub">Valores referenciales en CUP. Fuente: <a href="https://eltoque.com" target="_blank" rel="noopener noreferrer">elTOQUE</a></p>
+            <div class="rates-head-copy">
+                <div class="rates-title-row">
+                    <h3 id="ratesTitle">Tasas de cambio actuales</h3>
+                    <button type="button" class="rates-info-btn" id="ratesInfoOpen" aria-label="Informaci?n sobre el mercado informal de divisas" title="Informaci?n">
+                        <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="rates-sub">Fuente: <a href="https://eltoque.com" target="_blank" rel="noopener noreferrer">elTOQUE</a></p>
             </div>
         </div>
-        <p class="rates-meta" id="ratesMeta">Consultando tasas…</p>
+        <div class="rates-toolbar">
+            <p class="rates-meta" id="ratesMeta">Consultando tasas...</p>
+            <div class="rates-toolbar-actions">
+                <button type="button" class="rates-icon-btn" id="ratesRefreshTop" aria-label="Actualizar tasas" title="Actualizar">
+                    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="rates-icon-btn primary" id="ratesCloseTop" aria-label="Entendido" title="Entendido">
+                    <i class="fa-solid fa-check" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
         <div id="ratesBody" aria-live="polite"></div>
         <div class="rates-foot">
             <button type="button" class="rates-btn" id="ratesRefresh">
-                <i class="fa-solid fa-rotate" aria-hidden="true"></i> Actualizar
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Actualizar
             </button>
             <button type="button" class="rates-btn primary" id="ratesClose">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> Entendido
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="rates-overlay rates-info-overlay" id="ratesInfoOverlay" hidden>
+    <div class="rates-modal rates-info-modal" role="dialog" aria-modal="true" aria-labelledby="ratesInfoTitle">
+        <button type="button" class="rates-x" id="ratesInfoCloseX" aria-label="Cerrar">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+        <div class="rates-head">
+            <span class="rates-head-ico"><i class="fa-solid fa-image" aria-hidden="true"></i></span>
+            <div class="rates-head-copy">
+                <h3 id="ratesInfoTitle">Mercado informal de divisas en Cuba</h3>
+            </div>
+        </div>
+        <div class="rates-info-body">
+            <p>Consulta aqu? las tasas de cambio de las principales monedas que se intercambian en el mercado informal de divisas en Cuba. Estos valores se calculan en tiempo real y parten de ofertas de compra y venta que monitoreamos en grupos de redes sociales y sirven como una referencia clave para entender el valor real del dinero en la econom?a cubana.</p>
+        </div>
+        <div class="rates-foot">
+            <button type="button" class="rates-btn primary" id="ratesInfoClose">
                 <i class="fa-solid fa-check" aria-hidden="true"></i> Entendido
             </button>
         </div>
@@ -2603,18 +2672,46 @@
                 when += ' ' + h12 + ':' + mm + ' ' + ampm;
             }
         }
-        var src = data.source === 'cache' ? 'caché' : 'elTOQUE';
-        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> · ' : '') +
-            'Fuente: <b>' + esc(src) + '</b> · ' +
-            '<b>Valores referenciales (Mercado Informal de Divisas)</b>';
+        var src = data.source === 'cache' ? 'cach?' : 'elTOQUE';
+        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> ? ' : '') +
+            'Fuente: <b>' + esc(src) + '</b>';
+    }
+    var refreshTop = document.getElementById('ratesRefreshTop');
+    var closeTop = document.getElementById('ratesCloseTop');
+    var headIco = overlay.querySelector('.rates-head-ico');
+    var infoOverlay = document.getElementById('ratesInfoOverlay');
+    var infoOpen = document.getElementById('ratesInfoOpen');
+    var infoClose = document.getElementById('ratesInfoClose');
+    var infoCloseX = document.getElementById('ratesInfoCloseX');
+    var infoLastFocus = null;
+
+    function setLoading(on) {
+        loading = !!on;
+        [refresh, refreshTop].forEach(function (b) {
+            if (!b) return;
+            b.disabled = loading;
+            b.classList.toggle('is-loading', loading);
+        });
+        if (headIco) headIco.classList.toggle('is-loading', loading);
+    }
+    function openInfo() {
+        if (!infoOverlay) return;
+        infoLastFocus = document.activeElement;
+        infoOverlay.hidden = false;
+        var x = document.getElementById('ratesInfoCloseX');
+        if (x) x.focus();
+    }
+    function closeInfo() {
+        if (!infoOverlay) return;
+        infoOverlay.hidden = true;
+        if (infoLastFocus && infoLastFocus.focus) { try { infoLastFocus.focus(); } catch (e) {} }
     }
     function load(force) {
         if (loading) return;
-        loading = true;
-        refresh.disabled = true;
-        meta.textContent = 'Consultando tasas…';
+        setLoading(true);
+        meta.textContent = 'Consultando tasas...';
         if (!body.querySelector('table')) {
-            body.innerHTML = '<p class="rates-status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cargando tasas…</p>';
+            body.innerHTML = '<p class="rates-status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cargando tasas...</p>';
         }
         var url = '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : '');
         fetch(url, { credentials: 'same-origin', cache: 'no-store' })
@@ -2622,13 +2719,13 @@
             .then(function (j) { if (!j || !j.success) throw new Error('api'); render(j.data || {}); })
             .catch(function () {
                 if (body.querySelector('table')) {
-                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las últimas cargadas.';
+                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las ?ltimas cargadas.';
                 } else {
                     body.innerHTML = '<p class="rates-status is-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> No se pudieron obtener las tasas en este momento.</p>';
                     meta.textContent = '';
                 }
             })
-            .then(function () { loading = false; refresh.disabled = false; });
+            .then(function () { setLoading(false); });
     }
 
     document.querySelectorAll('[data-rates-open]').forEach(function (b) {
@@ -2638,8 +2735,17 @@
     var bc = document.getElementById('ratesClose');
     if (bx) bx.addEventListener('click', close);
     if (bc) bc.addEventListener('click', close);
+    if (closeTop) closeTop.addEventListener('click', close);
     if (refresh) refresh.addEventListener('click', function () { load(true); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) close(); });
+    if (refreshTop) refreshTop.addEventListener('click', function () { load(true); });
+    if (infoOpen) infoOpen.addEventListener('click', openInfo);
+    if (infoClose) infoClose.addEventListener('click', closeInfo);
+    if (infoCloseX) infoCloseX.addEventListener('click', closeInfo);
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        if (infoOverlay && !infoOverlay.hidden) { closeInfo(); return; }
+        if (!overlay.hidden) close();
+    });
 })();
 </script>
 

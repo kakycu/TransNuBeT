@@ -1587,15 +1587,23 @@ $faq = [
         <div class="rates-toolbar">
             <p class="rates-meta" id="ratesMeta">Consultando tasas...</p>
             <div class="rates-toolbar-actions">
-                <button type="button" class="rates-icon-btn" id="ratesRefresh" aria-label="Actualizar tasas" title="Actualizar">
+                <button type="button" class="rates-icon-btn" id="ratesRefreshTop" aria-label="Actualizar tasas" title="Actualizar">
                     <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="rates-icon-btn primary" id="ratesClose" aria-label="Entendido" title="Entendido">
+                <button type="button" class="rates-icon-btn primary" id="ratesCloseTop" aria-label="Entendido" title="Entendido">
                     <i class="fa-solid fa-check" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
         <div id="ratesBody" aria-live="polite"></div>
+        <div class="rates-foot">
+            <button type="button" class="rates-btn" id="ratesRefresh">
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Actualizar
+            </button>
+            <button type="button" class="rates-btn primary" id="ratesClose">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> Entendido
+            </button>
+        </div>
     </div>
 </div>
 
@@ -3150,18 +3158,46 @@ $faq = [
                 when += ' ' + h12 + ':' + mm + ' ' + ampm;
             }
         }
-        var src = data.source === 'cache' ? 'caché' : 'elTOQUE';
-        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> · ' : '') +
-            'Fuente: <b>' + esc(src) + '</b> · ' +
-            '<b>Valores referenciales (Mercado Informal de Divisas)</b>';
+        var src = data.source === 'cache' ? 'cach?' : 'elTOQUE';
+        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> ? ' : '') +
+            'Fuente: <b>' + esc(src) + '</b>';
+    }
+    var refreshTop = document.getElementById('ratesRefreshTop');
+    var closeTop = document.getElementById('ratesCloseTop');
+    var headIco = overlay.querySelector('.rates-head-ico');
+    var infoOverlay = document.getElementById('ratesInfoOverlay');
+    var infoOpen = document.getElementById('ratesInfoOpen');
+    var infoClose = document.getElementById('ratesInfoClose');
+    var infoCloseX = document.getElementById('ratesInfoCloseX');
+    var infoLastFocus = null;
+
+    function setLoading(on) {
+        loading = !!on;
+        [refresh, refreshTop].forEach(function (b) {
+            if (!b) return;
+            b.disabled = loading;
+            b.classList.toggle('is-loading', loading);
+        });
+        if (headIco) headIco.classList.toggle('is-loading', loading);
+    }
+    function openInfo() {
+        if (!infoOverlay) return;
+        infoLastFocus = document.activeElement;
+        infoOverlay.hidden = false;
+        var x = document.getElementById('ratesInfoCloseX');
+        if (x) x.focus();
+    }
+    function closeInfo() {
+        if (!infoOverlay) return;
+        infoOverlay.hidden = true;
+        if (infoLastFocus && infoLastFocus.focus) { try { infoLastFocus.focus(); } catch (e) {} }
     }
     function load(force) {
         if (loading) return;
-        loading = true;
-        refresh.disabled = true;
-        meta.textContent = 'Consultando tasas…';
+        setLoading(true);
+        meta.textContent = 'Consultando tasas...';
         if (!body.querySelector('table')) {
-            body.innerHTML = '<p class="rates-status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cargando tasas…</p>';
+            body.innerHTML = '<p class="rates-status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cargando tasas...</p>';
         }
         var url = '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : '');
         fetch(url, { credentials: 'same-origin', cache: 'no-store' })
@@ -3169,13 +3205,13 @@ $faq = [
             .then(function (j) { if (!j || !j.success) throw new Error('api'); render(j.data || {}); })
             .catch(function () {
                 if (body.querySelector('table')) {
-                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las últimas cargadas.';
+                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las ?ltimas cargadas.';
                 } else {
                     body.innerHTML = '<p class="rates-status is-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> No se pudieron obtener las tasas en este momento.</p>';
                     meta.textContent = '';
                 }
             })
-            .then(function () { loading = false; refresh.disabled = false; });
+            .then(function () { setLoading(false); });
     }
 
     document.querySelectorAll('[data-rates-open]').forEach(function (b) {
@@ -3185,8 +3221,17 @@ $faq = [
     var bc = document.getElementById('ratesClose');
     if (bx) bx.addEventListener('click', close);
     if (bc) bc.addEventListener('click', close);
+    if (closeTop) closeTop.addEventListener('click', close);
     if (refresh) refresh.addEventListener('click', function () { load(true); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) close(); });
+    if (refreshTop) refreshTop.addEventListener('click', function () { load(true); });
+    if (infoOpen) infoOpen.addEventListener('click', openInfo);
+    if (infoClose) infoClose.addEventListener('click', closeInfo);
+    if (infoCloseX) infoCloseX.addEventListener('click', closeInfo);
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        if (infoOverlay && !infoOverlay.hidden) { closeInfo(); return; }
+        if (!overlay.hidden) close();
+    });
 })();
 </script>
 </body>
