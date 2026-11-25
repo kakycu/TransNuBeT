@@ -2581,6 +2581,7 @@
 <script>
 /* Modal de tasas actuales (elTOQUE) */
 (function () {
+    var RATES_API_BASE = (location.protocol === 'file:') ? 'https://unicorniosoftware.gt.tc' : '';
     var overlay = document.getElementById('ratesOverlay');
     if (!overlay) return;
     var body = document.getElementById('ratesBody');
