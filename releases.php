@@ -399,13 +399,13 @@
             var items = (changes || []).map(function(c, idx){
                 var vc = parseInt(c.versionCode,10)||0; var vn = String(c.versionName||vc||'');
                 var rev = vc > 0 ? ' (Rev. ' + vc + ')' : '';
-                var latest = idx===0 ? ' ? ?ltimo lanzamiento' : '';
+                var latest = idx===0 ? ' — Último lanzamiento' : '';
                 return { id: releaseAnchor(c), label: 'v' + vn + rev + latest };
             });
             bc.innerHTML = '<div class="bc-select-row">'
-                + '<label class="bc-select-label" for="versionJump"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> Ir a versi?n</label>'
-                + '<select id="versionJump" class="bc-select" aria-label="Ir a una versi?n">'
-                + '<option value="">Selecciona una versi?n?</option>'
+                + '<label class="bc-select-label" for="versionJump"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> Ir a versión</label>'
+                + '<select id="versionJump" class="bc-select" aria-label="Ir a una versión">'
+                + '<option value="">Selecciona una versión…</option>'
                 + items.map(function(it){ return '<option value="' + esc(it.id) + '">' + esc(it.label) + '</option>'; }).join('')
                 + '</select></div>';
             var sel = document.getElementById('versionJump');

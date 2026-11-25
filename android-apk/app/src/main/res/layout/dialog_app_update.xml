@@ -52,7 +52,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:fontFamily="sans-serif"
-                    android:text="v1.0.0 ? v1.0.1"
+                    android:text="v1.0.0 → v1.0.1"
                     android:textColor="#ADB5BD"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -192,7 +192,7 @@
                     android:gravity="center"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
-                    android:text="M?s tarde"
+                    android:text="Más tarde"
                     android:textColor="#DEE2E6"
                     android:textSize="14sp" />
 

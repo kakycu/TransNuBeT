@@ -40,7 +40,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-bold"
-                    android:text="Cerrar aplicaci?n"
+                    android:text="Cerrar aplicación"
                     android:textColor="#F8F9FA"
                     android:textSize="18sp" />
 
@@ -128,7 +128,7 @@
                 android:gravity="center"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:text="S?, cerrar"
+                android:text="Sí, cerrar"
                 android:textColor="#FFFFFF"
                 android:textSize="14sp" />
         </LinearLayout>

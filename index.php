@@ -816,7 +816,7 @@ $faq = [
         <div class="apk-download__copy">
             <p class="apk-download__text">¡DESCARGA LA APK PARA ANDROID!</p>
             <p class="apk-download__version"><a class="apk-version-btn" id="apkVersionBtn" href="releases.php"><span id="apkVersionInfo">Versión actual en servidor: v1.0.6 (Rev. 11)</span><i class="fa-solid fa-circle-info" aria-hidden="true"></i></a></p>
-            <p class="apk-download__status" id="apkUpdateStatus" aria-live="polite" style="display:none"></p>
+            <p class="apk-download__status" id="apkUpdateStatus" aria-live="polite"></p>
         </div>
         <a class="btn btn-fuego apk-download__btn" id="apkDownloadBtn" href="https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk" download>
             <i class="fa-brands fa-android" aria-hidden="true"></i> Descargar APK
@@ -2860,7 +2860,7 @@ $faq = [
         } else {
             info.textContent = "Instalada: v" + installed.versionName + " · Última: v" + (latestName || latestCode);
             if (latestCode > installed.versionCode) {
-                setStatus("", "is-update");
+                setStatus("Hay una actualización disponible. Toca “Descargar APK” para instalarla.", "is-update");
                 btn.innerHTML = '<i class="fa-brands fa-android" aria-hidden="true"></i> Descargar actualización';
             } else {
                 setStatus("Tu app está actualizada.", "is-ok");

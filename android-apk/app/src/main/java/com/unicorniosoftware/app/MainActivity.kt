@@ -486,13 +486,13 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
 
         val appName = getString(R.string.app_name)
         val latestLabel = "v$latestName"
-        title.text = if (required) "$appName: actualizaci?n necesaria" else "$appName: ?Nueva versi?n $latestLabel disponible!"
-        versions.text = "Instalada v${BuildConfig.VERSION_NAME} (Rev. ${BuildConfig.VERSION_CODE})  ?  Nueva $latestLabel (Rev. $latestCode)"
+        title.text = if (required) "$appName: actualización necesaria" else "$appName: ¡Nueva versión $latestLabel disponible!"
+        versions.text = "Instalada v${BuildConfig.VERSION_NAME} (Rev. ${BuildConfig.VERSION_CODE})  →  Nueva $latestLabel (Rev. $latestCode)"
 
         val sizeText = formatBytes(sizeBytes)
         val hasMeta = sizeText.isNotBlank() || releasedAt.isNotBlank()
         metaRow.visibility = if (hasMeta) View.VISIBLE else View.GONE
-        if (sizeText.isNotBlank()) { sizeView.text = "Tama?o: $sizeText"; sizeView.visibility = View.VISIBLE }
+        if (sizeText.isNotBlank()) { sizeView.text = "Tamaño: $sizeText"; sizeView.visibility = View.VISIBLE }
         if (releasedAt.isNotBlank()) { dateView.text = "Fecha: $releasedAt"; dateView.visibility = View.VISIBLE }
 
         if (required) {
@@ -501,14 +501,14 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         }
 
         if (minSupported > BuildConfig.VERSION_CODE) {
-            minView.text = "Esta versi?n requiere la app con Rev. $minSupported o superior."
+            minView.text = "Esta versión requiere la app con Rev. $minSupported o superior."
             minView.visibility = View.VISIBLE
         }
 
         val flatItems = notes.flatMap { it.second }
         val sectionSummary = when {
-            flatItems.isNotEmpty() -> "Esta versi?n incluye mejoras y novedades para tu app."
-            else -> "Hay una nueva versi?n disponible para descargar."
+            flatItems.isNotEmpty() -> "Esta versión incluye mejoras y novedades para tu app."
+            else -> "Hay una nueva versión disponible para descargar."
         }
         summary.text = sectionSummary
         summary.visibility = View.VISIBLE
@@ -517,7 +517,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
             val dp = resources.displayMetrics.density
             flatItems.take(6).forEach { item ->
                 val row = TextView(this).apply {
-                    text = "?  $item"
+                    text = "•  $item"
                     setTextColor(Color.parseColor("#CED4DA"))
                     textSize = 13f
                     setLineSpacing(2 * dp, 1f)
@@ -545,7 +545,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         }
         btnClose.setOnClickListener {
             if (required) {
-                Toast.makeText(this, "Esta actualizaci?n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Esta actualización es necesaria para continuar.", Toast.LENGTH_SHORT).show()
             } else {
                 dialog.dismiss()
             }
