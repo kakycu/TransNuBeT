@@ -1,7 +1,7 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 11,
+  "versionCode": 12,
   "versionName": "1.0.6",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
@@ -13,17 +13,18 @@
   "sha256": "",
   "changes": [
     {
-      "versionCode": 11,
+      "versionCode": 12,
       "versionName": "1.0.6",
       "date": "2026-11-24",
-      "title": "Nuevo diseño de avisos en la app",
-      "summary": "Se renovó el aviso de actualización y el diálogo para cerrar la aplicación, con un diseño más claro y botones fáciles de usar.",
-      "changelog": "Nuevo diseño del modal de actualización y del cierre de aplicación, con botones Ver lo nuevo y Descargar.",
+      "title": "Mejoras en avisos y navegaci?n de versiones",
+      "summary": "Se mejor? la navegaci?n de versiones, los avisos de la app y la presentaci?n de la descarga en Android.",
+      "changelog": "Selector de versiones en Novedades, iconos en botones de modales y limpieza de la secci?n de descarga APK.",
       "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
       "novedades": [
-        "Nuevo diseño del aviso de actualización, con la información más clara y mejor organizada.",
-        "Botones Ver lo nuevo y Descargar para revisar los cambios o instalar la actualización desde el mismo aviso.",
-        "Nuevo diseño del mensaje de confirmación al cerrar la aplicación, con el mismo estilo visual."
+        "Nuevo selector de versiones en Novedades para ir r?pido a cualquier revisi?n sin ocupar toda la pantalla.",
+        "Botones de los avisos de la app con iconos para identificar mejor cada acci?n.",
+        "Confirmaci?n de cierre con el texto corregido: ?S?, cerrar?.",
+        "La secci?n de descarga APK muestra la versi?n sin listar los cambios debajo."
       ],
       "correcciones": []
     },

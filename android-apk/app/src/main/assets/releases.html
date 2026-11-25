@@ -134,11 +134,11 @@
     .rel-loading .spin{width:1.15rem;height:1.15rem;border:2px solid rgba(121,73,181,.25);border-top-color:#7949B5;border-radius:50%;animation:relspin .9s linear infinite;flex:0 0 auto;}
     @keyframes relspin{to{transform:rotate(360deg)}}
     .breadcrumbs-wrap{position:sticky;top:calc(var(--nav-h) + .6rem);z-index:40;margin:0 0 1.25rem;padding:.65rem .75rem;border-radius:10px;background:rgba(10,15,26,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(121,73,181,.18);box-shadow:0 10px 30px -20px rgba(0,0,0,.8);}
-    .breadcrumbs{display:flex;flex-wrap:wrap;gap:.6rem;margin:0;padding:0;list-style:none;}
-    .breadcrumbs a,.breadcrumbs span{display:inline-flex;align-items:center;gap:.45rem;padding:.45rem .8rem;border-radius:6px;background:transparent;border:2px solid #7949B5;color:#7949B5;font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-decoration:none;transition:background .2s,color .2s,border-color .2s;}
-    .breadcrumbs a:hover,.breadcrumbs a.is-active{background:#7949B5;color:#fff;border-color:#7949B5;}
-    .breadcrumbs .bc-latest{background:rgba(121,73,181,.18);border-color:#7949B5;color:#c084fc;}.breadcrumbs .bc-latest:hover,.breadcrumbs .bc-latest.is-active{background:#7949B5;color:#fff;border-color:#7949B5;}
-    .breadcrumbs .bc-rev{display:inline-flex;align-items:center;padding:.08rem .4rem;border-radius:999px;background:rgba(121,73,181,.28);border:1px solid rgba(121,73,181,.55);color:#fff;font-size:.62rem;letter-spacing:.03em;text-transform:uppercase;}
+    .bc-select-row{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;}
+    .bc-select-label{font-family:"Exo 2",sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#c084fc;display:inline-flex;align-items:center;gap:.45rem;white-space:nowrap;}
+    .bc-select{flex:1;min-width:220px;max-width:420px;appearance:none;-webkit-appearance:none;padding:.62rem 2.4rem .62rem .9rem;border-radius:8px;border:2px solid #7949B5;background-color:rgba(121,73,181,.12);color:#f8fafc;font-family:"Exo 2",sans-serif;font-size:.82rem;font-weight:700;letter-spacing:.02em;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c084fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .8rem center;transition:border-color .2s,background-color .2s;}
+    .bc-select:hover,.bc-select:focus{outline:none;border-color:#a855f7;background-color:rgba(121,73,181,.22);}
+    .bc-select option{background:#0a0f1a;color:#f8fafc;font-weight:600;padding:.5rem;}
     .release-right{display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;}
     .release-platforms{display:inline-flex;align-items:center;gap:.5rem;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#cbd5e1;font-family:"Exo 2",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;}
     .release-platforms i{color:#94a3b8;font-size:.85rem;}
@@ -228,7 +228,7 @@
         <section class="rel-main">
             <div class="wrap rel-layout">
                 <div>
-                                        <nav aria-label="Versiones" class="breadcrumbs-wrap"><ul class="breadcrumbs" id="versionBreadcrumbs"></ul></nav>
+                                        <nav aria-label="Versiones" class="breadcrumbs-wrap"><div id="versionBreadcrumbs"></div></nav>
                     <div id="releasesTimeline" class="timeline" aria-live="polite">
                         <div class="loading"><span class="rel-loading" style="margin:0"><span class="spin" aria-hidden="true"></span><span>Cargando la línea de tiempo de versiones…</span></span></div>
                     </div>
@@ -395,18 +395,24 @@
         function renderBreadcrumbs(changes, latestCode) {
             var bc = document.getElementById('versionBreadcrumbs');
             if (!bc) return;
-            var counts = {};
-            changes.forEach(function (c) {
-                var n = String(c.versionName || c.versionCode || '');
-                counts[n] = (counts[n] || 0) + 1;
-            });
-            bc.innerHTML = changes.map(function(c, idx){
+            var items = (changes || []).map(function(c, idx){
                 var vc = parseInt(c.versionCode,10)||0; var vn = String(c.versionName||vc||'');
-                var latest = idx===0 || vc===latestCode;
-                var dup = counts[vn] > 1;
-                var label = 'v' + esc(vn) + (dup ? ' <span class="bc-rev">Rev. ' + esc(vc) + '</span>' : '');
-                return '<li><a href="#' + esc(releaseAnchor(c)) + '" class="' + (latest?'bc-latest':'') + '">' + (latest?'<i class="fa-solid fa-star" aria-hidden="true"></i> ':'') + label + '</a></li>';
-            }).join('');
+                var rev = vc > 0 ? ' (Rev. ' + vc + ')' : '';
+                var latest = idx===0 ? ' ? ?ltimo lanzamiento' : '';
+                return { id: releaseAnchor(c), label: 'v' + vn + rev + latest };
+            });
+            bc.innerHTML = '<div class="bc-select-row">'
+                + '<label class="bc-select-label" for="versionJump"><i class="fa-solid fa-code-branch" aria-hidden="true"></i> Ir a versi?n</label>'
+                + '<select id="versionJump" class="bc-select" aria-label="Ir a una versi?n">'
+                + '<option value="">Selecciona una versi?n?</option>'
+                + items.map(function(it){ return '<option value="' + esc(it.id) + '">' + esc(it.label) + '</option>'; }).join('')
+                + '</select></div>';
+            var sel = document.getElementById('versionJump');
+            if (sel) sel.addEventListener('change', function(){
+                if (!this.value) return;
+                var t = document.getElementById(this.value);
+                if (t) { t.scrollIntoView({behavior:'smooth', block:'start'}); history.replaceState(null,'','#' + this.value); }
+            });
         }
         function hideReleasesLoading(){ var l=document.getElementById('releasesLoading'); if(l) l.style.display='none'; }
 
