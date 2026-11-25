@@ -1,4 +1,4 @@
-package com.unicorniosoftware.app
+﻿package com.unicorniosoftware.app
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
@@ -152,7 +152,6 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                     hideOfflineUi()
                 }
                 view.evaluateJavascript("window.print=function(){if(window.AndroidApp&&AndroidApp.printPage){AndroidApp.printPage();}else{}};", null)
-                view.evaluateJavascript(exitButtonJs, null)
             }
 
             override fun onReceivedError(
@@ -162,7 +161,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
             ) {
                 if (request.isForMainFrame) {
                     val failingUrl = request.url.toString()
-                    // No mostrar modal por fallos de carga en páginas locales empaquetadas.
+                    // No mostrar modal por fallos de carga en pÃ¡ginas locales empaquetadas.
                     if (failingUrl.startsWith("file:///android_asset/")) return
                     lastTriedUrl = failingUrl
                     showOfflineUi()
@@ -223,7 +222,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         swipeRefresh.setOnRefreshListener {
             val current = webView.url ?: ""
             if (current.startsWith("file:///android_asset/")) {
-                // Las páginas locales no necesitan conexión para recargarse.
+                // Las pÃ¡ginas locales no necesitan conexiÃ³n para recargarse.
                 hideOfflineUi()
                 webView.reload()
             } else if (isNetworkAvailable()) {
@@ -302,7 +301,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
     private fun showOfflineDialog() {
         if (offlineDialog?.isShowing == true) return
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_no_connection, null, false)
-        view.findViewById<TextView>(R.id.offlineStatus).text = "Se requiere conexión a internet"
+        view.findViewById<TextView>(R.id.offlineStatus).text = "Se requiere conexiÃ³n a internet"
         view.findViewById<View>(R.id.btnOfflineRetry).setOnClickListener {
             offlineDialog?.dismiss()
             retryConnection()
@@ -340,7 +339,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
     private fun showRetryDialog() {
         if (retryDialog?.isShowing == true) return
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_retrying, null, false)
-        view.findViewById<TextView>(R.id.retryStatus).text = "Comprobando tu conexión a internet..."
+        view.findViewById<TextView>(R.id.retryStatus).text = "Comprobando tu conexiÃ³n a internet..."
         retryDialog = AlertDialog.Builder(this)
             .setView(view)
             .setCancelable(false)
@@ -467,13 +466,13 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
 
         val appName = getString(R.string.app_name)
         val latestLabel = "v$latestName"
-        title.text = if (required) "$appName: actualización necesaria" else "$appName: ¡Nueva versión $latestLabel disponible!"
-        versions.text = "Instalada v${BuildConfig.VERSION_NAME} (Rev. ${BuildConfig.VERSION_CODE})  →  Nueva $latestLabel (Rev. $latestCode)"
+        title.text = if (required) "$appName: actualizaciÃ³n necesaria" else "$appName: Â¡Nueva versiÃ³n $latestLabel disponible!"
+        versions.text = "Instalada v${BuildConfig.VERSION_NAME} (Rev. ${BuildConfig.VERSION_CODE})  â†’  Nueva $latestLabel (Rev. $latestCode)"
 
         val sizeText = formatBytes(sizeBytes)
         val hasMeta = sizeText.isNotBlank() || releasedAt.isNotBlank()
         metaRow.visibility = if (hasMeta) View.VISIBLE else View.GONE
-        if (sizeText.isNotBlank()) { sizeView.text = "Tamaño: $sizeText"; sizeView.visibility = View.VISIBLE }
+        if (sizeText.isNotBlank()) { sizeView.text = "TamaÃ±o: $sizeText"; sizeView.visibility = View.VISIBLE }
         if (releasedAt.isNotBlank()) { dateView.text = "Fecha: $releasedAt"; dateView.visibility = View.VISIBLE }
 
         if (required) {
@@ -482,14 +481,14 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         }
 
         if (minSupported > BuildConfig.VERSION_CODE) {
-            minView.text = "Esta versión requiere la app con Rev. $minSupported o superior."
+            minView.text = "Esta versiÃ³n requiere la app con Rev. $minSupported o superior."
             minView.visibility = View.VISIBLE
         }
 
         val flatItems = notes.flatMap { it.second }
         val sectionSummary = when {
-            flatItems.isNotEmpty() -> "Esta versión incluye mejoras y novedades para tu app."
-            else -> "Hay una nueva versión disponible para descargar."
+            flatItems.isNotEmpty() -> "Esta versiÃ³n incluye mejoras y novedades para tu app."
+            else -> "Hay una nueva versiÃ³n disponible para descargar."
         }
         summary.text = sectionSummary
         summary.visibility = View.VISIBLE
@@ -498,7 +497,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
             val dp = resources.displayMetrics.density
             flatItems.take(6).forEach { item ->
                 val row = TextView(this).apply {
-                    text = "•  $item"
+                    text = "â€¢  $item"
                     setTextColor(Color.parseColor("#CED4DA"))
                     textSize = 13f
                     setLineSpacing(2 * dp, 1f)
@@ -526,7 +525,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         }
         btnClose.setOnClickListener {
             if (required) {
-                Toast.makeText(this, "Esta actualización es necesaria para continuar.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Esta actualizaciÃ³n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
             } else {
                 dialog.dismiss()
             }
@@ -577,7 +576,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
                     val adapter = webView.createPrintDocumentAdapter(jobName)
                     printManager.print(jobName, adapter, PrintAttributes.Builder().build())
                 } catch (_: Exception) {
-                    Toast.makeText(this@MainActivity, "No se pudo iniciar la impresión", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "No se pudo iniciar la impresiÃ³n", Toast.LENGTH_SHORT).show()
                 }
             }
         }
