@@ -2883,7 +2883,7 @@ $faq = [
 <script>
 /* Tasa USD->CUP dinámica (inspirado en cyberforja tasa.js/product-page.js) */
 (function () {
-    var KEY = 'cf_tasa_usd_cup';
+    var KEY = 'tnb_tasa_usd_cup';
     var REFRESH_MS = 6 * 60 * 60 * 1000;
     var FALLBACK = 960;
     function fmt(usd, rate) {
@@ -2918,12 +2918,7 @@ $faq = [
     function fetchRate() {
         return fetch('/api/exchange-rate.php', { credentials: 'same-origin' })
             .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
-            .then(parseRate)
-            .catch(function () {
-                return fetch('https://cyberforja.com/api/exchange-rate', { credentials: 'omit' })
-                    .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
-                    .then(parseRate);
-            });
+            .then(parseRate);
     }
     var cached = readCache();
     if (cached && typeof cached.rate === 'number') apply(cached.rate);

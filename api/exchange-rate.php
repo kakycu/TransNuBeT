@@ -33,7 +33,14 @@ function exrate_http_json(string $url, array $headers = [], int $timeout = 6): ?
             CURLOPT_CONNECTTIMEOUT => $timeout,
             CURLOPT_HTTPHEADER => $h,
             CURLOPT_USERAGENT => 'TransNuBeT-rate-proxy/1.0',
+            CURLOPT_SSL_VERIFYPEER => true,
         ]);
+        $cacert = ini_get('curl.cainfo') ?: ini_get('openssl.cafile');
+        if (!$cacert || !is_file($cacert)) {
+            // Entorno local Windows/USBWebServer a veces sin CA bundle configurado.
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        }
         $raw = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
