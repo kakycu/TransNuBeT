@@ -1,17 +1,33 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 15,
-  "versionName": "1.0.7",
+  "versionCode": 16,
+  "versionName": "1.0.8",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "Tasas elTOQUE actualizadas en portada y APK, modal de tasas con variaciones, divisas informales y correcci?n del valor CUP en tarjetas.",
+  "changelog": "Aviso de actualizaci?n m?s compacto, con versiones, fecha y botones Descargar, M?s tarde y Olvidar.",
   "required": false,
   "releasedAt": "2026-11-25",
   "minSupportedVersionCode": 1,
   "sizeBytes": 0,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 16,
+      "versionName": "1.0.8",
+      "date": "2026-11-25",
+      "title": "Aviso de actualizaci?n compacto",
+      "summary": "El modal de nueva versi?n ahora es m?s peque?o y claro, mostrando solo lo esencial.",
+      "changelog": "Modal de actualizaci?n compacto con diferencia de versiones, fecha y acciones Descargar, M?s tarde y Olvidar.",
+      "novedades": [
+        "El aviso de nueva versi?n muestra la versi?n instalada, la nueva versi?n y la fecha.",
+        "Botones claros: Descargar, M?s tarde y Olvidar."
+      ],
+      "correcciones": [
+        "Se corrigi? la codificaci?n de textos en el modal de actualizaci?n.",
+        "Se redujo el tama?o del modal para que sea menos invasivo."
+      ]
+    },
     {
       "versionCode": 15,
       "versionName": "1.0.7",

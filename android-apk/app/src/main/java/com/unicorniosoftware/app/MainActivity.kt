@@ -452,59 +452,25 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_app_update, null, false)
         val title = view.findViewById<TextView>(R.id.updateTitle)
         val versions = view.findViewById<TextView>(R.id.updateVersions)
-        val summary = view.findViewById<TextView>(R.id.updateSummary)
-        val metaRow = view.findViewById<LinearLayout>(R.id.updateMetaRow)
-        val sizeView = view.findViewById<TextView>(R.id.updateSize)
         val dateView = view.findViewById<TextView>(R.id.updateDate)
         val requiredView = view.findViewById<TextView>(R.id.updateRequired)
-        val changesContainer = view.findViewById<LinearLayout>(R.id.updateChangesContainer)
-        val minView = view.findViewById<TextView>(R.id.updateMinSupported)
         val btnDownload = view.findViewById<TextView>(R.id.btnUpdateDownload)
-        val btnNotes = view.findViewById<TextView>(R.id.btnUpdateNotes)
         val btnClose = view.findViewById<android.widget.ImageButton>(R.id.btnUpdateClose)
         val btnLater = view.findViewById<TextView>(R.id.btnUpdateLater)
+        val btnSkip = view.findViewById<TextView>(R.id.btnUpdateSkip)
 
-        val appName = getString(R.string.app_name)
-        val latestLabel = "v$latestName"
-        title.text = if (required) "$appName: actualizaciÃ³n necesaria" else "$appName: Â¡Nueva versiÃ³n $latestLabel disponible!"
-        versions.text = "Instalada v${BuildConfig.VERSION_NAME} (Rev. ${BuildConfig.VERSION_CODE})  â†’  Nueva $latestLabel (Rev. $latestCode)"
+        title.text = if (required) "Actualizaci?n necesaria" else "Nueva versi?n disponible"
+        versions.text = "Instalada: v${BuildConfig.VERSION_NAME} (Rev. ${BuildConfig.VERSION_CODE})\nNueva: v$latestName (Rev. $latestCode)"
 
-        val sizeText = formatBytes(sizeBytes)
-        val hasMeta = sizeText.isNotBlank() || releasedAt.isNotBlank()
-        metaRow.visibility = if (hasMeta) View.VISIBLE else View.GONE
-        if (sizeText.isNotBlank()) { sizeView.text = "TamaÃ±o: $sizeText"; sizeView.visibility = View.VISIBLE }
-        if (releasedAt.isNotBlank()) { dateView.text = "Fecha: $releasedAt"; dateView.visibility = View.VISIBLE }
+        if (releasedAt.isNotBlank()) {
+            dateView.text = "Fecha: $releasedAt"
+            dateView.visibility = View.VISIBLE
+        }
 
-        if (required) {
+        if (required || minSupported > BuildConfig.VERSION_CODE) {
             requiredView.visibility = View.VISIBLE
             btnLater.visibility = View.GONE
-        }
-
-        if (minSupported > BuildConfig.VERSION_CODE) {
-            minView.text = "Esta versiÃ³n requiere la app con Rev. $minSupported o superior."
-            minView.visibility = View.VISIBLE
-        }
-
-        val flatItems = notes.flatMap { it.second }
-        val sectionSummary = when {
-            flatItems.isNotEmpty() -> "Esta versiÃ³n incluye mejoras y novedades para tu app."
-            else -> "Hay una nueva versiÃ³n disponible para descargar."
-        }
-        summary.text = sectionSummary
-        summary.visibility = View.VISIBLE
-
-        if (flatItems.isNotEmpty()) {
-            val dp = resources.displayMetrics.density
-            flatItems.take(6).forEach { item ->
-                val row = TextView(this).apply {
-                    text = "â€¢  $item"
-                    setTextColor(Color.parseColor("#CED4DA"))
-                    textSize = 13f
-                    setLineSpacing(2 * dp, 1f)
-                    setPadding((4 * dp).toInt(), (4 * dp).toInt(), 0, (4 * dp).toInt())
-                }
-                changesContainer.addView(row)
-            }
+            btnSkip.visibility = View.GONE
         }
 
         val dialog = AlertDialog.Builder(this)
@@ -518,19 +484,18 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
             catch (_: Exception) { Toast.makeText(this, "No se pudo abrir la descarga", Toast.LENGTH_SHORT).show() }
             if (!required) dialog.dismiss()
         }
-        btnNotes.setOnClickListener {
-            dialog.dismiss()
-            try { webView.loadUrl("file:///android_asset/releases.html") }
-            catch (_: Exception) { webView.loadUrl("https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/releases.html") }
-        }
         btnClose.setOnClickListener {
             if (required) {
-                Toast.makeText(this, "Esta actualizaciÃ³n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Esta actualizaci?n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
             } else {
                 dialog.dismiss()
             }
         }
         btnLater.setOnClickListener { dialog.dismiss() }
+        btnSkip.setOnClickListener {
+            getSharedPreferences(versionPrefs, MODE_PRIVATE).edit().putInt(dismissedVersionCodeKey, latestCode).apply()
+            dialog.dismiss()
+        }
 
         dialog.show()
     }

@@ -11,8 +11,8 @@ android {
         applicationId = "com.unicorniosoftware.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.0.7"
+        versionCode = 16
+        versionName = "1.0.8"
     }
 
     signingConfigs {
