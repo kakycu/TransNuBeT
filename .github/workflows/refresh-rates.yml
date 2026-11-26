@@ -1,0 +1,49 @@
+name: Refresh APK rate snapshots
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-rates
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, json
+
+      - name: Refresh snapshots
+        env:
+          ELTOQUE_API_TOKEN: ${{ secrets.ELTOQUE_API_TOKEN }}
+        run: php api/exchange-rate.php --write-dist
+
+      - name: Commit refreshed snapshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android-apk/dist/rates.json android-apk/dist/rate-usd.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Actualizar snapshots de tasas [skip ci]"
+          for i in 1 2 3; do
+            if git pull --rebase origin main; then
+              break
+            fi
+          done
+          git push origin HEAD:main
