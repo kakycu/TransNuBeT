@@ -59,12 +59,83 @@ jobs:
           path: android-apk/dist/EcosisUnicorn.apk
           if-no-files-found: error
 
+      # Cada build publica (o actualiza) un release de GitHub con el APK y su
+      # changelog, tomando versionCode/versionName del build.gradle.kts.
+      # Etiqueta: v<versionName> (p. ej. v1.0.19). Si esa etiqueta ya existe
+      # pero con otra revisión, se usa v<versionName>-r<versionCode> para no
+      # pisar el histórico.
+      - name: Publicar release de la APK en GitHub
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VC=$(grep -oP 'versionCode\s*=\s*\K\d+' android-apk/app/build.gradle.kts | head -1)
+          VN=$(grep -oP 'versionName\s*=\s*"\K[^"]+' android-apk/app/build.gradle.kts | head -1)
+          TAG="v${VN}"
+          TITLE="EcosisUnicorn v${VN} (Rev. ${VC})"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            EXISTING=$(gh release view "$TAG" --json name --jq '.name // ""')
+            if [[ "$EXISTING" != *"(Rev. ${VC})"* ]]; then
+              TAG="${TAG}-r${VC}"
+            fi
+          fi
+
+          python3 - "$VC" "$VN" > /tmp/release-notes.md <<'PY'
+          import json, sys
+          vc, vn = int(sys.argv[1]), sys.argv[2]
+          try:
+              data = json.load(open('android-apk/dist/version.json', encoding='utf-8'))
+          except Exception:
+              data = {}
+          entry = next((c for c in data.get('changes', []) if int(c.get('versionCode', -1)) == vc), None)
+          out = [f"**EcosisUnicorn v{vn} · Revisión {vc}**"]
+          if entry:
+              if entry.get('summary'):
+                  out += ["", str(entry['summary'])]
+              if entry.get('changelog'):
+                  out += ["", f"> {entry['changelog']}"]
+              for title, key in (("Novedades", "novedades"), ("Correcciones", "correcciones")):
+                  items = entry.get(key) or []
+                  if items:
+                      out += ["", f"### {title}"] + [f"- {i}" for i in items]
+              if entry.get('date'):
+                  out += ["", f"_Fecha: {entry['date']}_"]
+          out += ["", "---", "_Release publicado automáticamente por el workflow **Build Android APK**._"]
+          print("\n".join(out))
+          PY
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" android-apk/dist/EcosisUnicorn.apk --clobber
+            gh release edit "$TAG" --name "$TITLE" --notes-file /tmp/release-notes.md --latest || \
+              gh release edit "$TAG" --name "$TITLE" --notes-file /tmp/release-notes.md
+          else
+            gh release create "$TAG" android-apk/dist/EcosisUnicorn.apk \
+              --name "$TITLE" --notes-file /tmp/release-notes.md --latest --target "$GITHUB_SHA"
+          fi
+
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/EcosisUnicorn.apk"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Release publicado: $TITLE -> $URL"
+
+      # version.json (lo leen la web y el comprobador de la APK) queda apuntando
+      # al APK del release, de modo que cada revisión queda archivada en GitHub.
+      - name: Apuntar version.json al APK del release
+        if: steps.release.outputs.url != ''
+        run: |
+          jq --arg url "${{ steps.release.outputs.url }}" '.apkUrl = $url' android-apk/dist/version.json > version.json.tmp
+          mv version.json.tmp android-apk/dist/version.json
+          grep -q 'releases/download' android-apk/dist/version.json
+          echo "apkUrl -> ${{ steps.release.outputs.url }}"
+
       - name: Commit updated APK to dist
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f android-apk/dist/EcosisUnicorn.apk android-apk/dist/rates.json android-apk/dist/rate-usd.json
+          git add -f android-apk/dist/EcosisUnicorn.apk android-apk/dist/rates.json android-apk/dist/rate-usd.json android-apk/dist/version.json
           if git diff --cached --quiet; then
             echo "No APK changes to commit"
             exit 0

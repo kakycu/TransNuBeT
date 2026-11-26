@@ -874,7 +874,7 @@ $faq = [
     <a href="#ecosistema" class="hero-scroll" aria-label="Desplazarse hacia abajo"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></a>
 </header>
 
-<section class="apk-download" aria-label="Descarga la app para Android" id="apk-download" data-apk-version-url="android-apk/dist/version.json" data-apk-version-fallback="https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/version.json">
+<section class="apk-download" aria-label="Descarga la app para Android" id="apk-download" data-apk-version-url="https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/version.json" data-apk-version-fallback="android-apk/dist/version.json">
     <div class="wrap apk-download__inner">
         <img src="/images/logo.png" alt="Logo UnicornioSoftware" class="apk-download__logo" width="56" height="56" loading="lazy" decoding="async">
         <div class="apk-download__copy">
