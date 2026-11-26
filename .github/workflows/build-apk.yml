@@ -33,17 +33,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: curl, json
-
-      - name: Refresh APK rate snapshots
-        env:
-          ELTOQUE_API_TOKEN: ${{ secrets.ELTOQUE_API_TOKEN }}
-        run: php api/exchange-rate.php --write-dist || echo "No se pudieron refrescar snapshots de tasas; se conservan los existentes"
-
       - name: Install Android SDK components
         run: |
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true

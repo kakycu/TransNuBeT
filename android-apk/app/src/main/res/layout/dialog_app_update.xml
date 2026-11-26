@@ -36,7 +36,7 @@
                 android:layout_marginStart="10dp"
                 android:layout_weight="1"
                 android:fontFamily="sans-serif-bold"
-                android:text="Nueva versi?n disponible"
+                android:text="Nueva versión disponible"
                 android:textColor="#F8F9FA"
                 android:textSize="17sp" />
 
@@ -83,7 +83,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:fontFamily="sans-serif-medium"
-            android:text="Esta actualizaci?n es necesaria para continuar."
+            android:text="Esta actualización es necesaria para continuar."
             android:textColor="#F87171"
             android:textSize="13sp"
             android:visibility="gone" />
@@ -128,7 +128,7 @@
                     android:gravity="center"
                     android:paddingStart="14dp"
                     android:paddingEnd="14dp"
-                    android:text="M?s tarde"
+                    android:text="Más tarde"
                     android:textColor="#DEE2E6"
                     android:textSize="13sp" />
 

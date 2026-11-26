@@ -1,17 +1,33 @@
 {
   "appName": "EcosisUnicorn",
   "packageName": "com.unicorniosoftware.app",
-  "versionCode": 18,
-  "versionName": "1.0.10",
+  "versionCode": 19,
+  "versionName": "1.0.11",
   "apkUrl": "https://github.com/kakycu/TransNuBeT/raw/main/android-apk/dist/EcosisUnicorn.apk",
   "downloadPageUrl": "https://unicorniosoftware.gt.tc/",
-  "changelog": "APK lee tasas desde JSON publicado en GitHub raw para evitar CORS en assets locales.",
+  "changelog": "Las tasas se consultan a elTOQUE solo cuando el usuario lo pide (botón Actualizar / abrir el modal), sin procesos automáticos.",
   "required": false,
   "releasedAt": "2026-11-25",
   "minSupportedVersionCode": 1,
   "sizeBytes": 0,
   "sha256": "",
   "changes": [
+    {
+      "versionCode": 19,
+      "versionName": "1.0.11",
+      "date": "2026-11-25",
+      "title": "Tasas solo a petición tuya",
+      "summary": "La APK consulta las tasas reales de elTOQUE únicamente cuando las solicitas, y se corrigieron tildes mal codificadas.",
+      "changelog": "Consulta de tasas bajo demanda desde la APK (sin tareas automáticas) y corrección de acentos en textos de la app.",
+      "novedades": [
+        "Al tocar \"Ver tasas actuales\" o el botón de actualizar, la APK pide las tasas directamente a elTOQUE desde el propio teléfono.",
+        "Ya no se ejecuta ningún proceso automático de tasas: solo responde a tu solicitud."
+      ],
+      "correcciones": [
+        "Se corrigieron tildes mal codificadas (Información, aplicación, caché, última, versión, botón) en la app y en los avisos.",
+        "Se eliminó la actualización automática de snapshots de tasas; solo se refrescan bajo demanda."
+      ]
+    },
     {
       "versionCode": 18,
       "versionName": "1.0.10",
@@ -23,22 +39,22 @@
         "La APK local consulta rates.json/rate-usd.json publicados en el repo."
       ],
       "correcciones": [
-        "Se evit? el bloqueo CORS al abrir el asset local de la APK."
+        "Se evitó el bloqueo CORS al abrir el asset local de la APK."
       ]
     },
     {
       "versionCode": 17,
       "versionName": "1.0.9",
       "date": "2026-11-25",
-      "title": "Correcci?n de tasas en APK",
+      "title": "Corrección de tasas en APK",
       "summary": "La APK ya consulta las tasas reales desde la web cuando el asset se abre localmente.",
-      "changelog": "Fix: tasas elTOQUE en APK local, CORS en API, base remota para fetch, estilo del bot?n Ver tasas y correcci?n de mojibake.",
+      "changelog": "Fix: tasas elTOQUE en APK local, CORS en API, base remota para fetch, estilo del botón Ver tasas y corrección de mojibake.",
       "novedades": [
         "La APK consulta tasas desde unicorniosoftware.gt.tc cuando se abre el asset local.",
-        "Se a?adi? CORS al endpoint de tasas para permitir la consulta remota."
+        "Se añadió CORS al endpoint de tasas para permitir la consulta remota."
       ],
       "correcciones": [
-        "Se corrigi? el bot?n Ver tasas sin estilo en APK.",
+        "Se corrigió el botón Ver tasas sin estilo en APK.",
         "Se corrigieron textos con mojibake/tilde mal codificada en el modal de tasas."
       ]
     },
@@ -46,16 +62,16 @@
       "versionCode": 16,
       "versionName": "1.0.8",
       "date": "2026-11-25",
-      "title": "Aviso de actualizaci?n compacto",
-      "summary": "El modal de nueva versi?n ahora es m?s peque?o y claro, mostrando solo lo esencial.",
-      "changelog": "Modal de actualizaci?n compacto con diferencia de versiones, fecha y acciones Descargar, M?s tarde y Olvidar.",
+      "title": "Aviso de actualización compacto",
+      "summary": "El modal de nueva versión ahora es más pequeño y claro, mostrando solo lo esencial.",
+      "changelog": "Modal de actualización compacto con diferencia de versiones, fecha y acciones Descargar, Más tarde y Olvidar.",
       "novedades": [
-        "El aviso de nueva versi?n muestra la versi?n instalada, la nueva versi?n y la fecha.",
-        "Botones claros: Descargar, M?s tarde y Olvidar."
+        "El aviso de nueva versión muestra la versión instalada, la nueva versión y la fecha.",
+        "Botones claros: Descargar, Más tarde y Olvidar."
       ],
       "correcciones": [
-        "Se corrigi? la codificaci?n de textos en el modal de actualizaci?n.",
-        "Se redujo el tama?o del modal para que sea menos invasivo."
+        "Se corrigió la codificación de textos en el modal de actualización.",
+        "Se redujo el tamaño del modal para que sea menos invasivo."
       ]
     },
     {
@@ -63,18 +79,18 @@
       "versionName": "1.0.7",
       "date": "2026-11-25",
       "title": "Tasas elTOQUE y modal de tasas en portada",
-      "summary": "La portada web y la APK muestran tasas actualizadas de elTOQUE, con modal detallado y correcci?n del c?lculo CUP en los planes.",
-      "changelog": "Tasas elTOQUE en tiempo real, modal con USD/EUR/MLC/CAD/MXN/ZELLE/CLA y cripto, variaciones 24h y correcci?n de cach? en tarjetas.",
+      "summary": "La portada web y la APK muestran tasas actualizadas de elTOQUE, con modal detallado y corrección del cálculo CUP en los planes.",
+      "changelog": "Tasas elTOQUE en tiempo real, modal con USD/EUR/MLC/CAD/MXN/ZELLE/CLA y cripto, variaciones 24h y corrección de caché en tarjetas.",
       "novedades": [
-        "Nuevo modal de \"Ver tasas actuales\" en la secci?n Precios, con tasas del mercado informal y monedas digitales.",
+        "Nuevo modal de \"Ver tasas actuales\" en la sección Precios, con tasas del mercado informal y monedas digitales.",
         "Se muestran variaciones de 24 h, banderas/iconos por moneda, hora en formato 12 h y metadatos en negrita.",
         "Las tarjetas de planes calculan el CUP con la tasa USD actualizada de elTOQUE.",
-        "Se agreg? modal informativo sobre el mercado informal de divisas en Cuba."
+        "Se agregó modal informativo sobre el mercado informal de divisas en Cuba."
       ],
       "correcciones": [
-        "Se corrigi? el valor CUP desactualizado en tarjetas por cach? antigua de tasa (ej. 14.400 CUP con tasa 960).",
-        "Se elimin? la dependencia directa a CyberForja en el frontend; la fuente principal es elTOQUE con cach?/fallback.",
-        "Se ajust? el manejo de actualizaci?n de tasas para refrescar correctamente cuando hay nueva tasa disponible."
+        "Se corrigió el valor CUP desactualizado en tarjetas por caché antigua de tasa (ej. 14.400 CUP con tasa 960).",
+        "Se eliminó la dependencia directa a CyberForja en el frontend; la fuente principal es elTOQUE con caché/fallback.",
+        "Se ajustó el manejo de actualización de tasas para refrescar correctamente cuando hay nueva tasa disponible."
       ]
     },
     {

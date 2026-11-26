@@ -1,8 +1,6 @@
 name: Refresh APK rate snapshots
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 permissions:

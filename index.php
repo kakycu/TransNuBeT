@@ -1577,7 +1577,7 @@ $faq = [
             <div class="rates-head-copy">
                 <div class="rates-title-row">
                     <h3 id="ratesTitle">Tasas de cambio actuales</h3>
-                    <button type="button" class="rates-info-btn" id="ratesInfoOpen" aria-label="Informaci?n sobre el mercado informal de divisas" title="Informaci?n">
+                    <button type="button" class="rates-info-btn" id="ratesInfoOpen" aria-label="Información sobre el mercado informal de divisas" title="Información">
                         <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
                     </button>
                 </div>
@@ -1619,7 +1619,7 @@ $faq = [
             </div>
         </div>
         <div class="rates-info-body">
-            <p>Consulta aqu? las tasas de cambio de las principales monedas que se intercambian en el mercado informal de divisas en Cuba. Estos valores se calculan en tiempo real y parten de ofertas de compra y venta que monitoreamos en grupos de redes sociales y sirven como una referencia clave para entender el valor real del dinero en la econom?a cubana.</p>
+            <p>Consulta aquí las tasas de cambio de las principales monedas que se intercambian en el mercado informal de divisas en Cuba. Estos valores se calculan en tiempo real y parten de ofertas de compra y venta que monitoreamos en grupos de redes sociales y sirven como una referencia clave para entender el valor real del dinero en la economía cubana.</p>
         </div>
         <div class="rates-foot">
             <button type="button" class="rates-btn primary" id="ratesInfoClose">
@@ -3161,8 +3161,8 @@ $faq = [
                 when += ' ' + h12 + ':' + mm + ' ' + ampm;
             }
         }
-        var src = data.source === 'cache' ? 'cach?' : 'elTOQUE';
-        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> ? ' : '') +
+        var src = data.source === 'cache' ? 'caché' : 'elTOQUE';
+        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> · ' : '') +
             'Fuente: <b>' + esc(src) + '</b>';
     }
     var refreshTop = document.getElementById('ratesRefreshTop');
@@ -3210,7 +3210,7 @@ $faq = [
             .then(function (j) { if (!j || !j.success) throw new Error('api'); render(j.data || {}); })
             .catch(function () {
                 if (body.querySelector('table')) {
-                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las ?ltimas cargadas.';
+                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las últimas cargadas.';
                 } else {
                     body.innerHTML = '<p class="rates-status is-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> No se pudieron obtener las tasas en este momento.</p>';
                     meta.textContent = '';

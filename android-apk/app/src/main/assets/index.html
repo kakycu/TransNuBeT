@@ -1287,7 +1287,7 @@
             <div class="rates-head-copy">
                 <div class="rates-title-row">
                     <h3 id="ratesTitle">Tasas de cambio actuales</h3>
-                    <button type="button" class="rates-info-btn" id="ratesInfoOpen" aria-label="Informaci?n sobre el mercado informal de divisas" title="Informaci?n">
+                    <button type="button" class="rates-info-btn" id="ratesInfoOpen" aria-label="Información sobre el mercado informal de divisas" title="Información">
                         <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
                     </button>
                 </div>
@@ -1329,7 +1329,7 @@
             </div>
         </div>
         <div class="rates-info-body">
-            <p>Consulta aqu? las tasas de cambio de las principales monedas que se intercambian en el mercado informal de divisas en Cuba. Estos valores se calculan en tiempo real y parten de ofertas de compra y venta que monitoreamos en grupos de redes sociales y sirven como una referencia clave para entender el valor real del dinero en la econom?a cubana.</p>
+            <p>Consulta aquí las tasas de cambio de las principales monedas que se intercambian en el mercado informal de divisas en Cuba. Estos valores se calculan en tiempo real y parten de ofertas de compra y venta que monitoreamos en grupos de redes sociales y sirven como una referencia clave para entender el valor real del dinero en la economía cubana.</p>
         </div>
         <div class="rates-foot">
             <button type="button" class="rates-btn primary" id="ratesInfoClose">
@@ -1346,7 +1346,7 @@
     </button>
     
     <button type="button" class="scroll-fab is-visible" id="btnCloseApp"
-            title="Cerrar aplicaci?n" aria-label="Cerrar aplicaci?n">
+            title="Cerrar aplicación" aria-label="Cerrar aplicación">
         <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
     </button>
     <button type="button" class="scroll-fab" id="btnScrollBottom"
@@ -2563,9 +2563,17 @@
     }
     function fetchRate() {
         var usdUrl = (location.protocol === 'file:') ? 'https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/rate-usd.json?t=' + Date.now() : (RATES_API_BASE + '/api/exchange-rate.php');
-        return fetch(usdUrl, { credentials: location.protocol === 'file:' ? 'omit' : 'same-origin' })
-            .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
-            .then(parseRate);
+        var nativeRate = null;
+        if (location.protocol === 'file:' && window.AndroidApp && typeof AndroidApp.fetchRates === 'function') {
+            try {
+                nativeRate = JSON.parse(AndroidApp.fetchRates(false));
+            } catch (e) {}
+        }
+        return (nativeRate
+            ? Promise.resolve(nativeRate)
+            : fetch(usdUrl, { credentials: location.protocol === 'file:' ? 'omit' : 'same-origin' })
+                .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+            ).then(parseRate);
     }
     var cached = readCache();
     if (cached && typeof cached.rate === 'number') apply(cached.rate);
@@ -2675,8 +2683,8 @@
                 when += ' ' + h12 + ':' + mm + ' ' + ampm;
             }
         }
-        var src = data.source === 'cache' ? 'cach?' : 'elTOQUE';
-        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> ? ' : '') +
+        var src = data.source === 'cache' ? 'caché' : 'elTOQUE';
+        meta.innerHTML = (when ? 'Actualizado: <b>' + esc(when) + '</b> · ' : '') +
             'Fuente: <b>' + esc(src) + '</b>';
     }
     var refreshTop = document.getElementById('ratesRefreshTop');
@@ -2716,15 +2724,33 @@
         if (!body.querySelector('table')) {
             body.innerHTML = '<p class="rates-status"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Cargando tasas...</p>';
         }
-        var url = (location.protocol === 'file:')
-            ? 'https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/rates.json?t=' + Date.now()
-            : (RATES_API_BASE + '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : ''));
-        fetch(url, { credentials: location.protocol === 'file:' ? 'omit' : 'same-origin', cache: 'no-store' })
-            .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
-            .then(function (j) { if (!j || !j.success) throw new Error('api'); render(j.data || {}); })
+        var url = RATES_API_BASE + '/api/exchange-rate.php?all=1' + (force ? '&force=1&t=' + Date.now() : '');
+        var fetchJson = function () {
+            return fetch((location.protocol === 'file:')
+                    ? 'https://raw.githubusercontent.com/kakycu/TransNuBeT/main/android-apk/dist/rates.json?t=' + Date.now()
+                    : url, { credentials: location.protocol === 'file:' ? 'omit' : 'same-origin', cache: 'no-store' })
+                .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+                .then(function (j) { if (!j || !j.success) throw new Error('api'); return j; });
+        };
+        var fetchNative = null;
+        if (location.protocol === 'file:' && window.AndroidApp && typeof AndroidApp.fetchRates === 'function') {
+            fetchNative = function () {
+                var txt = AndroidApp.fetchRates(true);
+                if (!txt) throw new Error('native-empty');
+                var j = JSON.parse(txt);
+                if (!j || !j.success) throw new Error('api');
+                return j;
+            };
+        }
+        Promise.resolve()
+            .then(function () {
+                if (!fetchNative) return fetchJson();
+                try { return fetchNative(); } catch (e) { return fetchJson(); }
+            })
+            .then(function (j) { render(j.data || {}); })
             .catch(function () {
                 if (body.querySelector('table')) {
-                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las ?ltimas cargadas.';
+                    meta.textContent = 'No se pudieron actualizar las tasas. Se muestran las últimas cargadas.';
                 } else {
                     body.innerHTML = '<p class="rates-status is-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> No se pudieron obtener las tasas en este momento.</p>';
                     meta.textContent = '';

@@ -459,7 +459,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         val btnLater = view.findViewById<TextView>(R.id.btnUpdateLater)
         val btnSkip = view.findViewById<TextView>(R.id.btnUpdateSkip)
 
-        title.text = if (required) "Actualizaci?n necesaria" else "Nueva versi?n disponible"
+        title.text = if (required) "Actualización necesaria" else "Nueva versión disponible"
         versions.text = "Instalada: v${BuildConfig.VERSION_NAME} (Rev. ${BuildConfig.VERSION_CODE})\nNueva: v$latestName (Rev. $latestCode)"
 
         if (releasedAt.isNotBlank()) {
@@ -486,7 +486,7 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
         }
         btnClose.setOnClickListener {
             if (required) {
-                Toast.makeText(this, "Esta actualizaci?n es necesaria para continuar.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Esta actualización es necesaria para continuar.", Toast.LENGTH_SHORT).show()
             } else {
                 dialog.dismiss()
             }
@@ -518,6 +518,26 @@ override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest
 
         @JavascriptInterface
         fun isConnected(): Boolean = isNetworkAvailable()
+
+        @JavascriptInterface
+        fun fetchRates(all: Boolean): String {
+            return try {
+                val base = "https://unicorniosoftware.gt.tc/api/exchange-rate.php"
+                val url = (if (all) "$base?all=1" else base) + "&t=" + System.currentTimeMillis()
+                val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8000
+                    readTimeout = 10000
+                    useCaches = false
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Cache-Control", "no-cache")
+                }
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                conn.disconnect()
+                body
+            } catch (_: Exception) {
+                ""
+            }
+        }
 
         @JavascriptInterface
         fun getAppVersion(): String {
