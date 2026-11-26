@@ -76,8 +76,8 @@ jobs:
           TITLE="EcosisUnicorn v${VN} (Rev. ${VC})"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            EXISTING=$(gh release view "$TAG" --json name --jq '.name // ""')
-            if [[ "$EXISTING" != *"(Rev. ${VC})"* ]]; then
+            EXISTING=$(gh release view "$TAG" --json name --jq '.name // ""' 2>/dev/null || echo "")
+            if [[ -n "$EXISTING" && "$EXISTING" != *"(Rev. ${VC})"* ]]; then
               TAG="${TAG}-r${VC}"
             fi
           fi
@@ -108,11 +108,11 @@ jobs:
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" android-apk/dist/EcosisUnicorn.apk --clobber
-            gh release edit "$TAG" --name "$TITLE" --notes-file /tmp/release-notes.md --latest || \
-              gh release edit "$TAG" --name "$TITLE" --notes-file /tmp/release-notes.md
+            gh release edit "$TAG" --title "$TITLE" --notes-file /tmp/release-notes.md --latest || \
+              gh release edit "$TAG" --title "$TITLE" --notes-file /tmp/release-notes.md
           else
             gh release create "$TAG" android-apk/dist/EcosisUnicorn.apk \
-              --name "$TITLE" --notes-file /tmp/release-notes.md --latest --target "$GITHUB_SHA"
+              --title "$TITLE" --notes-file /tmp/release-notes.md --latest --target "$GITHUB_SHA"
           fi
 
           URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/EcosisUnicorn.apk"
