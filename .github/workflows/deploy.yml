@@ -38,6 +38,23 @@ jobs:
             echo "name=.ftp-deploy-sync-state-v2.json" >> "$GITHUB_OUTPUT"
           fi
 
+      # api/eltoque-token.local.php esta en .gitignore (no se versiona el token),
+      # asi que el servidor nunca lo recibia: en produccion faltaban las monedas
+      # digitales (USDT/BTC/BNB/TRX) y solo se listaban las 7 del scraping.
+      # Se reconstruye aqui desde el secreto antes de subir los archivos.
+      - name: Preparar token de elTOQUE para el servidor
+        env:
+          ELTOQUE_API_TOKEN: ${{ secrets.ELTOQUE_API_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$ELTOQUE_API_TOKEN" ]; then
+            echo "::warning::Falta el secreto ELTOQUE_API_TOKEN: el listado de tasas tendra solo 7 monedas."
+            exit 0
+          fi
+          tok="${ELTOQUE_API_TOKEN//\'/\'\\\'\'}"
+          printf '<?php\nreturn %s;\n' "'$tok'" > api/eltoque-token.local.php
+          echo "Token de elTOQUE preparado para el deploy."
+
       - name: Subir archivos por FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
